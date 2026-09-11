@@ -59,7 +59,8 @@ function Signage.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 	local r = cfg.road
 	local folder = Build.folder("Signage", parent)
 	local totalM = RoadNetwork.lengthM(path)
-	local standoff = r.shoulderWidthM + r.kerbWidthM + cfg.barriers.offsetM + cfg.barriers.baseWidthM + 1.2
+	local standoff = r.shoulderWidthM + r.kerbWidthM + sg.setbackM
+	local lay = RoadNetwork.layout(path, ctx)
 
 	-- Overhead gantries.
 	local gantryIndex = 0
@@ -95,21 +96,35 @@ function Signage.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			castShadow = cfg.shadows.signage,
 		})
 
-		local text = sg.gantryTexts[(gantryIndex - 1) % #sg.gantryTexts + 1]
-		local panelPos = p.position
-			+ Vector3.new(0, height - ctx.s(sg.gantryBeamDepthM) - ctx.s(sg.panelHeightM) / 2, 0)
-			- p.cframe.LookVector * ctx.s(0.2)
-		local panel = Build.part({
-			name = "Panel",
-			size = Vector3.new(ctx.s(sg.panelWidthM), ctx.s(sg.panelHeightM), ctx.s(0.14)),
-			-- Facing back down the road, so a driver reads it head on.
-			cframe = CFrame.lookAt(panelPos, panelPos - p.cframe.LookVector),
-			color = sg.panelColor,
+		-- A centre post in the median too, so a 120 m beam is not floating.
+		Build.part({
+			name = "Post",
+			size = Vector3.new(postW, height, postW),
+			cframe = CFrame.new(p.position + Vector3.new(0, height / 2, 0)),
+			color = sg.postColor,
 			material = Enum.Material.Metal,
 			parent = gantry,
 			castShadow = cfg.shadows.signage,
 		})
-		panelGui(panel, cfg, text[1], text[2], text[3])
+
+		-- One panel over each carriageway, facing the traffic that uses it.
+		for _, side in { -1, 1 } do
+			local text = sg.gantryTexts[(gantryIndex + (if side > 0 then 1 else 0) - 1) % #sg.gantryTexts + 1]
+			local centre = p.position + p.cframe.RightVector * (side * ctx.s(lay.centreM))
+			local panelPos = centre
+				+ Vector3.new(0, height - ctx.s(sg.gantryBeamDepthM) - ctx.s(sg.panelHeightM) / 2, 0)
+				- p.cframe.LookVector * ctx.s(0.2)
+			local panel = Build.part({
+				name = "Panel",
+				size = Vector3.new(ctx.s(sg.panelWidthM), ctx.s(sg.panelHeightM), ctx.s(0.14)),
+				cframe = CFrame.lookAt(panelPos, panelPos - p.cframe.LookVector),
+				color = sg.panelColor,
+				material = Enum.Material.Metal,
+				parent = gantry,
+				castShadow = cfg.shadows.signage,
+			})
+			panelGui(panel, cfg, text[1], text[2], text[3])
+		end
 	end)
 
 	-- Small roadside signs, alternating sides, at a lower frequency.

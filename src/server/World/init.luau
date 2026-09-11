@@ -11,7 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WorldConfig = require(script.WorldConfig)
 local Build = require(script.Build)
 local RoadNetwork = require(script.RoadNetwork)
-local Barriers = require(script.Barriers)
+local AssetRegistry = require(script.AssetRegistry)
 local WorldLighting = require(script.Lighting)
 local Cityscape = require(script.Cityscape)
 local Signage = require(script.Signage)
@@ -73,11 +73,6 @@ function World.build(): Result
 	end
 	tally("road", road)
 
-	if cfg.barriers.enabled then
-		local folder = Barriers.build(cfg, ctx, path, world)
-		tally("barriers", folder)
-	end
-
 	-- Sky, atmosphere and the Lighting service, then the lamp geometry.
 	WorldLighting.applyAtmosphere(cfg)
 	if cfg.lamps.enabled then
@@ -96,6 +91,12 @@ function World.build(): Result
 	end
 
 	if cfg.scatter.enabled then
+		-- Meshes load over the network once each, up front, so the scatter
+		-- loop never yields part way through a clump.
+		if cfg.scatter.useMeshes then
+			local loaded = AssetRegistry.preload()
+			print(`[World] {loaded} mesh pieces loaded`)
+		end
 		local folder = Scatter.build(cfg, ctx, path, world)
 		tally("scatter", folder)
 	end

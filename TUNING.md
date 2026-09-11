@@ -278,28 +278,29 @@ Surface realism. None of it is geometry the car can feel.
 ## ground
 | Field | What it does |
 |---|---|
-| tileM / marginM | Sand tile size and how far the desert reaches past the road. Bigger tiles = fewer parts, coarser colour banding. |
+| tileM / marginM | Sand tile size and how far the desert reaches past the road. **tileM must stay under 573 m**: a Part axis caps at 2,048 studs and a bigger tile silently shrinks and leaves holes. |
+| dunes.* | Low wedge ridges beyond the shoulder band: spacing, edge distances, size range. Non-collidable. |
 | thicknessM / dropM | Slab thickness and how far the sand sits below the road. |
 | nearColor / farColor / farStartM | Two tones split by distance from the road, so the desert is not one colour sheet. |
 
-## barriers
+## road (dual carriageway)
 | Field | What it does |
 |---|---|
-| offsetM | Distance from the kerb to the barrier. |
-| heightM / baseWidthM / baseHeightM / flareHeightM / topWidthM | The jersey profile. `topWidthM` is the collidable wall; the base and flare are decoration. |
-| color / colorVariation | Base tone and per-run jitter. Variation 0 makes a kilometre of barrier read as one extruded object. |
-| scuffChance / scuffColor | Dark smears at bumper height. |
-| markerSpacingM / markerColor / markerSizeM | Reflective studs on the traffic face. |
-| railEnabled / railOffsetM / railHeightM / railDepthM / railThicknessM | Guard rail beam outside the jersey line. |
-| railPostSpacingM | **The most expensive number in the file.** Real posts are 2 m apart; at 2.2 km that is 1,100 posts a side and it cost 45 fps. 12 m still reads as a posted rail at speed. |
+| medianWidthM | Width of the central reservation, taken out of the preset's total. Wider = more room for palms and a bigger gap to cross when you run wide on the inside. |
+| medianColor / medianMaterial / medianDropM | The strip between carriageways. It is ground, so it collides. |
+| kerbWidthM / kerbHeightM | A visual lip only; collision is off. |
+
+There are no barriers. Running wide costs speed and dignity, not the run.
 
 ## lamps
 | Field | What it does |
 |---|---|
 | spacingM | Distance between lamps. Drives both the rhythm of light and the part count. |
-| bothSides | False alternates sides and halves the part count. |
+| bothSides | False alternates the outer sides and halves that part count. |
+| medianLamps | Double-arm posts down the reservation, offset half a spacing so the three rows interleave. |
+| setbackM | From the kerb to the pole. Nothing here collides, so this is purely where it looks right. |
 | poleHeightM / poleWidthM | Pole size. Square section on purpose: a box is 12 triangles, a cylinder ~100. |
-| armLengthM | Boom reach. It has to clear the shoulder, kerb and barrier (about 6 m) before it is over any asphalt; shorter and every pool of light lands on the shoulder. |
+| armLengthM | Boom reach. It has to clear the shoulder and kerb before it is over any asphalt; shorter and every pool of light lands on the shoulder. |
 | headSizeM / poleColor / bulbColor / headOffColor | Housing size and colours. `headOffColor` is used at hours where lamps are not lit, so a bulb never glows in daylight. |
 | jitterSeed / yawJitterDeg / heightJitter | Per-lamp variation. Zero makes a row read as a copied object. |
 | lightColor | Colour of the pooled PointLights. |
@@ -310,8 +311,8 @@ Surface realism. None of it is geometry the car can feel.
 `timeOfDay` picks one of `dusk`, `goldenHour`, `blueHour`, `night`. Each preset:
 | Field | What it does |
 |---|---|
-| clockTime | Sun height. Measured at latitude 24.7: 17.7 = 4° up, 17.95 = on the horizon, 18.2 = 3° under. Lower = longer shadows and a darker sky. |
-| geographicLatitude | Tilts the sun's path. Riyadh is 24.7. There is no azimuth control; the sun is 91° to the road at every evening hour. |
+| clockTime | Sun height. At latitude 60: 17.4 = 7° up, 17.55 = 5°, 17.75 = 3°, 17.88 = 1.5°. Lower = longer shadows and a darker sky. |
+| geographicLatitude | **This is the sun azimuth control**, because Roblox has no other. 24.7 (real Riyadh) puts the evening sun 90° off the road, out of the driving view; 60 puts it 127°, ahead-left, in the windscreen with shadows diagonal across the asphalt. 80 is 147°, nearly dead ahead. |
 | ambient / outdoorAmbient | Fill light. This is the readability knob: too low and the car disappears between lamps. |
 | brightness | Sun strength. |
 | exposureCompensation | Overall exposure. |
@@ -324,7 +325,8 @@ Surface realism. None of it is geometry the car can feel.
 | atmosphere.glare | Brightness right around the sun. |
 | atmosphere.haze | How far the atmosphere colour spreads up the dome. Above about 1 the warm tint reaches the zenith and mixes with blue into olive. |
 | sunRays.enabled / intensity / spread | Light shafts. Keep intensity low; it is a full-screen post effect. |
-| sky.useSkyObject | False draws Roblox's procedural dome, which tracks ClockTime. True renders the default painted daytime skybox instead, and is only the hook for a real skybox once six texture ids are vetted. |
+| sky.useSkyObject | False draws Roblox's procedural dome, which tracks ClockTime but stays day-blue until the sun touches the horizon. True builds a Sky from `sky.skybox`. |
+| sky.skybox | Six texture ids `{ bk, dn, ft, lf, rt, up }`. Golden hour ships a photographed sunset; swap the ids for a different sky. |
 | sky.starCount / celestialBodiesShown / sunAngularSize | Only used when `useSkyObject` is true. |
 | lamps.enabled / brightness / rangeM | Whether street lamps are lit at this hour, and how hard. |
 
@@ -332,7 +334,6 @@ Surface realism. None of it is geometry the car can feel.
 Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
-| barriers | Off. A kilometre of barrier throws a thin strip nobody looks at, for hundreds of casters. Turning it on put 643 casters in frustum and cost 45 fps. |
 | lamps / signage / palms | On. Sparse, tall, and their long raking shadows across the road are most of the realism. |
 | rocks / cityscape | Off. Too small and too far to pay for themselves. |
 
@@ -361,9 +362,14 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | seed | Fixed, so the desert is identical on every server. |
+| useMeshes | Real meshes from AssetRegistry. Off, or a mesh that fails to load, gives the primitive stand-in. |
+| palm.medianEnabled / medianClumpSpacingM / medianJitterM / medianMarginM | The signature planting down the reservation: a clump every spacing, jittered along and across, never inside the margin of a kerb. |
+| palm.varietyFraction | Fraction of palms that use the second mesh. |
+| palm.minScale / maxScale | Height range. Uniform height is the thing that reads as copied. |
+| scrub.* | Low bushes on the verges and, at `medianChance`, between the median palms. |
 | falloffStartM / falloffEndM | Density falls off with distance from the road, so the near shoulder reads as maintained and the far desert as empty. |
 | palm.clumpSpacingM / clumpJitterM / minPerClump / maxPerClump / spreadM | Palms go in loose clumps. Evenly spaced trees read as generated; clumps read as planted. |
-| palm.minEdgeM / maxEdgeM | Band either side of the road they can occupy. Never inside the barrier line. |
+| palm.minEdgeM / maxEdgeM | Band either side of the road they can occupy, measured from the kerb. |
 | palm.trunkHeightM / trunkWidthM / frondCount / frondLengthM / frondWidthM | The primitive stand-in's proportions, used until a mesh is approved. |
 | palm.leanMaxRad | Palms lean. A vertical pole reads as a lamp post. |
 | rock.* / debris.* | Same spacing, jitter and edge-distance rules at lower density. |
@@ -374,7 +380,7 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | enabled | Records intent. `Workspace.StreamingEnabled` is a place setting; a runtime script cannot write it. |
 | targetRadius / minRadius | Also place settings, and not exposed to Lua at all — set them in the Studio Properties panel. |
 | roadPersistent | Keeps the road replicated always. **Leave this on.** The client owns vehicle physics, so a car that outruns the streamer finds no road under it and falls out of the world. |
-| barriersPersistent | Same reasoning: a barrier that has not streamed in is one the car drives through. |
+| palmsPersistent | Keeps every palm replicated. Off, the median is bare ahead of the car at speed because the streamer cannot keep up. ~650 mesh pieces. |
 | cityscapePersistent | Stops the horizon popping. ~300 small boxes. |
 
 ## technology / fogEnabled / debug

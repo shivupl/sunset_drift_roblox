@@ -4,6 +4,7 @@
 -- Dbg* attributes for the harness are written whether or not it is shown.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
@@ -17,6 +18,19 @@ local DebugPanel = {}
 local label: TextLabel? = nil
 local lastUpdate = 0
 local shown: boolean? = nil -- nil follows the config; set by toggle
+
+-- Frame rate, averaged over the last second. Studio throttles an unfocused
+-- window to 15 fps, so this only means something when the window is focused.
+-- One increment per frame; the display is what costs, and that is 10 Hz.
+local frames, frameTime, fps = 0, 0, 0
+RunService.RenderStepped:Connect(function(dt)
+	frames += 1
+	frameTime += dt
+	if frameTime >= 1 then
+		fps = frames / frameTime
+		frames, frameTime = 0, 0
+	end
+end)
 
 local function isTouch(): boolean
 	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
@@ -116,7 +130,7 @@ function DebugPanel.update(state: VehicleState)
 	l.Visible = true
 	local gear = if state.gear == -1 then "R" else tostring(state.gear)
 	l.Text = table.concat({
-		string.format("SPD %5.1f km/h   GEAR %s   RPM %4.0f", state.speedKmh, gear, state.rpm),
+		string.format("SPD %5.1f km/h   GEAR %s   RPM %4.0f   FPS %3.0f", state.speedKmh, gear, state.rpm, fps),
 		string.format(
 			"THR %.2f  BRK %.2f  STR %+.2f (%+5.1f°)  LOCK %3.0f%%",
 			state.throttle,

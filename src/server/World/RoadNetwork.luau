@@ -142,6 +142,30 @@ function RoadNetwork.toPath(waypoints: { Waypoint }, ctx: Context): Path
 	return path
 end
 
+-- The dual carriageway layout, in metres, derived from the preset width.
+export type Layout = {
+	totalM: number, -- corridor width edge to edge
+	medianM: number,
+	carriagewayM: number, -- width of one carriageway
+	centreM: number, -- lateral distance from the centreline to a carriageway centre
+	innerEdgeM: number, -- centreline to the median-side asphalt edge
+	outerEdgeM: number, -- centreline to the outer asphalt edge
+}
+
+function RoadNetwork.layout(path: Path, ctx: Context): Layout
+	local totalM = path[1].halfWidth * 2 * ctx.mps
+	local medianM = math.min(ctx.cfg.road.medianWidthM, totalM * 0.5)
+	local cw = (totalM - medianM) / 2
+	return {
+		totalM = totalM,
+		medianM = medianM,
+		carriagewayM = cw,
+		centreM = medianM / 2 + cw / 2,
+		innerEdgeM = medianM / 2,
+		outerEdgeM = medianM / 2 + cw,
+	}
+end
+
 function RoadNetwork.lengthM(path: Path): number
 	return path[#path].distanceM
 end
@@ -204,6 +228,11 @@ export type RibbonOpts = {
 	-- asphalt, whose width can vary per waypoint.
 	widthFromPath: boolean?,
 	castShadow: boolean?,
+	-- Overrides road.maxMergedRunM for this ribbon. The 80 m cap exists so
+	-- streamed parts appear when approached; the Road model is Persistent,
+	-- so its long thin strips (tyre tracks, edge lines, shoulders, median)
+	-- can run to the engine limit and cost a quarter of the parts.
+	runCapM: number?,
 	-- Replaces the default single box per run. The CFrame is at the middle
 	-- of the run looking along the road, so in that frame local X is lateral,
 	-- local Y is up and local Z is along the road. Used to build a profile
@@ -285,7 +314,7 @@ function RoadNetwork.ribbon(o: RibbonOpts): number
 			-- merged straight run butts exactly against its neighbours.
 			local curved = (run[2] - run[1]) == 1 and #runs > 1
 			-- Chop at the streaming-friendly length, never above the engine cap.
-			local capStuds = math.min(ctx.s(cfg.road.maxMergedRunM), Build.MAX_PART_STUDS)
+			local capStuds = math.min(ctx.s(o.runCapM or cfg.road.maxMergedRunM), Build.MAX_PART_STUDS)
 			local pieces = math.max(1, math.ceil(span / capStuds))
 			local pieceLen = span / pieces
 			for i = 0, pieces - 1 do
@@ -391,82 +420,81 @@ local function buildGround(ctx: Context, path: Path, parent: Instance): number
 	return made
 end
 
--- Tyre tracks, seams and patches. Everything here is cosmetic and sits at
--- markingEpsilon, so the suspension raycast never sees a step.
-local function buildWear(ctx: Context, path: Path, parent: Instance, asphalt: Color3)
+-- Tyre tracks, seams and patches, per carriageway. Everything here is
+-- cosmetic and sits at markingEpsilon, so the suspension raycast never sees
+-- a step.
+local function buildWear(ctx: Context, path: Path, parent: Instance, asphalt: Color3, lay: Layout)
 	local r = ctx.cfg.road
 	local w = r.wear
 	local rng = Build.rng(w.seed)
 	local totalM = RoadNetwork.lengthM(path)
-	local yM = r.markingEpsilonM * 0.5 -- under the paint, over the asphalt
+	local yM = r.markingEpsilonM * 0.5
 
-	if w.tyreTracksEnabled then
-		local dark = asphalt:Lerp(Color3.new(0, 0, 0), w.tyreTrackDarken)
-		for lane = 1, r.laneCount do
-			-- Lane centre as a fraction of the half width, then a wheel track
-			-- either side of it.
-			local centreFrac = ((lane - 0.5) / r.laneCount) * 2 - 1
-			for _, sign in { -1, 1 } do
-				RoadNetwork.ribbon({
-					name = "TyreTrack",
-					parent = parent,
-					path = path,
-					ctx = ctx,
-					fracOffset = centreFrac,
-					offsetM = sign * w.tyreTrackGapM / 2,
-					widthM = w.tyreTrackWidthM,
-					heightM = r.markingThicknessM,
-					yM = yM,
-					color = dark,
-					material = Enum.Material.Asphalt,
-				})
+	for _, side in { -1, 1 } do
+		if w.tyreTracksEnabled then
+			local dark = asphalt:Lerp(Color3.new(0, 0, 0), w.tyreTrackDarken)
+			for lane = 1, r.laneCount do
+				local laneCentre = lay.innerEdgeM + lay.carriagewayM * (lane - 0.5) / r.laneCount
+				for _, sign in { -1, 1 } do
+					RoadNetwork.ribbon({
+						name = "TyreTrack",
+						runCapM = r.longRunM,
+						parent = parent,
+						path = path,
+						ctx = ctx,
+						offsetM = side * (laneCentre + sign * w.tyreTrackGapM / 2),
+						widthM = w.tyreTrackWidthM,
+						heightM = r.markingThicknessM,
+						yM = yM,
+						color = dark,
+						material = Enum.Material.Asphalt,
+					})
+				end
 			end
 		end
-	end
 
-	if w.seamsEnabled then
-		local seamColor = asphalt:Lerp(Color3.new(0, 0, 0), w.seamDarken)
-		-- One across the road at each merged-slab joint.
-		local seamSpacing = r.maxMergedRunM
-		RoadNetwork.repeatAlong(path, ctx, seamSpacing, seamSpacing, totalM, function(p)
-			local pos = p.position + Vector3.new(0, ctx.s(yM), 0)
-			Build.part({
-				name = "Seam",
-				size = Vector3.new(p.halfWidth * 2, ctx.s(r.markingThicknessM), ctx.s(w.seamWidthM)),
-				cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
-				color = seamColor,
-				material = Enum.Material.Asphalt,
-				parent = parent,
-			})
-		end)
-	end
+		if w.seamsEnabled then
+			local seamColor = asphalt:Lerp(Color3.new(0, 0, 0), w.seamDarken)
+			RoadNetwork.repeatAlong(path, ctx, r.maxMergedRunM, r.maxMergedRunM, totalM, function(p)
+				local pos = p.position + p.cframe.RightVector * (side * ctx.s(lay.centreM)) + Vector3.new(0, ctx.s(yM), 0)
+				Build.part({
+					name = "Seam",
+					size = Vector3.new(ctx.s(lay.carriagewayM), ctx.s(r.markingThicknessM), ctx.s(w.seamWidthM)),
+					cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
+					color = seamColor,
+					material = Enum.Material.Asphalt,
+					parent = parent,
+				})
+			end)
+		end
 
-	if w.patchesEnabled then
-		RoadNetwork.repeatAlong(path, ctx, w.patchSpacingM, w.patchSpacingM, totalM, function(p)
-			if rng:NextNumber() > w.patchChance then
-				return
-			end
-			local tone = rng:NextNumber(-w.patchTone, w.patchTone)
-			local color = if tone < 0
-				then asphalt:Lerp(Color3.new(0, 0, 0), -tone)
-				else asphalt:Lerp(Color3.new(1, 1, 1), tone)
-			local length = ctx.s(rng:NextNumber(w.patchMinLengthM, w.patchMaxLengthM))
-			local width = ctx.s(rng:NextNumber(2, 6))
-			local lateral = rng:NextNumber(-0.85, 0.85) * p.halfWidth
-			local pos = p.position + p.cframe.RightVector * lateral + Vector3.new(0, ctx.s(yM * 0.9), 0)
-			Build.part({
-				name = "Patch",
-				size = Vector3.new(width, ctx.s(r.markingThicknessM), length),
-				cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
-				color = color,
-				material = Enum.Material.Asphalt,
-				parent = parent,
-			})
-		end)
+		if w.patchesEnabled then
+			RoadNetwork.repeatAlong(path, ctx, w.patchSpacingM, w.patchSpacingM * (if side < 0 then 0.5 else 1), totalM, function(p)
+				if rng:NextNumber() > w.patchChance then
+					return
+				end
+				local tone = rng:NextNumber(-w.patchTone, w.patchTone)
+				local color = if tone < 0
+					then asphalt:Lerp(Color3.new(0, 0, 0), -tone)
+					else asphalt:Lerp(Color3.new(1, 1, 1), tone)
+				local length = ctx.s(rng:NextNumber(w.patchMinLengthM, w.patchMaxLengthM))
+				local width = ctx.s(rng:NextNumber(2, 6))
+				local lateral = side * ctx.s(lay.innerEdgeM + lay.carriagewayM * rng:NextNumber(0.08, 0.92))
+				local pos = p.position + p.cframe.RightVector * lateral + Vector3.new(0, ctx.s(yM * 0.9), 0)
+				Build.part({
+					name = "Patch",
+					size = Vector3.new(width, ctx.s(r.markingThicknessM), length),
+					cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
+					color = color,
+					material = Enum.Material.Asphalt,
+					parent = parent,
+				})
+			end)
+		end
 	end
 end
 
-local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt: Color3)
+local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt: Color3, lay: Layout)
 	local cfg = ctx.cfg
 	local r = cfg.road
 	local w = r.wear
@@ -475,53 +503,51 @@ local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt
 	local yM = r.markingEpsilonM
 	local thick = r.markingThicknessM
 
-	-- Paint is bleached and driven over, never crisp white. Each run and each
-	-- dash gets pulled a different distance toward the colour of the road.
+	-- Paint is bleached and driven over, never crisp white.
 	local function wornPaint(): (Color3, number)
 		local amount = rng:NextNumber(0, w.markingWear)
 		return r.paintColor:Lerp(asphalt, amount), rng:NextNumber(0, w.markingFadeMax)
 	end
 
-	-- Solid edge lines, tracking the road width.
-	for _, side in { -1, 1 } do
-		local color, fade = wornPaint()
-		RoadNetwork.ribbon({
-			name = "EdgeLine",
-			parent = parent,
-			path = path,
-			ctx = ctx,
-			offsetM = side * -0.4, -- just inside the asphalt edge
-			edgeRelative = true,
-			widthM = r.edgeLineWidthM,
-			heightM = thick,
-			yM = yM,
-			color = color,
-			material = Enum.Material.Concrete,
-			transparency = fade * 0.5,
-		})
-	end
-
-	-- Dashed lane dividers.
-	local dividers = math.max(0, r.laneCount - 1)
-	local cycle = r.dashLengthM + r.dashGapM
 	local dashLen = ctx.s(r.dashLengthM)
 	local dashWidth = ctx.s(r.dashWidthM)
-	for lane = 1, dividers do
-		local frac = (lane / r.laneCount) * 2 - 1
-		RoadNetwork.repeatAlong(path, ctx, cycle, r.dashLengthM / 2, totalM, function(p)
+	local cycle = r.dashLengthM + r.dashGapM
+	for _, side in { -1, 1 } do
+		-- Solid edge lines on both edges of each carriageway.
+		for _, edge in { lay.innerEdgeM + 0.4, lay.outerEdgeM - 0.4 } do
 			local color, fade = wornPaint()
-			local lateral = frac * p.halfWidth
-			local pos = p.position + p.cframe.RightVector * lateral + Vector3.new(0, ctx.s(yM), 0)
-			Build.part({
-				name = "Dash",
-				size = Vector3.new(dashWidth, ctx.s(thick), dashLen * rng:NextNumber(0.94, 1.0)),
-				cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
+			RoadNetwork.ribbon({
+				name = "EdgeLine",
+				runCapM = r.longRunM,
+				parent = parent,
+				path = path,
+				ctx = ctx,
+				offsetM = side * edge,
+				widthM = r.edgeLineWidthM,
+				heightM = thick,
+				yM = yM,
 				color = color,
 				material = Enum.Material.Concrete,
-				parent = parent,
-				transparency = fade,
+				transparency = fade * 0.5,
 			})
-		end)
+		end
+		-- Dashed dividers between lanes.
+		for lane = 1, math.max(0, r.laneCount - 1) do
+			local lateralM = side * (lay.innerEdgeM + lay.carriagewayM * lane / r.laneCount)
+			RoadNetwork.repeatAlong(path, ctx, cycle, r.dashLengthM / 2, totalM, function(p)
+				local color, fade = wornPaint()
+				local pos = p.position + p.cframe.RightVector * ctx.s(lateralM) + Vector3.new(0, ctx.s(yM), 0)
+				Build.part({
+					name = "Dash",
+					size = Vector3.new(dashWidth, ctx.s(thick), dashLen * rng:NextNumber(0.94, 1.0)),
+					cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
+					color = color,
+					material = Enum.Material.Concrete,
+					parent = parent,
+					transparency = fade,
+				})
+			end)
+		end
 	end
 end
 
@@ -545,11 +571,48 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 	local groundFolder = Build.folder("Ground", road)
 	buildGround(ctx, path, groundFolder)
 
-	-- Shoulders, then kerbs, then the asphalt itself.
+	local lay = RoadNetwork.layout(path, ctx)
+
+	-- Median: a strip of ground between the carriageways, a hair below the
+	-- asphalt, with a lip of kerb on each side. Collidable because it IS the
+	-- ground the car drives onto when it runs wide on the inside.
+	local medianFolder = Build.folder("Median", road)
+	RoadNetwork.ribbon({
+		name = "Median",
+		runCapM = r.longRunM,
+		parent = medianFolder,
+		path = path,
+		ctx = ctx,
+		offsetM = 0,
+		widthM = lay.medianM,
+		heightM = r.thicknessM,
+		yM = -r.thicknessM / 2 - r.medianDropM,
+		color = r.medianColor,
+		material = r.medianMaterial,
+		collide = true,
+	})
+	for _, side in { -1, 1 } do
+		RoadNetwork.ribbon({
+			name = "Kerb",
+			runCapM = r.longRunM,
+			parent = medianFolder,
+			path = path,
+			ctx = ctx,
+			offsetM = side * (lay.innerEdgeM - r.kerbWidthM / 2),
+			widthM = r.kerbWidthM,
+			heightM = r.kerbHeightM,
+			yM = r.kerbHeightM / 2 - 0.01,
+			color = r.kerbColor,
+			material = Enum.Material.Concrete,
+		})
+	end
+
+	-- Outer shoulders and kerbs. Shoulders are ground; kerbs are a lip.
 	local shoulderFolder = Build.folder("Shoulders", road)
 	for _, side in { -1, 1 } do
 		RoadNetwork.ribbon({
 			name = "Shoulder",
+			runCapM = r.longRunM,
 			parent = shoulderFolder,
 			path = path,
 			ctx = ctx,
@@ -564,6 +627,7 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 		})
 		RoadNetwork.ribbon({
 			name = "Kerb",
+			runCapM = r.longRunM,
 			parent = shoulderFolder,
 			path = path,
 			ctx = ctx,
@@ -571,55 +635,53 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 			edgeRelative = true,
 			widthM = r.kerbWidthM,
 			heightM = r.kerbHeightM,
-			yM = r.kerbHeightM / 2 - 0.02,
+			yM = r.kerbHeightM / 2 - 0.01,
 			color = r.kerbColor,
 			material = Enum.Material.Concrete,
-			collide = true,
 		})
 	end
 
+	-- Two carriageways. Every slab a slightly different shade: asphalt is
+	-- laid in passes and weathers unevenly, and one flat colour over two
+	-- kilometres is the tell.
 	local surfaceFolder = Build.folder("Surface", road)
-	-- Every slab a slightly different shade. Asphalt is laid in passes and
-	-- weathers unevenly; one flat colour over two kilometres is the tell.
 	local slabRng = Build.rng(r.wear.seed + 2)
-	RoadNetwork.ribbon({
-		name = "Asphalt",
-		parent = surfaceFolder,
-		path = path,
-		ctx = ctx,
-		offsetM = 0,
-		widthM = 0,
-		widthFromPath = true,
-		heightM = r.thicknessM,
-		yM = -r.thicknessM / 2,
-		color = r.asphaltColor,
-		material = Enum.Material.Asphalt,
-		collide = true,
-		emit = function(cf, length, width)
-			local tone = slabRng:NextNumber(-r.wear.slabTone, r.wear.slabTone)
-			local color = if tone < 0
-				then r.asphaltColor:Lerp(Color3.new(0, 0, 0), -tone)
-				else r.asphaltColor:Lerp(Color3.new(1, 1, 1), tone)
-			Build.part({
-				name = "Asphalt",
-				size = Vector3.new(width, s(r.thicknessM), length),
-				-- cf already carries the ribbon's yM; offsetting again here
-				-- buries the slab a full thickness under the sand.
-				cframe = cf,
-				color = color,
-				material = Enum.Material.Asphalt,
-				parent = surfaceFolder,
-				collide = true,
-			})
-		end,
-	})
+	for _, side in { -1, 1 } do
+		RoadNetwork.ribbon({
+			name = "Asphalt",
+			parent = surfaceFolder,
+			path = path,
+			ctx = ctx,
+			offsetM = side * lay.centreM,
+			widthM = lay.carriagewayM,
+			heightM = r.thicknessM,
+			yM = -r.thicknessM / 2,
+			color = r.asphaltColor,
+			material = Enum.Material.Asphalt,
+			collide = true,
+			emit = function(cf, length, width)
+				local tone = slabRng:NextNumber(-r.wear.slabTone, r.wear.slabTone)
+				local color = if tone < 0
+					then r.asphaltColor:Lerp(Color3.new(0, 0, 0), -tone)
+					else r.asphaltColor:Lerp(Color3.new(1, 1, 1), tone)
+				Build.part({
+					name = "Asphalt",
+					size = Vector3.new(width, s(r.thicknessM), length),
+					cframe = cf,
+					color = color,
+					material = Enum.Material.Asphalt,
+					parent = surfaceFolder,
+					collide = true,
+				})
+			end,
+		})
+	end
 
-	-- Transition pad: flush wings either side, no overlap with the asphalt.
+	-- Transition pad: flush wings outside each carriageway.
 	local pad = preset.pad
 	if pad and pad.widthM > 0 then
 		local padFolder = Build.folder("TransitionPad", road)
-		local base = RoadNetwork.sample(path, pad.startM).halfWidth * mps * 2
-		local wing = (pad.widthM - base) / 2
+		local wing = (pad.widthM - lay.totalM) / 2
 		if wing > 0 then
 			for _, side in { -1, 1 } do
 				RoadNetwork.ribbon({
@@ -640,14 +702,14 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 				})
 			end
 			road:SetAttribute("PadStartStuds", -s(pad.startM))
-			road:SetAttribute("PadEndStuds", -s(pad.startM + pad.lengthM))
+			road:SetAttribute("PadEndStuds", -(s(pad.startM + pad.lengthM)))
 		end
 	end
 
 	local wearFolder = Build.folder("Wear", road)
-	buildWear(ctx, path, wearFolder, r.asphaltColor)
+	buildWear(ctx, path, wearFolder, r.asphaltColor, lay)
 	local markingFolder = Build.folder("Markings", road)
-	buildMarkings(ctx, path, markingFolder, r.asphaltColor)
+	buildMarkings(ctx, path, markingFolder, r.asphaltColor, lay)
 
 	-- Parking bay behind the start line, and the player spawn beside it.
 	local bayLen = s(preset.bayLengthM)

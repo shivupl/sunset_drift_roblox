@@ -39,6 +39,15 @@ local config = {
 	},
 
 	road = {
+		-- Dual carriageway. A preset's widthM is the whole corridor, edge to
+		-- edge; the median comes out of the middle and each carriageway gets
+		-- half of what is left. 120 m total with a 26 m median gives two 47 m
+		-- carriageways of four lanes, which is the "room to make a mistake"
+		-- the map is for.
+		medianWidthM = 26,
+		medianColor = Color3.fromRGB(150, 128, 94),
+		medianMaterial = Enum.Material.Ground,
+		medianDropM = 0.04, -- median sits this far below the asphalt
 		thicknessM = 1,
 		-- Segment length the road is chopped into along a curve. Shorter is
 		-- smoother and costs more parts. A straight run is emitted as one
@@ -54,6 +63,10 @@ local config = {
 		-- a 2 km barrier is still 25 parts instead of a thousand, and each
 		-- one streams when you actually approach it.
 		maxMergedRunM = 80,
+		-- The Road model is Persistent, so its long thin strips need no
+		-- streaming cap at all: 550 m is just under the engine's 2,048 studs.
+		-- Only the asphalt slabs stay at 80 m, for the per-slab tone and seams.
+		longRunM = 550,
 		-- Segments only overlap where the road actually turns. On a straight
 		-- an overlap would put two coplanar top faces in the same place and
 		-- z-fight; on a curve the faces meet at an angle and resolve cleanly,
@@ -64,14 +77,19 @@ local config = {
 		-- raycast never notices a step.
 		markingEpsilonM = 0.02,
 		markingThicknessM = 0.05,
-		dashLengthM = 6,
-		dashGapM = 6,
+		dashLengthM = 7,
+		dashGapM = 11, -- long gaps are what a real highway has, and a third fewer parts
 		dashWidthM = 0.3,
 		edgeLineWidthM = 0.25,
-		laneCount = 4, -- lane divider dashes, not counting the outer edge lines
+		-- Three per carriageway. Four cost 800 dashes and 450 tyre-track parts in
+		-- frustum from the start line; three 47 m carriageway lanes are still
+		-- 15 m wide, which is what the Phase 0 road always was.
+		laneCount = 3, -- per carriageway
 		shoulderWidthM = 3,
-		kerbWidthM = 0.5,
-		kerbHeightM = 0.12,
+		-- Kerbs are a visual lip only. Nothing on the map collides except the
+		-- ground, and a 12 cm collidable step at 200 km/h is a launch ramp.
+		kerbWidthM = 0.4,
+		kerbHeightM = 0.07,
 		asphaltColor = Color3.fromRGB(52, 50, 54),
 		padColor = Color3.fromRGB(48, 48, 53),
 		shoulderColor = Color3.fromRGB(70, 66, 60),
@@ -110,63 +128,51 @@ local config = {
 
 	ground = {
 		-- Sand plane, tiled because a Part axis maxes out at 2048 studs.
-		tileM = 400,
-		-- How far the sand reaches past the road bounding box on every side.
-		marginM = 1200,
+		-- 550 m is 1,964 studs. A Part axis caps at 2,048, and a tile past
+		-- that silently shrinks and leaves a hole in the desert.
+		tileM = 550,
+		-- How far the sand reaches past the road on every side. Far enough
+		-- that the horizon is haze, not an edge.
+		marginM = 4000,
 		thicknessM = 1,
-		dropM = 0.12, -- how far the sand sits below the road surface
+		dropM = 0.05, -- sand sits this far below the asphalt; small so running wide is a bump, not a drop
 		-- Two tones dithered by distance from the road so the desert is not
 		-- one flat colour sheet. No texture: a texture on a plane this size
 		-- is a large-surface draw we have not measured.
 		nearColor = Color3.fromRGB(138, 118, 86),
 		farColor = Color3.fromRGB(112, 95, 70),
 		farStartM = 300, -- distance from the road centre where far colour takes over
+		-- Undulation, cheaply: low ridges built from two wedges back to back,
+		-- scattered beyond the shoulder band and sunk into the plane. Sixteen
+		-- triangles each. Never collidable and never near the road.
+		dunes = {
+			enabled = true,
+			seed = 3311,
+			spacingM = 110, -- along the road
+			jitterM = 50,
+			minEdgeM = 140,
+			maxEdgeM = 1400,
+			minLengthM = 60,
+			maxLengthM = 220,
+			minWidthM = 30,
+			maxWidthM = 90,
+			minHeightM = 1.5,
+			maxHeightM = 5,
+			color = Color3.fromRGB(130, 112, 82),
+		},
 	},
 
-	barriers = {
-		enabled = true,
-		-- Distance from the road edge (outside the shoulder) to the barrier face.
-		offsetM = 1.5,
-		-- Real jersey profile, in metres, measured off a standard F-shape:
-		-- a wide flat base, a steep flare, then a near-vertical upper wall.
-		-- A plain cuboid is the single most obvious "this is Roblox" tell on
-		-- a highway, because the flare catches the light differently from the
-		-- wall and a box has no flare to catch it.
-		heightM = 0.95,
-		baseWidthM = 0.6,
-		baseHeightM = 0.08,
-		flareHeightM = 0.25, -- top of the angled section
-		topWidthM = 0.38,
-		color = Color3.fromRGB(168, 162, 150),
-		-- Each run is tinted a little differently, so a kilometre of barrier
-		-- does not read as one extruded object.
-		variationSeed = 9182,
-		colorVariation = 0.13, -- fraction toward black or white, per run
-		scuffChance = 0.3, -- runs that get a dark scuff mark
-		scuffColor = Color3.fromRGB(74, 70, 66),
-		-- Reflective strips on the barrier face, every this far.
-		markerSpacingM = 24,
-		markerColor = Color3.fromRGB(240, 150, 40),
-		markerSizeM = 0.18,
-		-- Guard rail outside the jersey line: thin corrugated beam on posts,
-		-- the way a real shoulder rail is, not a slab.
-		railEnabled = true,
-		railOffsetM = 5,
-		railHeightM = 0.75, -- beam centre height
-		railDepthM = 0.32, -- beam face height
-		railThicknessM = 0.04,
-		-- Real posts are about 2 m apart. At 2.2 km that is 1,100 posts a side
-		-- and it cost 45 fps on its own; at 12 m the run still reads as a
-		-- posted rail at speed. This is the single most expensive number in
-		-- the file, so change it knowing that.
-		railPostSpacingM = 12,
-		railColor = Color3.fromRGB(158, 158, 162),
-		railPostColor = Color3.fromRGB(112, 112, 116),
-	},
+	-- No barriers. There is nothing between the road and the sand; running
+	-- wide costs speed, not the run. The module was removed rather than
+	-- disabled so nothing can bring it back by accident.
 
 	lamps = {
 		enabled = true,
 		spacingM = 45,
+		-- Outer shoulders always. The median gets a double-arm post every
+		-- spacing too, offset by half a spacing so the three rows interleave.
+		medianLamps = true,
+		setbackM = 1.2, -- from the kerb to the pole
 		-- Perfect repetition is what makes a row of lamps read as generated.
 		jitterSeed = 4417,
 		yawJitterDeg = 2.5,
@@ -199,6 +205,7 @@ local config = {
 		enabled = true,
 		gantrySpacingM = 600,
 		gantryFirstM = 300,
+		setbackM = 1.5, -- from the kerb to the post
 		gantryHeightM = 7.2,
 		gantryPostWidthM = 0.5,
 		gantryBeamDepthM = 0.7,
@@ -259,10 +266,25 @@ local config = {
 	scatter = {
 		enabled = true,
 		seed = 776611,
+		-- Real meshes from AssetRegistry when they load; the primitive
+		-- stand-ins only appear if a mesh fails to load.
+		useMeshes = true,
 		-- Palms are planted in loose clumps so they read as planted rather
 		-- than evenly generated.
 		palm = {
 			enabled = true,
+			-- The central reservation is the signature planting: a clump
+			-- every medianClumpSpacingM, jittered along and across the median,
+			-- never inside medianMarginM of a kerb.
+			medianEnabled = true,
+			medianClumpSpacingM = 36,
+			medianJitterM = 12,
+			medianMarginM = 3,
+			-- Variety picks: fraction of palms that use the second mesh.
+			varietyFraction = 0.3,
+			minScale = 0.8,
+			maxScale = 1.25,
+			-- Outer shoulders, thinning out with distance.
 			clumpSpacingM = 70, -- average distance between clumps
 			clumpJitterM = 22,
 			minPerClump = 2,
@@ -278,6 +300,18 @@ local config = {
 			frondWidthM = 0.55,
 			trunkColor = Color3.fromRGB(78, 64, 46),
 			frondColor = Color3.fromRGB(38, 52, 32),
+		},
+		scrub = {
+			enabled = true,
+			spacingM = 16,
+			jitterM = 7,
+			minEdgeM = 4,
+			maxEdgeM = 140,
+			medianChance = 0.25, -- some low scrub in the median between clumps
+			minSizeM = 0.7,
+			maxSizeM = 1.9,
+			color = Color3.fromRGB(78, 88, 56),
+			colorVariation = 0.2,
 		},
 		rock = {
 			enabled = true,
@@ -308,7 +342,7 @@ local config = {
 	-- Time of day. Pick one of the presets below; every light, colour and
 	-- haze value comes from it, so sliding from golden hour to night is a
 	-- one-word change here.
-	timeOfDay = "dusk",
+	timeOfDay = "goldenHour",
 
 	-- Sun position is ClockTime plus GeographicLatitude. Roblox gives no
 	-- direct azimuth control: the sun tracks east to west, and the road runs
@@ -349,48 +383,51 @@ local config = {
 				haze = 0.6,
 			},
 			sunRays = { enabled = true, intensity = 0.04, spread = 0.9 },
-			sky = { starCount = 1400, celestialBodiesShown = true, sunAngularSize = 12, useSkyObject = false },
+			sky = { starCount = 1400, celestialBodiesShown = true, sunAngularSize = 12, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 2.4, rangeM = 30 },
 		},
 		goldenHour = {
-			-- Measured with Lighting:GetSunDirection at latitude 24.7: this
-			-- puts the sun 4 degrees above the horizon at 91 degrees to the
-			-- road, which is as close to straight across the asphalt as the
-			-- engine's sun path allows. 17.35 gives 10 degrees if the shadows
-			-- come out too long.
-			clockTime = 17.7,
-			geographicLatitude = 24.7,
-			-- Raking light needs a dark-ish ambient or the shadows wash out,
-			-- but the car has to stay readable in them. These were set by
-			-- looking at the car in shadow, not by eye on the sky.
-			ambient = Color3.fromRGB(74, 66, 64),
-			outdoorAmbient = Color3.fromRGB(104, 88, 78),
-			brightness = 2.1,
-			exposureCompensation = -0.1,
-			colorShiftTop = Color3.fromRGB(255, 206, 156),
-			colorShiftBottom = Color3.fromRGB(86, 74, 72),
-			-- Shadows are most of the realism at this hour, so they are on
-			-- and the things that cast them are listed in `shadows` below.
+			-- Roblox has no sun azimuth control; latitude is the only lever on
+			-- it. At Riyadh's real 24.7 the sun sits exactly 90 degrees off the
+			-- road, so driving down it you look at a blue sky with the sunset
+			-- off-screen on both sides. 60 swings it to 127 degrees: ahead and
+			-- to the left, so the warm sky is in the windscreen and every palm
+			-- throws its shadow diagonally across the asphalt toward you.
+			-- Measured with Lighting:GetSunDirection; see WORLD.md.
+			clockTime = 17.55, -- about 5 degrees up
+			geographicLatitude = 60,
+			ambient = Color3.fromRGB(96, 84, 82),
+			outdoorAmbient = Color3.fromRGB(128, 110, 100),
+			brightness = 2.2,
+			exposureCompensation = -0.15,
+			colorShiftTop = Color3.fromRGB(255, 196, 140),
+			colorShiftBottom = Color3.fromRGB(92, 82, 88),
 			globalShadows = true,
-			-- Warm dusty haze. Riyadh air carries sand, so the horizon glows
-			-- and fades instead of ending. Density is the main distance knob.
-			-- Tuned down hard from the first pass. At density 0.42 with haze
-			-- 2.6 the road faded out about 200 m ahead and the horizon
-			-- disappeared entirely, which breaks the readability rule. This
-			-- still glows and fades; it just does not swallow the road.
 			atmosphere = {
-				density = 0.2,
-				offset = 0.1,
-				color = Color3.fromRGB(240, 176, 118),
-				decay = Color3.fromRGB(158, 104, 82),
-				glare = 0.3,
-				haze = 1.3,
+				density = 0.26,
+				offset = 0.12,
+				color = Color3.fromRGB(244, 176, 118),
+				decay = Color3.fromRGB(80, 78, 120),
+				glare = 0.32,
+				haze = 0.9,
 			},
-			sunRays = { enabled = true, intensity = 0.06, spread = 0.9 },
-			sky = { starCount = 0, celestialBodiesShown = true, sunAngularSize = 13, useSkyObject = false },
-			-- Street lamps are geometry at this hour; the manager still runs
-			-- so the night preset needs no other change.
-			lamps = { enabled = false, brightness = 0.5, rangeM = 18 },
+			sunRays = { enabled = true, intensity = 0.05, spread = 0.9 },
+			-- A painted skybox, because the procedural dome stays day-blue
+			-- until the sun is on the horizon and only then goes warm. This is
+			-- a photographed sunset (store 5133032250, "HD Sunset Skybox",
+			-- PeZsmistic): six textures, no scripts, nothing branded. The ids
+			-- are recorded in AssetRegistry.skyboxes.
+			sky = {
+				starCount = 200,
+				celestialBodiesShown = true,
+				sunAngularSize = 14,
+				useSkyObject = true,
+				skybox = { bk = 5133008838, dn = 5132998156, ft = 5132998362, lf = 5132998795, rt = 5132998563, up = 5132999149 },
+			},
+			-- Lamps off. Lit heads are Neon slabs, and in daylight a Neon slab
+			-- reads as a yellow sticker; a dark housing reads as a lamp. The
+			-- dusk and night presets light them.
+			lamps = { enabled = false, brightness = 1.1, rangeM = 22 },
 		},
 		blueHour = {
 			clockTime = 18.6,
@@ -411,7 +448,7 @@ local config = {
 				haze = 2,
 			},
 			sunRays = { enabled = false, intensity = 0.03, spread = 0.9 },
-			sky = { starCount = 900, celestialBodiesShown = true, sunAngularSize = 11, useSkyObject = false },
+			sky = { starCount = 900, celestialBodiesShown = true, sunAngularSize = 11, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 2, rangeM = 28 },
 		},
 		night = {
@@ -433,7 +470,7 @@ local config = {
 				haze = 1.4,
 			},
 			sunRays = { enabled = false, intensity = 0, spread = 1 },
-			sky = { starCount = 4200, celestialBodiesShown = false, sunAngularSize = 0, useSkyObject = false },
+			sky = { starCount = 4200, celestialBodiesShown = false, sunAngularSize = 0, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 3.2, rangeM = 34 },
 		},
 	},
@@ -450,7 +487,6 @@ local config = {
 	-- that make the hour read; a kilometre of barrier throws a thin strip
 	-- nobody looks at, for hundreds of casters.
 	shadows = {
-		barriers = false,
 		lamps = true,
 		signage = true,
 		palms = true,
@@ -485,7 +521,10 @@ local config = {
 		-- same way because a barrier that has not streamed in is one the car
 		-- drives straight through.
 		roadPersistent = true,
-		barriersPersistent = true,
+		-- The median palms too: at 161 km/h with the default streaming radius
+		-- none were in frustum and the reservation was bare ahead of the car.
+		-- About 650 mesh pieces, always replicated.
+		palmsPersistent = true,
 	},
 
 	debug = {

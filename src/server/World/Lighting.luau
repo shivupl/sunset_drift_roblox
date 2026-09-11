@@ -17,7 +17,6 @@ local Lighting = game:GetService("Lighting")
 local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
-local AssetRegistry = require(script.Parent.AssetRegistry)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -78,6 +77,15 @@ function WorldLighting.applyAtmosphere(cfg: Config)
 		sky.StarCount = t.sky.starCount
 		sky.CelestialBodiesShown = t.sky.celestialBodiesShown
 		sky.SunAngularSize = t.sky.sunAngularSize
+		local box = t.sky.skybox
+		if box then
+			sky.SkyboxBk = `rbxassetid://{box.bk}`
+			sky.SkyboxDn = `rbxassetid://{box.dn}`
+			sky.SkyboxFt = `rbxassetid://{box.ft}`
+			sky.SkyboxLf = `rbxassetid://{box.lf}`
+			sky.SkyboxRt = `rbxassetid://{box.rt}`
+			sky.SkyboxUp = `rbxassetid://{box.up}`
+		end
 		sky.Parent = Lighting
 	end
 
@@ -113,14 +121,13 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 	local r = cfg.road
 	local folder = Build.folder("Lamps", parent)
 	local totalM = RoadNetwork.lengthM(path)
-	-- Just outside the barrier, where a real gantry pole stands.
-	local standoff = r.shoulderWidthM + r.kerbWidthM + cfg.barriers.offsetM + cfg.barriers.baseWidthM + 0.8
+	-- Just past the kerb, where a real post stands. Nothing here collides.
+	local standoff = r.shoulderWidthM + r.kerbWidthM + l.setbackM
 
 	local poleW = ctx.s(l.poleWidthM)
 	local poleH = ctx.s(l.poleHeightM)
 	local armLen = ctx.s(l.armLengthM)
 	local headSize = ctx.s(l.headSizeM)
-	local useMesh = AssetRegistry.hasMesh("lampHead")
 
 	local rng = Build.rng(l.jitterSeed)
 	local castShadow = cfg.shadows.lamps
@@ -129,30 +136,24 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 	local lit = WorldLighting.timeOfDay(cfg).lamps.enabled
 	local headColor = if lit then l.bulbColor else l.headOffColor
 	local headMaterial = if lit then Enum.Material.Neon else Enum.Material.Metal
-	local index = 0
-	RoadNetwork.repeatAlong(path, ctx, l.spacingM, l.spacingM, totalM, function(p)
-		index += 1
-		local sides: { number } = if l.bothSides then { -1, 1 } else { if index % 2 == 0 then 1 else -1 }
-		for _, side in sides do
-			local base = p.position + p.cframe.RightVector * (side * (p.halfWidth + ctx.s(standoff)))
-			local lamp = Build.folder("Lamp", folder)
-
-			-- A degree or two of yaw and a few per cent of height, so a row of
-			-- lamps never reads as a copied object.
-			local yaw = rng:NextNumber(-l.yawJitterDeg, l.yawJitterDeg)
-			local heightScale = 1 + rng:NextNumber(-l.heightJitter, l.heightJitter)
-			local thisPoleH = poleH * heightScale
-			Build.part({
-				name = "Pole",
-				size = Vector3.new(poleW, thisPoleH, poleW),
-				cframe = CFrame.new(base + Vector3.new(0, thisPoleH / 2, 0)) * CFrame.Angles(0, math.rad(yaw), 0),
-				color = l.poleColor:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.12)),
-				material = Enum.Material.Metal,
-				parent = lamp,
-				castShadow = castShadow,
-			})
-			-- Arm reaches in over the road.
-			local armMid = base + Vector3.new(0, thisPoleH - poleW, 0) - p.cframe.RightVector * (side * armLen / 2)
+	-- One post. side is which way the arm reaches (toward the road for an
+	-- outer post); arms lists the directions for a median post.
+	local function post(base: Vector3, p: RoadNetwork.PathPoint, arms: { number })
+		local lamp = Build.folder("Lamp", folder)
+		local yaw = rng:NextNumber(-l.yawJitterDeg, l.yawJitterDeg)
+		local heightScale = 1 + rng:NextNumber(-l.heightJitter, l.heightJitter)
+		local thisPoleH = poleH * heightScale
+		Build.part({
+			name = "Pole",
+			size = Vector3.new(poleW, thisPoleH, poleW),
+			cframe = CFrame.new(base + Vector3.new(0, thisPoleH / 2, 0)) * CFrame.Angles(0, math.rad(yaw), 0),
+			color = l.poleColor:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.12)),
+			material = Enum.Material.Metal,
+			parent = lamp,
+			castShadow = castShadow,
+		})
+		for _, dir in arms do
+			local armMid = base + Vector3.new(0, thisPoleH - poleW, 0) + p.cframe.RightVector * (dir * armLen / 2)
 			Build.part({
 				name = "Arm",
 				size = Vector3.new(armLen, poleW * 0.8, poleW * 0.8),
@@ -162,39 +163,37 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 				parent = lamp,
 				castShadow = castShadow,
 			})
-
-			local headPos = base
-				+ Vector3.new(0, thisPoleH - poleW * 1.6, 0)
-				- p.cframe.RightVector * (side * armLen)
-			local head: BasePart
-			local mesh = if useMesh then AssetRegistry.createMesh("lampHead") else nil
-			if mesh then
-				mesh.Name = "Head"
-				mesh.Anchored = true
-				mesh.CanCollide = false
-				mesh.CanQuery = false
-				mesh.CanTouch = false
-				mesh.CastShadow = false
-				mesh.Size = Vector3.new(headSize * 1.6, headSize * 0.6, headSize)
-				mesh.CFrame = CFrame.new(headPos)
-				mesh.Parent = lamp
-				head = mesh
-			else
-				head = Build.part({
-					name = "Head",
-					size = Vector3.new(headSize * 1.6, headSize * 0.45, headSize),
-					cframe = CFrame.lookAt(headPos, headPos + p.cframe.LookVector),
-					color = headColor,
-					material = headMaterial,
-					parent = lamp,
-					castShadow = castShadow,
-				})
-			end
+			local headPos = base + Vector3.new(0, thisPoleH - poleW * 1.6, 0) + p.cframe.RightVector * (dir * armLen)
+			local head = Build.part({
+				name = "Head",
+				size = Vector3.new(headSize * 1.6, headSize * 0.45, headSize),
+				cframe = CFrame.lookAt(headPos, headPos + p.cframe.LookVector),
+				color = headColor,
+				material = headMaterial,
+				parent = lamp,
+				castShadow = castShadow,
+			})
 			-- The client light manager finds lamps by this tag and never
 			-- creates more than maxLiveLights PointLights in total.
 			CollectionService:AddTag(head, WorldLighting.LAMP_TAG)
 		end
+	end
+
+	local index = 0
+	RoadNetwork.repeatAlong(path, ctx, l.spacingM, l.spacingM, totalM, function(p)
+		index += 1
+		local sides: { number } = if l.bothSides then { -1, 1 } else { if index % 2 == 0 then 1 else -1 }
+		for _, side in sides do
+			local base = p.position + p.cframe.RightVector * (side * (p.halfWidth + ctx.s(standoff)))
+			post(base, p, { -side }) -- arm reaches back over the road
+		end
 	end)
+	if l.medianLamps then
+		-- Offset by half a spacing so the median row interleaves the outer rows.
+		RoadNetwork.repeatAlong(path, ctx, l.spacingM, l.spacingM / 2, totalM, function(p)
+			post(p.position, p, { -1, 1 })
+		end)
+	end
 
 	return folder
 end
