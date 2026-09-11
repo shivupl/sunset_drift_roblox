@@ -75,7 +75,14 @@ function DebugPanel.update(state: VehicleState)
 	local gear = if state.gear == -1 then "R" else tostring(state.gear)
 	l.Text = table.concat({
 		string.format("SPD %5.1f km/h   GEAR %s   RPM %4.0f", state.speedKmh, gear, state.rpm),
-		string.format("THR %.2f  BRK %.2f  STR %+.2f (%+5.1f°)", state.throttle, state.brake, state.steer, state.steerDeg),
+		string.format(
+			"THR %.2f  BRK %.2f  STR %+.2f (%+5.1f°)  LOCK %3.0f%%",
+			state.throttle,
+			state.brake,
+			state.steer,
+			state.steerDeg,
+			state.steerLock * 100
+		),
 		string.format("DRIFT %+6.1f°   YAW %+6.1f°/s", state.driftAngleDeg, state.yawRateDegPerSec),
 		string.format(
 			"MODE %-8s  ROLL %+5.1f°  margin %5.1f°  LEAN %+d",
@@ -103,6 +110,7 @@ function DebugPanel.update(state: VehicleState)
 	p:SetAttribute("DbgYawRate", state.yawRateDegPerSec)
 	p:SetAttribute("DbgRollDeg", state.rollDeg)
 	p:SetAttribute("DbgLean", state.lean)
+	p:SetAttribute("DbgSteerLock", state.steerLock)
 	p:SetAttribute("DbgMode", state.twoWheelMode)
 	p:SetAttribute("DbgSlipFL", w[1].slipAngleDeg)
 	p:SetAttribute("DbgSlipFR", w[2].slipAngleDeg)

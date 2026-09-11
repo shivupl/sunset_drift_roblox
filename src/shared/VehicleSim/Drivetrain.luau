@@ -48,6 +48,7 @@ export type Output = {
 	rpm: number,
 	gear: number,
 	torque: number, -- Nm at the crank after throttle/kick/cut
+	kicking: boolean, -- inside the clutch-kick window
 }
 
 local RPM_PER_RAD_S = 60 / (2 * math.pi)
@@ -144,6 +145,7 @@ function Drivetrain.step(
 		rpm = rpm,
 		gear = state.gear,
 		torque = torque,
+		kicking = state.kickTimer > 0,
 	}
 end
 

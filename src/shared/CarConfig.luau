@@ -40,8 +40,32 @@ local config = {
 	},
 
 	tires = {
-		front = { grip = 1.05, peakSlipDeg = 8, slideSlipDeg = 25, slideGripRatio = 0.75 },
-		rear = { grip = 1.0, peakSlipDeg = 7, slideSlipDeg = 22, slideGripRatio = 0.7 },
+		-- The rear peaks slightly later than the front and decays far more
+		-- gently past it, so the front reaches its limit first (stable bias)
+		-- and the rear gives warning before it lets go instead of stepping
+		-- out the moment you turn at speed.
+		-- falloffShape: 1 is a straight line from peak to floor, above 1 is
+		-- shallow at first and steepens further out.
+		-- riseShape: 1 is a straight line up to the peak, below 1 keeps the
+		-- tire's bite near zero slip. The rear needs this, because moving its
+		-- peak later would otherwise soften it everywhere below that peak and
+		-- it would step out under power at cruise.
+		front = {
+			grip = 1.05,
+			peakSlipDeg = 8,
+			riseShape = 0.85,
+			slideSlipDeg = 25,
+			slideGripRatio = 0.75,
+			falloffShape = 1.2,
+		},
+		rear = {
+			grip = 1.0,
+			peakSlipDeg = 9.5,
+			riseShape = 0.55,
+			slideSlipDeg = 32,
+			slideGripRatio = 0.75,
+			falloffShape = 1.8,
+		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
 
@@ -69,15 +93,35 @@ local config = {
 		steerSpeedDegPerSec = 180,
 		steerReturnDegPerSec = 360,
 		driftAssist = 0.15, -- 0..1, adds this fraction of the drift angle as counter-steer
+		-- Speed-sensitive lock: km/h -> fraction of maxSteerDeg. Full lock for
+		-- parking and low-speed work, tapering at highway speed so turning
+		-- alone cannot pitch the car sideways.
+		speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.6 }, { 150, 0.35 }, { 260, 0.35 } },
+		-- The taper lifts back toward full lock as the car goes sideways, so a
+		-- slide stays catchable at speed. Degrees of slip for full relief, and
+		-- how much of the taper it lifts (0 disables it, 1 gives the whole
+		-- wheel back).
+		counterSteerReliefDeg = 25,
+		counterSteerRelief = 1,
 	},
 
 	handbrake = {
-		rearGripMultiplier = 0.35,
+		-- Lowered from 0.35 alongside the softer rear falloff. The rear now
+		-- holds far more grip a few degrees past peak, which slowed the pull
+		-- from 0.24 s to 0.33 s to reach 20 deg; cutting deeper puts that back
+		-- without touching the falloff that made the car stable.
+		rearGripMultiplier = 0.25,
 		brakeForce = 6000, -- N total on the rear axle
 	},
 
 	clutchKick = {
+		-- The torque spike only bites while the rear is still inside its
+		-- friction circle; past that the tire is clamped to its sliding value
+		-- and a bigger multiplier does nothing. rearGripMultiplier is what
+		-- breaks the rear loose, the same way the handbrake does, and it is
+		-- the knob to reach for if kicks stop initiating.
 		multiplier = 2.5,
+		rearGripMultiplier = 0.5,
 		duration = 0.3,
 	},
 

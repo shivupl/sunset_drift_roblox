@@ -4,7 +4,8 @@ local Tests = require(script.Parent)
 type T = Tests.T
 
 return function(t: T)
-	local axle = { grip = 1.0, peakSlipDeg = 8, slideSlipDeg = 24, slideGripRatio = 0.7 }
+	local axle =
+		{ grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1 }
 
 	-- Grip curve: linear rise, peak, linear decay, floor
 	t.near(Tire.gripCurve(0, axle), 0, 1e-9, "zero slip")
@@ -14,6 +15,26 @@ return function(t: T)
 	t.near(Tire.gripCurve(24, axle), 0.7, 1e-9, "floor reached")
 	t.near(Tire.gripCurve(80, axle), 0.7, 1e-9, "stays at floor")
 	t.near(Tire.gripCurve(-8, axle), 1, 1e-9, "symmetric")
+
+	-- Shaped falloff: above 1 the first degrees past peak barely cost grip
+	local soft =
+		{ grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 2 }
+	t.near(Tire.gripCurve(8, soft), 1, 1e-9, "peak is unchanged by the shape")
+	t.near(Tire.gripCurve(24, soft), 0.7, 1e-9, "floor is unchanged by the shape")
+	t.near(Tire.gripCurve(16, soft), 1 - 0.3 * 0.25, 1e-9, "shape 2 is quadratic through the decay")
+	t.ok(Tire.gripCurve(12, soft) > Tire.gripCurve(12, axle), "softer falloff holds more grip near the limit")
+	t.ok(Tire.gripCurve(22, soft) > Tire.gripCurve(22, axle), "and still more further out")
+
+	-- Rise shape: below 1 the tire keeps its bite near zero slip, without
+	-- moving where the peak is. This is what lets an axle peak later and
+	-- still be stiff, rather than going soft everywhere below the peak.
+	local stiff =
+		{ grip = 1.0, peakSlipDeg = 8, riseShape = 0.5, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1 }
+	t.near(Tire.gripCurve(0, stiff), 0, 1e-9, "still zero at zero slip")
+	t.near(Tire.gripCurve(8, stiff), 1, 1e-9, "still peaks at the same angle")
+	t.near(Tire.gripCurve(2, stiff), 0.5, 1e-9, "shape 0.5 is the square root of the linear rise")
+	t.ok(Tire.gripCurve(4, stiff) > Tire.gripCurve(4, axle), "stiffer below the peak")
+	t.near(Tire.gripCurve(20, stiff), Tire.gripCurve(20, axle), 1e-9, "rise shape does not touch the falloff")
 
 	-- Slip angle sign: sliding right (+vLat) => positive angle
 	t.near(Tire.slipAngleDeg(10, 10), 45, 1e-9, "45 deg")

@@ -40,9 +40,11 @@ For the opposite effect move the other way. Press L in play to reload.
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
 | grip | Peak friction. Rear lower than front = oversteer. | rear ↓ / front ↑ | rear ↓ | — |
-| peakSlipDeg | Slip angle at peak. Lower rear = rear breaks away sooner. | rear ↓ | rear ↓ | — |
-| slideSlipDeg | Where the fade ends. Wider gap to peak = gentler fade = more progressive slide. | — | — | — |
-| slideGripRatio | Grip floor while sliding. Lower rear = bigger angles, harder to catch; higher = holds and recovers easier. | rear ↓ | rear ↓ | — |
+| peakSlipDeg | Slip angle at peak. Lower rear = rear breaks away sooner. The rear is set later than the front so the front reaches its limit first. Moving it also moves that axle's stiffness, so change riseShape with it (see below). | rear ↓ | rear ↓ | — |
+| riseShape | How the tire builds grip up to the peak. 1 is a straight line whose slope is 1/peakSlipDeg, so raising the peak on its own quietly softens the axle everywhere below it and the rear starts stepping out under power at cruise. Below 1 the curve is concave: full bite near zero slip, rounding over into the peak. Lower it to firm an axle up without moving where it lets go. | rear ↑ | rear ↑ | — |
+| slideSlipDeg | Where the fade ends. Wider gap to peak = gentler fade = more progressive slide. | rear ↓ | rear ↓ | — |
+| falloffShape | How the tire gives up grip past the peak. 1 is a straight line to the floor. Above 1 the first degrees past peak cost almost nothing and the loss steepens further out, which is the warning before the rear goes. Lower it toward 1 if you want the limit to arrive without notice. | rear ↓ | rear ↓ | — |
+| slideGripRatio | Grip floor while sliding. Lower rear = bigger angles, harder to catch; higher = holds and recovers easier. Also sets how hard a handbrake pull or clutch kick can rotate the car, since a saturated tire sits at this value. | rear ↓ | rear ↓ | — |
 | speedFadeMps | Speed below which lateral force fades. Only for parking jitter. | — | — | — |
 
 ## drivetrain
@@ -68,18 +70,22 @@ For the opposite effect move the other way. Press L in play to reload.
 | steerSpeedDegPerSec | How fast the wheels turn in. Higher = snappier initiation, twitchier hold. | — | ↑ | — |
 | steerReturnDegPerSec | How fast they return. | — | — | — |
 | driftAssist | Automatic counter-steer fraction. Higher = easier hold, less skill. Keep low. Off on two wheels. | ↓ | — | — |
+| speedLockCurve | Speed-sensitive lock, km/h to fraction of maxSteerDeg. Full lock for parking, tapering at highway speed so turning alone cannot pitch the car sideways. Raise the high-speed end if the car feels unresponsive at speed, lower it if a flick still breaks the rear loose. | ↑ high end | ↑ high end | — |
+| counterSteerReliefDeg | Slip angle at which the taper is fully lifted, so a correction always gets the whole wheel. Lower = the full wheel comes back sooner in a slide. | — | — | — |
+| counterSteerRelief | How much of the taper a correction lifts. 1 gives the whole wheel back, 0 disables the exception and the taper applies to counter-steer too, which makes big angles uncatchable at speed. | — | — | — |
 
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
-| rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. | ↓ | ↓ | — |
+| rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
 | brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
 
 ## clutchKick
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
-| multiplier | Torque spike. Must push rear demand past the friction circle at your entry speed. | ↑ | ↑ | — |
-| duration | Spike length. | — | ↑ | — |
+| multiplier | Torque spike. Only bites while the rear is still inside its friction circle. Past that the tire is clamped to its sliding value and raising this does nothing at all, which is why it is not the knob for a kick that stopped working. | ↑ | ↑ | — |
+| rearGripMultiplier | Rear grip during the kick window. This is what actually breaks the rear loose, the same mechanism as the handbrake. Reach for this one when kicks stop initiating. | ↓ | ↓ | — |
+| duration | Spike length, and how long the grip cut lasts. | — | ↑ | — |
 
 ## twoWheel
 | Field | What it does | OS | INIT | 2W |

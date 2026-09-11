@@ -6,6 +6,18 @@
 -- peak the rear gives up some grip but not all, so a held slide is a
 -- balance rather than a switch. Front and rear axles are tuned separately.
 --
+-- falloffShape bends that decay. At 1 it is the straight line from peak to
+-- floor. Above 1 the first few degrees past peak barely cost any grip and
+-- the loss steepens further out, which is the warning the driver needs: the
+-- car starts moving under them well before the grip actually goes.
+--
+-- riseShape bends the way up. The rise is otherwise a straight line whose
+-- slope is 1/peakSlipDeg, which means moving an axle's peak later silently
+-- makes that axle softer at every angle below it, and a rear set up to be
+-- stable would step out under power instead. Below 1 the curve is concave:
+-- the tire keeps its bite near zero slip and rounds over into the peak,
+-- so where the peak sits and how stiff the tire is become separate knobs.
+--
 -- Combined force uses a friction circle with longitudinal demand taking
 -- priority (the driver commands it): throttle eats rear lateral grip, so
 -- too much throttle spins and too little straightens.
@@ -14,8 +26,10 @@ local Tire = {}
 export type AxleConfig = {
 	grip: number, -- peak friction coefficient
 	peakSlipDeg: number, -- slip angle where grip peaks
+	riseShape: number, -- 1 = straight line up to peak, <1 = stiffer near zero slip
 	slideSlipDeg: number, -- slip angle where grip reaches the floor
 	slideGripRatio: number, -- floor as a fraction of peak
+	falloffShape: number, -- 1 = straight line peak to floor, >1 = gentle at first
 }
 
 export type Output = {
@@ -28,13 +42,13 @@ export type Output = {
 function Tire.gripCurve(slipDeg: number, axle: AxleConfig): number
 	local a = math.abs(slipDeg)
 	if a <= axle.peakSlipDeg then
-		return a / axle.peakSlipDeg
+		return (a / axle.peakSlipDeg) ^ axle.riseShape
 	end
 	if a >= axle.slideSlipDeg then
 		return axle.slideGripRatio
 	end
 	local t = (a - axle.peakSlipDeg) / (axle.slideSlipDeg - axle.peakSlipDeg)
-	return 1 - (1 - axle.slideGripRatio) * t
+	return 1 - (1 - axle.slideGripRatio) * t ^ axle.falloffShape
 end
 
 -- + when the contact patch moves to the right of the wheel heading.

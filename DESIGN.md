@@ -63,6 +63,44 @@ demand exceeded grip and the engine rpm floats up while it does. Clutch kick
 is a short torque multiplier. Engine braking on lift shifts weight forward,
 which is what makes a lift-and-flick transition swing the rear across.
 
+## Stability under steering alone
+Three things keep the car from drifting when the driver only asked it to
+turn, none of them a gate on the handbrake.
+
+The rear tire gives up grip gradually instead of falling off a cliff. Past
+the peak slip angle the loss starts almost flat and steepens further out
+(`falloffShape` above 1), so the car moves under the driver well before the
+grip is actually gone. That fade is also what a held slide balances on.
+
+Steering lock tapers with speed. Full lock below 40 km/h for parking, about
+a third of it past 150, from a curve in CarConfig. A flick of the wheel at
+highway speed no longer has the authority to pitch the car sideways on its
+own. The taper has one exception: steering toward the direction the car is
+already travelling is a correction, not a request for more angle, so it
+lifts back to full lock in proportion to the slip angle. Without that
+exception a car tapered to a third of its lock could not physically catch a
+big slide, and holding a drift would stop working at exactly the speeds it
+matters.
+
+The rear peaks later than the front, so the front reaches its limit first
+and the car is stable-biased by default. That change has a trap in it. The
+rise to peak was a straight line whose slope is 1/peakSlipDeg, which means
+moving the rear peak later silently softened the rear at every angle below
+it: measured, the rear made 26% less lateral force at 5 degrees of slip and
+started stepping out under throttle at cruise, the opposite of the intent.
+So the rise got its own shape parameter. Below 1 it is concave, keeping the
+tire's bite near zero slip and rounding over into the peak, which makes
+"where the axle lets go" and "how stiff the axle is" separate knobs.
+
+Both initiation methods had to be paid for afterwards, because a rear that
+holds more grip is a rear that is harder to break loose on purpose. The
+handbrake cuts deeper than it used to. The clutch kick gained a grip cut of
+its own, because its torque spike turned out to be inert: once longitudinal
+demand passes the friction circle the tire is already clamped to its sliding
+value and a bigger spike changes nothing. Measured against the old tires on
+the same harness, handbrake initiation is unchanged at about 0.23 s to 20
+degrees and the kick at about 0.33 s.
+
 ## Handbrake
 Multiplies rear grip by a fraction and drags the rear wheels with a capped
 force. The circle shrinks, the rear lets go, the car keeps most of its

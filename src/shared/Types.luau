@@ -35,6 +35,7 @@ export type VehicleState = {
 	brake: number,
 	steer: number,
 	steerDeg: number,
+	steerLock: number, -- 0..1 fraction of maxSteerDeg currently available
 	lean: number,
 	driftAngleDeg: number, -- angle between velocity and heading, + = velocity right of heading
 	yawRateDegPerSec: number,

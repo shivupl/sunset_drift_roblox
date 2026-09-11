@@ -10,6 +10,7 @@ local Shared = script.Parent
 local Types = require(Shared.Types)
 local Units = require(Shared.Units)
 local CarConfig = require(Shared.CarConfig)
+local Steering = require(script.Steering)
 local Suspension = require(script.Suspension)
 local Tire = require(script.Tire)
 local Drivetrain = require(script.Drivetrain)
@@ -102,6 +103,7 @@ local function emptyState(wheels: { Wheel }): VehicleState
 		brake = 0,
 		steer = 0,
 		steerDeg = 0,
+		steerLock = 1,
 		lean = 0,
 		driftAngleDeg = 0,
 		yawRateDegPerSec = 0,
@@ -209,12 +211,16 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local driftAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, vLongBody)) else 0
 	-- Assist uses |vLong| so reversing does not read as a 180° drift.
 	local assistAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, math.abs(vLongBody))) else 0
-	local steerTarget = input.steer * cfg.steering.maxSteerDeg
+	-- Speed-sensitive lock, lifted again when the input is a correction.
+	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg)
+	local steerTarget = input.steer * cfg.steering.maxSteerDeg * lockFactor
 	local returning = math.abs(steerTarget) < math.abs(self.steerDeg) or steerTarget * self.steerDeg < 0
 	local rate = if returning then cfg.steering.steerReturnDegPerSec else cfg.steering.steerSpeedDegPerSec
 	self.steerDeg += math.clamp(steerTarget - self.steerDeg, -rate * dt, rate * dt)
 	-- Drift angle + means velocity is right of heading (tail out left), so
-	-- counter-steer is to the right: add a fraction of it.
+	-- counter-steer is to the right: add a fraction of it. The assist is
+	-- clamped to the full lock, not the tapered one, for the same reason the
+	-- taper lifts for a correction.
 	local effectiveSteerDeg = math.clamp(
 		self.steerDeg + assistGain * assistAngleDeg,
 		-cfg.steering.maxSteerDeg,
@@ -322,6 +328,15 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		else
 			fxDemand = drive.drivePerRearWheel
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
+			if drive.kicking then
+				-- A clutch kick shock-loads the rear contact patch. The torque
+				-- spike alone cannot do that job: once longitudinal demand
+				-- passes the friction circle the tire is already clamped to its
+				-- sliding value, so a bigger spike changes nothing. Cutting
+				-- grip for the kick window is what actually breaks it loose,
+				-- and it leaves the tire's stability numbers alone.
+				gripMult *= cfg.clutchKick.rearGripMultiplier
+			end
 			if input.handbrake then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= cfg.handbrake.rearGripMultiplier
@@ -415,6 +430,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.brake = input.brake
 	st.steer = input.steer
 	st.steerDeg = effectiveSteerDeg
+	st.steerLock = lockFactor
 	st.lean = input.lean
 	st.driftAngleDeg = driftAngleDeg
 	st.yawRateDegPerSec = -math.deg(angVel:Dot(up)) -- + = turning right
