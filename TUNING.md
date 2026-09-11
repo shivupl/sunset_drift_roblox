@@ -39,7 +39,7 @@ For the opposite effect move the other way. Press L in play to reload.
 ## tires.front / tires.rear
 Part 2 set the rear (1.06) above the front (1.05): a rear that out-grips the front pushes wide
 at speed instead of stepping out, which is what "planted" means. Initiation is paid for with
-the throw impulse and the lever's grip cut, not by softening the rear.
+the throw controller and the lever's grip cut, not by softening the rear.
 
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
@@ -49,7 +49,8 @@ the throw impulse and the lever's grip cut, not by softening the rear.
 | slideSlipDeg | Where the fade ends. Wider gap to peak = gentler fade = more progressive slide. | rear ↓ | rear ↓ | — |
 | falloffShape | How the tire gives up grip past the peak. 1 is a straight line to the floor. Above 1 the first degrees past peak cost almost nothing and the loss steepens further out, which is the warning before the rear goes. Lower it toward 1 if you want the limit to arrive without notice. | rear ↓ | rear ↓ | — |
 | slideGripRatio | Grip floor while sliding. Lower rear = bigger angles, harder to catch; higher = holds and recovers easier. Also sets how hard a handbrake pull can rotate the car, since a saturated tire sits at this value. | rear ↓ | rear ↓ | — |
-| deepSlideSlipDeg / deepSlideGripRatio | Past deepSlideSlipDeg the floor eases toward the deep ratio by 90° of slip. This is the 360 (Ta'geed) knob and it never touches the 10 to 35° region a held drift lives in. Rear deep ratio low = the car keeps rotating and carries speed through a spin. Front deep ratio should stay high: the fronts drive the rotation in a throw, and easing them slows the spin. Measured at 160 km/h: no 360 in 4 s with the deep ratio equal to the first floor, 3.4 s with rear 0.45. | rear ↓ | — | — |
+| deepSlideSlipDeg / deepSlideGripRatio | Past deepSlideSlipDeg the floor eases toward the deep ratio by 90° of slip. It never touches the 10 to 35° region a held drift lives in. Since the throw controller took over the rotation this is purely a speed-carry knob for a 360: the lower both deep ratios, the less the car scrubs while fully sideways. Front 0.5 and rear 0.65 take a Ta'geed from 110 to 73 km/h; front 0.75 lost another 10. | rear ↓ | — | — |
+| longitudinalGrip | Drive grip as a multiple of the lateral peak: the friction circle becomes an ellipse. Above 1 the axle puts more throttle down before it spins and nothing sideways changes, so every drift number is untouched. Rear 1.25 took the launch from 0-60 in 3.8 s to 3.0 and 0-100 from 6.3 to 5.0. Front stays 1. | — | — | — |
 | speedFadeMps | Speed below which lateral force fades. Only for parking jitter. | — | — | — |
 
 ## drivetrain
@@ -69,7 +70,7 @@ the throw impulse and the lever's grip cut, not by softening the rear.
 | brakeFadeMps | Anti-jitter at rest. | — | — | — |
 | reverseEngageMps | Speed under which the car counts as stopped for selecting reverse. | — | — | — |
 | topSpeedKmh / topSpeedFadeKmh | The ceiling, as a limiter: drive fades to nothing over the last fade band so the car sits at the top instead of hitting a wall. 210 because the 400 m curve is at the grip limit at 220 and the straight takes 34 s. Raise for a faster map, lower for a tighter one. |
-| tractionControlBelowKmh / tractionControlMaxDriftDeg / tractionControlMin / tractionControlCutRate / tractionControlRecoverRate | Traction control, a loop that winds throttle down while the rear spins and back up while it grips. Active under the speed and only while the drift angle is under the max and the lever is out, so it never touches a slide. Measured: 0-100 went 7.3 s (fixed cap) to 6.3 s (loop through the midrange). The grip ceiling for this mass is about 5.3 s; past that you need more rear grip or less car. |
+| tractionControlBelowKmh / tractionControlMaxDriftDeg / tractionControlMin / tractionControlCutRate / tractionControlRecoverRate | Traction control, a loop that winds throttle down while the rear spins and back up while it grips. Active under the speed and only while the drift angle is under the max and the lever is out, so it never touches a slide. Measured: 0-100 went 7.3 s (fixed cap) to 6.3 s (loop through the midrange) to 5.0 s with the floor at 0.5, recovery at 3/s and the rear's longitudinalGrip at 1.25. A lower floor or slower recovery is a lazier launch. |
 | reverseHoldSeconds | How long the brake must be held once stopped before reverse engages. Any throttle returns to drive and resets it. Raise if stopping hard drops you into reverse; lower if reversing out feels sticky. The gearbox is automatic and there is no manual shift, so this is the only gear choice a player makes. | — | — | — |
 
 ## steering
@@ -87,16 +88,20 @@ the throw impulse and the lever's grip cut, not by softening the rear.
 | throwReliefTailSeconds | How long the throw relief lingers after the lever is let go, so the wheel does not shrink to a third mid-spin. | — | ↑ | — |
 | flickFromLock / flickWindowSeconds / flickRelief | The flick: a hard steer past flickFromLock one way then the other within the window is a deliberate throw and gets the taper back. A held turn never trips it. 0 relief disables it. | — | ↑ | — |
 | flickRearGripMultiplier / flickGripSeconds | The reversal also cuts rear grip briefly, standing in for the weight transfer of a real pendulum turn. Lower = the flick breaks the rear harder. | — | ↓ | — |
-| throwYawImpulse / throwImpulseSeconds / flickImpulseScale | Yaw kick at the start of a pull or flick, in the direction of the wheel. This is the initiation-speed knob: 6,500 for 0.22 s gives 20 degrees in 0.43 s from 95 km/h. 15,000 gave 0.29 s and a car that spun every time it was let go, which is the "on ice" feel. Flicks get the scale on top. | — | ↑ | — |
-| slideYawDamping / throwYawDampingFraction | Yaw damping, Nm per deg/s. A slip-angle tyre model has no yaw stiffness once both axles slide, so a released slide kept rotating at 110 deg/s to 180 with full counter-steer on. This stands in for the rear's self-aligning. Full value when the driver is not throwing; the fraction of it under the lever or in a flick. Raise slideYawDamping for a car that settles faster after a slide; raise the fraction and a held Ta'geed slows down. | ↓ | ↓ | — |
+| throwYawRateDegPerSec | The throw controller. While the lever is in (or for the flick window) the rate the drift angle changes is steered to the wheel's direction times this, scaled by how far the wheel is turned, on top of the path's own turn rate. Full lock under the lever comes round for a 360 (2.7 s at 150); centred, the car holds the angle it has; counter-steered, the angle comes back. It replaced a fixed onset impulse, which was either too weak for a 360 or an unrecoverable whip. Raise for faster spins that are harder to time; lower is lazier and scrubs more speed. | — | ↑ | — |
+| throwYawGain / throwYawMaxTorque | Nm per deg/s of rate error and the cap on it while the wheel is turned. The cap sets how hard the onset kicks (20 degrees in 0.30 s from 95 km/h at 16,000) and whether the spin gets through the backwards half, where the steered fronts fight it. The gain over the chassis's yaw inertia (~3,600 kg m²) is the controller's time constant, 0.07 s at 600. | — | ↑ cap | — |
+| throwHoldGain / throwHoldSettleDegPerSec / throwHoldMaxTorque | The held slide. With the wheel centred under the lever the hold angle tracks the drift until it has stopped moving (under the settle rate), then latches, and the controller asks for holdGain deg/s per degree of error, capped at the throw rate. The hold gets its own torque cap, higher than the onset's, so the yaw a turn-in built is absorbed in a couple of tenths: at 60,000 a 0.2 s tap of full lock settles at 39 degrees and stays there; a held full lock centred at 36 settles at 67. | — | — | — |
+| throwPathFilterSeconds | Filter on the path's turn rate that the controller adds to its target. Shorter is more exact and noisier. | — | — | — |
+| throwMinSpeedKmh / throwFullSpeedKmh | The controller's authority fades to nothing at the low speed and is full from the high one. This is the "crazier tricks stay hard" knob: a 360 from 110 exits at 73 and a second one from there stalls backwards, while a 720 from 150 comes round (2.7 s and 5.2 s). Raise the full speed and a 720 needs more entry speed. | — | — | — |
+| slideYawDamping | Yaw damping while the driver is NOT throwing, Nm per deg/s. A slip-angle tyre model has no yaw stiffness once both axles slide, so a released slide kept rotating at 110 deg/s to 180 with full counter-steer on. This stands in for the rear's self-aligning and is what catches a released slide (let go at 28 degrees hands off: peaks about 60, settles straight). Off under the lever, where the controller holds the rate. | ↓ | ↓ | — |
 | driftAssistHandsOff / driftAssistHandsOffBelow | When the wheel is centred (|steer| under the threshold) and the lever is out, the assist rises to this and does not fade with angle: lift and straighten means "bring it back". Hands on, the driver's authority is untouched. | — | — | — |
 
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
 | rearGripMultiplier (0.45) | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
-| brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
-| releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. Note a tapped handbrake never completes a 360 at any value (the rears roll again once the car is backwards and their grip stops the rotation); hold it through the spin. | ↑ | — | — |
+| brakeForce | Rear drag while pulled. 2,000 now; at 8,000 the lever alone was 0.5 g, 11 km/h for every second of a spin, and the throw controller does not need the drag for rotation. Raise it for a lever that visibly slows the car. | — | — | — |
+| releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. The throw controller is scaled by this fading level too, so the rotation lets go with the grip. | ↑ | — | — |
 
 ## twoWheel
 | Field | What it does | OS | INIT | 2W |
@@ -116,6 +121,9 @@ the throw impulse and the lever's grip cut, not by softening the rear.
 | minLiftSpeedKmh / fullLiftSpeedKmh | Nothing lifts below the first; lift torque scales up to full at the second. Real sidewall skiing starts at speed, off a ramp or a sharp turn, not from a standstill. | — | — | ↑ min (harder to start) |
 | holdFadeSpeedKmh | The balance controller's authority fades to nothing at this speed, so a car that has slowed to a crawl settles back onto four wheels by itself. You cannot balance a car that is barely moving. | — | — | ↓ |
 | leanHoldDecaySeconds / leanHoldFloor | Tap envelope. A fresh press lands the whole lean gain at once, then decays to the floor over the decay time while held. Stabilise by tapping against the lean; a long hold is a weak steady push. Floor 1 turns taps back into levers. | — | — | ↑ floor |
+| balanceSpring | Spring about targetRollDeg while balanced, Nm per degree. The gravity cancel is a model and the real restoring torque is larger; this soaks up the difference so the car holds. 320 was a magnet (taps did nothing); 160 holds at 24 to 30 with a tap moving it 4. | — | — | ↑ |
+| balanceSpringDecaySeconds / balanceSpringFloor / balanceCancelFloor | The rhythm. The mode latches on a tap, and the spring then winds down to its floor over the decay time with no tap toward the lifted side; the gravity cancel winds down on the same envelope to its own floor (a fully cancelled pendulum is neutral at every angle, so without this the ignored car hovered at 9 degrees). Measured at 90 km/h: one tap lifts to 34 and the car lands itself in 4 s; a tap every 2 s holds 16 to 30; every 3 s is the edge. Longer decay or higher floors is a lazier ride; both floors at 1 never sinks. | — | — | ↑ decay |
+| landHoldSeconds | The key toward the grounded side held this long is a landing, not a catch: the controller lets go and the car comes down in about half a second. | — | — | — |
 | steerScale | Steering lock while lifted. Steering is the strongest balance lever on two wheels (toward the low side drops the car, away lifts it) and at full lock a short tap flips it. Measured at 80 km/h with 0.22 and steerAwayScale 0.5: a 0.5 tap toward drops 10°, the same tap away leans 20° and is still catchable, a full-lock tap away tips. Raise for a twitchier, more expert car. | — | — | ↓ |
 | steerAwayScale | Extra scale on a turn away from the low side while lifted, the direction that flips the car. Toward the low side keeps the full steerScale. | — | — | ↓ |
 | yawDamping | Steady yaw damping while lifted, Nm per °/s: the driver's micro-corrections, so a natl runs straight. Measured at full throttle: 3° of heading drift over 4 s at 250. | — | — | ↑ |
@@ -195,9 +203,9 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 ## scoring
 A slide opens when the drift angle passes minAngleDeg while above minSpeedKmh, and accrues
 `pointsPerSecond x (angle / referenceAngleDeg) x (speed / referenceSpeedKmh) x multiplier`
-every second. Going straight for graceSeconds banks it. There is no separate bonus for a 360:
-at high angles the angle factor is already at its ceiling, so a Ta'geed pays the top rate for
-as long as it takes to come round.
+every second. Going straight for graceSeconds banks it. A completed 360 inside the slide adds
+spinBonusPoints times the multiplier on top, measured on the drift angle unwrapped: one full
+turn of the car relative to where it is going, whatever the path did.
 
 | Field | What it does |
 |---|---|
@@ -213,6 +221,7 @@ as long as it takes to come round.
 | chainStep | How much each direction change adds to the multiplier. |
 | chainMax | Ceiling on the multiplier. |
 | minBankPoints | Slides worth less than this bank silently, so a twitch does not flash the HUD. |
+| spinBonusPoints | Paid, times the multiplier, each time the drift angle travels a full 360 inside one slide; a 720 pays twice. 500 is about what two seconds fully sideways at 100 km/h earns, so a Ta'geed is worth roughly double the same time in a plain slide. The HUD flashes "360!" beside the live counter. The sign flip a spin makes at 180 is not a chain transition; only a crossing through straight is. |
 | cashPerPoint | Points to cash. 0.01 = 1000 points is 10 cash. |
 
 Validation. These are not feel knobs; they decide what the server will pay out. The server
@@ -241,7 +250,7 @@ scores every driven car from its own samples and never banks more than it saw.
 | enabled | Master switch for the tuning panel. |
 | showOnTouch | Show it on phones by default. Off: the DBG button toggles it. |
 | updateHz | Panel refresh rate. |
-| spinSlipDeg / spinResetDeg | The SPINS counter accumulates yaw while the drift angle is above spinSlipDeg and clears once it is back under spinResetDeg. Display only. |
+| spinSlipDeg / spinResetSeconds | The SPINS counter measures the drift angle unwrapped, from the moment the car is sideways past spinSlipDeg (seeded with the angle already built, so a full turn back to straight reads exactly 360), and keeps counting through the brief straight moment at the end of a rotation so a 720 reads as two. Straight for spinResetSeconds clears it. Display only; the scored version lives in `scoring`. |
 
 ---
 

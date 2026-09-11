@@ -17,6 +17,9 @@ local WorldLights = require(script.WorldLights)
 print("[Hajwala] client boot")
 -- Lamp lights follow the camera whether or not the player is driving.
 WorldLights.start()
+ScoreController.onSpin = function(bonus: number, spins: number)
+	Hud.flashSpin(bonus, spins)
+end
 ScoreController.submit = function(points: number)
 	submitSlide:FireServer(points)
 end

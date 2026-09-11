@@ -22,6 +22,9 @@ local ScoreController = {}
 ScoreController.state = Scoring.new()
 -- Set by the client entry point once the remotes are resolved.
 ScoreController.submit = nil :: ((points: number) -> ())?
+-- Fired the step a 360 completes, with the bonus it paid and the count so
+-- far in this slide. The HUD flashes it; a 30 Hz poll would miss the step.
+ScoreController.onSpin = nil :: ((bonus: number, spins: number) -> ())?
 
 function ScoreController.step(vehicleState: VehicleState, dt: number)
 	local cfg = ConfigLoader.current().scoring
@@ -31,6 +34,9 @@ function ScoreController.step(vehicleState: VehicleState, dt: number)
 	}, dt)
 	if state.banked > 0 and ScoreController.submit then
 		ScoreController.submit(state.banked)
+	end
+	if state.spun > 0 and ScoreController.onSpin then
+		ScoreController.onSpin(state.spun, state.spins)
 	end
 end
 

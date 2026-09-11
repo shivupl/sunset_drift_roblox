@@ -32,11 +32,16 @@ export type Config = {
 	flickRelief: number,
 	flickRearGripMultiplier: number,
 	flickGripSeconds: number,
-	throwYawImpulse: number,
-	throwImpulseSeconds: number,
-	flickImpulseScale: number,
+	throwYawRateDegPerSec: number,
+	throwYawGain: number,
+	throwYawMaxTorque: number,
+	throwPathFilterSeconds: number,
+	throwHoldGain: number,
+	throwHoldMaxTorque: number,
+	throwHoldSettleDegPerSec: number,
+	throwMinSpeedKmh: number,
+	throwFullSpeedKmh: number,
 	slideYawDamping: number,
-	throwYawDampingFraction: number,
 }
 
 -- Fraction of maxSteerDeg available right now, 0..1.

@@ -37,6 +37,7 @@ local rows: { [string]: Frame } = {}
 local flashText = ""
 local flashColor = HOT
 local flashUntil = 0
+local flashInSlide = false -- a spin flash shows beside the live counter
 local lastUpdate = 0
 
 local function comma(n: number): string
@@ -163,6 +164,17 @@ function Hud.flashResult(points: number, cash: number)
 		flashText = "DROPPED"
 		flashColor = BAD
 	end
+	flashInSlide = false
+	flashUntil = os.clock() + cfg.flashSeconds
+end
+
+-- A 360 completed inside the slide in progress: shown next to the live
+-- counter, which keeps running.
+function Hud.flashSpin(bonus: number, spins: number)
+	local cfg = ConfigLoader.current().hud
+	flashText = if spins > 1 then `{spins * 360}!  +{comma(bonus)}` else `360!  +{comma(bonus)}`
+	flashColor = CASH
+	flashInSlide = true
 	flashUntil = os.clock() + cfg.flashSeconds
 end
 
@@ -188,7 +200,7 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 
 	-- Slide row: the live counter takes over from a flash as soon as the
 	-- next slide starts, so a chain never hides behind the previous result.
-	local flashing = now < flashUntil and not score.active
+	local flashing = now < flashUntil and (flashInSlide or not score.active)
 	labels.Points.Visible = score.active
 	labels.Mult.Visible = score.active and score.multiplier > 1
 	labels.Flash.Visible = flashing

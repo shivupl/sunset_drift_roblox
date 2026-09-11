@@ -18,11 +18,16 @@ return function(t: T)
 		flickRelief = 1,
 		flickRearGripMultiplier = 0.45,
 		flickGripSeconds = 0.35,
-		throwYawImpulse = 9000,
-		throwImpulseSeconds = 0.25,
-		flickImpulseScale = 1.8,
+		throwYawRateDegPerSec = 150,
+		throwYawGain = 250,
+		throwYawMaxTorque = 16000,
+		throwPathFilterSeconds = 0.05,
+		throwHoldGain = 3,
+		throwHoldMaxTorque = 32000,
+		throwHoldSettleDegPerSec = 25,
+		throwMinSpeedKmh = 30,
+		throwFullSpeedKmh = 70,
 		slideYawDamping = 130,
-		throwYawDampingFraction = 0.4,
 	}
 
 	-- Straight-line driving: full lock up to 40 km/h, then tapering

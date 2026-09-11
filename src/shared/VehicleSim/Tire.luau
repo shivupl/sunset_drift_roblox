@@ -36,6 +36,12 @@ export type AxleConfig = {
 	-- instead of stopping the car halfway round.
 	deepSlideSlipDeg: number,
 	deepSlideGripRatio: number,
+	-- Longitudinal grip as a multiple of the lateral peak (1 = a round
+	-- friction circle). A driven tyre's tread bites harder along its rolling
+	-- direction than across it, so the circle is really an ellipse: above 1
+	-- the axle puts more drive down before it spins, without changing what
+	-- it does sideways. Optional; nil is 1.
+	longitudinalGrip: number?,
 }
 
 export type Output = {
@@ -66,15 +72,25 @@ function Tire.slipAngleDeg(vLong: number, vLat: number): number
 	return math.deg(math.atan2(vLat, math.abs(vLong)))
 end
 
-function Tire.combine(fxDemand: number, fyDemand: number, fMax: number, slideGripRatio: number): (number, number, boolean)
+function Tire.combine(
+	fxDemand: number,
+	fyDemand: number,
+	fMax: number,
+	slideGripRatio: number,
+	longitudinalGrip: number?
+): (number, number, boolean)
 	if fMax <= 0 then
 		return 0, 0, false
 	end
-	if math.abs(fxDemand) > fMax then
+	-- The ellipse: longitudinal demand is measured against fMax x longGrip,
+	-- and eats lateral grip as if it were fxDemand / longGrip on a circle.
+	local longGrip = math.max(longitudinalGrip or 1, 1e-3)
+	local fxScaled = fxDemand / longGrip
+	if math.abs(fxScaled) > fMax then
 		-- Wheel spinning or locked: both components drop to the sliding level.
-		return math.sign(fxDemand) * fMax * slideGripRatio, fyDemand * slideGripRatio, true
+		return math.sign(fxDemand) * fMax * longGrip * slideGripRatio, fyDemand * slideGripRatio, true
 	end
-	local fyMax = math.sqrt(fMax * fMax - fxDemand * fxDemand)
+	local fyMax = math.sqrt(fMax * fMax - fxScaled * fxScaled)
 	return fxDemand, math.clamp(fyDemand, -fyMax, fyMax), false
 end
 
@@ -93,7 +109,7 @@ function Tire.compute(
 	local slip = Tire.slipAngleDeg(vLong, vLat)
 	local fMax = load * axle.grip * gripMultiplier
 	local fyDemand = -math.sign(vLat) * fMax * Tire.gripCurve(slip, axle)
-	local fx, fy, saturated = Tire.combine(fxDemand, fyDemand, fMax, axle.slideGripRatio)
+	local fx, fy, saturated = Tire.combine(fxDemand, fyDemand, fMax, axle.slideGripRatio, axle.longitudinalGrip)
 	-- Lateral force fades out near standstill so a parked car does not
 	-- twitch from numerical noise. Drive/brake demand is not faded here;
 	-- braking is faded by the caller.

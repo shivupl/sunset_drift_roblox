@@ -32,8 +32,8 @@ either: hold the brake for `drivetrain.reverseHoldSeconds` (0.4 s) after the car
 stopped and it engages, and any throttle puts you back in drive. The hold is why braking hard
 to a standstill stays in drive instead of snapping into reverse the moment the car settles.
 | Handbrake | Space | B | HAND |
-| Two-wheel / lean left | Q (hold) | LB (hold) | NATL (tap), then lean slider left |
-| Two-wheel / lean right | E (hold) | RB (hold) | NATL (tap), then lean slider right |
+| Two-wheel / lean left | Q (tap) | LB (tap) | NATL (tap), then lean slider left |
+| Two-wheel / lean right | E (tap) | RB (tap) | NATL (tap), then lean slider right |
 | Exit car | F | Y | EXIT |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | LOAD |
@@ -41,12 +41,13 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 
 ## Two-wheel ("natl")
 Get above about 45 km/h first; nothing lifts at parking speed, and the lift is full from 80.
-Holding Q or E puts the car up: the key you hold picks the side, so Q climbs onto the left pair.
-Once it is up, balance by tapping: each press of the opposite key lands a full catch that fades
-if you keep holding, so tap against the lean rather than leaning on the key. Steering still
-steers, and it is the strongest lever up there: a small turn toward the low side drops the car,
-away lifts it. With gas on the car runs straight (open diff, so the grounded rear barely drives).
-If you slow to a crawl the car settles back onto four wheels by itself. Release both keys to land.
+Tap Q or E and the car goes up on that side and stays there: the first tap gets it up, and
+you keep it up by tapping the same key every couple of seconds, because the hold winds down
+on its own and an ignored car sinks back onto four wheels in about four seconds. Tap the other
+key to catch it if it climbs too far; hold that key for half a second and the car lands.
+Steering still steers, and it is the strongest lever up there: a small turn toward the low side
+drops the car, away lifts it. With gas on the car runs straight (open diff, so the grounded rear
+barely drives). If you slow to a crawl the car settles back onto four wheels by itself.
 
 Touch is the exception, because the lean control cannot be on screen before the mode exists:
 tap NATL to open it (it stays on, so the thumb is free) and the lean slider appears directly
@@ -73,15 +74,17 @@ so flick it out and let it snap back. Sizes scale with the screen height and
 Top centre on every platform: speed and gear, the slide in progress with its chain
 multiplier, then drift angle, SPINS while a 360 is under way, NATL roll while on two wheels,
 and a bottom line with your cash, your session best and the server best with its holder.
-When a slide ends the row shows what the server banked and what it paid, or DROPPED if you
-lost it. `hud.enabled` turns the whole thing off.
+A completed 360 flashes "360! +500" beside the live counter. When a slide ends the row shows
+what the server banked and what it paid, or DROPPED if you lost it. `hud.enabled` turns the
+whole thing off.
 
 ## Scoring and cash
 A slide opens past `scoring.minAngleDeg` of drift above `scoring.minSpeedKmh` and pays angle
 x speed x time. Every direction change inside the slide steps the multiplier, and the grace
-window is what links a left-right swing into one long slide instead of two short ones. Going
-straight banks it and converts to cash at `scoring.cashPerPoint`. Hitting something hard, or
-spinning to a stop without ever straightening up, drops the run.
+window is what links a left-right swing into one long slide instead of two short ones. A full
+360 inside the slide adds `scoring.spinBonusPoints` times the multiplier; a 720 adds it twice.
+Going straight banks it and converts to cash at `scoring.cashPerPoint`. Hitting something
+hard, or spinning to a stop without ever straightening up, drops the run.
 
 The client scores the car for the live HUD, but the server scores every driven car
 independently from replicated physics and pays out the smaller of your claim and what it saw
@@ -106,11 +109,19 @@ counter for completed 360s, two-wheel mode and roll with margin to tip, per-whee
 angle / load / SPIN or AIR, handbrake, assist.
 
 ## Tafheet moves
-Ta'geed (360): at 110 km/h or more, full lock and HAND together, and keep HAND held the whole
-way round with the gas on. A tap will not do it: once the car is going backwards the rears grip
-again and stop the rotation, a held handbrake keeps them locked and it comes round in about
-3.5 s. Let go as the SPINS counter ticks and catch it. Sefty: the same, a short straight slide,
-then the other way.
+The lever is permission and the wheel is the dial. With HAND held, how far you turn the wheel
+is how fast the car comes round; centre it and the car holds whatever angle it has; turn the
+other way and the angle comes back. Let go of HAND and the car catches itself.
+
+Held slide: at 100 km/h pull HAND, tap the wheel to one side for a moment and centre it. The
+car settles at 35 to 40 degrees and stays there, gas on, for as long as you hold the lever.
+Counter-steer to bring it back, or let the lever go.
+
+Ta'geed (360): at 110 km/h or more, full lock and HAND together, gas on, and keep both until
+the SPINS counter ticks (about 2.7 s), then let go and the car straightens. It exits around
+70 km/h, so a 720 from 110 runs out of speed halfway through the second turn and stalls
+backwards; from 150 it comes round twice. Sefty: a held slide, then full opposite lock under
+the lever swings it through to the other side in about a second, and centring holds it there.
 
 ## Tuning
 All numbers live in `src/shared/CarConfig.luau`; `TUNING.md` explains every field and which

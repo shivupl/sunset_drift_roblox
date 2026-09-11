@@ -13,10 +13,12 @@
 -- transition one long slide instead of two short ones, and every direction
 -- change inside a slide steps the multiplier.
 --
--- Note there is no separate bonus for a 360: at high drift angles the angle
--- factor is already at its ceiling, so a Ta'geed pays the top rate for as
--- long as it takes to come round. Keeping the inputs to speed and angle is
--- what lets the server reproduce the client's number.
+-- A 360 pays a bonus on top. It is measured on the drift angle, unwrapped:
+-- one full turn of the car relative to where it is going is one spin,
+-- whatever the path did, and the server sees the same angle at 20 Hz (a
+-- 150 deg/s spin moves 7.5 degrees a sample, nowhere near the wrap). Keeping
+-- the inputs to speed and angle is what lets the server reproduce the
+-- client's number.
 local Scoring = {}
 
 export type Config = {
@@ -33,6 +35,7 @@ export type Config = {
 	chainStep: number,
 	chainMax: number,
 	minBankPoints: number,
+	spinBonusPoints: number,
 	cashPerPoint: number,
 	maxPlausibleSpeedKmh: number,
 	teleportToleranceM: number,
@@ -56,10 +59,14 @@ export type State = {
 	side: number, -- sign of the drift angle the slide is currently on
 	speedAvg: number, -- speed lagged by impactSmoothSeconds, for the impact test
 	primed: boolean, -- speedAvg has seen at least one sample
+	spinTravelDeg: number, -- signed, unwrapped drift-angle travel inside this slide
+	lastAngleDeg: number, -- previous sample's signed drift angle, for the unwrap
+	spins: number, -- full 360s paid in this slide
 	-- One-step events, cleared at the top of every step.
 	banked: number, -- points banked this step, 0 for none
 	dropped: boolean,
-	reason: string, -- why it dropped: "impact" | "spun out" | "" 
+	reason: string, -- why it dropped: "impact" | "spun out" | ""
+	spun: number, -- bonus points paid this step for a completed 360, 0 for none
 }
 
 function Scoring.new(): State
@@ -73,9 +80,13 @@ function Scoring.new(): State
 		side = 0,
 		speedAvg = 0,
 		primed = false,
+		spinTravelDeg = 0,
+		lastAngleDeg = 0,
+		spins = 0,
 		banked = 0,
 		dropped = false,
 		reason = "",
+		spun = 0,
 	}
 end
 
@@ -89,6 +100,8 @@ function Scoring.clear(state: State)
 	state.slideTime = 0
 	state.graceTime = 0
 	state.side = 0
+	state.spinTravelDeg = 0
+	state.spins = 0
 	-- Re-seed the impact filter: after a reset or a teleport the old average
 	-- would read as a crash on the next sample.
 	state.primed = false
@@ -128,12 +141,22 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 	state.banked = 0
 	state.dropped = false
 	state.reason = ""
+	state.spun = 0
 	if dt <= 0 then
 		return state
 	end
 
 	local speed = sample.speedKmh
 	local angle = math.abs(sample.driftAngleDeg)
+	-- Unwrapped change in the signed drift angle since the last sample, so
+	-- a spin passing through 180 does not read as a jump of 360.
+	local dAngle = sample.driftAngleDeg - state.lastAngleDeg
+	if dAngle > 180 then
+		dAngle -= 360
+	elseif dAngle < -180 then
+		dAngle += 360
+	end
+	state.lastAngleDeg = sample.driftAngleDeg
 
 	-- Impact test. Differentiating speed frame to frame is useless here: the
 	-- client steps at 240 Hz and the server samples replicated physics at 20,
@@ -169,8 +192,10 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 		if state.active then
 			-- A direction change links the next slide onto this one. Works
 			-- both for a flick that crosses zero in a frame and for a swing
-			-- that spends time straight inside the grace window.
-			if state.side ~= 0 and side ~= state.side then
+			-- that spends time straight inside the grace window. The sign
+			-- also flips when a spin passes through 180, and that is not a
+			-- transition, so the crossing has to happen on the straight side.
+			if state.side ~= 0 and side ~= state.side and angle < 90 then
 				state.transitions += 1
 				state.multiplier = math.min(1 + state.transitions * cfg.chainStep, cfg.chainMax)
 			end
@@ -180,6 +205,10 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 			state.multiplier = 1
 			state.transitions = 0
 			state.slideTime = 0
+			-- Seed the spin travel with the angle already built, so a full
+			-- turn back to straight reads as exactly 360.
+			state.spinTravelDeg = sample.driftAngleDeg - dAngle
+			state.spins = 0
 		end
 		state.side = side
 		state.graceTime = 0
@@ -201,6 +230,20 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 			else
 				bank(state, cfg)
 			end
+		end
+	end
+
+	-- The 360. Travel keeps accumulating through the brief straight moment
+	-- at the end of a rotation (the slide is still open inside its grace
+	-- window), so a 720 pays twice.
+	if state.active then
+		state.spinTravelDeg += dAngle
+		if math.abs(state.spinTravelDeg) >= 360 then
+			state.spinTravelDeg -= math.sign(state.spinTravelDeg) * 360
+			state.spins += 1
+			local bonus = cfg.spinBonusPoints * state.multiplier
+			state.points += bonus
+			state.spun = bonus
 		end
 	end
 

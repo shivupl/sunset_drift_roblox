@@ -45,8 +45,9 @@ function Keyboard.bind()
 	bind("HJ_KHandbrake", function(down)
 		Input.raw.handbrake = down
 	end, Enum.KeyCode.Space)
-	-- Q/E lift the car onto two wheels and lean it. Holding one is what keeps
-	-- the mode alive; holding both is a neutral hold; releasing both lands it.
+	-- Q/E lift the car onto two wheels (a tap picks the side and the mode
+	-- latches) and then lean it: taps toward the lifted side keep it up,
+	-- the other key catches it, and held it lands the car.
 	bind("HJ_KLeanLeft", function(down)
 		Input.raw.leanLeft = down
 	end, Enum.KeyCode.Q)

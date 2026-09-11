@@ -209,6 +209,82 @@ It can do 0.29, and did, and the same setting spun it to 180 every time it
 was let go. The mission says not to tune to satisfy a test; 0.43 is the
 number where a pull is quick and a mistake is recoverable.
 
+## The throw controller and the 360
+
+The Part 2 car could not do a hajwala 360. Measured: a held lever from
+110 km/h with full lock rotated to 180 in 1.5 s and stalled there going
+backwards, from 110 down to 49 km/h. Three things in the tyre model cause
+that. The fronts have to build slip before they push, so the onset is slow.
+Once both axles slide neither has yaw stiffness, so the rotation has nothing
+holding it at a rate. And past 90 degrees the steered fronts push the wrong
+way: a car reversing with the wheel turned right swings its nose left. A real
+Ta'geed gets its rotation from the locked rears scrubbing and the driver's
+throttle, neither of which the friction circle produces. The onset impulse
+from Part 2 was an attempt to paper over the first of those, and a fixed kick
+was always either too weak for a 360 or, at 15,000 Nm, an unrecoverable whip.
+
+So the throw is a controller now. While the lever is in (or for the flick
+window) the rate the drift angle changes is steered toward a target: the
+wheel's direction times `throwYawRateDegPerSec`, scaled by how far the wheel
+is turned, on top of the rate the path itself is turning. That last term is
+what makes "centred" mean "hold the angle" on a curving path rather than
+"stop yawing", since the drift angle only changes when the car yaws faster or
+slower than its velocity turns. The lever is permission and the wheel is the
+dial: full lock comes round for a 360, centred holds a slide, opposite lock
+brings the angle back. A rate target cannot run away, which is what keeps
+this off ice; the lever out means the target is gone and `slideYawDamping`
+catches the car as before.
+
+The held slide needed one more piece. A rate controller alone let the angle
+creep at 13 deg/s from the tyres' own moment, so once the wheel is centred
+the hold angle tracks the drift until it has stopped moving, then latches,
+and the controller asks for a rate proportional to the error. The catch has
+its own torque cap, higher than the onset's: the yaw a full-lock turn-in
+built (160 deg/s) takes a couple of tenths to absorb at 60,000 Nm against
+the chassis's ~3,600 kg m², and with the controller gain at 600 the time
+constant is 0.07 s. A 0.2 s tap of full lock under the lever, the keyboard
+case, settles at 39 degrees and stays there; a held full lock centred at 36
+settles at 67, and that lead is the driver's to learn.
+
+Numbers, from the same harness as Part 2:
+
+| | Part 2 | now |
+|---|---|---|
+| held lever + full lock from 110, 360 | stalled at 180 | 2.7 s, exits 73 km/h |
+| 720 from 150 | — | 2.7 s and 5.2 s |
+| 720 from 110 | — | stalls backwards in the second turn |
+| handbrake to 20° from 95 | 0.43 s | 0.30 s |
+| flick to 20° from 95 | 0.62 s | 0.35 s |
+| let go at 28°, hands off | peaks 61°, returns | peaks ~60°, returns |
+| tap under the lever, centred | — | holds 39° |
+| plain full steer at 95 / lock at 130 / throttle-only at 60 | 4° / 6° / 2° | 3° / 5° / 2° |
+| 0–60 / 0–100 | 3.8 s / 6.3 s | 3.0 s / 5.0 s |
+
+Speed through a spin is the other half of "people will want to do this".
+The lever's drag came down from 8,000 N (half a g on its own, 11 km/h for
+every second of a spin) to 2,000, and the fronts' deep-slide floor from 0.75
+to 0.5, since the rotation no longer needs front bite. The rear's deep floor
+is unchanged; it is what a released slide stops on. The speed gate on the
+controller, fading out below 70 km/h, is the difficulty curve: a 360 is easy,
+a second one from the exit speed of the first is not, and a 720 needs 150 on
+entry.
+
+The launch is a separate fix. It was grip-limited with a round friction
+circle and the traction control hunting under it. Tread bites harder along
+its rolling direction than across, so the rear's circle is an ellipse
+(`longitudinalGrip` 1.25): more drive before it spins, nothing different
+sideways, so no drift number moved. With the TC floor at 0.5 and a faster
+recovery, 0–60 went from 3.8 s to 3.0 and 0–100 from 6.3 to 5.0.
+
+A 360 is scored. Scoring measures the drift angle unwrapped inside a slide,
+and every full turn pays `spinBonusPoints` times the chain multiplier, on
+the client for the HUD flash and on the server for the bank, since both run
+the same pure module on the same two inputs. The sign flip a spin makes at
+180 is not a chain transition; only a crossing through straight is. The
+debug SPINS counter was rebuilt the same way: counting yaw over-counted on a
+curving path and under-counted the angle built before the car was properly
+sideways, so a 360 that was visibly complete read 263 and reset.
+
 ## Handbrake
 Multiplies rear grip by a fraction and drags the rear wheels with a capped
 force. The circle shrinks, the rear lets go, the car keeps most of its
@@ -320,6 +396,27 @@ and the landing damping brings the car onto four wheels in half a second.
 The HUD's NATL readout now colours by tip margin — blue with room to spare,
 amber when a catch is due, red just before it goes — so the player has
 something to tap against besides the horizon.
+
+## Two-wheel: tap to lift, tap to keep
+
+The owner's brief for the natl was "first tap gets it up, subsequent taps
+keep it". Holding a key to stay up was the opposite of that, so the mode
+latches: a tap of Q or E from idle lifts the car onto that side and it stays
+up with nothing pressed; the touch NATL toggle does the same job on a phone.
+Landing is the other key held past half a second, or the toggle going off,
+or slowing to a crawl.
+
+"Keep it" needed the hold to be perishable. The balance spring winds down to
+a tenth of itself over three seconds with no tap toward the lifted side, and
+a tap winds it back to full. That alone was not enough: with the spring gone
+the car hovered at 9 degrees for ever, because a fully cancelled pendulum is
+neutral at every angle. So the gravity cancel winds down on the same
+envelope, to 85% of itself, which leaves enough of gravity to bring the car
+home. Measured at 90 km/h: one tap lifts to 34 degrees and the ignored car
+lands itself at 4.0 s; a tap every two seconds holds 16 to 30; every three
+seconds is the edge; a catch tap dips it 9; the catch key held lands in
+0.5 s. The rhythm is the whole point: it is a thing you do, not a thing you
+switch on.
 
 ## Drift feedback
 Hajwala is watched as much as it is driven, so the car has to look like the

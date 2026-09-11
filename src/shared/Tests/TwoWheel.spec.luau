@@ -26,6 +26,9 @@ return function(t: T)
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
 		balanceSpring = 0, -- specs exercise the pure pendulum
+		balanceSpringDecaySeconds = 3,
+		balanceSpringFloor = 0.3,
+		balanceCancelFloor = 1, -- and never let gravity back in
 		landHoldSeconds = 99, -- and never auto-land
 	}
 	local FAST = 100 -- km/h, full authority everywhere

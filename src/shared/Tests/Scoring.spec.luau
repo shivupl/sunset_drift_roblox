@@ -18,6 +18,7 @@ return function(t: T)
 		chainStep = 0.5,
 		chainMax = 5,
 		minBankPoints = 50,
+		spinBonusPoints = 500,
 		cashPerPoint = 0.01,
 		maxPlausibleSpeedKmh = 320,
 		teleportToleranceM = 8,
@@ -98,6 +99,38 @@ return function(t: T)
 		run(cap, 100, if i % 2 == 0 then 40 else -40, 0.1, 0.05)
 	end
 	t.near(cap.multiplier, cfg.chainMax, 1e-9, "multiplier stops at chainMax")
+
+	-- A 360 pays the bonus once the drift angle has travelled a full turn,
+	-- whichever way it wraps, and a 720 pays twice.
+	local function spin(state, turns: number, dt: number): number
+		local paid = 0
+		local steps = math.round(turns * 2.4 / dt) -- 150 deg/s
+		for i = 1, steps do
+			local a = -(i / steps) * 360 * turns
+			local wrapped = ((a + 180) % 360) - 180
+			Scoring.step(state, cfg, { speedKmh = 100, driftAngleDeg = wrapped }, dt)
+			paid += state.spun
+		end
+		return paid
+	end
+	local ta = Scoring.new()
+	local paidOne = spin(ta, 1, 0.05)
+	t.eq(ta.spins, 1, "one full turn is one spin")
+	t.near(paidOne, 500, 1e-9, "and pays the bonus at x1")
+	t.ok(ta.points > 500, "on top of the angle points")
+	local tb = Scoring.new()
+	spin(tb, 2, 0.05)
+	t.eq(tb.spins, 2, "two turns without straightening is a 720")
+	local half = Scoring.new()
+	run(half, 100, 40, 1, 0.05)
+	run(half, 100, -40, 1, 0.05)
+	run(half, 100, 40, 1, 0.05)
+	t.eq(half.spins, 0, "swinging left and right never adds up to a spin")
+	local swung = Scoring.new()
+	run(swung, 100, 30, 0.5, 0.05)
+	run(swung, 100, -30, 0.5, 0.05) -- multiplier x1.5 now
+	local paidChained = spin(swung, 1, 0.05)
+	t.near(paidChained, 750, 1e-9, "a spin inside a chain pays with the multiplier")
 
 	-- Bleeding all your speed away mid-slide is a spin-out, not a crash
 	local out = Scoring.new()

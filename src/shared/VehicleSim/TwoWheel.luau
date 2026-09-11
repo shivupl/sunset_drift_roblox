@@ -18,6 +18,15 @@
 -- Lean is its own input, separate from steering, so the player can correct
 -- the car's yaw with the wheel while balancing on the lean axis.
 --
+-- The mode latches. A tap of a lean key from idle lifts the car onto that
+-- side and it stays up with nothing held; the touch NATL toggle does the
+-- same (held = the toggle). The spring that holds the angle then decays
+-- toward a floor, so an ignored car sinks back onto four wheels over a few
+-- seconds, and every tap toward the lifted side winds the spring back up:
+-- the first tap gets it up, the next ones keep it there. A tap toward the
+-- grounded side is a catch; that key held past landHoldSeconds, or the
+-- toggle going off, lands it.
+--
 -- Speed matters twice, the way it does for a real sidewall skier. The lift
 -- only has authority above minLiftSpeedKmh (nothing happens at parking
 -- speed), and the balance controller's authority fades below
@@ -55,6 +64,9 @@ export type Config = {
 	leanHoldDecaySeconds: number,
 	leanHoldFloor: number,
 	balanceSpring: number, -- Nm per degree of error from targetRollDeg while balanced
+	balanceSpringDecaySeconds: number, -- the spring winds down to its floor over this long with no in-tap
+	balanceSpringFloor: number, -- fraction of balanceSpring left once it has wound down
+	balanceCancelFloor: number, -- fraction of gravityCancel left once the spring has wound down
 	landHoldSeconds: number, -- the opposite key held this long means "land", not "tap"
 }
 
@@ -77,6 +89,8 @@ export type State = {
 	prevRight: number,
 	authority: number, -- 0..1 how much the controller can do at this speed
 	outHeld: number, -- seconds the key toward the grounded side has been held
+	prevHeld: boolean, -- last step's toggle, to land when it goes off
+	springEnv: number, -- 0..1 how much of balanceSpring is live right now
 }
 
 function TwoWheel.new(): State
@@ -92,6 +106,8 @@ function TwoWheel.new(): State
 		prevRight = 0,
 		authority = 0,
 		outHeld = 0,
+		prevHeld = false,
+		springEnv = 1,
 	}
 end
 
@@ -137,6 +153,10 @@ function TwoWheel.step(
 	)
 	state.authority = if state.mode == "lifting" then liftAuthority else holdAuthority
 
+	-- Fresh presses, before the envelopes consume them.
+	local freshLeft = leanLeft ~= 0 and state.prevLeft == 0
+	local freshRight = leanRight ~= 0 and state.prevRight == 0
+
 	-- Tap envelopes, one per key: a fresh press starts at 1 and decays
 	-- toward leanHoldFloor while the key stays down; released is 0.
 	local function envelope(env: number, now: number, prev: number): number
@@ -159,15 +179,28 @@ function TwoWheel.step(
 		state.armed = true
 	end
 
+	local toggledOff = state.prevHeld and not held
+	state.prevHeld = held
 	if state.mode == "idle" then
-		if not (held and state.armed) or liftAuthority <= 0 then
+		-- A tap of either lean key, or the toggle, starts a lift. The key
+		-- picks the side; the toggle takes the lean axis or defaults left.
+		local tap = freshLeft or freshRight
+		if not ((held and state.armed) or tap) or liftAuthority <= 0 then
 			state.marginDeg = cfg.tipRollDeg
 			return 0
 		end
-		state.side = if lean > cfg.sidePickLean then 1 elseif lean < -cfg.sidePickLean then -1 else -1
+		if freshRight and not freshLeft then
+			state.side = 1
+		elseif freshLeft and not freshRight then
+			state.side = -1
+		else
+			state.side = if lean > cfg.sidePickLean then 1 elseif lean < -cfg.sidePickLean then -1 else -1
+		end
 		state.armed = false
 		state.mode = "lifting"
-	elseif not held and state.mode ~= "landing" then
+		state.springEnv = 1
+		state.outHeld = 0
+	elseif toggledOff and state.mode ~= "landing" then
 		state.mode = if state.mode == "tipped" then "idle" else "landing"
 		if state.mode == "idle" then
 			return 0
@@ -215,14 +248,28 @@ function TwoWheel.step(
 		-- target this must not turn into a restoring spring.
 		-- All of it scales with hold authority, so at a crawl the cancel and
 		-- the lean die away and gravity puts the car back down honestly.
-		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel
 		-- The spring is the part that makes a natl holdable. The gravity
 		-- cancel is a model of the restoring torque, and anything the model
 		-- misses (grounded-side springs, tyre moments, the road) shows up
 		-- as the car drifting off its angle with the key held. A spring
 		-- about the target absorbs that error; the taps and the steering
 		-- then move the car about that hold instead of fighting to keep it.
-		local spring = cfg.balanceSpring * (cfg.targetRollDeg - roll)
+		-- It winds down with time and every tap toward the lifted side
+		-- winds it back up: that is the "keep tapping to keep it up" of a
+		-- real sidewall ride, and with nothing pressed the car comes home.
+		local inFresh = if s > 0 then freshRight else freshLeft
+		if inFresh then
+			state.springEnv = 1
+		end
+		state.springEnv = math.max(cfg.balanceSpringFloor, state.springEnv - dt / math.max(cfg.balanceSpringDecaySeconds, 1e-3))
+		local spring = cfg.balanceSpring * state.springEnv * (cfg.targetRollDeg - roll)
+		-- The gravity cancel winds down with the same envelope, to
+		-- balanceCancelFloor of itself. A fully cancelled pendulum is
+		-- neutral at every angle, so with the spring gone the car just
+		-- hovered at 9 degrees; leaving a little of gravity uncancelled is
+		-- what brings it home.
+		local cancelScale = cfg.balanceCancelFloor + (1 - cfg.balanceCancelFloor) * state.springEnv
+		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel * cancelScale
 		torque = (cancel + spring + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
 			- cfg.rollDamping * rate
 	end
