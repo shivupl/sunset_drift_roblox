@@ -706,10 +706,18 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 		end
 	end
 
-	local wearFolder = Build.folder("Wear", road)
+	-- Markings and wear go in a sibling model, not under Road. Road is
+	-- Persistent so the car always has a surface, and a child of a
+	-- Persistent model is Persistent too, which meant every client held all
+	-- twelve hundred dashes and tyre tracks at all times. None of that is
+	-- physics; it can stream in as the car approaches like any decoration.
+	local detail = Instance.new("Model")
+	detail.Name = "RoadDetail"
+	local wearFolder = Build.folder("Wear", detail)
 	buildWear(ctx, path, wearFolder, r.asphaltColor, lay)
-	local markingFolder = Build.folder("Markings", road)
+	local markingFolder = Build.folder("Markings", detail)
 	buildMarkings(ctx, path, markingFolder, r.asphaltColor, lay)
+	detail.Parent = workspace
 
 	-- Parking bay behind the start line, and the player spawn beside it.
 	local bayLen = s(preset.bayLengthM)

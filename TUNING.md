@@ -308,7 +308,7 @@ There are no barriers. Running wide costs speed and dignity, not the run.
 |---|---|
 | spacingM | Distance between lamps. Drives both the rhythm of light and the part count. |
 | bothSides | False alternates the outer sides and halves that part count. |
-| medianLamps | Double-arm posts down the reservation, offset half a spacing so the three rows interleave. |
+| medianLamps / medianSpacingM | Double-arm posts down the reservation at their own spacing (22 m, twice the outer density), offset half a spacing so the rows interleave. |
 | setbackM | From the kerb to the pole. Nothing here collides, so this is purely where it looks right. |
 | poleHeightM / poleWidthM | Pole size. Square section on purpose: a box is 12 triangles, a cylinder ~100. |
 | armLengthM | Boom reach. It has to clear the shoulder and kerb before it is over any asphalt; shorter and every pool of light lands on the shoulder. |
@@ -378,6 +378,11 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | palm.varietyFraction | Fraction of palms that use the second mesh. |
 | palm.minScale / maxScale | Height range. Uniform height is the thing that reads as copied. |
 | scrub.* | Low bushes on the verges and, at `medianChance`, between the median palms. |
+| artifacts.campSpacingM / campJitterM / campChance | A roadside camp every spacing or so: a tent facing the road, a carpet in front of it, camels loitering beside. |
+| artifacts.minEdgeM / maxEdgeM | How far out from the verge a camp can sit. |
+| artifacts.camelsMin / camelsMax / camelSpreadM | Camels per camp and how far they wander from the tent. |
+| artifacts.carpetChance / carpetSizeM | The carpet: a thin Part with a decal, twelve triangles. |
+| artifacts.strayCamelSpacingM / strayCamelChance | Camels on their own between camps. |
 | falloffStartM / falloffEndM | Density falls off with distance from the road, so the near shoulder reads as maintained and the far desert as empty. |
 | palm.clumpSpacingM / clumpJitterM / minPerClump / maxPerClump / spreadM | Palms go in loose clumps. Evenly spaced trees read as generated; clumps read as planted. |
 | palm.minEdgeM / maxEdgeM | Band either side of the road they can occupy, measured from the kerb. |

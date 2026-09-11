@@ -190,7 +190,7 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 	end)
 	if l.medianLamps then
 		-- Offset by half a spacing so the median row interleaves the outer rows.
-		RoadNetwork.repeatAlong(path, ctx, l.spacingM, l.spacingM / 2, totalM, function(p)
+		RoadNetwork.repeatAlong(path, ctx, l.medianSpacingM, l.medianSpacingM / 2, totalM, function(p)
 			post(p.position, p, { -1, 1 })
 		end)
 	end

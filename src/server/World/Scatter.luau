@@ -311,6 +311,115 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 		end
 	end
 
+	-- Roadside camps: a tent, a carpet laid out in front, a few camels; and
+	-- the odd camel on its own between them. Out past the verge, never in
+	-- the median, never collidable.
+	local af = sc.artifacts
+	if af.enabled then
+		local camps = Build.folder("Camps", folder)
+		local arng = Build.rng(af.seed)
+		local carpetDecal = AssetRegistry.decals.carpet
+
+		local function camel(at: Vector3, facingYaw: number)
+			local base = CFrame.new(at) * CFrame.Angles(0, facingYaw, 0)
+			if sc.useMeshes and AssetRegistry.place("camel", base, arng:NextNumber(0.9, 1.1), ctx.mps, camps, cfg.shadows.palms) then
+				return
+			end
+			-- Stand-in: a body and a neck. Only ever seen if the mesh fails.
+			Build.part({
+				name = "CamelBody",
+				size = Vector3.new(ctx.s(2.2), ctx.s(1.2), ctx.s(0.9)),
+				cframe = base * CFrame.new(0, ctx.s(1.5), 0),
+				color = Color3.fromRGB(176, 142, 96),
+				material = Enum.Material.Fabric,
+				parent = camps,
+			})
+			Build.part({
+				name = "CamelNeck",
+				size = Vector3.new(ctx.s(0.5), ctx.s(1.4), ctx.s(0.45)),
+				cframe = base * CFrame.new(ctx.s(1.1), ctx.s(2.4), 0) * CFrame.Angles(0, 0, math.rad(-25)),
+				color = Color3.fromRGB(176, 142, 96),
+				material = Enum.Material.Fabric,
+				parent = camps,
+			})
+		end
+
+		local function carpet(at: Vector3, yaw: number)
+			local size = af.carpetSizeM
+			local part = Build.part({
+				name = "Carpet",
+				size = Vector3.new(ctx.s(size.X), ctx.s(0.04), ctx.s(size.Y)),
+				cframe = CFrame.new(at + Vector3.new(0, ctx.s(0.03), 0)) * CFrame.Angles(0, yaw, 0),
+				color = Color3.fromRGB(150, 60, 50),
+				material = Enum.Material.Fabric,
+				parent = camps,
+			})
+			if carpetDecal > 0 then
+				local d = Instance.new("Decal")
+				d.Name = "Pattern"
+				d.Face = Enum.NormalId.Top
+				d.Texture = `rbxassetid://{carpetDecal}`
+				d.Parent = part
+			end
+		end
+
+		local d = af.campSpacingM * 0.5
+		while d < totalM do
+			local along = d + arng:NextNumber(-af.campJitterM, af.campJitterM)
+			if arng:NextNumber() < af.campChance then
+				local side = if arng:NextNumber() < 0.5 then -1 else 1
+				local edgeM = arng:NextNumber(math.max(af.minEdgeM, vergeM + 6), af.maxEdgeM)
+				local centre, pt = ground(along, side * (lay.totalM / 2 + edgeM))
+				-- Tent faces the road; carpet in front of its door; camels
+				-- loitering to one side.
+				local toRoad = -pt.cframe.RightVector * side
+				local yaw = math.atan2(toRoad.X, -toRoad.Z)
+				if free(centre, ctx.s(6)) then
+					local tentBase = CFrame.new(centre) * CFrame.Angles(0, yaw + arng:NextNumber(-0.3, 0.3), 0)
+					if not (sc.useMeshes and AssetRegistry.place("tent", tentBase, arng:NextNumber(0.9, 1.15), ctx.mps, camps, cfg.shadows.palms)) then
+						Build.wedge({
+							name = "TentStandIn",
+							size = Vector3.new(ctx.s(4.5), ctx.s(2.4), ctx.s(4)),
+							cframe = tentBase * CFrame.new(0, ctx.s(1.2), 0),
+							color = Color3.fromRGB(196, 176, 140),
+							material = Enum.Material.Fabric,
+							parent = camps,
+						})
+					end
+					if arng:NextNumber() < af.carpetChance then
+						carpet(centre + toRoad * ctx.s(4.2), yaw + arng:NextNumber(-0.4, 0.4))
+					end
+					local count = arng:NextInteger(af.camelsMin, af.camelsMax)
+					local sideways = pt.cframe.LookVector
+					for i = 1, count do
+						local pos = centre
+							+ sideways * ctx.s(arng:NextNumber(3, af.camelSpreadM) * (if i % 2 == 0 then 1 else -1))
+							+ toRoad * ctx.s(arng:NextNumber(-2, 3))
+						if free(pos, ctx.s(2.2)) then
+							camel(pos, arng:NextNumber(0, math.pi * 2))
+						end
+					end
+				end
+			end
+			d += af.campSpacingM
+		end
+
+		-- Strays.
+		local sd = af.strayCamelSpacingM
+		while sd < totalM do
+			local along = sd + arng:NextNumber(-af.campJitterM, af.campJitterM)
+			if arng:NextNumber() < af.strayCamelChance then
+				local side = if arng:NextNumber() < 0.5 then -1 else 1
+				local edgeM = arng:NextNumber(math.max(af.minEdgeM, vergeM + 4), af.maxEdgeM)
+				local pos = ground(along, side * (lay.totalM / 2 + edgeM))
+				if free(pos, ctx.s(2.2)) then
+					camel(pos, arng:NextNumber(0, math.pi * 2))
+				end
+			end
+			sd += af.strayCamelSpacingM
+		end
+	end
+
 	local dn = cfg.ground.dunes
 	if dn.enabled then
 		local dunes = Build.folder("Dunes", folder)

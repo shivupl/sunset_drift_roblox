@@ -29,7 +29,7 @@ export type Result = {
 }
 
 local function clearOld()
-	for _, name in { "Road", "World", "Baseplate" } do
+	for _, name in { "Road", "RoadDetail", "World", "Baseplate" } do
 		local existing = workspace:FindFirstChild(name)
 		if existing then
 			existing:Destroy()
@@ -66,12 +66,16 @@ function World.build(): Result
 	world.Parent = workspace
 
 	local road, path, ctx = RoadNetwork.build(cfg, world)
+	local detail = workspace:FindFirstChild("RoadDetail")
 	type Tally = { label: string, parts: number, tris: number }
 	local counts: { Tally } = {}
 	local function tally(label: string, root: Instance)
 		table.insert(counts, { label = label, parts = Build.countParts(root), tris = Build.estimateTriangles(root) })
 	end
 	tally("road", road)
+	if detail then
+		tally("road detail", detail)
+	end
 
 	-- Sky, atmosphere and the Lighting service, then the lamp geometry.
 	WorldLighting.applyAtmosphere(cfg)
@@ -101,8 +105,8 @@ function World.build(): Result
 		tally("scatter", folder)
 	end
 
-	local totalParts = Build.countParts(road) + Build.countParts(world)
-	local totalTris = Build.estimateTriangles(road) + Build.estimateTriangles(world)
+	local totalParts = Build.countParts(road) + Build.countParts(world) + (if detail then Build.countParts(detail) else 0)
+	local totalTris = Build.estimateTriangles(road) + Build.estimateTriangles(world) + (if detail then Build.estimateTriangles(detail) else 0)
 
 	if cfg.debug.report then
 		print(`[World] preset "{cfg.preset}", {math.floor(RoadNetwork.lengthM(path))} m of road`)

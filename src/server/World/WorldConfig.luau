@@ -44,7 +44,8 @@ local config = {
 		-- half of what is left. 120 m total with a 26 m median gives two 47 m
 		-- carriageways of four lanes, which is the "room to make a mistake"
 		-- the map is for.
-		medianWidthM = 26,
+		-- Narrowed from 26 on request; the palms still fit two abreast.
+		medianWidthM = 14,
 		medianColor = Color3.fromRGB(150, 128, 94),
 		medianMaterial = Enum.Material.Ground,
 		medianDropM = 0.04, -- median sits this far below the asphalt
@@ -78,13 +79,11 @@ local config = {
 		markingEpsilonM = 0.02,
 		markingThicknessM = 0.05,
 		dashLengthM = 7,
-		dashGapM = 11, -- long gaps are what a real highway has, and a third fewer parts
+		dashGapM = 14, -- long gaps are what a real highway has; five lanes each way makes every dash count
 		dashWidthM = 0.3,
 		edgeLineWidthM = 0.25,
-		-- Three per carriageway. Four cost 800 dashes and 450 tyre-track parts in
-		-- frustum from the start line; three 47 m carriageway lanes are still
-		-- 15 m wide, which is what the Phase 0 road always was.
-		laneCount = 3, -- per carriageway
+		-- Five per carriageway on request: 53 m each way in 10.6 m lanes.
+		laneCount = 5, -- per carriageway
 		shoulderWidthM = 3,
 		-- Kerbs are a visual lip only. Nothing on the map collides except the
 		-- ground, and a 12 cm collidable step at 200 km/h is a launch ramp.
@@ -172,6 +171,7 @@ local config = {
 		-- Outer shoulders always. The median gets a double-arm post every
 		-- spacing too, offset by half a spacing so the three rows interleave.
 		medianLamps = true,
+		medianSpacingM = 22, -- twice the density of the outer rows, on request
 		setbackM = 1.2, -- from the kerb to the pole
 		-- Perfect repetition is what makes a row of lamps read as generated.
 		jitterSeed = 4417,
@@ -337,6 +337,25 @@ local config = {
 		-- reads as maintained and the far desert as empty.
 		falloffStartM = 40,
 		falloffEndM = 160,
+		-- Roadside artifacts: a camp every so often out past the verge, with
+		-- a tent, a carpet laid out in front of it, and a couple of camels.
+		artifacts = {
+			enabled = true,
+			seed = 90210,
+			campSpacingM = 320,
+			campJitterM = 120,
+			campChance = 0.75,
+			minEdgeM = 30,
+			maxEdgeM = 110,
+			camelsMin = 1,
+			camelsMax = 3,
+			camelSpreadM = 9,
+			carpetChance = 0.85,
+			carpetSizeM = Vector2.new(3, 4.2),
+			-- Loose camels away from any camp, on their own.
+			strayCamelSpacingM = 260,
+			strayCamelChance = 0.5,
+		},
 	},
 
 	-- Time of day. Pick one of the presets below; every light, colour and

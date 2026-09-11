@@ -10,11 +10,11 @@ only in the place file. Change a number in the config and restart the server.
 |---|---|
 | `init.luau` | Entry point. Builds once, in order, and prints a part and triangle report. |
 | `WorldConfig.luau` | Every tunable, in metres and degrees, grouped by system. |
-| `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, markings, wear, ground, bay, spawn. |
+| `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, ground, bay, spawn; and the markings and wear, which it puts in a separate streamed `RoadDetail` model. |
 | `Lighting.luau` | Lamp posts on both shoulders and down the median, sky, atmosphere, every Lighting setting. |
 | `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
 | `Cityscape.luau` | The skyline ring. |
-| `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges. |
+| `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `AssetRegistry.luau` | Mesh props by id, the loader, and the provenance of everything vetted. |
 
 There is no barrier module any more. Nothing stands between the road and the
@@ -44,7 +44,7 @@ the work:
 at 900 m, a 400 m radius 30 degree curve — widened to a 120 m dual
 carriageway. A preset's `widthM` is the whole corridor; `road.medianWidthM`
 comes out of the middle and each carriageway gets half of what is left, so
-120 with a 26 m median is two 47 m four-lane carriageways.
+120 with a 14 m median is two 53 m five-lane carriageways.
 `RoadNetwork.layout` is the one place that arithmetic lives, and lamps,
 signs, markings, wear and planting all read from it. The `Road` model
 keeps the attributes `CarSpawner` and `VehicleController` read
@@ -154,6 +154,12 @@ read; markings, scrub, rocks and the skyline do not.
 posts a side. `railPostSpacingM` is 12 m; it is the most expensive single
 number in the config.
 
+**The road's paint streams; the road does not.** Road is Persistent so the
+car always has a surface, and a child of a Persistent model is Persistent
+too, which meant every client held all twelve hundred dashes and tyre
+tracks at all times. They now live in a sibling `RoadDetail` model that
+streams like any decoration. None of it is physics.
+
 **Streaming and client-side physics.** The client owns its car's physics, so
 the suspension raycast runs against whatever the *client* has. A car at
 240 km/h outruns the streamer, finds no road under it and falls out of the
@@ -171,16 +177,17 @@ still running is the light manager, on a timed loop with an exit flag.
 
 ## Measured
 
-Whole world, `testRoad` preset, built in 1.2 s at server start:
+Whole world, `testRoad` preset, five lanes each way, built in 1.7 s:
 
 | system | parts | of which meshes |
 |---|---|---|
-| road (both carriageways, median, shoulders, ground, markings, wear) | 1,326 | 0 |
-| lamps (both shoulders and the median) | 539 | 0 |
+| road (carriageways, median, shoulders, ground, bay) | 483 | 0 |
+| road detail (markings, wear; streamed) | 1,327 | 0 |
+| lamps (both shoulders, and the median at twice the density) | 794 | 0 |
 | cityscape | 324 | 0 |
 | signage | 40 | 0 |
-| scatter (palms, scrub, rocks, dunes) | 762 | 654 |
-| **total** | **2,991** | **654** |
+| scatter (palms, scrub, rocks, dunes, 6 camps, 15 camels) | 767 | 659 |
+| **total** | **3,735** | **659** |
 
 In frustum from the driver's seat, primitives only (mesh triangles are not
 countable, see below):

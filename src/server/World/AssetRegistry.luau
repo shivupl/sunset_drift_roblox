@@ -81,7 +81,28 @@ local SCRUB: Prop = {
 	pieces = { { meshId = 7191451797, textureId = 0, sizeM = Vector3.new(2.6, 1.2, 2), offsetM = Vector3.new(0, 0.55, 0), color = Color3.fromRGB(80, 90, 58), material = Enum.Material.Grass } },
 }
 
+-- Roadside camp tent (store 111251373766912, AidenSilverByte2871): one
+-- textured mesh. A canvas camp tent rather than a woven bedouin one; the
+-- store had no bedouin tent that was not a locker room or a pirate hut.
+local TENT: Prop = {
+	name = "Camp tent",
+	creator = "AidenSilverByte2871",
+	notes = "Mesh 109174258219103, texture 102982560673097. Sized 4.9 x 2.4 x 4.2 m.",
+	pieces = { { meshId = 109174258219103, textureId = 102982560673097, sizeM = Vector3.new(4.9, 2.4, 4.2), offsetM = Vector3.new(0, 1.2, 0) } },
+}
+
+-- Camel (store 12252661019 "Realistic Camel Mesh", ZeeeeeeeeeeMx): one
+-- textured mesh, no scripts, no rig. The mesh's long axis is X.
+local CAMEL: Prop = {
+	name = "Camel",
+	creator = "ZeeeeeeeeeeMx",
+	notes = "Mesh 12206932216, texture 12206913055. Sized 3.4 x 2.7 x 1.0 m.",
+	pieces = { { meshId = 12206932216, textureId = 12206913055, sizeM = Vector3.new(3.4, 2.7, 1.0), offsetM = Vector3.new(0, 1.35, 0) } },
+}
+
 AssetRegistry.props = {
+	tent = TENT,
+	camel = CAMEL,
 	scrub = SCRUB,
 	datePalm = DATE_PALM,
 	fanPalm = FAN_PALM,
@@ -98,7 +119,16 @@ AssetRegistry.skyboxes = {
 }
 
 -- Candidates looked at and rejected, so nobody searches for them twice.
+-- Decal textures used on plain parts. A carpet is a thin Part with this on
+-- top: no mesh, twelve triangles, and the whole pattern in one image.
+AssetRegistry.decals = {
+	carpet = 6868651347, -- store 8014263912 "Carpet" by Alpha Center Incorporation, script-free
+}
+
 AssetRegistry.rejected = {
+	"117065453277405, 82617805024996: titled 'camel', the mesh is a cactus (5073961801)",
+	"84580755589494: camel built from 22 plain parts and 3 scripts; 1434176204: 136 plain parts",
+	"117652095491156: 'Persian rug' is eight parts and thirteen scripts",
 	"1436325105, 10354687850, 3097584763, 18363394399: script-free but cartoon coconut palms, bright green, wrong tree for Riyadh",
 	"76007165574946, 79982036713249: Philips-branded lamp housings, real-world brand",
 	"87617624889799: six spam scripts and only a bare trunk mesh",
@@ -112,6 +142,9 @@ local templates: { [number]: MeshPart? } = {}
 local failed: { [number]: boolean } = {}
 
 local function template(meshId: number): MeshPart?
+	if meshId <= 0 then
+		return nil
+	end
 	if templates[meshId] then
 		return templates[meshId]
 	end
