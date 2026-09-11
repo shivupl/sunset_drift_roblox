@@ -47,6 +47,7 @@ export type Config = {
 	throwThrottleHold: number,
 	throwThrottleHoldFromDeg: number,
 	throwThrottleHoldGraceSeconds: number,
+	throwThrottleHoldKeepDeg: number,
 	slideYawDamping: number,
 }
 

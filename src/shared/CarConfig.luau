@@ -264,7 +264,10 @@ local config = {
 		-- (under throwHoldSettleDegPerSec) it is latched, and the controller
 		-- asks for throwHoldGain deg/s of correction per degree off it,
 		-- capped at the throw rate. Higher gain is a stiffer hold.
-		throwHoldGain = 3,
+		-- 6, from 3: at 3 a slide handed to the gas at 14 degrees faded to
+		-- straight in two seconds, the tyres' realigning beating a 12 deg/s
+		-- correction; small angles need a stiffer hold than big ones.
+		throwHoldGain = 6,
 		throwHoldSettleDegPerSec = 25,
 		-- Torque cap for the catch when the wheel is centred, higher than
 		-- the onset cap so the yaw a full-lock turn-in built is absorbed
@@ -306,6 +309,10 @@ local config = {
 		-- transition and only drops after this long under the gate with
 		-- the wheel centred (or when the gas is lifted).
 		throwThrottleHoldGraceSeconds = 0.5,
+		-- The lever arms the gas permission as well, so a hand-off from the
+		-- lever to the gas holds whatever angle the car has; once on it
+		-- keeps down to this angle, a lower bar than starting.
+		throwThrottleHoldKeepDeg = 10,
 		-- Yaw damping while the car is NOT being thrown (no lever, no flick
 		-- window), Nm per degree per second of yaw rate. A slip-angle tyre
 		-- model has almost no yaw stiffness once both axles are sliding: the

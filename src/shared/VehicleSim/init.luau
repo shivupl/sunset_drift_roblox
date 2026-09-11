@@ -257,16 +257,21 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- only drops when the car has been under the gate for
 	-- throwThrottleHoldGraceSeconds with the wheel centred, or the gas is
 	-- lifted. Without that a flick on the gas died at zero.
+	-- The lever arms it too, so handing a slide from the lever to the gas
+	-- never falls through the angle gate: a tap that settled at 19
+	-- degrees straightened the moment the lever came out. Once on it
+	-- keeps down to throwThrottleHoldKeepDeg, a lower bar than starting.
 	local gasOn = not twoWheelActive and input.throttle >= cfg.steering.throwThrottleHold
 	local sidewaysNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldFromDeg
-	if sidewaysNow or math.abs(input.steer) > 0.05 then
+	local keepNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldKeepDeg
+	if keepNow or math.abs(input.steer) > 0.05 then
 		self.throttleHoldStraight = 0
 	else
 		self.throttleHoldStraight += dt
 	end
 	if not gasOn then
 		self.throttleHoldOn = false
-	elseif sidewaysNow then
+	elseif sidewaysNow or self.handbrakeLevel > 0 then
 		self.throttleHoldOn = true
 	elseif self.throttleHoldStraight >= cfg.steering.throwThrottleHoldGraceSeconds then
 		self.throttleHoldOn = false

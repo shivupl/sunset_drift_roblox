@@ -33,6 +33,7 @@ return function(t: T)
 		throwThrottleHold = 0.8,
 		throwThrottleHoldFromDeg = 20,
 		throwThrottleHoldGraceSeconds = 0.5,
+		throwThrottleHoldKeepDeg = 10,
 		slideYawDamping = 130,
 	}
 	local function inp(over: { [string]: any }): Throw.Input
