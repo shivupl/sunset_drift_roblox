@@ -136,6 +136,84 @@ Both must be set by hand in Studio. A runtime script cannot write them, and
 `Workspace.StreamingEnabled` is already on. Under Voxel the raking shadows
 this hour is built around do not render, and the scene falls flat.
 
+## The city section (`src/server/World/City/`)
+
+A Riyadh-style edge of town on the +X side of the highway, attached by an
+off-ramp at 300 m and an on-ramp back at 1,840 m, both leaving and rejoining
+the carriageway that drives toward -Z (Saudi drives on the right, so both
+are right-hand ramps). Nothing hand-placed: `CityConfig.luau` and a seeded
+random.
+
+**Streets** (`Streets.luau`). A 3 x 2 grid of blocks 420 m across.
+Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a
+3 m parking lane each way. Every boulevard crossing is a roundabout with a
+15 m island (kerb ring, ground fill, five palms), sized so it is a drift
+spot. Each block has one 16 m side street each way through its middle,
+meeting at a plain crossing and ending at the boulevard kerbs, which cuts
+the block into four parcels. Streets are slabs at the highway surface
+height with the sand 5 cm below, so a slab that has not streamed in is a
+step, not a hole; roundabout squares are their own slab and segments run
+between them so nothing coplanar overlaps. Kerbs and pavements are drawn
+per parcel (which is what leaves the kerb gap where a side street enters)
+and do not collide. Boulevard markings are in a streamed `StreetDetail`
+folder: worn dashes, parking-lane and median lines, tyre tracks in the
+inner two lanes. The ramps are waypoint paths through the same
+`RoadNetwork.ribbon` the highway uses, starting as a 5 m taper just outside
+the highway kerb.
+
+**Buildings** (`Buildings.luau`). Each parcel is filled by its block's
+district. *Commercial*: rows of shops along both boulevard frontages and one
+side street, 18 to 36 m wide, 3 to 7 storeys, gaps between some; each has a
+glazed shopfront, a coloured fascia, an awning on most, a lit sign on some,
+pilasters on some, a stain band at the base, window strips on the lower
+three storeys split into lit and dark segments and one dark band per storey
+above, a parapet lip, AC units and a water tank on the roof. The interior
+is a car park. *Residential*: walled villa compounds 28 x 30 m around all
+four edges, one in ten left empty; each a 2.4 m compound wall with a gate
+on the street side, a 2 or 3 storey house set back inside it, half with a
+smaller upper tier, a dish on most roofs, a wall AC unit (the mesh) at
+first-floor height. *Towers*: four podium-and-tower blocks, the podium
+three storeys with shopfronts on every face, the tower 14 to 30 storeys of
+glass with mullions and floor bands, half with a setback, a lit crown, a
+plant room. *Plaza*: one flat asphalt slab the size of the parcel with a
+few worn rows of bays through the middle, bollards and planters along its
+edges, lamps through it. This is the meet spot. *Lot*: sand.
+
+Walls collide (compound walls, houses, shops, podiums, shafts, gates);
+nothing else in the buildings does.
+
+**Furniture** (`Furniture.luau`). Palms down every boulevard median (two
+meshes, date and fan) and on the islands; street lamps (mesh, ItsLassie's
+pack, lamp 6 at 0.16) on both pavements every 60 m and one side of side
+streets every 75 m, heads tagged for the twelve-light manager; a traffic
+signal (boxes) where each side street meets a boulevard; parked cars (two
+unbranded bodies from a low-poly pack plus its wheel mesh, five parts each)
+in the parking lanes at 12% of slots; bins and benches (meshes) along the
+pavements; bollards and planters round the plaza. Nothing here collides.
+
+**Counts.** City streets 544, street detail 1,325, buildings 4,587 (339
+shadow casters), furniture 3,479 (562 casters, the palms). Whole world
+15,639 parts. The city is streamed (buildings, streets, furniture all
+default streaming mode); the highway road, its palms and the skyline stay
+Persistent as before. Build time 1.3 s.
+
+**Verified.** A raycast sweep every 2 m along both ramps, a boulevard
+through three roundabouts, a side street through its crossing and the
+plaza: 1,800 samples, no gaps, the surface within 5 cm everywhere except
+the roundabout islands.
+
+**Assets vetted and rejected.** In `AssetRegistry.luau`. The traffic light
+and satellite dish listings were plain-part builds with scripts and are
+built from boxes instead; the car pack's Cybertruck and Rimac are brands
+and are not used; "Pacifico Parked Cars" are named after real models. No
+paid kit was needed.
+
+**Frame rate.** Not measured from a focused window: the Studio window
+cannot be focused from the MCP session and throttles to 15 fps unfocused.
+The shadow caster count is the number to watch on a phone (about 900 in
+the whole city, of which a few hundred are in view at once); `shadows` in
+CityConfig turns palms or buildings off per type.
+
 ## Performance
 
 **The twelve lights.** No lamp carries a Light instance. The server tags each

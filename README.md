@@ -146,6 +146,8 @@ during play, or stop and replay after saving the file.
   360 / held-slide / catch controller), all pure, and `init.luau` (Roblox glue). `DESIGN.md`
   explains the choices.
 - `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
+- `src/server/World/` — the highway environment; `World/City/` the city section off the
+  off-ramp. `WORLD.md` explains both.
 - `src/client/` — input (keyboard, gamepad, touch HUD), vehicle controller, camera, driver HUD, debug panel.
 - `src/shared/Tests/` — spec runner (252 assertions). Run it from `scripts/studio_tests.luau`,
   which clones the Shared folder first; requiring `Shared.Tests` directly can re-run stale code

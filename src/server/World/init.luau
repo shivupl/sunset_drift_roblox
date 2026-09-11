@@ -16,6 +16,7 @@ local WorldLighting = require(script.Lighting)
 local Cityscape = require(script.Cityscape)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
+local City = require(script.City)
 
 type Config = WorldConfig.Config
 
@@ -103,6 +104,12 @@ function World.build(): Result
 		end
 		local folder = Scatter.build(cfg, ctx, path, world)
 		tally("scatter", folder)
+	end
+
+	-- The city section, off the highway. Its own config; it reads the road
+	-- only through ctx (units, surface height).
+	for _, row in City.build(ctx, world) do
+		table.insert(counts, row)
 	end
 
 	local totalParts = Build.countParts(road) + Build.countParts(world) + (if detail then Build.countParts(detail) else 0)

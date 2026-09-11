@@ -100,6 +100,77 @@ local CAMEL: Prop = {
 	pieces = { { meshId = 12206932216, textureId = 12206913055, sizeM = Vector3.new(3.4, 2.7, 1.0), offsetM = Vector3.new(0, 1.35, 0) } },
 }
 
+-- City street furniture. All checked in Studio: mesh pieces only, scripts
+-- in the source models never ship (see the header), no brands.
+
+-- Street lamp 6 from ItsLassie's "Low Poly Street Lamp Pack (Recolorable)"
+-- (store 13352449389, ~600 triangles for the whole lamp per the listing).
+-- The pack is modelled at ten times life size; 0.16 makes a 9 m post. The
+-- pack's "Accent" piece is an ornamental base the size of a house and is
+-- left out. Offsets are from the foot of the pole at scale 1.
+local STREET_LAMP: Prop = {
+	name = "Street lamp, bracket arm",
+	creator = "ItsLassie",
+	notes = "Pole 13352449304, bracket 13352449299, head 13352449302. Head last so the light manager can find it.",
+	pieces = {
+		{ meshId = 13352449304, textureId = 0, sizeM = Vector3.new(3.85, 41.33, 3.85), offsetM = Vector3.new(0, 20.67, 0), color = Color3.fromRGB(64, 66, 70), material = Enum.Material.Metal },
+		{ meshId = 13352449299, textureId = 0, sizeM = Vector3.new(1.72, 17.2, 12.98), offsetM = Vector3.new(0, 51.53, 5.74), color = Color3.fromRGB(64, 66, 70), material = Enum.Material.Metal },
+		{ meshId = 13352449302, textureId = 0, sizeM = Vector3.new(9.46, 1.18, 7.89), offsetM = Vector3.new(0, 49.98, 11.49), color = Color3.fromRGB(58, 58, 62), material = Enum.Material.Metal },
+	},
+}
+
+-- Park bench (store 111011567981764, H0ll0wa1Spark1): seat and frame
+-- meshes, untextured, coloured here. Three scripts in the source model.
+local BENCH: Prop = {
+	name = "Bench",
+	creator = "H0ll0wa1Spark1",
+	notes = "Seat 6671752804, frame 6671751459. 2.1 m long.",
+	pieces = {
+		{ meshId = 6671751459, textureId = 0, sizeM = Vector3.new(1.82, 0.95, 0.67), offsetM = Vector3.new(0, 0.47, 0), color = Color3.fromRGB(50, 52, 56), material = Enum.Material.Metal },
+		{ meshId = 6671752804, textureId = 0, sizeM = Vector3.new(2.1, 0.55, 0.63), offsetM = Vector3.new(0, 0.75, 0), color = Color3.fromRGB(120, 90, 60), material = Enum.Material.Wood },
+	},
+}
+
+-- Street bin (store 80065378719436, Alexander727BlockSto): one textured mesh.
+local BIN: Prop = {
+	name = "Street bin",
+	creator = "Alexander727BlockSto",
+	notes = "Mesh 677133470, texture 677133544. 0.5 x 1.0 m.",
+	pieces = { { meshId = 677133470, textureId = 677133544, sizeM = Vector3.new(0.5, 1.0, 0.5), offsetM = Vector3.new(0, 0.5, 0) } },
+}
+
+-- Split AC outdoor unit (store 107250899765573, XxWillowV3nomxX2016): one
+-- plain mesh, coloured. Fan face is the +X side.
+local AC_UNIT: Prop = {
+	name = "AC unit",
+	creator = "XxWillowV3nomxX2016",
+	notes = "Mesh 12294174423. 0.3 deep x 0.9 x 1.0 m.",
+	pieces = { { meshId = 12294174423, textureId = 0, sizeM = Vector3.new(0.3, 0.9, 1.0), offsetM = Vector3.new(0, 0.45, 0), color = Color3.fromRGB(214, 214, 208), material = Enum.Material.Metal } },
+}
+
+-- Parked cars from "Low Poly Cars Pack: Mesh Vehicle Road Race" (store
+-- 120535861432410, Ninja131Venom). Two generic bodies used; the pack's
+-- Cybertruck and Rimac are real-world brands and are not. Body colour is
+-- set by the caller; the wheel mesh is the pack's own.
+local CAR_A: Prop = {
+	name = "Parked car, saloon",
+	creator = "Ninja131Venom",
+	notes = "Body 9339167457, 2.8 x 1.9 x 7.3 m in the pack; long axis Z.",
+	pieces = { { meshId = 9339167457, textureId = 0, sizeM = Vector3.new(1.85, 1.35, 4.8), offsetM = Vector3.new(0, 0.82, 0), color = Color3.fromRGB(220, 220, 220), material = Enum.Material.SmoothPlastic } },
+}
+local CAR_B: Prop = {
+	name = "Parked car, hatch",
+	creator = "Ninja131Venom",
+	notes = "Body 9339152185, 3.3 x 1.6 x 7.1 m in the pack; long axis Z.",
+	pieces = { { meshId = 9339152185, textureId = 0, sizeM = Vector3.new(1.9, 1.3, 4.4), offsetM = Vector3.new(0, 0.78, 0), color = Color3.fromRGB(200, 200, 200), material = Enum.Material.SmoothPlastic } },
+}
+local WHEEL: Prop = {
+	name = "Car wheel",
+	creator = "Ninja131Venom",
+	notes = "Mesh 9496370049, axis X.",
+	pieces = { { meshId = 9496370049, textureId = 0, sizeM = Vector3.new(0.24, 0.56, 0.56), offsetM = Vector3.new(0, 0.28, 0), color = Color3.fromRGB(30, 30, 32), material = Enum.Material.Rubber } },
+}
+
 AssetRegistry.props = {
 	tent = TENT,
 	camel = CAMEL,
@@ -108,6 +179,13 @@ AssetRegistry.props = {
 	fanPalm = FAN_PALM,
 	rockA = ROCK_A,
 	rockB = ROCK_B,
+	streetLamp = STREET_LAMP,
+	bench = BENCH,
+	bin = BIN,
+	acUnit = AC_UNIT,
+	carA = CAR_A,
+	carB = CAR_B,
+	wheel = WHEEL,
 } :: { [string]: Prop }
 
 -- Skyboxes. A Sky is six textures and nothing else, so there is nothing to
@@ -132,6 +210,10 @@ AssetRegistry.rejected = {
 	"1436325105, 10354687850, 3097584763, 18363394399: script-free but cartoon coconut palms, bright green, wrong tree for Riyadh",
 	"76007165574946, 79982036713249: Philips-branded lamp housings, real-world brand",
 	"87617624889799: six spam scripts and only a bare trunk mesh",
+	"89044383946547: traffic light is six plain parts and five scripts; built from boxes instead",
+	"123728150857841, 14047515737: satellite dishes are plain-part builds; built from a tilted cylinder instead",
+	"120535861432410: the Cybertruck and Rimac in the car pack are real-world brands; only the two generic bodies are used",
+	"98926724774714: parked cars named after real models",
 }
 
 -- Cache of loaded template MeshParts per mesh id. CreateMeshPartAsync yields

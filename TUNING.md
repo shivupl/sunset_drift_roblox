@@ -411,6 +411,29 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | palmsPersistent | Keeps every palm replicated. Off, the median is bare ahead of the car at speed because the streamer cannot keep up. ~650 mesh pieces. |
 | cityscapePersistent | Stops the horizon popping. ~300 small boxes. |
 
+---
+
+# City (`src/server/World/City/CityConfig.luau`)
+
+Not live-reloadable either; restart the server.
+
+| Field | What it does |
+|---|---|
+| originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many 420 m blocks the grid grows east and south. |
+| boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 44 m kerb to kerb, an 8 m palm median, three lanes and a parking lane each way. |
+| sideStreet.widthM | 16 m, one lane each way plus parking. |
+| roundabout.islandRadiusM / islandHeightM / palmsOnIsland | Every boulevard crossing. The island is the one raised thing in the city that collides. |
+| ramp.offRamp / onRamp / widthM | Waypoint lists { x, z, width } in world metres. Start them just outside the highway kerb (35.4 m from the centreline) as a narrow taper. |
+| surface.* | Slab thickness, run cap (streaming), colours, tone jitter, kerb dust, marking sizes, tyre tracks, pavement width. |
+| districts | One row per block row, one entry per block: commercial, towers, plaza, residential, lot. |
+| buildings.palette / accentPalette / accentChance / tone | Sand, cream and warm grey, the odd colour, per-part jitter. |
+| buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. |
+| buildings.residential.* | Lot size, wall height, gate, villa size and storeys, tier and dish chance. |
+| buildings.towers.* | Podium size and storeys, tower storeys and width, glass and frame colours, setback chance, crown colour. |
+| buildings.plaza.* | Bay geometry for the few painted rows. |
+| furniture.* | Palm, lamp, bin, bench, parked-car and signal densities. A parked car is five parts; parkedCarChance is the first thing to cut on a slow phone. |
+| shadows.* | Which city things cast: buildings and palms yes, compound walls, lamps and furniture no. |
+
 ## technology / fogEnabled / debug
 | Field | What it does |
 |---|---|
