@@ -104,8 +104,10 @@ degrees and the kick at about 0.33 s.
 ## Handbrake
 Multiplies rear grip by a fraction and drags the rear wheels with a capped
 force. The circle shrinks, the rear lets go, the car keeps most of its
-speed (measured: 94 → 85 km/h over a 0.6 s pull that reached 86° of angle).
-It cannot stop the car because the front is untouched.
+speed (measured: 100 → 94 km/h over a 0.6 s pull). It cannot stop the car
+because the front is untouched. Letting go ramps the grip back over a
+quarter of a second rather than in one step, so a release mid-slide hands
+the car to the throttle instead of jolting it straight.
 
 ## Steering and drift assist
 Steer angle chases the input at a rate, faster on return. Drift assist adds
@@ -156,6 +158,18 @@ Two pieces of honest physics shaped the tuning:
 
 The loaded side's springs are stiffened while lifted because two springs
 now carry the whole car.
+
+## Drift feedback
+Hajwala is watched as much as it is driven, so the car has to look like the
+clips: smoke off the rears, rubber on the road, wheels visibly spinning up
+when the rear breaks loose. All of it is driven by the per-wheel state the
+sim already reports (slip angle, saturated, locked, grounded) and none of
+it feeds back into the physics. The sim does not integrate wheel spin, so
+the wheel models are the one place it is shown: a driven wheel past the
+friction circle winds up toward the speed the engine is turning it, and a
+locked wheel stops. Emitters and skid-mark attachments hang off the chassis
+at each wheel's rest contact point rather than off the spinning wheel parts.
+Sound is not in yet; it needs audio assets we have not sourced.
 
 ## Camera
 Three profiles in CarConfig (normal, drift, two-wheel) cross-fade by rate.

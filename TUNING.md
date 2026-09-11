@@ -58,7 +58,7 @@ For the opposite effect move the other way. Press L in play to reload.
 | upshiftRpm / downshiftRpm | Shift points. Later upshift keeps the engine in the fat part of the curve for kicks. | — | ↑ upshift | — |
 | shiftTime | Torque cut per shift. | — | — | — |
 | spinRpmRate | How fast rpm climbs while spinning. Cosmetic. | — | — | — |
-| engineBrakeTorque | Weight shift forward on lift. More = sharper lift-off rotation and easier transitions. | ↑ | ↑ | — |
+| engineBrakeTorque | Weight shift forward on lift. More = sharper lift-off rotation and easier transitions. Raised from 40 to 90 because 40 was too little to feel at the wheelbase and mass of this car. | ↑ | ↑ | — |
 | brakeForce / brakeBias | Pedal strength and split. More rear bias = brake-induced rotation. | bias ↓ | bias ↓ | — |
 | brakeFadeMps | Anti-jitter at rest. | — | — | — |
 | reverseEngageMps | Below this speed, brake with no throttle selects reverse; throttle leaves it. | — | — | — |
@@ -79,6 +79,7 @@ For the opposite effect move the other way. Press L in play to reload.
 |---|---|---|---|---|
 | rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
 | brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
+| releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. | ↑ | — | — |
 
 ## clutchKick
 | Field | What it does | OS | INIT | 2W |
@@ -153,6 +154,21 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | slotStartM / slotSpacingM | Bay slot layout, one per player. |
 | settleSpeedMps / settleSeconds | A driverless car below this speed for this long is anchored. |
 | fallBelowM | A car this far under the road is re-parked in its bay (self-healing). A destroyed chassis respawns the car. |
+
+## effects
+Visual only; the physics never reads any of these. Client-side, for the car you are driving.
+
+| Field | What it does |
+|---|---|
+| enabled | Master switch for smoke, marks and wheel spin-up. |
+| smokeSlipStartDeg / smokeSlipFullDeg | Rear slip angle where smoke begins, and where it reaches full rate. Fronts only smoke when locked under braking. |
+| smokeMaxRate | Particles per second per wheel at full rate. Lower on weak phones. |
+| smokeMinSpeedMps | No smoke below this speed, so a parked car does not fume. |
+| smokeLifetime / smokeSize | How long a puff lasts and how big it ends up. |
+| skidSlipDeg | Lay rubber above this slip angle, or whenever a wheel is saturated (spinning or locked). |
+| skidLifetime | Seconds a mark stays on the road. |
+| skidTransparency | How dark the marks are. |
+| wheelSpinUpRate | How fast a driven wheel that has broken loose visually winds up to engine speed, and how fast a locked wheel stops. |
 
 ## debug
 | Field | What it does |

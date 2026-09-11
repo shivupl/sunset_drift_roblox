@@ -21,6 +21,8 @@ export type WheelState = {
 	load: number, -- N
 	slipAngleDeg: number,
 	saturated: boolean, -- spinning or locked
+	locked: boolean, -- saturated by braking (wheel stopped), as opposed to spinning
+	visualOmega: number, -- rad/s the wheel model turns at (spins up when driven loose, stops when locked)
 	steerDeg: number,
 	fx: number, -- N along wheel heading
 	fy: number, -- N along wheel right

@@ -81,7 +81,9 @@ local config = {
 		downshiftRpm = 3000,
 		shiftTime = 0.15,
 		spinRpmRate = 6000, -- rpm/s the engine climbs while the rear spins
-		engineBrakeTorque = 40, -- Nm at redline, scales with rpm
+		-- Lift-off is how a transition swings: engine braking loads the nose
+		-- and lightens the rear for the flick. 40 was too little to feel.
+		engineBrakeTorque = 90, -- Nm at redline, scales with rpm
 		brakeForce = 14000, -- N total at full pedal
 		brakeBias = 0.65, -- fraction on the front axle
 		brakeFadeMps = 0.5, -- brakes fade to zero below this speed (no jitter at rest)
@@ -112,6 +114,10 @@ local config = {
 		-- without touching the falloff that made the car stable.
 		rearGripMultiplier = 0.25,
 		brakeForce = 6000, -- N total on the rear axle
+		-- Grip comes back over this long after the lever is let go instead of
+		-- snapping back in one step, so releasing mid-slide reads as a hand-off
+		-- to throttle rather than a jolt.
+		releaseSeconds = 0.25,
 	},
 
 	clutchKick = {
@@ -233,6 +239,23 @@ local config = {
 		settleSpeedMps = 0.5, -- a driverless car below this speed...
 		settleSeconds = 1, -- ...for this long gets anchored
 		fallBelowM = 30, -- a car this far under the road surface is re-parked
+	},
+
+	-- Drift feedback on the client: tire smoke, skid marks, and wheel models
+	-- that spin up when driven loose or stop when locked. Purely visual; the
+	-- physics never reads any of this.
+	effects = {
+		enabled = true,
+		smokeSlipStartDeg = 10, -- rear slip angle where smoke begins
+		smokeSlipFullDeg = 35, -- and where it reaches smokeMaxRate
+		smokeMaxRate = 70, -- particles per second per wheel
+		smokeMinSpeedMps = 3, -- no smoke from a stationary tire
+		smokeLifetime = 1.4, -- seconds a puff lasts
+		smokeSize = 1.6, -- metres at the end of its life
+		skidSlipDeg = 9, -- lay rubber above this slip angle, or whenever the wheel is saturated
+		skidLifetime = 8, -- seconds a mark stays on the road
+		skidTransparency = 0.45,
+		wheelSpinUpRate = 6, -- 1/s, how quickly a spinning wheel model winds up to engine speed
 	},
 
 	debug = {

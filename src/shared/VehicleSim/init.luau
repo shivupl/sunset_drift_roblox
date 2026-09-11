@@ -63,6 +63,7 @@ export type Sim = typeof(setmetatable(
 		twoWheel: TwoWheel.State,
 		steerDeg: number,
 		comHeightM: number,
+		handbrakeLevel: number,
 		lastState: VehicleState,
 	},
 	VehicleSim
@@ -83,6 +84,8 @@ local function newWheelState(name: string): WheelState
 		load = 0,
 		slipAngleDeg = 0,
 		saturated = false,
+		locked = false,
+		visualOmega = 0,
 		steerDeg = 0,
 		fx = 0,
 		fy = 0,
@@ -159,6 +162,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		twoWheel = TwoWheel.new(),
 		steerDeg = 0,
 		comHeightM = 0.5,
+		handbrakeLevel = 0,
 		lastState = emptyState(wheels),
 	}, VehicleSim)
 	return self
@@ -289,6 +293,15 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	antiRoll(1, 2, cfg.suspension.antiRollFront)
 	antiRoll(3, 4, cfg.suspension.antiRollRear)
 
+	-- Handbrake level: on instantly, off over releaseSeconds so the rear's
+	-- grip returns progressively rather than snapping the car straight.
+	if input.handbrake then
+		self.handbrakeLevel = 1
+	elseif self.handbrakeLevel > 0 then
+		self.handbrakeLevel = math.max(0, self.handbrakeLevel - dt / math.max(cfg.handbrake.releaseSeconds, 1e-3))
+	end
+	local hbLevel = self.handbrakeLevel
+
 	-- 4. Drivetrain from rear wheel speed and last step's spin state.
 	local rearWheelSpeed = (contacts[3].vLong + contacts[4].vLong) / 2
 	local rearSpinning = self.wheels[3].state.saturated or self.wheels[4].state.saturated
@@ -337,10 +350,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				-- and it leaves the tire's stability numbers alone.
 				gripMult *= cfg.clutchKick.rearGripMultiplier
 			end
-			if input.handbrake then
+			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
-				gripMult *= cfg.handbrake.rearGripMultiplier
-				fxDemand += brakeDir * cfg.handbrake.brakeForce / 2 * brakeFade
+				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
+				fxDemand += brakeDir * cfg.handbrake.brakeForce / 2 * brakeFade * hbLevel
 			end
 		end
 		local axle = if w.front then cfg.tires.front else cfg.tires.rear
@@ -358,13 +371,28 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		ws.load = c.susp.force
 		ws.slipAngleDeg = out.slipAngleDeg
 		ws.saturated = out.saturated
+		ws.locked = out.saturated and fxDemand * c.vLong < 0
 		ws.steerDeg = c.steerDeg
 		ws.fx = out.fx
 		ws.fy = out.fy
 
 		-- Visual wheel: sit at the ray hit (or full droop), steer, and roll.
 		-- Forward rolling is a negative rotation about the lateral (+X) axis.
-		w.spinAngle -= c.vLong / cfg.body.wheelRadius * dt
+		-- A driven wheel that has broken loose winds up toward the speed the
+		-- engine is turning it; a locked wheel stops. The physics does not
+		-- integrate wheel spin, so this is the one place it is shown.
+		local groundOmega = c.vLong / cfg.body.wheelRadius
+		local targetOmega = groundOmega
+		if ws.locked then
+			targetOmega = 0
+		elseif out.saturated and not w.front then
+			local ratio = if drive.gear == -1 then -cfg.drivetrain.reverseRatio else cfg.drivetrain.gearRatios[drive.gear]
+			local engineOmega = drive.rpm / (60 / (2 * math.pi)) / (ratio * cfg.drivetrain.finalDrive)
+			targetOmega = if math.abs(engineOmega) > math.abs(groundOmega) then engineOmega else groundOmega
+		end
+		local spinUp = 1 - math.exp(-cfg.effects.wheelSpinUpRate * dt)
+		ws.visualOmega += (targetOmega - ws.visualOmega) * spinUp
+		w.spinAngle -= ws.visualOmega * dt
 		local dropM = if c.hitDistM
 			then math.min(c.hitDistM - cfg.body.wheelRadius, cfg.suspension.restLength)
 			else cfg.suspension.restLength

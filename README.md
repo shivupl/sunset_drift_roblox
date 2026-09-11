@@ -49,6 +49,11 @@ inboard of GAS while two-wheel is live, EXIT/RESET/RELOAD along the top. Not ver
 real phone or in the device emulator in this pass. Note the ergonomics: NATL sits under the
 left thumb and the LEAN pair under the right, so leaning means coming off GAS.
 
+## Drift feedback
+Smoke off the rear tires, skid marks, and wheels that spin up or lock, all driven by the
+sim's per-wheel slip and saturation. Tunables live under `effects` in CarConfig; set
+`effects.enabled = false` on a weak phone. No sound yet.
+
 ## Debug panel
 Top-left while driving: speed, gear, rpm, inputs, drift angle, yaw rate, two-wheel mode and
 roll with margin to tip, per-wheel slip angle / load / SPIN or AIR, handbrake, kick, assist.

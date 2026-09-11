@@ -12,6 +12,7 @@ local Keyboard = require(script.Parent.Input.Keyboard)
 local Gamepad = require(script.Parent.Input.Gamepad)
 local Touch = require(script.Parent.Input.Touch)
 local CameraRig = require(script.Parent.CameraRig)
+local DriftEffects = require(script.Parent.DriftEffects)
 
 type VehicleState = Types.VehicleState
 
@@ -69,6 +70,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 	Gamepad.bind()
 	Touch.bind()
 	CameraRig.start(model)
+	DriftEffects.attach(model)
 	conn = RunService.PreSimulation:Connect(function(dt: number)
 		local cfg = ConfigLoader.current()
 		local input = Input.get(dt, cfg)
@@ -84,6 +86,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		local state = s:step(input, dt)
 		VehicleController.lastState = state
 		Touch.setLeanVisible(input.twoWheel)
+		DriftEffects.update(state)
 		CameraRig.setState(state)
 		Players.LocalPlayer:SetAttribute("DbgCamera", CameraRig.currentProfile())
 		if VehicleController.onState then
@@ -120,6 +123,7 @@ function VehicleController.stop()
 	Gamepad.unbind()
 	Touch.unbind()
 	CameraRig.stop()
+	DriftEffects.detach()
 	setJumpEnabled(true)
 	sim = nil
 	car = nil
