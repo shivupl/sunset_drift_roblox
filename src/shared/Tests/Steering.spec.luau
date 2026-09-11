@@ -42,7 +42,7 @@ return function(t: T)
 	offRelief.counterSteerReliefDeg = 0
 	t.near(Steering.lockFactor(offRelief, 150, 1, 40, 0), 0.35, 1e-9, "relief angle 0 disables the lift")
 
-	-- A throw (handbrake or kick) lifts the taper regardless of direction
+	-- A throw (the handbrake) lifts the taper regardless of direction
 	t.near(Steering.lockFactor(cfg, 150, 1, 0, 1), 1, 1e-9, "full throw gives the whole wheel")
 	t.near(Steering.lockFactor(cfg, 150, -1, 5, 0.5), 0.35 + 0.65 * 0.5, 1e-6, "half throw lifts half the taper")
 	local noThrow = table.clone(cfg)

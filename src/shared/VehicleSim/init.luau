@@ -119,7 +119,6 @@ local function emptyState(wheels: { Wheel }): VehicleState
 		rollDeg = 0,
 		rollMarginDeg = 0,
 		handbrake = false,
-		clutchKick = false,
 		driftAssist = 0,
 		wheels = ws,
 	}
@@ -235,10 +234,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		assistGain *= fade
 	end
 	-- Speed-sensitive lock, lifted again when the input is a correction or a
-	-- deliberate throw (handbrake held, or inside the clutch-kick window).
-	-- A throw keeps its relief for a tail after the lever is let go, so a
-	-- 360 started with the handbrake does not lose its lock halfway round.
-	local throwNow = math.max(self.handbrakeLevel, if self.drivetrain.kickTimer > 0 then 1 else 0)
+	-- deliberate throw (the handbrake). A throw keeps its relief for a tail
+	-- after the lever is let go, so a 360 started with the handbrake does not
+	-- lose its lock halfway round.
+	local throwNow = self.handbrakeLevel
 	if throwNow > 0 then
 		self.throwTail = 1
 	elseif self.throwTail > 0 then
@@ -346,12 +345,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local drive = Drivetrain.step(
 		self.drivetrain,
 		cfg.drivetrain,
-		cfg.clutchKick,
 		cfg.body.wheelRadius,
 		dt,
 		input.throttle,
 		input.brake,
-		input.clutchKick,
 		rearWheelSpeed,
 		rearSpinning
 	)
@@ -385,15 +382,6 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
 			fxDemand = drive.drivePerRearWheel * diffShare
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
-			if drive.kicking then
-				-- A clutch kick shock-loads the rear contact patch. The torque
-				-- spike alone cannot do that job: once longitudinal demand
-				-- passes the friction circle the tire is already clamped to its
-				-- sliding value, so a bigger spike changes nothing. Cutting
-				-- grip for the kick window is what actually breaks it loose,
-				-- and it leaves the tire's stability numbers alone.
-				gripMult *= cfg.clutchKick.rearGripMultiplier
-			end
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
@@ -532,7 +520,6 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.rollDeg = rollDeg
 	st.rollMarginDeg = self.twoWheel.marginDeg
 	st.handbrake = input.handbrake
-	st.clutchKick = self.drivetrain.kickTimer > 0
 	st.driftAssist = cfg.steering.driftAssist
 	return st
 end

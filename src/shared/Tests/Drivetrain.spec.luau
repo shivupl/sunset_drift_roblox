@@ -21,14 +21,14 @@ return function(t: T)
 		brakeBias = 0.65,
 		brakeFadeMps = 0.5,
 		reverseEngageMps = 0.5,
+		reverseHoldSeconds = 0.4,
 	}
-	local kick = { multiplier = 2.5, duration = 0.3 }
 	local r = 0.33
 	local dt = 1 / 60
 
 	-- Standstill, full throttle, gear 1: rpm idle, torque from curve at idle
 	local st = Drivetrain.new(cfg)
-	local out = Drivetrain.step(st, cfg, kick, r, dt, 1, 0, false, 0, false)
+	local out = Drivetrain.step(st, cfg, r, dt, 1, 0, 0, false)
 	t.eq(out.gear, 1, "starts in gear 1")
 	t.near(out.rpm, 900, 1e-9, "idle rpm at standstill")
 	local torqueAtIdle = 200 -- curve clamps below 1000
@@ -37,42 +37,59 @@ return function(t: T)
 
 	-- 20 m/s in gear 1: rpm from wheels ~7900 -> clamps to redline, upshifts
 	st = Drivetrain.new(cfg)
-	out = Drivetrain.step(st, cfg, kick, r, dt, 1, 0, false, 20, false)
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 20, false)
 	t.eq(out.gear, 2, "upshifts above upshiftRpm")
 	t.near(out.torque, 0, 1e-9, "torque cut during shift")
 
-	-- Clutch kick edge multiplies torque for its duration
-	st = Drivetrain.new(cfg)
-	out = Drivetrain.step(st, cfg, kick, r, dt, 1, 0, true, 5, false)
-	local base = Drivetrain.step(Drivetrain.new(cfg), cfg, kick, r, dt, 1, 0, false, 5, false)
-	t.near(out.torque, base.torque * 2.5, 1e-6, "kick multiplies torque")
-	out = Drivetrain.step(st, cfg, kick, r, 0.31, 1, 0, true, 5, false) -- held, timer expires
-	t.near(out.torque, base.torque, 1e-6, "kick expires and does not retrigger while held")
-
 	-- Engine brake on lift
 	st = Drivetrain.new(cfg)
-	out = Drivetrain.step(st, cfg, kick, r, dt, 0, 0, false, 10, false)
+	out = Drivetrain.step(st, cfg, r, dt, 0, 0, 10, false)
 	t.ok(out.engineBrakePerRearWheel > 0, "engine brake when lifted")
 	t.near(out.drivePerRearWheel, 0, 1e-9, "no drive when lifted")
 
 	-- Brakes split by bias
-	out = Drivetrain.step(st, cfg, kick, r, dt, 0, 1, false, 10, false)
+	out = Drivetrain.step(st, cfg, r, dt, 0, 1, 10, false)
 	t.near(out.brakePerFrontWheel, 14000 * 0.65 / 2, 1e-9, "front brake")
 	t.near(out.brakePerRearWheel, 14000 * 0.35 / 2, 1e-9, "rear brake")
 
-	-- Reverse: brake held at standstill with no throttle engages reverse, drive is negative
+	-- Reverse needs the brake held at a standstill for reverseHoldSeconds, so
+	-- that stopping on the brakes stays in drive.
 	st = Drivetrain.new(cfg)
-	out = Drivetrain.step(st, cfg, kick, r, dt, 0, 1, false, 0, false)
-	t.eq(out.gear, -1, "enters reverse")
+	out = Drivetrain.step(st, cfg, r, dt, 0, 1, 0, false)
+	t.eq(out.gear, 1, "one frame of brake does not select reverse")
+	local elapsed, guard = dt, 0
+	while out.gear ~= -1 and guard < 600 do
+		out = Drivetrain.step(st, cfg, r, dt, 0, 1, 0, false)
+		elapsed += dt
+		guard += 1
+	end
+	t.eq(out.gear, -1, "the brake held at a standstill selects reverse")
+	t.near(elapsed, cfg.reverseHoldSeconds, dt * 1.5, "after about reverseHoldSeconds")
 	t.ok(out.drivePerRearWheel < 0, "reverse drive is negative")
 	t.near(out.brakePerRearWheel, 0, 1e-9, "brake pedal drives in reverse")
-	out = Drivetrain.step(st, cfg, kick, r, dt, 1, 0, false, -0.2, false)
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, -0.2, false)
 	t.eq(out.gear, 1, "throttle from near-standstill leaves reverse")
+
+	-- Braking to a stop from speed stays in drive: the hold only counts once
+	-- the car is actually stopped, and letting off resets it.
+	st = Drivetrain.new(cfg)
+	for _ = 1, 60 do
+		out = Drivetrain.step(st, cfg, r, dt, 0, 1, 5, false) -- still rolling
+	end
+	t.eq(out.gear, 1, "braking while moving never selects reverse")
+	for _ = 1, 10 do
+		out = Drivetrain.step(st, cfg, r, dt, 0, 1, 0, false)
+	end
+	out = Drivetrain.step(st, cfg, r, dt, 0, 0, 0, false) -- let off before the hold completes
+	for _ = 1, 10 do
+		out = Drivetrain.step(st, cfg, r, dt, 0, 1, 0, false)
+	end
+	t.eq(out.gear, 1, "releasing the brake restarts the hold")
 
 	-- Wheelspin: rpm floats up toward redline
 	st = Drivetrain.new(cfg)
 	for _ = 1, 30 do
-		out = Drivetrain.step(st, cfg, kick, r, dt, 1, 0, false, 5, true)
+		out = Drivetrain.step(st, cfg, r, dt, 1, 0, 5, true)
 	end
 	t.ok(out.rpm > 3000, "rpm climbs while spinning")
 	t.eq(out.gear, 1, "spin does not upshift")

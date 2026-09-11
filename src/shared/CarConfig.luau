@@ -114,6 +114,9 @@ local config = {
 		brakeBias = 0.65, -- fraction on the front axle
 		brakeFadeMps = 0.5, -- brakes fade to zero below this speed (no jitter at rest)
 		reverseEngageMps = 0.5, -- below this speed, brake with no throttle selects reverse
+		-- ...and only after the brake has been held that long while stopped,
+		-- so braking to a standstill does not snap into reverse.
+		reverseHoldSeconds = 0.4,
 	},
 
 	steering = {
@@ -135,12 +138,12 @@ local config = {
 		-- wheel back).
 		counterSteerReliefDeg = 25,
 		counterSteerRelief = 1,
-		-- A handbrake pull or clutch kick is a deliberate throw, so the taper
+		-- A handbrake pull is a deliberate throw, so the taper
 		-- lifts for that window (1 = full wheel, 0 = taper still applies).
 		-- Without it a Ta'geed at 160 km/h has 13 deg of steer to start with.
 		throwRelief = 1,
 		-- Keep the throw relief for this long after the handbrake is let go
-		-- or the kick ends, so the wheel does not shrink to a third mid-spin.
+		-- so the wheel does not shrink to a third mid-spin.
 		throwReliefTailSeconds = 1.5,
 	},
 
@@ -160,17 +163,6 @@ local config = {
 		-- keeps them locked and comes round in ~3.4 s, which is the real
 		-- Ta'geed technique. 0.4 keeps a release mid-slide soft.
 		releaseSeconds = 0.4,
-	},
-
-	clutchKick = {
-		-- The torque spike only bites while the rear is still inside its
-		-- friction circle; past that the tire is clamped to its sliding value
-		-- and a bigger multiplier does nothing. rearGripMultiplier is what
-		-- breaks the rear loose, the same way the handbrake does, and it is
-		-- the knob to reach for if kicks stop initiating.
-		multiplier = 2.5,
-		rearGripMultiplier = 0.5,
-		duration = 0.3,
 	},
 
 	twoWheel = {
@@ -244,6 +236,10 @@ local config = {
 		touchPadDeadzone = 0.06,
 		touchPadFullAt = 0.8,
 		touchPadCurve = 1.3,
+		-- Lean slider (two-wheel only): how far it must travel from centre
+		-- before it counts as a lean, as a fraction of its half-width. The
+		-- slider springs back, so a flick out and back is one tap.
+		touchLeanDeadzone = 0.25,
 		touchScale = 1, -- overall size of the touch controls
 		gamepadDeadzone = 0.12,
 		triggerDeadzone = 0.05,

@@ -2,27 +2,32 @@
 -- Phone controls. Draws its own ScreenGui rather than the ContextActionService
 -- stock buttons: those are small grey discs with no room for a steering pad.
 --
--- Layout, landscape, positions as fractions of the viewport and sizes from
--- its height so a 375-point phone and a 430-point phone feel the same:
---   left thumb   steer pad along the bottom, NATL above it
---   right thumb  GAS in the corner, BRAKE inboard, HAND above GAS, KICK above
---                BRAKE, and the LEAN pair inboard of BRAKE while two-wheel is live
---   top          EXIT RESET LOAD DBG, small, right of the HUD card (the top-left
---                belongs to Roblox's menu and chat window)
+-- Landscape layout, positions as fractions of the viewport and sizes from its
+-- height so a 375-point phone and a 430-point phone feel the same.
 --
--- The steer pad is positional: where the thumb sits across the pad is the
--- steer angle, so sliding from one side to the other is a counter-steer
--- without lifting. Input smooths that with input.touchSteerRatePerSec.
+--   left half, bottom    steer pad, thumb position across it is the angle
+--   directly above it    lean slider, only while the car is on two wheels
+--   left, higher         NATL, the two-wheel toggle
+--   bottom right         GAS, with BRAKE inboard of it
+--   directly above GAS   HAND, close enough that the thumb slides between
+--                        the two without lifting
+--   top                  EXIT RESET LOAD DBG, small, right of the HUD card
 --
--- NATL is a toggle here (tap on, tap off) because a held button would pin
--- the thumb that has to keep steering. It clears itself when the car lands.
+-- Both sliders are positional and spring back to centre when released. The
+-- steer pad is analog: sliding from one side to the other is a counter-steer
+-- without lifting, smoothed by input.touchSteerRatePerSec. The lean slider is
+-- digital past input.touchLeanDeadzone, because the two-wheel balance model
+-- wants taps rather than a held axis, so a flick out and back is one tap.
 --
--- Multi-touch: a touch is tracked by its InputObject from the control it
--- began on until UserInputService says it ended, so a thumb that slides off
--- a button still releases it and two thumbs never confuse each other.
+-- NATL is a toggle here (tap on, tap off) because a held button would pin the
+-- thumb that has to keep steering. It clears itself when the car lands.
 --
--- Harness: setting the LocalPlayer attribute ForceTouch = true builds this
--- HUD on a desktop so it can be inspected without the device emulator.
+-- Multi-touch: a touch is tracked by its InputObject from the control it began
+-- on until UserInputService says it ended, so a thumb that slides off a button
+-- still releases it and two thumbs never confuse each other.
+--
+-- Harness: setting the LocalPlayer attribute ForceTouch = true builds this HUD
+-- on a desktop so it can be inspected without the device emulator.
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -44,33 +49,51 @@ type Spec = {
 	top: boolean?, -- sit just under the Roblox top bar instead of at y
 }
 
+type SliderSpec = {
+	name: string,
+	x: number,
+	y: number,
+	w: number, -- fraction of viewport width
+	h: number, -- fraction of viewport height
+	color: Color3,
+	left: string, -- glyph at each end
+	right: string,
+}
+
+type Slider = {
+	frame: TextButton,
+	knob: Frame,
+	spec: SliderSpec,
+	touch: InputObject?,
+	move: (frac: number) -> (), -- frac is -1..1 from the centre
+	release: () -> (),
+}
+
 local GREY = Color3.fromRGB(210, 210, 215)
-local LEAN = Color3.fromRGB(150, 145, 255)
+local PAD_COLOR = Color3.fromRGB(235, 235, 240)
+local LEAN_COLOR = Color3.fromRGB(150, 145, 255)
+
 local BUTTONS: { Spec } = {
-	{ name = "Gas", title = "GAS", x = 0.91, y = 0.78, size = 0.26, color = Color3.fromRGB(80, 225, 120) },
-	{ name = "Brake", title = "BRAKE", x = 0.78, y = 0.89, size = 0.18, color = Color3.fromRGB(245, 85, 85) },
-	{ name = "Hand", title = "HAND", x = 0.90, y = 0.50, size = 0.21, color = Color3.fromRGB(255, 165, 40) },
-	{ name = "Kick", title = "KICK", x = 0.77, y = 0.66, size = 0.16, color = Color3.fromRGB(250, 230, 60) },
-	{ name = "Natl", title = "NATL", x = 0.09, y = 0.58, size = 0.17, color = Color3.fromRGB(110, 205, 255) },
-	{ name = "LeanLeft", title = "LEAN\n<", x = 0.55, y = 0.87, size = 0.18, color = LEAN },
-	{ name = "LeanRight", title = "LEAN\n>", x = 0.66, y = 0.87, size = 0.18, color = LEAN },
+	{ name = "Gas", title = "GAS", x = 0.91, y = 0.80, size = 0.26, color = Color3.fromRGB(80, 225, 120) },
+	{ name = "Brake", title = "BRAKE", x = 0.755, y = 0.86, size = 0.18, color = Color3.fromRGB(245, 85, 85) },
+	{ name = "Hand", title = "HAND", x = 0.91, y = 0.545, size = 0.20, color = Color3.fromRGB(255, 165, 40) },
+	{ name = "Natl", title = "NATL", x = 0.06, y = 0.45, size = 0.15, color = Color3.fromRGB(110, 205, 255) },
 	{ name = "Exit", title = "EXIT", x = 0.60, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Reset", title = "RESET", x = 0.66, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Reload", title = "LOAD", x = 0.72, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Debug", title = "DBG", x = 0.78, y = 0, size = 0.11, color = GREY, top = true },
 }
-local PAD = { x = 0.20, y = 0.84, w = 0.36, h = 0.19 } -- w of viewport width, h of height
-local PAD_COLOR = Color3.fromRGB(235, 235, 240)
-local LEAN_BUTTONS = { "LeanLeft", "LeanRight" }
+local STEER_SPEC: SliderSpec =
+	{ name = "SteerPad", x = 0.20, y = 0.86, w = 0.36, h = 0.17, color = PAD_COLOR, left = "<", right = ">" }
+local LEAN_SPEC: SliderSpec =
+	{ name = "LeanSlider", x = 0.20, y = 0.655, w = 0.30, h = 0.115, color = LEAN_COLOR, left = "◀", right = "▶" }
 
 local gui: ScreenGui? = nil
 local buttons: { [string]: TextButton } = {}
 local specs: { [string]: Spec } = {}
+local sliders: { [string]: Slider } = {}
 local touches: { [InputObject]: string } = {}
 local connections: { RBXScriptConnection } = {}
-local pad: TextButton? = nil
-local knob: Frame? = nil
-local padTouch: InputObject? = nil
 local natlOn = false
 local wasUp = false
 local leanVisible = true
@@ -111,21 +134,10 @@ local handlers: { [string]: (boolean) -> () } = {
 	Hand = function(down)
 		Input.raw.handbrake = down
 	end,
-	Kick = function(down)
-		if down then
-			Input.pulse("clutchKick")
-		end
-	end,
 	Natl = function(down)
 		if down then
 			setNatl(not natlOn)
 		end
-	end,
-	LeanLeft = function(down)
-		Input.raw.leanLeft = down
-	end,
-	LeanRight = function(down)
-		Input.raw.leanRight = down
 	end,
 	Exit = function(down)
 		if down then
@@ -152,7 +164,7 @@ local handlers: { [string]: (boolean) -> () } = {
 local function press(name: string, down: boolean)
 	local spec = specs[name]
 	local btn = buttons[name]
-	-- NATL keeps its lit state from the toggle, not the finger.
+	-- NATL keeps its lit state from the toggle, not from the finger.
 	if btn and spec and name ~= "Natl" then
 		style(btn, spec.color, down)
 	end
@@ -162,39 +174,37 @@ local function press(name: string, down: boolean)
 	end
 end
 
--- Steer from the thumb's x across the pad. Beyond the pad the value clamps,
--- so a thumb that wanders off the end is still full lock, not nothing.
-local function padSteer(px: number)
-	local p, k = pad, knob
-	if not p or not k then
-		return
-	end
+-- Steering: the thumb's position across the pad is the angle. Past the end of
+-- the pad it clamps, so a thumb that wanders off is still full lock.
+local function steerMove(frac: number)
 	local cfg = ConfigLoader.current().input
-	local halfW = p.AbsoluteSize.X / 2
-	local cx = p.AbsolutePosition.X + halfW
-	local dx = (px - cx) / math.max(halfW * cfg.touchPadFullAt, 1)
-	local mag = math.abs(dx)
+	local mag = math.abs(frac) / math.max(cfg.touchPadFullAt, 1e-3)
 	local steer = 0
 	if mag > cfg.touchPadDeadzone then
-		steer = math.sign(dx) * math.min((mag - cfg.touchPadDeadzone) / (1 - cfg.touchPadDeadzone), 1) ^ cfg.touchPadCurve
+		steer = math.sign(frac) * math.min((mag - cfg.touchPadDeadzone) / (1 - cfg.touchPadDeadzone), 1) ^ cfg.touchPadCurve
 	end
 	Input.raw.steerAnalog = steer
 	Input.raw.steerDigital = 0
 	Input.raw.source = "touch"
-	local frac = math.clamp((px - p.AbsolutePosition.X) / math.max(p.AbsoluteSize.X, 1), 0.1, 0.9)
-	k.Position = UDim2.fromScale(frac, 0.5)
-	k.BackgroundTransparency = 0.05
 end
 
-local function padRelease()
-	padTouch = nil
+local function steerRelease()
 	Input.raw.steerAnalog = 0
 	Input.raw.steerDigital = 0
 	Input.raw.source = "touch"
-	if knob then
-		knob.Position = UDim2.fromScale(0.5, 0.5)
-		knob.BackgroundTransparency = 0.35
-	end
+end
+
+-- Leaning is digital: past the deadzone in either direction is the same as
+-- holding Q or E, and the slider springing back is the release.
+local function leanMove(frac: number)
+	local dead = ConfigLoader.current().input.touchLeanDeadzone
+	Input.raw.leanLeft = frac < -dead
+	Input.raw.leanRight = frac > dead
+end
+
+local function leanRelease()
+	Input.raw.leanLeft = false
+	Input.raw.leanRight = false
 end
 
 local function makeButton(parent: ScreenGui, spec: Spec): TextButton
@@ -234,70 +244,92 @@ local function makeButton(parent: ScreenGui, spec: Spec): TextButton
 	return btn
 end
 
-local function makePad(parent: ScreenGui)
-	local p = Instance.new("TextButton")
-	p.Name = "SteerPad"
-	p.Text = ""
-	p.AutoButtonColor = false
-	p.BorderSizePixel = 0
-	p.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-	p.BackgroundTransparency = 0.45
-	p.AnchorPoint = Vector2.new(0.5, 0.5)
-	p.Position = UDim2.fromScale(PAD.x, PAD.y)
+local function makeSlider(parent: ScreenGui, spec: SliderSpec, move: (number) -> (), release: () -> ()): Slider
+	local f = Instance.new("TextButton")
+	f.Name = spec.name
+	f.Text = ""
+	f.AutoButtonColor = false
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+	f.BackgroundTransparency = 0.45
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(spec.x, spec.y)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0.5, 0)
-	corner.Parent = p
+	corner.Parent = f
 	local stroke = Instance.new("UIStroke")
 	stroke.Thickness = 3
-	stroke.Color = PAD_COLOR
+	stroke.Color = spec.color
 	stroke.Transparency = 0.3
-	stroke.Parent = p
-	local function arrow(glyph: string, xFrac: number)
+	stroke.Parent = f
+	local function glyph(ch: string, xFrac: number)
 		local l = Instance.new("TextLabel")
 		l.BackgroundTransparency = 1
-		l.Text = glyph
+		l.Text = ch
 		l.Font = Enum.Font.GothamBlack
 		l.TextScaled = true
-		l.TextColor3 = PAD_COLOR
+		l.TextColor3 = spec.color
 		l.TextTransparency = 0.35
 		l.AnchorPoint = Vector2.new(0.5, 0.5)
 		l.Position = UDim2.fromScale(xFrac, 0.5)
-		l.Size = UDim2.fromScale(0.12, 0.6)
-		l.Parent = p
+		l.Size = UDim2.fromScale(0.1, 0.5)
+		l.Parent = f
 	end
-	arrow("<", 0.08)
-	arrow(">", 0.92)
+	glyph(spec.left, 0.07)
+	glyph(spec.right, 0.93)
 	local tick = Instance.new("Frame")
 	tick.Name = "Centre"
 	tick.BorderSizePixel = 0
-	tick.BackgroundColor3 = PAD_COLOR
+	tick.BackgroundColor3 = spec.color
 	tick.BackgroundTransparency = 0.6
 	tick.AnchorPoint = Vector2.new(0.5, 0.5)
 	tick.Position = UDim2.fromScale(0.5, 0.5)
 	tick.Size = UDim2.new(0, 2, 0.5, 0)
-	tick.Parent = p
-	local k = Instance.new("Frame")
-	k.Name = "Knob"
-	k.BorderSizePixel = 0
-	k.BackgroundColor3 = PAD_COLOR
-	k.BackgroundTransparency = 0.35
-	k.AnchorPoint = Vector2.new(0.5, 0.5)
-	k.Position = UDim2.fromScale(0.5, 0.5)
+	tick.Parent = f
+	local knob = Instance.new("Frame")
+	knob.Name = "Knob"
+	knob.BorderSizePixel = 0
+	knob.BackgroundColor3 = spec.color
+	knob.BackgroundTransparency = 0.35
+	knob.AnchorPoint = Vector2.new(0.5, 0.5)
+	knob.Position = UDim2.fromScale(0.5, 0.5)
 	local kc = Instance.new("UICorner")
 	kc.CornerRadius = UDim.new(0.5, 0)
-	kc.Parent = k
-	k.Parent = p
-	p.Parent = parent
-	pad, knob = p, k
+	kc.Parent = knob
+	knob.Parent = f
+	f.Parent = parent
+
+	local slider: Slider = { frame = f, knob = knob, spec = spec, touch = nil, move = move, release = release }
 	table.insert(
 		connections,
-		p.InputBegan:Connect(function(io: InputObject)
-			if isPress(io) and padTouch == nil and touches[io] == nil then
-				padTouch = io
-				padSteer(io.Position.X)
+		f.InputBegan:Connect(function(io: InputObject)
+			if isPress(io) and slider.touch == nil and touches[io] == nil then
+				slider.touch = io
+				Touch.trackSlider(slider, io.Position.X)
 			end
 		end)
 	)
+	sliders[spec.name] = slider
+	return slider
+end
+
+-- Drive a slider from a screen x: move the knob, report the offset from
+-- centre as -1..1.
+function Touch.trackSlider(slider: Slider, px: number)
+	local f, knob = slider.frame, slider.knob
+	local halfW = f.AbsoluteSize.X / 2
+	local centre = f.AbsolutePosition.X + halfW
+	local frac = math.clamp((px - centre) / math.max(halfW, 1), -1, 1)
+	knob.Position = UDim2.fromScale(0.5 + frac * 0.42, 0.5)
+	knob.BackgroundTransparency = 0.05
+	slider.move(frac)
+end
+
+local function releaseSlider(slider: Slider)
+	slider.touch = nil
+	slider.knob.Position = UDim2.fromScale(0.5, 0.5)
+	slider.knob.BackgroundTransparency = 0.35
+	slider.release()
 end
 
 local function layout()
@@ -320,12 +352,11 @@ local function layout()
 			end
 		end
 	end
-	local p, k = pad, knob
-	if p and k then
-		local h = math.floor(vp.Y * PAD.h * scale)
-		p.Size = UDim2.fromOffset(math.floor(vp.X * PAD.w * scale), h)
+	for _, slider in sliders do
+		local h = math.floor(vp.Y * slider.spec.h * scale)
+		slider.frame.Size = UDim2.fromOffset(math.floor(vp.X * slider.spec.w * scale), h)
 		local kd = math.floor(h * 0.78)
-		k.Size = UDim2.fromOffset(kd, kd)
+		slider.knob.Size = UDim2.fromOffset(kd, kd)
 	end
 end
 
@@ -345,7 +376,8 @@ function Touch.bind()
 		specs[spec.name] = spec
 		buttons[spec.name] = makeButton(g, spec)
 	end
-	makePad(g)
+	makeSlider(g, STEER_SPEC, steerMove, steerRelease)
+	makeSlider(g, LEAN_SPEC, leanMove, leanRelease)
 	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	layout()
 	table.insert(connections, g:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout))
@@ -353,14 +385,19 @@ function Touch.bind()
 	table.insert(
 		connections,
 		UserInputService.InputChanged:Connect(function(io: InputObject)
-			local pt = padTouch
-			if not pt then
-				return
-			end
-			-- A touch keeps its InputObject for its whole life; a mouse drag
-			-- (Studio without the emulator) arrives as MouseMovement instead.
-			if io == pt or (pt.UserInputType == Enum.UserInputType.MouseButton1 and io.UserInputType == Enum.UserInputType.MouseMovement) then
-				padSteer(io.Position.X)
+			for _, slider in sliders do
+				local held = slider.touch
+				-- A touch keeps its InputObject for its whole life; a mouse
+				-- drag (Studio without the emulator) arrives as MouseMovement.
+				if
+					held
+					and (
+						io == held
+						or (held.UserInputType == Enum.UserInputType.MouseButton1 and io.UserInputType == Enum.UserInputType.MouseMovement)
+					)
+				then
+					Touch.trackSlider(slider, io.Position.X)
+				end
 			end
 		end)
 	)
@@ -372,8 +409,10 @@ function Touch.bind()
 				touches[io] = nil
 				press(name, false)
 			end
-			if io == padTouch then
-				padRelease()
+			for _, slider in sliders do
+				if slider.touch == io then
+					releaseSlider(slider)
+				end
 			end
 		end)
 	)
@@ -389,7 +428,7 @@ function Touch.relayout()
 end
 
 -- Called every step with the sim's two-wheel mode: the NATL toggle turns
--- itself off once a lift has ended, so the lean pair goes away with it.
+-- itself off once a lift has ended, so the lean slider goes away with it.
 function Touch.observe(twoWheelMode: string)
 	local up = twoWheelMode == "lifting" or twoWheelMode == "balanced"
 	if natlOn and wasUp and not up then
@@ -398,25 +437,18 @@ function Touch.observe(twoWheelMode: string)
 	wasUp = up
 end
 
--- The lean pair is only on screen while the car is in two-wheel mode.
+-- The lean slider is only on screen while the car is in two-wheel mode.
 function Touch.setLeanVisible(visible: boolean)
 	if visible == leanVisible then
 		return
 	end
 	leanVisible = visible
-	for _, name in LEAN_BUTTONS do
-		local btn = buttons[name]
-		if btn then
-			btn.Visible = visible
-		end
-	end
-	if not visible then
-		-- A button that vanishes under a finger never fires its Up event.
-		Input.raw.leanLeft, Input.raw.leanRight = false, false
-		for io, name in touches do
-			if name == "LeanLeft" or name == "LeanRight" then
-				touches[io] = nil
-			end
+	local slider = sliders[LEAN_SPEC.name]
+	if slider then
+		slider.frame.Visible = visible
+		if not visible then
+			-- A control that vanishes under a finger never fires its Up event.
+			releaseSlider(slider)
 		end
 	end
 end
@@ -429,7 +461,7 @@ function Touch.unbind()
 	table.clear(touches)
 	table.clear(buttons)
 	table.clear(specs)
-	pad, knob, padTouch = nil, nil, nil
+	table.clear(sliders)
 	if gui then
 		gui:Destroy()
 		gui = nil

@@ -45,11 +45,6 @@ function Keyboard.bind()
 	bind("HJ_KHandbrake", function(down)
 		Input.raw.handbrake = down
 	end, Enum.KeyCode.Space)
-	bind("HJ_KKick", function(down)
-		if down then
-			Input.pulse("clutchKick")
-		end
-	end, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
 	-- Q/E lift the car onto two wheels and lean it. Holding one is what keeps
 	-- the mode alive; holding both is a neutral hold; releasing both lands it.
 	bind("HJ_KLeanLeft", function(down)

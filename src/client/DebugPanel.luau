@@ -141,12 +141,7 @@ function DebugPanel.update(state: VehicleState)
 		),
 		wheelLine(w[1]) .. "   " .. wheelLine(w[2]),
 		wheelLine(w[3]) .. "   " .. wheelLine(w[4]),
-		string.format(
-			"HB %s  KICK %s  ASSIST %.2f",
-			if state.handbrake then "ON " else "off",
-			if state.clutchKick then "ON " else "off",
-			state.driftAssist
-		),
+		string.format("HB %s  ASSIST %.2f", if state.handbrake then "ON " else "off", state.driftAssist),
 	}, "\n")
 end
 

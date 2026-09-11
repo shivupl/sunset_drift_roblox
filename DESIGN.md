@@ -57,11 +57,19 @@ lateral force times the centre-of-mass height is a real roll moment that
 loads the outside springs in a slide.
 
 ## Drivetrain
-Torque curve by rpm, automatic gearbox, welded-diff behaviour (equal drive
-to both rear wheels). Wheel spin is not integrated; the tire reports when
-demand exceeded grip and the engine rpm floats up while it does. Clutch kick
-is a short torque multiplier. Engine braking on lift shifts weight forward,
-which is what makes a lift-and-flick transition swing the rear across.
+Torque curve by rpm, automatic gearbox, a differential that blends between
+open and welded. Wheel spin is not integrated; the tire reports when demand
+exceeded grip and the engine rpm floats up while it does. Engine braking on
+lift shifts weight forward, which is what makes a lift-and-flick transition
+swing the rear across.
+
+There is no manual shift and no clutch kick. The kick was cut because it
+never earned its button: the handbrake initiates a slide faster and is the
+control a hajwala driver actually uses, and a second initiation method meant
+a second set of grip numbers to keep honest. Reverse is not a selectable
+gear either. Holding the brake for reverseHoldSeconds after the car has
+stopped engages it and any throttle leaves it, so braking hard to a
+standstill cannot drop the car into reverse the moment it settles.
 
 ## Tafheet moves
 The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a
@@ -82,10 +90,10 @@ a held drift lives in changes. Measured from 160 km/h: 360 in 3.4 s with
 109 km/h left.
 
 The speed-sensitive lock has to get out of the way of a throw. At 160 km/h
-it leaves 13° of steer, which cannot start a Ta'geed. A handbrake pull or a
-clutch kick is an explicit throw, so the taper lifts for that window, the
-same way it already lifts for a correction. Turning alone at speed is still
-tapered, which is the whole point of it.
+it leaves 13° of steer, which cannot start a Ta'geed. A handbrake pull is an
+explicit throw, so the taper lifts for that window, the same way it already
+lifts for a correction. Turning alone at speed is still tapered, which is
+the whole point of it.
 
 A Ta'geed is driven with the handbrake held through the spin, and that is
 not a limitation of the model but the physics of the move: once the car is
@@ -128,14 +136,18 @@ So the rise got its own shape parameter. Below 1 it is concave, keeping the
 tire's bite near zero slip and rounding over into the peak, which makes
 "where the axle lets go" and "how stiff the axle is" separate knobs.
 
-Both initiation methods had to be paid for afterwards, because a rear that
-holds more grip is a rear that is harder to break loose on purpose. The
-handbrake cuts deeper than it used to. The clutch kick gained a grip cut of
-its own, because its torque spike turned out to be inert: once longitudinal
-demand passes the friction circle the tire is already clamped to its sliding
-value and a bigger spike changes nothing. Measured against the old tires on
-the same harness, handbrake initiation is unchanged at about 0.23 s to 20
-degrees and the kick at about 0.33 s.
+Initiation had to be paid for afterwards, because a rear that holds more
+grip is a rear that is harder to break loose on purpose, so the handbrake
+cuts deeper than it used to. Measured against the old tires on the same
+harness, handbrake initiation is unchanged at about 0.23 s to 20 degrees.
+
+The clutch kick used to be the second way in. It was removed with the
+control simplification, and the reason it is worth recording is that its
+torque spike turned out to be inert on its own: once longitudinal demand
+passes the friction circle the tire is already clamped to its sliding value,
+so a bigger spike changes nothing. Only a grip cut broke the rear loose,
+which made the kick a second copy of the handbrake with its own numbers to
+keep honest.
 
 ## Handbrake
 Multiplies rear grip by a fraction and drags the rear wheels with a capped
@@ -254,6 +266,57 @@ to 1300 m where the straight widens to 160 m (two flush wings, no overlap,
 so no z-fighting), a 400 m radius / 30° left curve at the end, and a sand
 plane that covers the straight, the curve and 500 m of run-off. The pad is
 where left-right transitions get practised without running off the 60 m road.
+
+## Scoring and cash
+Scoring lives in one pure module that both sides run. The client steps it on
+its own VehicleState so the HUD number moves with the car and owes nothing to
+the network. The server steps the same code on samples it takes itself from
+each driven car's replicated pose and velocity, and that copy is the one that
+decides a payout.
+
+The inputs are deliberately just speed and drift angle. Anything else — a
+spin counter, a wheel state, an input flag — would be something the server
+cannot reproduce from replicated physics, and then the two totals would
+diverge and the cap below would start punishing honest players. That is also
+why a 360 has no special bonus: at a high angle the angle factor is already
+at its ceiling, so a Ta'geed pays the top rate for as long as it takes to
+come round, out of the same two numbers.
+
+When a slide ends the client submits its figure as a claim and the server
+banks `min(claim, its own total x serverTolerance)`. With no claim it banks
+what it saw. So a claim can only ever lower a payout, never raise one, and
+the worst a forged claim achieves is the tolerance itself: 1.25 means at most
+25% over an honest run of the same slide, which is not worth writing an
+exploit for. The tolerance exists because the two sides sample at different
+rates, not as a concession. Samples that fail a plausibility check — a speed
+no car reaches, or movement further than that speed allows in the interval —
+throw the open slide away rather than score it. A player pressing reset trips
+that same check, which is the right outcome.
+
+Cash never travels on a remote. It lives in Economy and reaches the client as
+a replicated Player attribute, which a client can write locally and change
+nothing. The one rule that matters in Economy is that a profile whose load
+failed is never saved: overwriting a real balance with a fresh zero is the
+only unrecoverable mistake available here. Cross-server session locking is
+not implemented; Roblox keeps a player in one server at a time, so the
+exposure is a rejoin racing the old server's save, and the best score is
+merged through UpdateAsync rather than overwritten. Worth revisiting when
+teleports arrive.
+
+Detecting a crash needed care. Differentiating speed frame to frame is
+useless when the client steps at 240 Hz and the server samples at 20: the
+same blip reads as a wildly different deceleration on each side. Instead both
+keep an average of speed lagged by impactSmoothSeconds and compare the
+current speed against it. How far speed has fallen below its own recent
+average is a rate that barely moves for one bad sample and does not depend on
+the step size. Hard braking reads about 40 km/h per second, a wall reads
+several hundred.
+
+A slide that never straightens is a spin-out, not a finish. The car falls
+under minSpeedKmh long before it reaches spinOutSpeedKmh, so a car rotating
+to a standstill would otherwise run out the grace window and bank the whole
+slide. When the window expires the drift angle decides: still sideways means
+the car never came back and the run is lost.
 
 ## Network
 Server builds and parks cars and runs the sim with zero input for parked

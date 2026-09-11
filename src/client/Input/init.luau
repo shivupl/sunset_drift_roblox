@@ -40,7 +40,7 @@ Input.raw = {
 	source = "keyboard",
 } :: Raw
 
-local edges = { clutchKick = false, exit = false, reset = false, reload = false }
+local edges = { exit = false, reset = false, reload = false }
 local steerRamped = 0
 
 -- Edge-triggered actions call this once per press.
@@ -59,10 +59,6 @@ local function readOverride(player: Player): InputState
 	out.leanRight = if player:GetAttribute("OvLeanRight") == true or ovLean > 0 then 1 else 0
 	out.lean = out.leanRight - out.leanLeft
 	out.twoWheel = player:GetAttribute("OvTwoWheel") == true or out.leanLeft ~= 0 or out.leanRight ~= 0
-	if player:GetAttribute("OvClutchKick") == true then
-		out.clutchKick = true
-		player:SetAttribute("OvClutchKick", false)
-	end
 	if player:GetAttribute("OvReset") == true then
 		out.reset = true
 		player:SetAttribute("OvReset", false)
@@ -71,11 +67,10 @@ local function readOverride(player: Player): InputState
 end
 
 local function takeEdges(out: InputState)
-	out.clutchKick = out.clutchKick or edges.clutchKick
 	out.exit = edges.exit
 	out.reset = out.reset or edges.reset
 	out.reload = edges.reload
-	edges.clutchKick, edges.exit, edges.reset, edges.reload = false, false, false, false
+	edges.exit, edges.reset, edges.reload = false, false, false
 end
 
 function Input.get(dt: number, cfg: Config): InputState

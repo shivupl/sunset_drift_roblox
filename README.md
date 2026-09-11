@@ -20,12 +20,20 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 ## Controls
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
-| Throttle / Brake (brake at a stop = reverse) | W / S | RT / LT | GAS / BRAKE (right thumb) |
+| Throttle / Brake | W / S | RT / LT | GAS / BRAKE (right thumb) |
 | Steer | A / D | left stick | steer pad (left thumb, position = angle, slide to counter-steer) |
+
+That is the whole control set: steer, throttle, brake, handbrake, two-wheel, lean, reset,
+exit, reload. There is no clutch kick and no shifter.
+
+## Gears and reverse
+The gearbox is automatic and there is nothing to shift. Reverse is not a gear you select
+either: hold the brake for `drivetrain.reverseHoldSeconds` (0.4 s) after the car has already
+stopped and it engages, and any throttle puts you back in drive. The hold is why braking hard
+to a standstill stays in drive instead of snapping into reverse the moment the car settles.
 | Handbrake | Space | B | HAND |
-| Clutch kick | Shift (tap) | X | KICK |
-| Two-wheel / lean left | Q (hold) | LB (hold) | NATL (tap, toggles), then LEAN< |
-| Two-wheel / lean right | E (hold) | RB (hold) | NATL (tap, toggles), then LEAN> |
+| Two-wheel / lean left | Q (hold) | LB (hold) | NATL (tap), then lean slider left |
+| Two-wheel / lean right | E (hold) | RB (hold) | NATL (tap), then lean slider right |
 | Exit car | F | Y | EXIT |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | LOAD |
@@ -40,24 +48,50 @@ steers, and it is the strongest lever up there: a small turn toward the low side
 away lifts it. With gas on the car runs straight (open diff, so the grounded rear barely drives).
 If you slow to a crawl the car settles back onto four wheels by itself. Release both keys to land.
 
-Touch is the exception, because the lean buttons cannot be on screen before the mode exists:
-tap NATL to open it (it stays on, so the left thumb is free to steer) and a LEAN< / LEAN>
-pair appears inboard of BRAKE. The first lean button you reach for picks the side, as long as
-the car is not up yet. NATL switches itself off when the car lands; tap it again to lift.
+Touch is the exception, because the lean control cannot be on screen before the mode exists:
+tap NATL to open it (it stays on, so the thumb is free) and the lean slider appears directly
+above the steer pad. The first direction you push it picks the side, as long as the car is
+not up yet. NATL switches itself off when the car lands; tap it again to lift.
 
 ## Phone test in Studio
-Test → Device → pick a phone → Play. The touch HUD is our own ScreenGui (Roblox's thumbstick
-and jump button are hidden while driving): a steer pad along the bottom left with NATL above
-it, GAS in the bottom right with BRAKE inboard, HAND above GAS, KICK above BRAKE, the LEAN
-pair inboard of BRAKE while two-wheel is live, and small EXIT / RESET / LOAD / DBG buttons
-along the top, right of the speed readout. The steer pad is positional: where the thumb sits is the
-angle, the far ends are full lock, and sliding across is a counter-steer without lifting.
-Sizes scale with the screen height and `input.touchScale`. To see the touch HUD on a desktop
-session, set the LocalPlayer attribute `ForceTouch = true` before getting in.
+Test → Device → pick a phone → Play. The touch HUD is our own ScreenGui, and Roblox's
+thumbstick and jump button are hidden while driving. Left half: the steer pad along the
+bottom, the lean slider directly above it, NATL above that. Right half: GAS in the corner
+with BRAKE inboard, and HAND directly above GAS so the thumb slides between throttle and
+handbrake without lifting. EXIT / RESET / LOAD / DBG sit small along the top, right of the
+speed readout.
+
+Both sliders are positional and spring back to centre. The steer pad is analog: where the
+thumb sits is the angle, the ends are full lock, and sliding across is a counter-steer
+without lifting. The lean slider only appears once the car is in two-wheel mode, and it is
+digital past `input.touchLeanDeadzone`, because balancing wants taps rather than a held axis,
+so flick it out and let it snap back. Sizes scale with the screen height and
+`input.touchScale`. To see the touch HUD on a desktop session, set the LocalPlayer attribute
+`ForceTouch = true` before getting in.
 
 ## Driver HUD
-Top centre on every platform: speed, gear, drift angle (orange past `hud.driftHighlightDeg`),
-SPINS while a 360 is under way, NATL roll while on two wheels. `hud.enabled` turns it off.
+Top centre on every platform: speed and gear, the slide in progress with its chain
+multiplier, then drift angle, SPINS while a 360 is under way, NATL roll while on two wheels,
+and a bottom line with your cash, your session best and the server best with its holder.
+When a slide ends the row shows what the server banked and what it paid, or DROPPED if you
+lost it. `hud.enabled` turns the whole thing off.
+
+## Scoring and cash
+A slide opens past `scoring.minAngleDeg` of drift above `scoring.minSpeedKmh` and pays angle
+x speed x time. Every direction change inside the slide steps the multiplier, and the grace
+window is what links a left-right swing into one long slide instead of two short ones. Going
+straight banks it and converts to cash at `scoring.cashPerPoint`. Hitting something hard, or
+spinning to a stop without ever straightening up, drops the run.
+
+The client scores the car for the live HUD, but the server scores every driven car
+independently from replicated physics and pays out the smaller of your claim and what it saw
+times `scoring.serverTolerance`. Nothing a client sends can raise a balance. Cash and records
+reach the client only as replicated attributes.
+
+Cash persists through a DataStore. In Studio that needs Game Settings → Security → Enable
+Studio Access to API Services; without it you get a "profile load failed, playing without
+saving" warning and the session runs with no persistence, which is deliberate — a profile
+whose load failed is never saved over.
 
 ## Drift feedback
 Smoke off the rear tires, skid marks, and wheels that spin up or lock, all driven by the
@@ -69,7 +103,7 @@ own into `effects.screechSoundId` and `effects.engineSoundId`.
 Top-left while driving on PC; hidden on phones until you tap DBG (`debug.showOnTouch` flips
 the default). Speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a SPINS
 counter for completed 360s, two-wheel mode and roll with margin to tip, per-wheel slip
-angle / load / SPIN or AIR, handbrake, kick, assist.
+angle / load / SPIN or AIR, handbrake, assist.
 
 ## Tafheet moves
 Ta'geed (360): at 110 km/h or more, full lock and HAND together, and keep HAND held the whole

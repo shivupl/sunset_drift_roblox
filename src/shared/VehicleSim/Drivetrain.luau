@@ -1,5 +1,11 @@
 --!strict
--- Engine, automatic gearbox, brakes, clutch kick. Pure: no Roblox instances.
+-- Engine, automatic gearbox, brakes. Pure: no Roblox instances.
+--
+-- The gearbox is automatic and there is no manual shift input. Reverse is
+-- not a gear the player selects either: holding the brake at a standstill
+-- for reverseHoldSeconds engages it, and any throttle puts the car back in
+-- drive. The hold is what stops a hard stop from snapping into reverse the
+-- instant the car settles.
 --
 -- Wheel spin is not integrated as a wheel angular velocity (too stiff for a
 -- 60 Hz step). Instead the tire reports whether longitudinal demand exceeded
@@ -27,17 +33,15 @@ export type Config = {
 	brakeBias: number,
 	brakeFadeMps: number,
 	reverseEngageMps: number,
+	reverseHoldSeconds: number,
 }
-
-export type KickConfig = { multiplier: number, duration: number }
 
 export type State = {
 	gear: number, -- -1 reverse, 1..n
 	rpm: number,
 	spinRpm: number,
 	shiftTimer: number,
-	kickTimer: number,
-	kickHeld: boolean,
+	reverseHold: number, -- seconds the brake has been held at a standstill
 }
 
 export type Output = {
@@ -47,38 +51,44 @@ export type Output = {
 	engineBrakePerRearWheel: number, -- N magnitude
 	rpm: number,
 	gear: number,
-	torque: number, -- Nm at the crank after throttle/kick/cut
-	kicking: boolean, -- inside the clutch-kick window
+	torque: number, -- Nm at the crank after throttle and cut
 }
 
 local RPM_PER_RAD_S = 60 / (2 * math.pi)
 
 function Drivetrain.new(cfg: Config): State
-	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, kickTimer = 0, kickHeld = false }
+	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, reverseHold = 0 }
 end
 
 function Drivetrain.step(
 	state: State,
 	cfg: Config,
-	kick: KickConfig,
 	wheelRadius: number,
 	dt: number,
 	throttleIn: number,
 	brakeIn: number,
-	clutchKick: boolean,
 	rearWheelSpeedMps: number,
 	rearSpinning: boolean
 ): Output
 	local speed = rearWheelSpeedMps
 	local throttle, brake = throttleIn, brakeIn
 
-	-- Reverse: brake at a standstill engages it, throttle at a standstill leaves it.
+	-- Reverse. Coming to a stop on the brakes is the common case and must not
+	-- select reverse, so the brake has to stay down for reverseHoldSeconds
+	-- after the car is already stopped. Any throttle returns to drive.
 	if state.gear == -1 then
 		if throttleIn > 0 and speed > -cfg.reverseEngageMps then
 			state.gear = 1
+			state.reverseHold = 0
 		end
 	elseif brakeIn > 0 and throttleIn == 0 and math.abs(speed) < cfg.reverseEngageMps then
-		state.gear = -1
+		state.reverseHold += dt
+		if state.reverseHold >= cfg.reverseHoldSeconds then
+			state.gear = -1
+			state.reverseHold = 0
+		end
+	else
+		state.reverseHold = 0
 	end
 
 	local ratio: number
@@ -114,18 +124,10 @@ function Drivetrain.step(
 		end
 	end
 
-	-- Clutch kick: edge-triggered torque spike. Holding does not retrigger.
-	if clutchKick and not state.kickHeld then
-		state.kickTimer = kick.duration
-	end
-	state.kickHeld = clutchKick
-	state.kickTimer -= dt
-	local kickMult = if state.kickTimer > 0 then kick.multiplier else 1
-
 	-- Crank torque. Zero during a shift and at the rev limiter.
 	local torque = 0
 	if state.shiftTimer <= 0 and rpm < cfg.redlineRpm then
-		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle * kickMult
+		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle
 	end
 	local drivePerRearWheel = torque * overall * cfg.drivelineEfficiency / wheelRadius / 2
 
@@ -145,7 +147,6 @@ function Drivetrain.step(
 		rpm = rpm,
 		gear = state.gear,
 		torque = torque,
-		kicking = state.kickTimer > 0,
 	}
 end
 

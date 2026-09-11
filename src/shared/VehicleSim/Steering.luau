@@ -11,7 +11,7 @@
 -- already travelling is a correction, not a request for more angle, so the
 -- taper lifts as the slip angle grows. Without that exception a car tapered
 -- to a third of its lock could not physically catch a big slide. And a
--- handbrake pull or clutch kick is an explicit throw, so the taper lifts
+-- handbrake pull is an explicit throw, so the taper lifts
 -- for that window too: a Ta'geed at 160 km/h needs the wheel the driver
 -- actually turned, not a third of it.
 local Curve = require(script.Parent.Parent.Curve)
@@ -32,7 +32,7 @@ export type Config = {
 -- Fraction of maxSteerDeg available right now, 0..1.
 -- slipAngleDeg is the car's own slip: + = velocity to the right of the nose,
 -- so a correction is steer input of the same sign. throw is 0..1: how much
--- the driver is deliberately throwing the car (handbrake level, kick window).
+-- the driver is deliberately throwing the car (handbrake level).
 function Steering.lockFactor(cfg: Config, speedKmh: number, steerInput: number, slipAngleDeg: number, throw: number): number
 	local base = math.clamp(Curve.lookup(cfg.speedLockCurve, speedKmh), 0, 1)
 	if base >= 1 then
