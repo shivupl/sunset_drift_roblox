@@ -56,8 +56,15 @@ sim's per-wheel slip and saturation. Tunables live under `effects` in CarConfig;
 own into `effects.screechSoundId` and `effects.engineSoundId`.
 
 ## Debug panel
-Top-left while driving: speed, gear, rpm, inputs, drift angle, yaw rate, two-wheel mode and
-roll with margin to tip, per-wheel slip angle / load / SPIN or AIR, handbrake, kick, assist.
+Top-left while driving: speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a
+SPINS counter for completed 360s, two-wheel mode and roll with margin to tip, per-wheel slip
+angle / load / SPIN or AIR, handbrake, kick, assist.
+
+## Tafheet moves
+Ta'geed (360): at 120 km/h or more, a little steer, then HAND and full lock the same way; hold
+until the car comes round, then catch it. Sefty: the same, a short straight slide, then the
+other way. The car rotates freely once past 50° of slip and keeps most of its speed; the
+SPINS counter on the panel tells you when a full rotation is done.
 
 ## Tuning
 All numbers live in `src/shared/CarConfig.luau`; `TUNING.md` explains every field and which

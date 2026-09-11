@@ -45,12 +45,13 @@ For the opposite effect move the other way. Press L in play to reload.
 | slideSlipDeg | Where the fade ends. Wider gap to peak = gentler fade = more progressive slide. | rear ↓ | rear ↓ | — |
 | falloffShape | How the tire gives up grip past the peak. 1 is a straight line to the floor. Above 1 the first degrees past peak cost almost nothing and the loss steepens further out, which is the warning before the rear goes. Lower it toward 1 if you want the limit to arrive without notice. | rear ↓ | rear ↓ | — |
 | slideGripRatio | Grip floor while sliding. Lower rear = bigger angles, harder to catch; higher = holds and recovers easier. Also sets how hard a handbrake pull or clutch kick can rotate the car, since a saturated tire sits at this value. | rear ↓ | rear ↓ | — |
+| deepSlideSlipDeg / deepSlideGripRatio | Past deepSlideSlipDeg the floor eases toward the deep ratio by 90° of slip. This is the 360 (Ta'geed) knob and it never touches the 10 to 35° region a held drift lives in. Rear deep ratio low = the car keeps rotating and carries speed through a spin. Front deep ratio should stay high: the fronts drive the rotation in a throw, and easing them slows the spin. Measured at 160 km/h: no 360 in 4 s with the deep ratio equal to the first floor, 3.4 s with rear 0.45. | rear ↓ | — | — |
 | speedFadeMps | Speed below which lateral force fades. Only for parking jitter. | — | — | — |
 
 ## drivetrain
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
-| torqueCurve | Engine torque by rpm. More torque = more power-over. | ↑ | ↑ | — |
+| torqueCurve | Engine torque by rpm. More torque = more power-over. Raised about a third for tafheet speeds; launch is traction-limited so 0 to 100 barely moved (7.7 s), the gain is above 100 km/h. | ↑ | ↑ | — |
 | gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. | ↑ | ↑ | — |
 | reverseRatio | Reverse gearing. | — | — | — |
 | drivelineEfficiency | Scales all drive force. | ↑ | ↑ | — |
@@ -73,6 +74,7 @@ For the opposite effect move the other way. Press L in play to reload.
 | speedLockCurve | Speed-sensitive lock, km/h to fraction of maxSteerDeg. Full lock for parking, tapering at highway speed so turning alone cannot pitch the car sideways. Raise the high-speed end if the car feels unresponsive at speed, lower it if a flick still breaks the rear loose. | ↑ high end | ↑ high end | — |
 | counterSteerReliefDeg | Slip angle at which the taper is fully lifted, so a correction always gets the whole wheel. Lower = the full wheel comes back sooner in a slide. | — | — | — |
 | counterSteerRelief | How much of the taper a correction lifts. 1 gives the whole wheel back, 0 disables the exception and the taper applies to counter-steer too, which makes big angles uncatchable at speed. | — | — | — |
+| throwRelief | How much of the taper a deliberate throw lifts, while the handbrake is held or inside the clutch-kick window. 1 = the wheel you actually turned, 0 = the taper still applies. Without it a Ta'geed at 160 km/h starts with 13° of steer and never comes round. | — | ↑ | — |
 
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
@@ -177,3 +179,4 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 |---|---|
 | enabled | Show the panel. |
 | updateHz | Panel refresh rate. |
+| spinSlipDeg / spinResetDeg | The SPINS counter accumulates yaw while the drift angle is above spinSlipDeg and clears once it is back under spinResetDeg. Display only. |

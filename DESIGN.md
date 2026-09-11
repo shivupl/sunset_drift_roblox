@@ -63,6 +63,33 @@ demand exceeded grip and the engine rpm floats up while it does. Clutch kick
 is a short torque multiplier. Engine braking on lift shifts weight forward,
 which is what makes a lift-and-flick transition swing the rear across.
 
+## Tafheet moves
+The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a
+straight highway, thrown left and right. The named moves are Ta'geed (a
+full 360), Aksiyat (180 one way then a full 360 the other), Sefty (a 360,
+a short slide, a 360 the other way), Tanteel (wiggling the rear at speed),
+and Harakat Al-Mawt (a straight-line power slide held until the car stops
+on its own). Two things in the model stand between the car and those moves.
+
+A car thrown fully sideways has to keep rotating and carry its momentum. A
+single sliding floor made a tire at 90° of slip scrub as hard as one at
+30°, so a 360 from 160 km/h stalled at 177° with the speed gone. The grip
+curve therefore has a second, deeper floor past 50° of slip. The rear eases
+to 0.45 of peak so the car keeps turning and keeps its speed; the front
+stays at 0.7, because the fronts are what drive the rotation in a throw,
+and easing them measurably slowed the spin. Nothing in the 10 to 35° region
+a held drift lives in changes. Measured from 160 km/h: 360 in 3.4 s with
+109 km/h left.
+
+The speed-sensitive lock has to get out of the way of a throw. At 160 km/h
+it leaves 13° of steer, which cannot start a Ta'geed. A handbrake pull or a
+clutch kick is an explicit throw, so the taper lifts for that window, the
+same way it already lifts for a correction. Turning alone at speed is still
+tapered, which is the whole point of it.
+
+The debug panel counts completed 360s while the car is sideways, so a
+Ta'geed or a Sefty can be checked by number rather than by eye.
+
 ## Stability under steering alone
 Three things keep the car from drifting when the driver only asked it to
 turn, none of them a gate on the handbrake.

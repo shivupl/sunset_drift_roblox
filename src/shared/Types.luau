@@ -41,6 +41,8 @@ export type VehicleState = {
 	lean: number,
 	driftAngleDeg: number, -- angle between velocity and heading, + = velocity right of heading
 	yawRateDegPerSec: number,
+	spinCount: number, -- full 360s completed while sliding since the last straight
+	spinProgressDeg: number, -- yaw accumulated in the current rotation
 	twoWheelMode: string,
 	rollDeg: number,
 	rollMarginDeg: number,

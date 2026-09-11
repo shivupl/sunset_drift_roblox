@@ -64,6 +64,8 @@ export type Sim = typeof(setmetatable(
 		steerDeg: number,
 		comHeightM: number,
 		handbrakeLevel: number,
+		spinAccumDeg: number,
+		spinCount: number,
 		lastState: VehicleState,
 	},
 	VehicleSim
@@ -110,6 +112,8 @@ local function emptyState(wheels: { Wheel }): VehicleState
 		lean = 0,
 		driftAngleDeg = 0,
 		yawRateDegPerSec = 0,
+		spinCount = 0,
+		spinProgressDeg = 0,
 		twoWheelMode = "idle",
 		rollDeg = 0,
 		rollMarginDeg = 0,
@@ -163,6 +167,8 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		steerDeg = 0,
 		comHeightM = 0.5,
 		handbrakeLevel = 0,
+		spinAccumDeg = 0,
+		spinCount = 0,
 		lastState = emptyState(wheels),
 	}, VehicleSim)
 	return self
@@ -215,8 +221,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local driftAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, vLongBody)) else 0
 	-- Assist uses |vLong| so reversing does not read as a 180° drift.
 	local assistAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, math.abs(vLongBody))) else 0
-	-- Speed-sensitive lock, lifted again when the input is a correction.
-	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg)
+	-- Speed-sensitive lock, lifted again when the input is a correction or a
+	-- deliberate throw (handbrake held, or inside the clutch-kick window).
+	local throwing = math.max(self.handbrakeLevel, if self.drivetrain.kickTimer > 0 then 1 else 0)
+	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg, throwing)
 	local steerTarget = input.steer * cfg.steering.maxSteerDeg * lockFactor
 	local returning = math.abs(steerTarget) < math.abs(self.steerDeg) or steerTarget * self.steerDeg < 0
 	local rate = if returning then cfg.steering.steerReturnDegPerSec else cfg.steering.steerSpeedDegPerSec
@@ -439,6 +447,20 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	)
 	totalTorque += forward * rollTorque
 
+	-- Spin counter (Ta'geed): yaw accumulates while the car is properly
+	-- sideways and clears once it is straight again. Display only.
+	local yawRateDeg = -math.deg(angVel:Dot(up))
+	if math.abs(driftAngleDeg) >= cfg.debug.spinSlipDeg then
+		self.spinAccumDeg += math.abs(yawRateDeg) * dt
+		if self.spinAccumDeg >= 360 then
+			self.spinAccumDeg -= 360
+			self.spinCount += 1
+		end
+	elseif math.abs(driftAngleDeg) < cfg.debug.spinResetDeg and speed > 1 then
+		self.spinAccumDeg = 0
+		self.spinCount = 0
+	end
+
 	-- 8. Write the actuators. Never let a NaN into the physics engine.
 	if not isFinite(totalForce) or not isFinite(totalTorque) then
 		warn("[VehicleSim] non-finite force, zeroing this step")
@@ -461,7 +483,9 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.steerLock = lockFactor
 	st.lean = input.lean
 	st.driftAngleDeg = driftAngleDeg
-	st.yawRateDegPerSec = -math.deg(angVel:Dot(up)) -- + = turning right
+	st.yawRateDegPerSec = yawRateDeg -- + = turning right
+	st.spinCount = self.spinCount
+	st.spinProgressDeg = self.spinAccumDeg
 	st.twoWheelMode = self.twoWheel.mode
 	st.rollDeg = rollDeg
 	st.rollMarginDeg = self.twoWheel.marginDeg

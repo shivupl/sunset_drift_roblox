@@ -30,6 +30,12 @@ export type AxleConfig = {
 	slideSlipDeg: number, -- slip angle where grip reaches the floor
 	slideGripRatio: number, -- floor as a fraction of peak
 	falloffShape: number, -- 1 = straight line peak to floor, >1 = gentle at first
+	-- Past deepSlideSlipDeg the floor eases down again toward deepSlideGripRatio
+	-- by 90 deg. A tire going fully sideways at 160 km/h scrubs less than one at
+	-- 30 deg, which is what lets a tafheet 360 carry its momentum through
+	-- instead of stopping the car halfway round.
+	deepSlideSlipDeg: number,
+	deepSlideGripRatio: number,
 }
 
 export type Output = {
@@ -45,7 +51,11 @@ function Tire.gripCurve(slipDeg: number, axle: AxleConfig): number
 		return (a / axle.peakSlipDeg) ^ axle.riseShape
 	end
 	if a >= axle.slideSlipDeg then
-		return axle.slideGripRatio
+		if a <= axle.deepSlideSlipDeg then
+			return axle.slideGripRatio
+		end
+		local t = math.clamp((a - axle.deepSlideSlipDeg) / math.max(90 - axle.deepSlideSlipDeg, 1), 0, 1)
+		return axle.slideGripRatio + (axle.deepSlideGripRatio - axle.slideGripRatio) * t
 	end
 	local t = (a - axle.peakSlipDeg) / (axle.slideSlipDeg - axle.peakSlipDeg)
 	return 1 - (1 - axle.slideGripRatio) * t ^ axle.falloffShape

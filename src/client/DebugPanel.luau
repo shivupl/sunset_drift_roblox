@@ -83,7 +83,13 @@ function DebugPanel.update(state: VehicleState)
 			state.steerDeg,
 			state.steerLock * 100
 		),
-		string.format("DRIFT %+6.1f°   YAW %+6.1f°/s", state.driftAngleDeg, state.yawRateDegPerSec),
+		string.format(
+			"DRIFT %+6.1f°   YAW %+6.1f°/s   SPINS %d (%3.0f°)",
+			state.driftAngleDeg,
+			state.yawRateDegPerSec,
+			state.spinCount,
+			state.spinProgressDeg
+		),
 		string.format(
 			"MODE %-8s  ROLL %+5.1f°  margin %5.1f°  LEAN %+d",
 			state.twoWheelMode,
@@ -108,6 +114,8 @@ function DebugPanel.update(state: VehicleState)
 	p:SetAttribute("DbgRpm", state.rpm)
 	p:SetAttribute("DbgDriftDeg", state.driftAngleDeg)
 	p:SetAttribute("DbgYawRate", state.yawRateDegPerSec)
+	p:SetAttribute("DbgSpins", state.spinCount)
+	p:SetAttribute("DbgSpinProgress", state.spinProgressDeg)
 	p:SetAttribute("DbgRollDeg", state.rollDeg)
 	p:SetAttribute("DbgLean", state.lean)
 	p:SetAttribute("DbgSteerLock", state.steerLock)

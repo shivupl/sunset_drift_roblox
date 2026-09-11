@@ -4,8 +4,10 @@ local Tests = require(script.Parent)
 type T = Tests.T
 
 return function(t: T)
-	local axle =
-		{ grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1 }
+	local axle = {
+		grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1,
+		deepSlideSlipDeg = 90, deepSlideGripRatio = 0.7,
+	}
 
 	-- Grip curve: linear rise, peak, linear decay, floor
 	t.near(Tire.gripCurve(0, axle), 0, 1e-9, "zero slip")
@@ -17,8 +19,10 @@ return function(t: T)
 	t.near(Tire.gripCurve(-8, axle), 1, 1e-9, "symmetric")
 
 	-- Shaped falloff: above 1 the first degrees past peak barely cost grip
-	local soft =
-		{ grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 2 }
+	local soft = {
+		grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 2,
+		deepSlideSlipDeg = 90, deepSlideGripRatio = 0.7,
+	}
 	t.near(Tire.gripCurve(8, soft), 1, 1e-9, "peak is unchanged by the shape")
 	t.near(Tire.gripCurve(24, soft), 0.7, 1e-9, "floor is unchanged by the shape")
 	t.near(Tire.gripCurve(16, soft), 1 - 0.3 * 0.25, 1e-9, "shape 2 is quadratic through the decay")
@@ -28,8 +32,19 @@ return function(t: T)
 	-- Rise shape: below 1 the tire keeps its bite near zero slip, without
 	-- moving where the peak is. This is what lets an axle peak later and
 	-- still be stiff, rather than going soft everywhere below the peak.
-	local stiff =
-		{ grip = 1.0, peakSlipDeg = 8, riseShape = 0.5, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1 }
+	local stiff = {
+		grip = 1.0, peakSlipDeg = 8, riseShape = 0.5, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1,
+		deepSlideSlipDeg = 90, deepSlideGripRatio = 0.7,
+	}
+	-- Deep slide: past deepSlideSlipDeg the floor eases toward the deep ratio by 90 deg
+	local deep = {
+		grip = 1.0, peakSlipDeg = 8, riseShape = 1, slideSlipDeg = 24, slideGripRatio = 0.7, falloffShape = 1,
+		deepSlideSlipDeg = 50, deepSlideGripRatio = 0.5,
+	}
+	t.near(Tire.gripCurve(40, deep), 0.7, 1e-9, "first floor holds up to deepSlideSlipDeg")
+	t.near(Tire.gripCurve(70, deep), 0.6, 1e-9, "halfway to 90 is halfway to the deep ratio")
+	t.near(Tire.gripCurve(90, deep), 0.5, 1e-9, "deep ratio at 90")
+	t.near(Tire.gripCurve(120, deep), 0.5, 1e-9, "and stays there")
 	t.near(Tire.gripCurve(0, stiff), 0, 1e-9, "still zero at zero slip")
 	t.near(Tire.gripCurve(8, stiff), 1, 1e-9, "still peaks at the same angle")
 	t.near(Tire.gripCurve(2, stiff), 0.5, 1e-9, "shape 0.5 is the square root of the linear rise")

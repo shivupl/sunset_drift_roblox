@@ -50,6 +50,10 @@ local config = {
 		-- tire's bite near zero slip. The rear needs this, because moving its
 		-- peak later would otherwise soften it everywhere below that peak and
 		-- it would step out under power at cruise.
+		-- deepSlideSlipDeg / deepSlideGripRatio: past the first floor the grip
+		-- eases down again toward the deep ratio by 90 deg of slip. This is the
+		-- 360 knob: it does not touch the 10-35 deg region a held drift lives
+		-- in, but a car thrown fully sideways scrubs less and keeps turning.
 		front = {
 			grip = 1.05,
 			peakSlipDeg = 8,
@@ -57,6 +61,10 @@ local config = {
 			slideSlipDeg = 25,
 			slideGripRatio = 0.75,
 			falloffShape = 1.2,
+			-- Fronts stay grippy when deep: they are what drives the rotation
+			-- in a throw, so easing them off slows a 360 down.
+			deepSlideSlipDeg = 50,
+			deepSlideGripRatio = 0.7,
 		},
 		rear = {
 			grip = 1.0,
@@ -65,12 +73,18 @@ local config = {
 			slideSlipDeg = 32,
 			slideGripRatio = 0.75,
 			falloffShape = 1.8,
+			-- Rear lets go deep: this is what lets the car keep rotating and
+			-- carry its speed through a Ta'geed instead of scrubbing to a stop.
+			deepSlideSlipDeg = 50,
+			deepSlideGripRatio = 0.45,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
 
 	drivetrain = {
-		torqueCurve = { { 1000, 180 }, { 2500, 260 }, { 4000, 300 }, { 5500, 290 }, { 6500, 240 }, { 7000, 0 } },
+		-- Tafheet lives at 160-260 km/h. Bumped about a third over the first
+		-- pass so highway speed arrives in a few seconds rather than ten.
+		torqueCurve = { { 1000, 240 }, { 2500, 350 }, { 4000, 405 }, { 5500, 390 }, { 6500, 320 }, { 7000, 0 } },
 		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
@@ -98,13 +112,17 @@ local config = {
 		-- Speed-sensitive lock: km/h -> fraction of maxSteerDeg. Full lock for
 		-- parking and low-speed work, tapering at highway speed so turning
 		-- alone cannot pitch the car sideways.
-		speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.6 }, { 150, 0.35 }, { 260, 0.35 } },
+		speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.6 }, { 150, 0.35 }, { 220, 0.3 }, { 300, 0.3 } },
 		-- The taper lifts back toward full lock as the car goes sideways, so a
 		-- slide stays catchable at speed. Degrees of slip for full relief, and
 		-- how much of the taper it lifts (0 disables it, 1 gives the whole
 		-- wheel back).
 		counterSteerReliefDeg = 25,
 		counterSteerRelief = 1,
+		-- A handbrake pull or clutch kick is a deliberate throw, so the taper
+		-- lifts for that window (1 = full wheel, 0 = taper still applies).
+		-- Without it a Ta'geed at 160 km/h has 13 deg of steer to start with.
+		throwRelief = 1,
 	},
 
 	handbrake = {
@@ -270,6 +288,8 @@ local config = {
 	debug = {
 		enabled = true,
 		updateHz = 10,
+		spinSlipDeg = 45, -- yaw counts toward a 360 while |drift| is above this
+		spinResetDeg = 15, -- and the count clears once the car is back under this
 	},
 }
 
