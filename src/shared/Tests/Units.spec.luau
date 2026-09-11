@@ -1,7 +1,9 @@
 --!strict
 local Units = require(script.Parent.Parent.Units)
+local Tests = require(script.Parent)
+type T = Tests.T
 
-return function(t)
+return function(t: T)
 	t.near(Units.mToStuds(2.8, 0.28), 10, 1e-9, "m to studs")
 	t.near(Units.studsToM(10, 0.28), 2.8, 1e-9, "studs to m")
 	t.near(Units.mpsToKmh(27.7778), 100, 0.01, "m/s to km/h")

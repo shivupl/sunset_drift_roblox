@@ -1,7 +1,9 @@
 --!strict
 local Curve = require(script.Parent.Parent.Curve)
+local Tests = require(script.Parent)
+type T = Tests.T
 
-return function(t)
+return function(t: T)
 	local pts = { { 0, 0 }, { 10, 100 }, { 20, 50 } }
 	t.eq(Curve.lookup(pts, -5), 0, "clamps below")
 	t.eq(Curve.lookup(pts, 25), 50, "clamps above")
