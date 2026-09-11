@@ -283,7 +283,7 @@ car stay the same size.
 | markingEpsilonM / markingThicknessM | How far paint and wear sit above the asphalt, and how thick. Raise epsilon if markings z-fight, lower it if the car feels a step. |
 | dashLengthM / dashGapM / dashWidthM | Lane divider dashes. |
 | edgeLineWidthM | Solid line at each road edge. |
-| laneCount | Lanes across the road. Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
+| laneCount | Lanes per carriageway (6 now, on request; 4.7 m each in a 64 m corridor). Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
 | shoulderWidthM / kerbWidthM / kerbHeightM | The strip outside the paint, and the lip beyond it. |
 | asphaltColor / padColor / shoulderColor / kerbColor / paintColor / bayColor | Surface tones. |
 
@@ -309,7 +309,7 @@ Surface realism. None of it is geometry the car can feel.
 ## road (dual carriageway)
 | Field | What it does |
 |---|---|
-| medianWidthM | Width of the central reservation, taken out of the preset's total. Wider = more room for palms and a bigger gap to cross when you run wide on the inside. |
+| medianWidthM | Width of the central reservation, taken out of the preset's total. 8 m now: a lamp post down the middle and a palm either side of it. Wider = more room for palms and a bigger gap to cross when you run wide on the inside. |
 | medianColor / medianMaterial / medianDropM | The strip between carriageways. It is ground, so it collides. |
 | kerbWidthM / kerbHeightM | A visual lip only; collision is off. |
 
@@ -373,20 +373,20 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | seed | Fixed, so every server draws the same city. |
-| distanceM / bandDepthM | Radius to the near edge of the ring and how far back buildings scatter. It is a ring, not a band: bands parallel to the road are invisible from the road. |
-| count | Buildings. |
-| minWidthM / maxWidthM / minHeightM / maxHeightM | The ordinary blocks. |
-| towerChance / towerMinHeightM / towerMaxHeightM | Occasional slim towers. Uniform heights read as a bar chart. |
-| color / colorVariation | A warm mid tone; the haze tints it to the hour. A near-black silhouette stays near-black at golden hour, which is the wrong read. |
-| windowBandsMin / windowBandsMax / windowColor / windowHeightM / windowInsetM | Emissive floor bands, cheaper than a texture and needing no asset. |
-| beaconChance / beaconColor | Red aircraft warning lights. |
+| rings | Two rings of ordinary city around the middle of the road (rings, not bands: bands parallel to the road are invisible from the road). Each has a near-edge distance, a depth, a count, block and tower size ranges and a tower chance. 1,350 m and 1,900 m now; at 1,900 and 2,500 the dusk haze flattened every tower into the same grey slab. |
+| downtown | A dense cluster of slim towers in a sector centred on the road's direction of travel, which is where the player looks all session: half-angle, distance range, count, size and height ranges, plus one wide dim Neon slab along its base (the sodium haze). |
+| landmarks | Kingdom-Centre style (slab, two pillars, sky bridge: the arch) and Faisaliah style (four corner wedges as a pyramid, a globe near the tip), both in the downtown sector. Height, footprint, angle offset and distance each. |
+| tierChance / crownChance / antennaChance / antennaHeightM | A narrower tier on top of a share of buildings, a lit band at the top of towers, and an antenna on some. |
+| windowSegments / blockBands* / towerBands* / windowHeightM / windowInsetM / windowColorWarm / windowColorCool / coolFraction | Emissive floor bands, split into segments of different brightness so floors read as lit and unlit, warm or cool per building. Cheaper than a texture and needing no asset. |
+| color / towerColor / colorVariation | Blocks warm, towers bluer (glass). Darker than the first pass: the haze adds sky colour at this range and a mid tone came out pale. |
+| beaconChance / beaconColor | Red aircraft warning lights on towers. |
 
 ## scatter
 | Field | What it does |
 |---|---|
 | seed | Fixed, so the desert is identical on every server. |
 | useMeshes | Real meshes from AssetRegistry. Off, or a mesh that fails to load, gives the primitive stand-in. |
-| palm.medianEnabled / medianClumpSpacingM / medianJitterM / medianMarginM | The signature planting down the reservation: a clump every spacing, jittered along and across, never inside the margin of a kerb. |
+| palm.medianEnabled / medianClumpSpacingM / medianJitterM / medianMarginM / medianMaxPerClump | The planting down the reservation: a clump of up to medianMaxPerClump every spacing, jittered along and across, never inside the margin of a kerb. Sparse now (a pair every 90 m in the 8 m median) on request. |
 | palm.varietyFraction | Fraction of palms that use the second mesh. |
 | palm.minScale / maxScale | Height range. Uniform height is the thing that reads as copied. |
 | scrub.* | Low bushes on the verges and, at `medianChance`, between the median palms. |
@@ -396,7 +396,7 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | artifacts.carpetChance / carpetSizeM | The carpet: a thin Part with a decal, twelve triangles. |
 | artifacts.strayCamelSpacingM / strayCamelChance | Camels on their own between camps. |
 | falloffStartM / falloffEndM | Density falls off with distance from the road, so the near shoulder reads as maintained and the far desert as empty. |
-| palm.clumpSpacingM / clumpJitterM / minPerClump / maxPerClump / spreadM | Palms go in loose clumps. Evenly spaced trees read as generated; clumps read as planted. |
+| palm.clumpSpacingM / clumpJitterM / minPerClump / maxPerClump / spreadM / minEdgeM / maxEdgeM | Outer palms go in loose clumps. Evenly spaced trees read as generated; clumps read as planted. Denser on request: a clump every 45 m, up to four trees, out to 60 m from the road. |
 | palm.minEdgeM / maxEdgeM | Band either side of the road they can occupy, measured from the kerb. |
 | palm.trunkHeightM / trunkWidthM / frondCount / frondLengthM / frondWidthM | The primitive stand-in's proportions, used until a mesh is approved. |
 | palm.leanMaxRad | Palms lean. A vertical pole reads as a lamp post. |

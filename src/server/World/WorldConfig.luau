@@ -44,8 +44,9 @@ local config = {
 		-- half of what is left. 120 m total with a 26 m median gives two 47 m
 		-- carriageways of four lanes, which is the "room to make a mistake"
 		-- the map is for.
-		-- Narrowed from 26 on request; the palms still fit two abreast.
-		medianWidthM = 14,
+		-- Narrowed from 26 to 14, then to 8 on request: a strip with a lamp
+		-- post down the middle and a palm either side of it, no more.
+		medianWidthM = 8,
 		medianColor = Color3.fromRGB(150, 128, 94),
 		medianMaterial = Enum.Material.Ground,
 		medianDropM = 0.04, -- median sits this far below the asphalt
@@ -82,8 +83,8 @@ local config = {
 		dashGapM = 14, -- long gaps are what a real highway has; five lanes each way makes every dash count
 		dashWidthM = 0.3,
 		edgeLineWidthM = 0.25,
-		-- Five per carriageway on request: 53 m each way in 10.6 m lanes.
-		laneCount = 5, -- per carriageway
+		-- Six per carriageway on request: 28 m each way in 4.7 m lanes.
+		laneCount = 6, -- per carriageway
 		shoulderWidthM = 3,
 		-- Kerbs are a visual lip only. Nothing on the map collides except the
 		-- ground, and a 12 cm collidable step at 200 km/h is a launch ramp.
@@ -234,32 +235,77 @@ local config = {
 		seed = 20260911,
 		-- The skyline is a ring around the middle of the road, not a band
 		-- beside it: bands parallel to the road are invisible from the road.
-		distanceM = 2600, -- radius to the near edge of the ring
-		bandDepthM = 900, -- buildings scatter this much further out
-		count = 90,
-		-- Mostly low blocks with a few towers, which is what a real skyline
-		-- is. Uniform heights read as a bar chart.
-		minWidthM = 40,
-		maxWidthM = 160,
-		minHeightM = 28,
-		maxHeightM = 90, -- the ordinary blocks
-		towerChance = 0.16,
-		towerMinHeightM = 120,
-		towerMaxHeightM = 260,
+		-- Two rings of ordinary city, then a dense downtown cluster ahead of
+		-- the road (the direction the player spends the session looking),
+		-- with two landmark towers in it. Rebuilt on request: the first pass
+		-- was ninety boxes in one ring and read as a bar chart.
+		rings = {
+			-- Near ring: low and mid blocks, big footprints, so the city has
+			-- a base and not just a row of spikes.
+			-- Distances were 1900 and 2500 in the first pass; at that range
+			-- the dusk haze flattened every tower into the same grey slab.
+			{ distanceM = 1350, depthM = 450, count = 110, minWidthM = 45, maxWidthM = 150, minHeightM = 18, maxHeightM = 60, towerChance = 0.05, towerMinHeightM = 90, towerMaxHeightM = 160 },
+			-- Far ring: taller, sparser, hazier.
+			{ distanceM = 1900, depthM = 1000, count = 130, minWidthM = 40, maxWidthM = 140, minHeightM = 30, maxHeightM = 120, towerChance = 0.22, towerMinHeightM = 130, towerMaxHeightM = 280 },
+		},
+		-- Downtown: a KAFD-style cluster in a sector centred on the road's
+		-- direction of travel. Dense, tall, slim.
+		downtown = {
+			enabled = true,
+			sectorDeg = 24, -- half-angle of the sector
+			minDistanceM = 1550,
+			maxDistanceM = 2200,
+			count = 44,
+			minWidthM = 28,
+			maxWidthM = 64,
+			minHeightM = 150,
+			maxHeightM = 360,
+			-- Sodium haze along the base of the cluster: one wide dim Neon
+			-- slab, the cheapest "there are a million lights over there".
+			glowEnabled = true,
+			glowWidthM = 1800,
+			glowHeightM = 60,
+			glowColor = Color3.fromRGB(255, 176, 96),
+			glowTransparency = 0.72,
+		},
+		-- Landmarks, both in the downtown sector: a Kingdom-Centre style
+		-- tower (two pillars over a slab with a sky bridge, the arch at the
+		-- top) and a Faisaliah-style pyramid with the globe near its tip.
+		landmarks = {
+			enabled = true,
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = -3, distanceM = 1480 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 5, distanceM = 1560 },
+		},
+		-- Building detail. Tiers: a second, narrower box on top of a share
+		-- of the blocks and towers. Crowns: a dim lit band at the top of a
+		-- tower. Antennas on some towers. Windows are emissive bands split
+		-- into segments of different brightness so floors read as lit and
+		-- unlit rather than one bar.
+		tierChance = 0.35,
+		crownChance = 0.6,
+		antennaChance = 0.4,
+		antennaHeightM = 22,
+		windowSegments = 2, -- per band
+		blockBandsMin = 1,
+		blockBandsMax = 3,
+		towerBandsMin = 4,
+		towerBandsMax = 7,
+		windowHeightM = 2.6,
+		windowInsetM = 0.4,
+		windowColorWarm = Color3.fromRGB(255, 214, 150),
+		windowColorCool = Color3.fromRGB(196, 222, 255),
+		coolFraction = 0.3,
+		crownColor = Color3.fromRGB(255, 200, 140),
 		-- A warm mid tone rather than a dark silhouette: the haze tints it to
 		-- whatever the hour calls for, and a near-black block stays near-black
-		-- at golden hour, which is the wrong read.
-		color = Color3.fromRGB(104, 92, 86),
-		colorVariation = 0.18,
-		-- Window bands: a few emissive strips per building rather than one
-		-- part per window. See WORLD.md for why this beat a texture.
-		windowBandsMin = 1,
-		windowBandsMax = 4,
-		windowColor = Color3.fromRGB(255, 214, 150),
-		windowHeightM = 2.5,
-		windowInsetM = 0.4,
-		-- Fraction of buildings that get a red aircraft warning light.
-		beaconChance = 0.12,
+		-- at golden hour, which is the wrong read. Towers lean bluer (glass).
+		-- Darker than the first pass: the haze adds sky colour to everything
+		-- at this range, so a mid tone came out as pale slabs.
+		color = Color3.fromRGB(86, 76, 70),
+		towerColor = Color3.fromRGB(58, 68, 90),
+		colorVariation = 0.3,
+		-- Fraction of tall buildings that get a red aircraft warning light.
+		beaconChance = 0.5,
 		beaconColor = Color3.fromRGB(255, 70, 60),
 	},
 
@@ -277,21 +323,27 @@ local config = {
 			-- every medianClumpSpacingM, jittered along and across the median,
 			-- never inside medianMarginM of a kerb.
 			medianEnabled = true,
-			medianClumpSpacingM = 36,
-			medianJitterM = 12,
-			medianMarginM = 3,
+			-- Sparse now: a pair every 90 m in the 8 m median, never more
+			-- than medianMaxPerClump, so the strip reads as a planted
+			-- divider rather than a grove.
+			medianClumpSpacingM = 90,
+			medianJitterM = 20,
+			medianMarginM = 2.2,
+			medianMaxPerClump = 2,
 			-- Variety picks: fraction of palms that use the second mesh.
 			varietyFraction = 0.3,
 			minScale = 0.8,
 			maxScale = 1.25,
-			-- Outer shoulders, thinning out with distance.
-			clumpSpacingM = 70, -- average distance between clumps
-			clumpJitterM = 22,
+			-- Outer shoulders, thinning out with distance. Denser than the
+			-- first pass on request: a clump every 45 m instead of 70, up to
+			-- four trees, reaching 60 m out.
+			clumpSpacingM = 45, -- average distance between clumps
+			clumpJitterM = 16,
 			minPerClump = 2,
-			maxPerClump = 3,
-			spreadM = 7, -- how far members of a clump sit from its centre
+			maxPerClump = 4,
+			spreadM = 8, -- how far members of a clump sit from its centre
 			minEdgeM = 10, -- never closer than this to the road edge
-			maxEdgeM = 45,
+			maxEdgeM = 60,
 			trunkHeightM = 6.5,
 			trunkWidthM = 0.42,
 			leanMaxRad = 0.16, -- palms lean; a vertical pole reads as a lamp post
@@ -561,9 +613,10 @@ local config = {
 		testRoad = {
 			bayLengthM = 40,
 			pad = { startM = 900, lengthM = 400, widthM = 160 },
+			-- 64 m: an 8 m median and two 28 m carriageways of six 4.7 m lanes.
 			segments = {
-				{ kind = "straight", lengthM = 2000, widthM = 60 } :: Segment,
-				{ kind = "curve", radiusM = 400, sweepDeg = 30, direction = -1, widthM = 60 },
+				{ kind = "straight", lengthM = 2000, widthM = 64 } :: Segment,
+				{ kind = "curve", radiusM = 400, sweepDeg = 30, direction = -1, widthM = 64 },
 			},
 		},
 		-- A longer ring-road loop for driving rather than measuring.

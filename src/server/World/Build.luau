@@ -64,6 +64,25 @@ function Build.wedge(o: Opts): WedgePart
 	return p
 end
 
+-- A corner wedge: four of them make a square pyramid, which is how the
+-- Faisaliah-style landmark is built without a mesh.
+function Build.cornerWedge(o: Opts): CornerWedgePart
+	local p = Instance.new("CornerWedgePart")
+	p.Name = o.name
+	p.Anchored = true
+	p.Size = o.size
+	p.CFrame = o.cframe
+	p.Color = o.color
+	p.Material = o.material or Enum.Material.SmoothPlastic
+	p.Transparency = o.transparency or 0
+	p.CanCollide = o.collide == true
+	p.CanQuery = if o.query ~= nil then o.query else (o.collide == true)
+	p.CanTouch = false
+	p.CastShadow = o.castShadow == true
+	p.Parent = o.parent
+	return p
+end
+
 function Build.folder(name: string, parent: Instance): Folder
 	local f = Instance.new("Folder")
 	f.Name = name
@@ -95,7 +114,7 @@ function Build.estimateTriangles(root: Instance): number
 	for _, d in root:GetDescendants() do
 		if d:IsA("MeshPart") then
 			tris += 800 -- placeholder until a real mesh is approved
-		elseif d:IsA("WedgePart") then
+		elseif d:IsA("WedgePart") or d:IsA("CornerWedgePart") then
 			tris += 8
 		elseif d:IsA("Part") then
 			local shape = (d :: Part).Shape

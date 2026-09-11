@@ -210,7 +210,7 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			local d = p.medianClumpSpacingM * 0.5
 			while d < totalM do
 				local centreD = d + rng:NextNumber(-p.medianJitterM, p.medianJitterM)
-				local count = rng:NextInteger(p.minPerClump, p.maxPerClump + 1)
+				local count = rng:NextInteger(1, p.medianMaxPerClump)
 				for _ = 1, count do
 					local along = centreD + rng:NextNumber(-p.spreadM, p.spreadM)
 					local lateral = rng:NextNumber(-half, half)

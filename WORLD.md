@@ -13,7 +13,7 @@ only in the place file. Change a number in the config and restart the server.
 | `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, ground, bay, spawn; and the markings and wear, which it puts in a separate streamed `RoadDetail` model. |
 | `Lighting.luau` | Lamp posts on both shoulders and down the median, sky, atmosphere, every Lighting setting. |
 | `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
-| `Cityscape.luau` | The skyline ring. |
+| `Cityscape.luau` | The skyline: two rings, a downtown cluster ahead of the road, two landmarks. |
 | `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `AssetRegistry.luau` | Mesh props by id, the loader, and the provenance of everything vetted. |
 
@@ -177,17 +177,29 @@ still running is the light manager, on a timed loop with an exit flag.
 
 ## Measured
 
-Whole world, `testRoad` preset, five lanes each way, built in 1.7 s:
+Whole world, `testRoad` preset, six lanes each way in a 64 m corridor with an
+8 m median:
 
 | system | parts | of which meshes |
 |---|---|---|
 | road (carriageways, median, shoulders, ground, bay) | 483 | 0 |
-| road detail (markings, wear; streamed) | 1,327 | 0 |
+| road detail (markings, wear; streamed) | 1,603 | 0 |
 | lamps (both shoulders, and the median at twice the density) | 794 | 0 |
-| cityscape | 324 | 0 |
+| cityscape (two rings, downtown, two landmarks; Persistent) | 2,071 | 0 |
 | signage | 40 | 0 |
-| scatter (palms, scrub, rocks, dunes, 6 camps, 15 camels) | 767 | 659 |
-| **total** | **3,735** | **659** |
+| scatter (palms, scrub, rocks, dunes, camps, camels) | 629 | ~520 |
+| **total** | **5,620** | **~520** |
+
+The skyline is the biggest change from the first pass, which was ninety
+boxes in one ring at 2.6 km and read as a bar chart. It is now two rings
+(1,350 m and 1,900 m) of blocks and towers with tiers, lit crowns, antennas
+and per-floor window segments, a dense downtown cluster of 44 slim towers
+in the sector the road points at, and two landmark towers in that cluster:
+a Kingdom-Centre style arch (slab, two pillars, sky bridge) and a Faisaliah
+style pyramid from four corner wedges with a globe near the tip. All boxes
+and wedges, no meshes, about 25,000 triangles, all Persistent so the horizon
+never pops. A CornerWedgePart's tall corner is at its local (+X, -Z), found
+by raycast; the docs do not say.
 
 In frustum from the driver's seat, primitives only (mesh triangles are not
 countable, see below):
