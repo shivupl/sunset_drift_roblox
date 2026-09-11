@@ -88,13 +88,20 @@ local config = {
 		leanTorque = 400, -- Nm outward lean while balanced. Below ~600 the natural front-heavy yaw wins and the car settles back onto four wheels if ignored; above it, it tips
 		instability = 10, -- Nm/deg extra outward push above targetRollDeg
 		rollDamping = 60, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
-		balanceTorque = 1500, -- Nm at full steer
+		-- Lean input (Q/E, gamepad bumpers, touch LEAN buttons). Two gains
+		-- because catching a lean needs more authority than adding to one.
+		-- Sized against rollDamping: leanIn/rollDamping is roughly the degrees
+		-- per second the car climbs while you hold the key, so 450/60 is about
+		-- 7°/s in and 1800/60 about 30°/s back down.
+		leanInTorque = 450, -- Nm at full lean toward the lifted side (go further up)
+		leanOutTorque = 1800, -- Nm at full lean toward the grounded side (come back down)
 		tipRollDeg = 62, -- past this the mode releases and gravity finishes the fall (static tip is atan(halfTrack/comHeight) ≈ 56°)
 		rimGripStartDeg = 42, -- roll where the tires start biting on rim/sidewall
 		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
 		landingDamping = 60, -- Nm per deg/s while coming down
 		suspensionBias = 1.8, -- grounded-side stiffness multiplier while lifted
-		sidePickSteer = 0.2, -- |steer| above this at the press picks the roll side; else rolls left
+		sidePickLean = 0.2, -- |lean| above this picks the roll side; with none held the car rolls left
+		sidePickRollDeg = 15, -- while lifting below this roll a lean the other way still flips the side
 		balancedEntryMarginDeg = 5, -- lifting hands over to balancing this many degrees before targetRollDeg
 		landedRollDeg = 3, -- below this roll the car counts as back on four wheels
 	},

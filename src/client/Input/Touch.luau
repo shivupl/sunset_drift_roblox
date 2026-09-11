@@ -1,8 +1,13 @@
 --!strict
 -- On-screen buttons for phones, created through ContextActionService
 -- (createTouchButton = true) and laid out by viewport fraction so both
--- thumbs have a cluster: steer + two-wheel on the left, throttle/brake/
--- handbrake/kick on the right, small utility buttons along the top.
+-- thumbs have a cluster: steer + NATL on the left, throttle/brake/handbrake/
+-- kick on the right, small utility buttons along the top.
+--
+-- Touch is the one platform where two-wheel is not entered by leaning:
+-- the LEAN buttons are hidden until the mode is live, so NATL opens it and
+-- the pair then appears inboard of the throttle cluster, under the right
+-- thumb's sweep.
 local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 local Input = require(script.Parent)
@@ -13,6 +18,8 @@ local PRIORITY = Enum.ContextActionPriority.High.Value
 local connections: { RBXScriptConnection } = {}
 local bound: { string } = {}
 local left, right = false, false
+local LEAN_BUTTONS = { "HJ_TLeanLeft", "HJ_TLeanRight" }
+local leanVisible = true
 
 local function updateSteer()
 	Input.raw.steerAnalog = nil
@@ -89,7 +96,13 @@ function Touch.bind()
 		end
 	end)
 	bind("HJ_TTwoWheel", function(down)
-		Input.raw.twoWheel = down
+		Input.raw.twoWheelButton = down
+	end)
+	bind("HJ_TLeanLeft", function(down)
+		Input.raw.leanLeft = down
+	end)
+	bind("HJ_TLeanRight", function(down)
+		Input.raw.leanRight = down
 	end)
 	bind("HJ_TExit", function(down)
 		if down then
@@ -116,10 +129,36 @@ function Touch.bind()
 	place("HJ_TLeft", "<", 0.08, 0.84, 96)
 	place("HJ_TRight", ">", 0.22, 0.84, 96)
 	place("HJ_TTwoWheel", "NATL", 0.15, 0.62, 72)
+	-- Lean pair: horizontal so left/right read at a glance, inboard of BRAKE
+	-- and GAS so nothing overlaps. Hidden until two-wheel is live.
+	place("HJ_TLeanLeft", "LEAN<", 0.58, 0.84, 72)
+	place("HJ_TLeanRight", "LEAN>", 0.70, 0.84, 72)
 	-- Utility
 	place("HJ_TExit", "EXIT", 0.56, 0.08, 44)
 	place("HJ_TReset", "RESET", 0.64, 0.08, 44)
 	place("HJ_TReload", "RELOAD", 0.72, 0.08, 44)
+
+	leanVisible = true
+	Touch.setLeanVisible(false)
+end
+
+-- Called every step by VehicleController: the lean pair is only on screen
+-- while the car is in two-wheel mode.
+function Touch.setLeanVisible(visible: boolean)
+	if visible == leanVisible then
+		return
+	end
+	leanVisible = visible
+	for _, name in LEAN_BUTTONS do
+		local btn = ContextActionService:GetButton(name)
+		if btn then
+			btn.Visible = visible
+		end
+	end
+	if not visible then
+		-- A button that vanishes under a finger never fires its Up event.
+		Input.raw.leanLeft, Input.raw.leanRight = false, false
+	end
 end
 
 function Touch.unbind()
@@ -132,6 +171,9 @@ function Touch.unbind()
 	end
 	table.clear(bound)
 	left, right = false, false
+	leanVisible = true
+	Input.raw.leanLeft, Input.raw.leanRight = false, false
+	Input.raw.twoWheelButton = false
 end
 
 return Touch

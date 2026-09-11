@@ -102,6 +102,7 @@ local function emptyState(wheels: { Wheel }): VehicleState
 		brake = 0,
 		steer = 0,
 		steerDeg = 0,
+		lean = 0,
 		driftAngleDeg = 0,
 		yawRateDegPerSec = 0,
 		twoWheelMode = "idle",
@@ -199,8 +200,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- 2. Steering with rate limits and drift assist.
 	-- Assist is off while on two wheels: it would read the sideways creep as
 	-- a slide and steer into it, which turns the car toward the grounded side
-	-- and brings it down by itself. On two wheels that steer is the player's
-	-- balance input, not the assist's.
+	-- and brings it down on its own. Balance is the lean axis; the steer the
+	-- player holds up there is theirs, for correcting yaw.
 	local twoWheelActive = TwoWheel.isActive(self.twoWheel)
 	local assistGain = if twoWheelActive then 0 else cfg.steering.driftAssist
 	local vLongBody = vel:Dot(forward)
@@ -386,7 +387,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		cfg.twoWheel,
 		body,
 		input.twoWheel,
-		input.steer,
+		input.lean,
 		rollDeg,
 		rollRate,
 		groundedLeft,
@@ -414,6 +415,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.brake = input.brake
 	st.steer = input.steer
 	st.steerDeg = effectiveSteerDeg
+	st.lean = input.lean
 	st.driftAngleDeg = driftAngleDeg
 	st.yawRateDegPerSec = -math.deg(angVel:Dot(up)) -- + = turning right
 	st.twoWheelMode = self.twoWheel.mode

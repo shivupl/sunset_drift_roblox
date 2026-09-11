@@ -83,6 +83,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		end
 		local state = s:step(input, dt)
 		VehicleController.lastState = state
+		Touch.setLeanVisible(input.twoWheel)
 		CameraRig.setState(state)
 		Players.LocalPlayer:SetAttribute("DbgCamera", CameraRig.currentProfile())
 		if VehicleController.onState then

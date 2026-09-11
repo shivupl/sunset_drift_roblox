@@ -90,16 +90,21 @@ For the opposite effect move the other way. Press L in play to reload.
 | leanTorque | Constant outward push while balanced. Below ~600 Nm the car's own front-heavy yaw wins and it settles back onto four wheels if ignored (Phase 0 choice); above, it tips. | — | — | ↓ |
 | instability | Extra outward push per degree above targetRollDeg. | — | — | ↓ |
 | rollDamping | Resists roll rate while balanced. Kills the lift-in overshoot. | — | — | ↑ |
-| balanceTorque | Explicit steer authority while lifted. The real balance comes from the turn the steer produces; this just adds bite at low speed. | — | — | ↑ |
+| leanInTorque | Lean toward the lifted side (the key you are holding). Divide by rollDamping for roughly the degrees per second you climb while holding it. Too high and holding the key flips the car before you can catch it. | — | — | ↓ |
+| leanOutTorque | Lean toward the grounded side (the opposite key). Same rule of thumb for how fast it comes back down. This is the catch, so it wants to be several times leanInTorque. | — | — | ↑ |
 | tipRollDeg | Where the controller lets go. Set past the static tip (≈56°) so a tip is a real fall. | — | — | ↑ |
 | rimGripStartDeg / rimGripBoost | Roll where rim dig-in starts and how much grip it adds. Without it the base slides out at ~45° and a tip is impossible. | — | — | ↓ boost |
 | landingDamping | Softens the drop back to four wheels. | — | — | ↑ |
 | suspensionBias | Loaded-side spring multiplier while lifted. | — | — | ↑ |
-| sidePickSteer | Steer magnitude at the press that picks the roll side (right steer = roll right). Below it the car rolls left. | — | — | — |
+| sidePickLean | Lean magnitude that picks the roll side (E/right = roll right). With nothing held, as when touch opens the mode with NATL, the car rolls left. | — | — | — |
+| sidePickRollDeg | While lifting below this roll, a lean the other way still flips the side. This is what lets a touch player pick the side after NATL has already started the lift. | — | — | — |
 | balancedEntryMarginDeg | Lifting hands over to balancing this many degrees before the target. | — | — | ↑ (earlier handover, less overshoot) |
 | landedRollDeg | Roll under which the car counts as landed. | — | — | — |
 
 ## input
+Lean is deliberately not ramped on any platform: balancing wants the torque the instant the
+key or button goes down.
+
 | Field | What it does |
 |---|---|
 | keyboardSteerRampPerSec / keyboardSteerReturnPerSec | Digital steer ramp. 4 = full lock in 0.25 s. |

@@ -5,8 +5,9 @@ export type InputState = {
 	throttle: number, -- 0..1
 	brake: number, -- 0..1
 	steer: number, -- -1..1, + = right
+	lean: number, -- -1..1, two-wheel balance axis, + = lean right
 	handbrake: boolean,
-	twoWheel: boolean, -- held
+	twoWheel: boolean, -- mode held (a lean key, or the touch NATL button)
 	clutchKick: boolean, -- true for one step on press
 	exit: boolean, -- edge
 	reset: boolean, -- edge
@@ -34,6 +35,7 @@ export type VehicleState = {
 	brake: number,
 	steer: number,
 	steerDeg: number,
+	lean: number,
 	driftAngleDeg: number, -- angle between velocity and heading, + = velocity right of heading
 	yawRateDegPerSec: number,
 	twoWheelMode: string,
@@ -52,6 +54,7 @@ function Types.newInput(): InputState
 		throttle = 0,
 		brake = 0,
 		steer = 0,
+		lean = 0,
 		handbrake = false,
 		twoWheel = false,
 		clutchKick = false,

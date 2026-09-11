@@ -5,10 +5,9 @@ local Input = require(script.Parent)
 local Keyboard = {}
 
 local PRIORITY = Enum.ContextActionPriority.High.Value
-local ACTIONS = {
-	"HJ_KThrottle", "HJ_KBrake", "HJ_KLeft", "HJ_KRight", "HJ_KHandbrake",
-	"HJ_KKick", "HJ_KTwoWheel", "HJ_KExit", "HJ_KReset", "HJ_KReload",
-}
+-- Only what we actually bound, so unbinding before the first bind is a no-op
+-- instead of a row of "could not find the function passed in" warnings.
+local bound: { string } = {}
 local left, right = false, false
 
 local function updateSteer()
@@ -23,6 +22,7 @@ local function bind(name: string, handler: (boolean) -> (), ...: Enum.KeyCode)
 		-- Sink so Space does not also jump the character out of the seat.
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, ...)
+	table.insert(bound, name)
 end
 
 function Keyboard.bind()
@@ -50,14 +50,19 @@ function Keyboard.bind()
 			Input.pulse("clutchKick")
 		end
 	end, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
-	bind("HJ_KTwoWheel", function(down)
-		Input.raw.twoWheel = down
-	end, Enum.KeyCode.F)
+	-- Q/E lift the car onto two wheels and lean it. Holding one is what keeps
+	-- the mode alive; holding both is a neutral hold; releasing both lands it.
+	bind("HJ_KLeanLeft", function(down)
+		Input.raw.leanLeft = down
+	end, Enum.KeyCode.Q)
+	bind("HJ_KLeanRight", function(down)
+		Input.raw.leanRight = down
+	end, Enum.KeyCode.E)
 	bind("HJ_KExit", function(down)
 		if down then
 			Input.pulse("exit")
 		end
-	end, Enum.KeyCode.E)
+	end, Enum.KeyCode.F)
 	bind("HJ_KReset", function(down)
 		if down then
 			Input.pulse("reset")
@@ -71,12 +76,14 @@ function Keyboard.bind()
 end
 
 function Keyboard.unbind()
-	for _, name in ACTIONS do
+	for _, name in bound do
 		ContextActionService:UnbindAction(name)
 	end
+	table.clear(bound)
 	left, right = false, false
 	Input.raw.throttle, Input.raw.brake = 0, 0
-	Input.raw.handbrake, Input.raw.twoWheel = false, false
+	Input.raw.handbrake = false
+	Input.raw.leanLeft, Input.raw.leanRight = false, false
 	Input.raw.steerDigital = 0
 end
 

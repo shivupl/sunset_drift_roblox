@@ -8,10 +8,8 @@ local Input = require(script.Parent)
 local Gamepad = {}
 
 local PRIORITY = Enum.ContextActionPriority.High.Value
-local ACTIONS = {
-	"HJ_GThrottle", "HJ_GBrake", "HJ_GSteer", "HJ_GHandbrake", "HJ_GKick",
-	"HJ_GTwoWheel", "HJ_GExit", "HJ_GReset",
-}
+-- Only what we actually bound; see the note in Keyboard.luau.
+local bound: { string } = {}
 
 local function applyDeadzone(v: number, dz: number): number
 	local a = math.abs(v)
@@ -26,6 +24,7 @@ local function bindAnalog(name: string, handler: (InputObject) -> (), key: Enum.
 		handler(obj)
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, key)
+	table.insert(bound, name)
 end
 
 local function bindButton(name: string, handler: (boolean) -> (), key: Enum.KeyCode)
@@ -33,6 +32,7 @@ local function bindButton(name: string, handler: (boolean) -> (), key: Enum.KeyC
 		handler(state == Enum.UserInputState.Begin)
 		return Enum.ContextActionResult.Sink
 	end, false, PRIORITY, key)
+	table.insert(bound, name)
 end
 
 function Gamepad.bind()
@@ -61,14 +61,18 @@ function Gamepad.bind()
 			Input.pulse("clutchKick")
 		end
 	end, Enum.KeyCode.ButtonX)
-	bindButton("HJ_GTwoWheel", function(down)
-		Input.raw.twoWheel = down
-	end, Enum.KeyCode.ButtonY)
+	-- Bumpers lift and lean, the same way Q/E do on a keyboard.
+	bindButton("HJ_GLeanLeft", function(down)
+		Input.raw.leanLeft = down
+	end, Enum.KeyCode.ButtonL1)
+	bindButton("HJ_GLeanRight", function(down)
+		Input.raw.leanRight = down
+	end, Enum.KeyCode.ButtonR1)
 	bindButton("HJ_GExit", function(down)
 		if down then
 			Input.pulse("exit")
 		end
-	end, Enum.KeyCode.ButtonL1)
+	end, Enum.KeyCode.ButtonY)
 	bindButton("HJ_GReset", function(down)
 		if down then
 			Input.pulse("reset")
@@ -77,10 +81,12 @@ function Gamepad.bind()
 end
 
 function Gamepad.unbind()
-	for _, name in ACTIONS do
+	for _, name in bound do
 		ContextActionService:UnbindAction(name)
 	end
+	table.clear(bound)
 	Input.raw.steerAnalog = nil
+	Input.raw.leanLeft, Input.raw.leanRight = false, false
 end
 
 return Gamepad

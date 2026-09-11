@@ -77,7 +77,13 @@ function DebugPanel.update(state: VehicleState)
 		string.format("SPD %5.1f km/h   GEAR %s   RPM %4.0f", state.speedKmh, gear, state.rpm),
 		string.format("THR %.2f  BRK %.2f  STR %+.2f (%+5.1f°)", state.throttle, state.brake, state.steer, state.steerDeg),
 		string.format("DRIFT %+6.1f°   YAW %+6.1f°/s", state.driftAngleDeg, state.yawRateDegPerSec),
-		string.format("MODE %-8s  ROLL %+5.1f°  margin %5.1f°", state.twoWheelMode, state.rollDeg, state.rollMarginDeg),
+		string.format(
+			"MODE %-8s  ROLL %+5.1f°  margin %5.1f°  LEAN %+d",
+			state.twoWheelMode,
+			state.rollDeg,
+			state.rollMarginDeg,
+			state.lean
+		),
 		wheelLine(w[1]) .. "   " .. wheelLine(w[2]),
 		wheelLine(w[3]) .. "   " .. wheelLine(w[4]),
 		string.format(
@@ -96,6 +102,7 @@ function DebugPanel.update(state: VehicleState)
 	p:SetAttribute("DbgDriftDeg", state.driftAngleDeg)
 	p:SetAttribute("DbgYawRate", state.yawRateDegPerSec)
 	p:SetAttribute("DbgRollDeg", state.rollDeg)
+	p:SetAttribute("DbgLean", state.lean)
 	p:SetAttribute("DbgMode", state.twoWheelMode)
 	p:SetAttribute("DbgSlipFL", w[1].slipAngleDeg)
 	p:SetAttribute("DbgSlipFR", w[2].slipAngleDeg)

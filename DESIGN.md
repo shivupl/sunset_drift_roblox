@@ -85,6 +85,16 @@ step, cancels gravity's restoring torque, and adds a small constant outward
 lean. Nothing pulls the car toward a target angle, so it never feels
 magnetized.
 
+Balance is its own input axis, not the steering wheel. Q and E (gamepad
+bumpers, the touch LEAN pair) lean the car toward the lifted or the grounded
+side, with separate gains because catching a lean needs more authority than
+adding to one. Holding a lean control is also what opens the mode on keyboard
+and gamepad, so the key you press picks the side and then keeps pushing that
+way; touch has to open the mode with NATL first, since buttons cannot appear
+before the thing they belong to exists. Steering stays steering throughout,
+which is the point: on two wheels the car yaws, and the player needs the
+wheel to correct it while the lean axis handles the lean.
+
 Two pieces of honest physics shaped the tuning:
 
 - The front carries more load than the rear, so on two wheels the front
@@ -97,7 +107,10 @@ Two pieces of honest physics shaped the tuning:
   turn and drops the car fast; steering away lifts it.
 - Drift assist must be off on two wheels. It read the sideways creep as a
   slide and steered into it, which turned the car and brought it down on its
-  own, exactly the "magnetized" feel we wanted to avoid.
+  own, exactly the "magnetized" feel we wanted to avoid. That is also why
+  steering is no longer the balance input: the turn a steer produces has its
+  own righting torque, so balancing with the wheel meant balance and yaw
+  correction fought each other.
 - On tread, tires slide out at atan(grip) ≈ 45° before the car can reach the
   static tip angle. Past `rimGripStartDeg` the grounded tires gain extra
   grip (rim and sidewall dig-in), which is what makes a real natl flip

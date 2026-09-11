@@ -24,15 +24,30 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 | Steer | A / D | left stick | < > (left) |
 | Handbrake | Space | B | HAND |
 | Clutch kick | Shift (tap) | X | KICK |
-| Two-wheel (hold; steer picks the side) | F | Y | NATL |
-| Exit car | E | LB | EXIT |
+| Two-wheel / lean left | Q (hold) | LB (hold) | NATL, then LEAN< |
+| Two-wheel / lean right | E (hold) | RB (hold) | NATL, then LEAN> |
+| Exit car | F | Y | EXIT |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | RELOAD |
 
+## Two-wheel ("natl")
+Holding Q or E is what puts the car up: the key you hold picks the side and keeps leaning
+that way, so hold Q to climb onto the left pair. Hold both for a neutral hold, switch to the
+opposite key to lean back down and catch it, release both to land. Steering is left alone the
+whole time so you can correct the car's yaw while you balance. Leaning all the way back down
+while still holding lands the car and will not fling it up again until you release and press
+again.
+
+Touch is the exception, because the lean buttons cannot be on screen before the mode exists:
+hold NATL to open it and a LEAN< / LEAN> pair appears inboard of the throttle cluster. The
+first lean button you reach for still picks the side, as long as the car is not up yet.
+
 ## Phone test in Studio
 Test → Device → pick a phone → Play. Touch buttons appear because the emulator reports
-TouchEnabled: steer and NATL on the left, GAS/BRAKE/HAND/KICK on the right, EXIT/RESET/RELOAD
-along the top. Not yet verified on a real phone in this pass.
+TouchEnabled: steer and NATL on the left, GAS/BRAKE/HAND/KICK on the right, the LEAN pair
+inboard of GAS while two-wheel is live, EXIT/RESET/RELOAD along the top. Not verified on a
+real phone or in the device emulator in this pass. Note the ergonomics: NATL sits under the
+left thumb and the LEAN pair under the right, so leaning means coming off GAS.
 
 ## Debug panel
 Top-left while driving: speed, gear, rpm, inputs, drift angle, yaw rate, two-wheel mode and
@@ -52,8 +67,9 @@ during play, or stop and replay after saving the file.
   `init.luau` (Roblox glue). `DESIGN.md` explains the choices.
 - `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
 - `src/client/` — input (keyboard, gamepad, touch), vehicle controller, camera, debug panel.
-- `src/shared/Tests/` — spec runner. In Studio: `require(game.ReplicatedStorage.Shared.Tests)()`
-  (93 assertions).
+- `src/shared/Tests/` — spec runner (102 assertions). Run it from `scripts/studio_tests.luau`,
+  which clones the Shared folder first; requiring `Shared.Tests` directly can re-run stale code
+  because Studio caches modules per instance and editing Source does not always invalidate it.
 
 ## Developer tooling
 - `scripts/analyze.sh` — luau-lsp strict analysis over `src` with Roblox types.

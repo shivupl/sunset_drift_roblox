@@ -18,7 +18,11 @@ export type Raw = {
 	steerDigital: number, -- -1, 0, 1 from keys or touch buttons
 	steerAnalog: number?, -- gamepad stick, nil when not driving with a pad
 	handbrake: boolean,
-	twoWheel: boolean,
+	leanLeft: boolean,
+	leanRight: boolean,
+	-- Touch only: the NATL button. Keyboard and gamepad enter two-wheel by
+	-- holding a lean control, so they leave this false.
+	twoWheelButton: boolean,
 	source: string, -- "keyboard" | "touch" | "gamepad"
 }
 
@@ -30,7 +34,9 @@ Input.raw = {
 	steerDigital = 0,
 	steerAnalog = nil,
 	handbrake = false,
-	twoWheel = false,
+	leanLeft = false,
+	leanRight = false,
+	twoWheelButton = false,
 	source = "keyboard",
 } :: Raw
 
@@ -48,7 +54,8 @@ local function readOverride(player: Player): InputState
 	out.brake = math.clamp(tonumber(player:GetAttribute("OvBrake")) or 0, 0, 1)
 	out.steer = math.clamp(tonumber(player:GetAttribute("OvSteer")) or 0, -1, 1)
 	out.handbrake = player:GetAttribute("OvHandbrake") == true
-	out.twoWheel = player:GetAttribute("OvTwoWheel") == true
+	out.lean = math.clamp(tonumber(player:GetAttribute("OvLean")) or 0, -1, 1)
+	out.twoWheel = player:GetAttribute("OvTwoWheel") == true or out.lean ~= 0
 	if player:GetAttribute("OvClutchKick") == true then
 		out.clutchKick = true
 		player:SetAttribute("OvClutchKick", false)
@@ -82,7 +89,13 @@ function Input.get(dt: number, cfg: Config): InputState
 	out.throttle = raw.throttle
 	out.brake = raw.brake
 	out.handbrake = raw.handbrake
-	out.twoWheel = raw.twoWheel
+	-- Lean is digital and unramped: balancing wants the torque the instant
+	-- the key goes down, not a ramp.
+	out.lean = (if raw.leanRight then 1 else 0) - (if raw.leanLeft then 1 else 0)
+	-- Holding a lean control is what puts the car up on two wheels. Touch is
+	-- the exception: there the NATL button opens the mode and the lean
+	-- buttons only then appear.
+	out.twoWheel = raw.twoWheelButton or out.lean ~= 0
 
 	if raw.steerAnalog ~= nil then
 		out.steer = raw.steerAnalog
