@@ -252,10 +252,14 @@ local config = {
 		-- direction of travel. Dense, tall, slim.
 		downtown = {
 			enabled = true,
-			sectorDeg = 24, -- half-angle of the sector
-			minDistanceM = 1550,
-			maxDistanceM = 2200,
-			count = 44,
+			-- The cluster sits in a sector this far round from the road's
+			-- direction of travel (+90 is the right-hand side, which is where
+			-- the city grid is) so the grid's boulevards run into it.
+			sectorOffsetDeg = 90,
+			sectorDeg = 30, -- half-angle of the sector
+			minDistanceM = 1600,
+			maxDistanceM = 2300,
+			count = 56,
 			minWidthM = 28,
 			maxWidthM = 64,
 			minHeightM = 150,
@@ -273,8 +277,8 @@ local config = {
 		-- top) and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = -3, distanceM = 1480 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 5, distanceM = 1560 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 1700 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 1780 },
 		},
 		-- Building detail. Tiers: a second, narrower box on top of a share
 		-- of the blocks and towers. Crowns: a dim lit band at the top of a

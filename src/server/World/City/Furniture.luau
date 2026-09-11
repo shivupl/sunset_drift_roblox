@@ -98,11 +98,11 @@ local function parkedCar(ctx: Context, rng: Random, parent: Instance, xM: number
 	if not model then
 		return
 	end
+	-- Colour the body; the glass piece keeps its own dark tint.
 	local colour = CAR_COLOURS[rng:NextInteger(1, #CAR_COLOURS)]
-	for _, p in model:GetChildren() do
-		if p:IsA("BasePart") then
-			p.Color = colour
-		end
+	local body = model:GetChildren()[1]
+	if body and body:IsA("BasePart") then
+		body.Color = colour
 	end
 	-- Four wheels from the pack's own wheel mesh, axis X.
 	local wb, tr = 1.4, 0.78
@@ -167,6 +167,40 @@ function Furniture.build(ctx: Context, c: CCfg, plan: Streets.Plan, parent: Inst
 				end
 				ld += f.lampSpacingM
 			end
+			-- Hedges between the median palms, clipped boxes.
+			local hd = f.medianPalmSpacingM / 2 + f.medianPalmSpacingM / 2
+			while hd + f.hedgeLengthM / 2 < len do
+				local x, z = along(seg, hd, 0)
+				local sx, sz = if alongX then f.hedgeLengthM else 1.4, if alongX then 1.4 else f.hedgeLengthM
+				Build.part({ name = "Hedge", size = Vector3.new(ctx.s(sx), ctx.s(0.9), ctx.s(sz)), cframe = CFrame.new(at(ctx, x, z, medianTop + 0.45)), color = Color3.fromRGB(64, 92, 52):Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.15)), material = Enum.Material.Grass, parent = street })
+				hd += f.medianPalmSpacingM
+			end
+			-- Fan palms along the shop fronts, on the pavement.
+			local ppd = f.pavementPalmSpacingM * 0.6
+			while ppd < len do
+				for _, side in { -1, 1 } do
+					if rng:NextNumber() < 0.55 then
+						local x, z = along(seg, ppd + rng:NextNumber(-2, 2), side * (half + b.kerbWidthM + 3.2))
+						AssetRegistry.place("fanPalm", CFrame.new(at(ctx, x, z, pavementTop)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0), rng:NextNumber(0.75, 1.0), ctx.mps, palms, false)
+					end
+				end
+				ppd += f.pavementPalmSpacingM
+			end
+			-- Bus shelters: a roof on two posts with a glass back.
+			local bsd = f.busStopSpacingM * 0.5
+			while bsd < len do
+				local side = if rng:NextNumber() < 0.5 then -1 else 1
+				local x, z = along(seg, bsd, side * (half + b.kerbWidthM + 2.4))
+				local yaw = if alongX then 0 else math.pi / 2
+				local base = CFrame.new(at(ctx, x, z, pavementTop)) * CFrame.Angles(0, yaw, 0)
+				local dark = Color3.fromRGB(56, 58, 62)
+				Build.part({ name = "ShelterRoof", size = Vector3.new(ctx.s(4.5), ctx.s(0.15), ctx.s(1.8)), cframe = base * CFrame.new(0, ctx.s(2.7), 0), color = dark, material = Enum.Material.Metal, parent = street })
+				Build.part({ name = "ShelterBack", size = Vector3.new(ctx.s(4.3), ctx.s(2.2), ctx.s(0.08)), cframe = base * CFrame.new(0, ctx.s(1.5), ctx.s(side * -0.85)), color = Color3.fromRGB(150, 180, 200), material = Enum.Material.Glass, parent = street, transparency = 0.5 })
+				for _, px in { -2.0, 2.0 } do
+					Build.part({ name = "ShelterPost", size = Vector3.new(ctx.s(0.12), ctx.s(2.7), ctx.s(0.12)), cframe = base * CFrame.new(ctx.s(px), ctx.s(1.35), ctx.s(side * -0.85)), color = dark, material = Enum.Material.Metal, parent = street })
+				end
+				bsd += f.busStopSpacingM
+			end
 			local pd = f.parkedCarSlotM
 			while pd < len - f.parkedCarSlotM do
 				for _, side in { -1, 1 } do
@@ -220,6 +254,14 @@ function Furniture.build(ctx: Context, c: CCfg, plan: Streets.Plan, parent: Inst
 				if onBoulevard then
 					local sx, sz = along(seg, if endAt == 0 then 3 else len - 3, -(c.sideStreet.widthM / 2 + b.kerbWidthM + 0.8))
 					signal(ctx, street, sx, sz, if alongX then (if endAt == 0 then -math.pi / 2 else math.pi / 2) else (if endAt == 0 then math.pi else 0))
+					-- Zebra crossing across the side street mouth.
+					local paint = s.paintColor:Lerp(s.asphaltColor, 0.4)
+					local n = f.crosswalkStripes
+					for i = 1, n do
+						local lat = -c.sideStreet.widthM / 2 + c.sideStreet.widthM * (i - 0.5) / n
+						local cxm, czm = along(seg, if endAt == 0 then 5 else len - 5, lat)
+						Build.part({ name = "Zebra", size = Vector3.new(ctx.s(if alongX then 2.4 else 0.8), ctx.s(s.markingThicknessM), ctx.s(if alongX then 0.8 else 2.4)), cframe = CFrame.new(at(ctx, cxm, czm, s.markingEpsilonM + s.markingThicknessM / 2)), color = paint, material = Enum.Material.SmoothPlastic, parent = street, transparency = 0.2 })
+					end
 				end
 			end
 		end

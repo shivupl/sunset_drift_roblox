@@ -20,6 +20,7 @@
 local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
+local CityConfig = require(script.Parent.City.CityConfig)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -218,6 +219,16 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	travel = Vector3.new(travel.X, 0, travel.Z)
 	local forwardAngle = if travel.Magnitude > 1 then math.atan2(travel.Z, travel.X) else -math.pi / 2
 
+	-- Nothing from the backdrop may land in the city grid's streets.
+	local keep = {
+		minX = ctx.s(CityConfig.originM.x - 60),
+		maxX = ctx.s(CityConfig.originM.x + CityConfig.blocksX * CityConfig.blockM + 60),
+		minZ = ctx.s(CityConfig.originM.z - CityConfig.blocksZ * CityConfig.blockM - 60),
+		maxZ = ctx.s(CityConfig.originM.z + 60),
+	}
+	local function inGrid(pos: Vector3): boolean
+		return CityConfig.enabled and pos.X > keep.minX and pos.X < keep.maxX and pos.Z > keep.minZ and pos.Z < keep.maxZ
+	end
 	local function siteAt(angle: number, radiusM: number, widthM: number, depthM: number, heightM: number, tower: boolean): Site
 		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
 		return {
@@ -244,7 +255,10 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 				width *= rng:NextNumber(0.35, 0.6)
 				depth *= rng:NextNumber(0.35, 0.6)
 			end
-			building(cfg, ctx, rng, model, siteAt(angle, radius, width, depth, height, tower))
+			local site = siteAt(angle, radius, width, depth, height, tower)
+			if not inGrid(site.base) then
+				building(cfg, ctx, rng, model, site)
+			end
 		end
 	end
 
@@ -252,16 +266,20 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	local dt = c.downtown
 	if dt.enabled then
 		local halfSector = math.rad(dt.sectorDeg)
+		local centreAngle = forwardAngle + math.rad(dt.sectorOffsetDeg)
 		for _ = 1, dt.count do
-			local angle = forwardAngle + rng:NextNumber(-halfSector, halfSector)
+			local angle = centreAngle + rng:NextNumber(-halfSector, halfSector)
 			local radius = rng:NextNumber(dt.minDistanceM, dt.maxDistanceM)
 			local width = rng:NextNumber(dt.minWidthM, dt.maxWidthM)
 			local depth = rng:NextNumber(dt.minWidthM, dt.maxWidthM)
 			local height = rng:NextNumber(dt.minHeightM, dt.maxHeightM)
-			building(cfg, ctx, rng, model, siteAt(angle, radius, width, depth, height, true))
+			local site = siteAt(angle, radius, width, depth, height, true)
+			if not inGrid(site.base) then
+				building(cfg, ctx, rng, model, site)
+			end
 		end
 		if dt.glowEnabled then
-			local outward = Vector3.new(math.cos(forwardAngle), 0, math.sin(forwardAngle))
+			local outward = Vector3.new(math.cos(centreAngle), 0, math.sin(centreAngle))
 			local base = centre + outward * ctx.s((dt.minDistanceM + dt.maxDistanceM) / 2)
 			local gh = ctx.s(dt.glowHeightM)
 			Build.part({

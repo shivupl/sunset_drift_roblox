@@ -80,9 +80,11 @@ local config = {
 
 	-- District per block, row by row from the north-west: what each block's
 	-- four parcels are filled with.
+	-- The owner cut the villa blocks: this is one dense core that runs into
+	-- the skyline, so every block is commercial, towers or the plaza.
 	districts = {
-		{ "commercial", "towers", "plaza" },
-		{ "residential", "residential", "lot" },
+		{ "commercial", "towers", "commercial" },
+		{ "towers", "plaza", "commercial" },
 	},
 
 	buildings = {
@@ -126,10 +128,16 @@ local config = {
 			gapChance = 0.3,
 			gapM = 4,
 			setbackM = 1.5, -- from the pavement edge
-			awningChance = 0.8,
+			awningChance = 0.7,
 			awningDepthM = 1.8,
 			awningHeightM = 3.3,
 			fasciaHeightM = 0.9,
+			-- Street-level and rooftop detail, per building.
+			arcadeChance = 0.35, -- a colonnade along the ground floor instead of a flat front
+			balconyChance = 0.45, -- a couple of balconies on the second and third floors
+			billboardChance = 0.22, -- a rooftop billboard on a frame
+			facadeAcChance = 0.6, -- AC units hung on the front at first-floor height
+			verticalSignChance = 0.3, -- a lit sign box standing off the corner
 			fasciaPalette = { Color3.fromRGB(180, 40, 40), Color3.fromRGB(30, 90, 60), Color3.fromRGB(40, 60, 140), Color3.fromRGB(200, 150, 30), Color3.fromRGB(240, 240, 235) },
 			signChance = 0.6,
 		},
@@ -174,6 +182,20 @@ local config = {
 			marginM = 12,
 			planterSpacingM = 14,
 		},
+		-- A mosque takes one of the plaza's four parcels: courtyard wall,
+		-- prayer hall, dome, two minarets. The Gulf identity piece.
+		mosque = {
+			hallWidthM = 44,
+			hallDepthM = 34,
+			hallHeightM = 10,
+			domeDiameterM = 22,
+			minaretHeightM = 42,
+			minaretDiameterM = 3.2,
+			wallHeightM = 2.6,
+			color = Color3.fromRGB(232, 222, 198),
+			trimColor = Color3.fromRGB(150, 112, 90),
+			domeColor = Color3.fromRGB(70, 110, 96),
+		},
 	},
 
 	furniture = {
@@ -191,10 +213,14 @@ local config = {
 		poleWidthM = 0.22,
 		poleColor = Color3.fromRGB(70, 72, 76),
 		headSizeM = 0.6,
-		parkedCarChance = 0.12, -- per parking slot along a boulevard kerb; a car is five parts
+		parkedCarChance = 0.18, -- per parking slot along a boulevard kerb; a car is five parts
 		parkedCarSlotM = 7,
-		binSpacingM = 45,
-		benchSpacingM = 70,
+		binSpacingM = 40,
+		benchSpacingM = 60,
+		busStopSpacingM = 170, -- shelters on the boulevard pavements
+		pavementPalmSpacingM = 34, -- fan palms along the shop fronts
+		hedgeLengthM = 10, -- a clipped hedge between median palms
+		crosswalkStripes = 6,
 		plazaLampSpacingM = 40,
 		signalsAtRoundabouts = false, -- roundabouts have none; side-street T junctions get a signal
 	},

@@ -162,9 +162,16 @@ inner two lanes. The ramps are waypoint paths through the same
 the highway kerb.
 
 **Buildings** (`Buildings.luau`). Each parcel is filled by its block's
-district. *Commercial*: rows of shops along both boulevard frontages and one
+district. The owner cut the villa blocks after the first build, so the six
+blocks are commercial, towers, commercial / towers, plaza, commercial: one
+dense core whose east boulevards run straight into the skyline's downtown
+cluster, which was swung round to stand behind the grid's east edge (with
+a keep-out so no backdrop building lands in a street). *Commercial*: rows of shops along both boulevard frontages and one
 side street, 18 to 36 m wide, 3 to 7 storeys, gaps between some; each has a
 glazed shopfront, a coloured fascia, an awning on most, a lit sign on some,
+a ground-floor colonnade on a third, balconies on the second and third
+floors of nearly half, AC units hung on the front (the mesh), a vertical
+lit sign box off the corner on some, a rooftop billboard on a fifth,
 pilasters on some, a stain band at the base, window strips on the lower
 three storeys split into lit and dark segments and one dark band per storey
 above, a parapet lip, AC units and a water tank on the roof. The interior
@@ -175,9 +182,13 @@ smaller upper tier, a dish on most roofs, a wall AC unit (the mesh) at
 first-floor height. *Towers*: four podium-and-tower blocks, the podium
 three storeys with shopfronts on every face, the tower 14 to 30 storeys of
 glass with mullions and floor bands, half with a setback, a lit crown, a
-plant room. *Plaza*: one flat asphalt slab the size of the parcel with a
-few worn rows of bays through the middle, bollards and planters along its
-edges, lamps through it. This is the meet spot. *Lot*: sand.
+plant room. *Plaza*: three of its four parcels are one flat asphalt slab each with a
+few worn rows of bays through the middle, bollards and planters along the
+edges, lamps through it; this is the meet spot. The fourth parcel is the
+mosque: courtyard wall, prayer hall with arched openings, a drum, a lit
+band and a dome, two minarets with galleries, palms in the corners.
+*Residential* and *lot* still exist in the generator but no block uses
+them.
 
 Walls collide (compound walls, houses, shops, podiums, shafts, gates);
 nothing else in the buildings does.
@@ -188,14 +199,18 @@ pack, lamp 6 at 0.16) on both pavements every 60 m and one side of side
 streets every 75 m, heads tagged for the twelve-light manager; a traffic
 signal (boxes) where each side street meets a boulevard; parked cars (two
 unbranded bodies from a low-poly pack plus its wheel mesh, five parts each)
-in the parking lanes at 12% of slots; bins and benches (meshes) along the
-pavements; bollards and planters round the plaza. Nothing here collides.
+in the parking lanes at 18% of slots; bins and benches (meshes) along the
+pavements; clipped hedges between the median palms; fan palms along the
+shop fronts; bus shelters on the boulevards; zebra crossings across every
+side-street mouth; bollards and planters round the plaza. Nothing here
+collides.
 
-**Counts.** City streets 544, street detail 1,325, buildings 4,587 (339
-shadow casters), furniture 3,479 (562 casters, the palms). Whole world
-15,639 parts. The city is streamed (buildings, streets, furniture all
-default streaming mode); the highway road, its palms and the skyline stay
-Persistent as before. Build time 1.3 s.
+**Counts.** City streets 544, street detail 1,325, buildings 6,184 (465
+shadow casters), furniture 4,996 (562 casters, the median and island
+palms). Whole world 18,979 parts. The city is streamed (buildings,
+streets, furniture all default streaming mode); the highway road, its
+palms and the skyline stay Persistent as before. Build time about a
+second.
 
 **Verified.** A raycast sweep every 2 m along both ramps, a boulevard
 through three roundabouts, a side street through its crossing and the
