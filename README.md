@@ -20,15 +20,16 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 ## Controls
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
-| Throttle / Brake (brake at a stop = reverse) | W / S | RT / LT | GAS / BRAKE (right) |
-| Steer | A / D | left stick | < > (left) |
+| Throttle / Brake (brake at a stop = reverse) | W / S | RT / LT | GAS / BRAKE (right thumb) |
+| Steer | A / D | left stick | steer pad (left thumb, position = angle, slide to counter-steer) |
 | Handbrake | Space | B | HAND |
 | Clutch kick | Shift (tap) | X | KICK |
-| Two-wheel / lean left | Q (hold) | LB (hold) | NATL, then LEAN< |
-| Two-wheel / lean right | E (hold) | RB (hold) | NATL, then LEAN> |
+| Two-wheel / lean left | Q (hold) | LB (hold) | NATL (tap, toggles), then LEAN< |
+| Two-wheel / lean right | E (hold) | RB (hold) | NATL (tap, toggles), then LEAN> |
 | Exit car | F | Y | EXIT |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
-| Reload CarConfig | L | — | RELOAD |
+| Reload CarConfig | L | — | LOAD |
+| Toggle debug panel | — | — | DBG |
 
 ## Two-wheel ("natl")
 Get above about 45 km/h first; nothing lifts at parking speed, and the lift is full from 80.
@@ -40,15 +41,23 @@ away lifts it. With gas on the car runs straight (open diff, so the grounded rea
 If you slow to a crawl the car settles back onto four wheels by itself. Release both keys to land.
 
 Touch is the exception, because the lean buttons cannot be on screen before the mode exists:
-hold NATL to open it and a LEAN< / LEAN> pair appears inboard of the throttle cluster. The
-first lean button you reach for still picks the side, as long as the car is not up yet.
+tap NATL to open it (it stays on, so the left thumb is free to steer) and a LEAN< / LEAN>
+pair appears inboard of BRAKE. The first lean button you reach for picks the side, as long as
+the car is not up yet. NATL switches itself off when the car lands; tap it again to lift.
 
 ## Phone test in Studio
-Test → Device → pick a phone → Play. Touch buttons appear because the emulator reports
-TouchEnabled: steer and NATL on the left, GAS/BRAKE/HAND/KICK on the right, the LEAN pair
-inboard of GAS while two-wheel is live, EXIT/RESET/RELOAD along the top. Not verified on a
-real phone or in the device emulator in this pass. Note the ergonomics: NATL sits under the
-left thumb and the LEAN pair under the right, so leaning means coming off GAS.
+Test → Device → pick a phone → Play. The touch HUD is our own ScreenGui (Roblox's thumbstick
+and jump button are hidden while driving): a steer pad along the bottom left with NATL above
+it, GAS in the bottom right with BRAKE inboard, HAND above GAS, KICK above BRAKE, the LEAN
+pair inboard of BRAKE while two-wheel is live, and small EXIT / RESET / LOAD / DBG buttons
+along the top, right of the speed readout. The steer pad is positional: where the thumb sits is the
+angle, the far ends are full lock, and sliding across is a counter-steer without lifting.
+Sizes scale with the screen height and `input.touchScale`. To see the touch HUD on a desktop
+session, set the LocalPlayer attribute `ForceTouch = true` before getting in.
+
+## Driver HUD
+Top centre on every platform: speed, gear, drift angle (orange past `hud.driftHighlightDeg`),
+SPINS while a 360 is under way, NATL roll while on two wheels. `hud.enabled` turns it off.
 
 ## Drift feedback
 Smoke off the rear tires, skid marks, and wheels that spin up or lock, all driven by the
@@ -57,8 +66,9 @@ sim's per-wheel slip and saturation. Tunables live under `effects` in CarConfig;
 own into `effects.screechSoundId` and `effects.engineSoundId`.
 
 ## Debug panel
-Top-left while driving: speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a
-SPINS counter for completed 360s, two-wheel mode and roll with margin to tip, per-wheel slip
+Top-left while driving on PC; hidden on phones until you tap DBG (`debug.showOnTouch` flips
+the default). Speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a SPINS
+counter for completed 360s, two-wheel mode and roll with margin to tip, per-wheel slip
 angle / load / SPIN or AIR, handbrake, kick, assist.
 
 ## Tafheet moves
@@ -81,7 +91,7 @@ during play, or stop and replay after saving the file.
 - `src/shared/VehicleSim/` — the physics: Suspension, Tire, Drivetrain, TwoWheel (pure) and
   `init.luau` (Roblox glue). `DESIGN.md` explains the choices.
 - `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
-- `src/client/` — input (keyboard, gamepad, touch), vehicle controller, camera, debug panel.
+- `src/client/` — input (keyboard, gamepad, touch HUD), vehicle controller, camera, driver HUD, debug panel.
 - `src/shared/Tests/` — spec runner (102 assertions). Run it from `scripts/studio_tests.luau`,
   which clones the Shared folder first; requiring `Shared.Tests` directly can re-run stale code
   because Studio caches modules per instance and editing Source does not always invalidate it.

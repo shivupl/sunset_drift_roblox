@@ -15,8 +15,8 @@ type InputState = Types.InputState
 export type Raw = {
 	throttle: number,
 	brake: number,
-	steerDigital: number, -- -1, 0, 1 from keys or touch buttons
-	steerAnalog: number?, -- gamepad stick, nil when not driving with a pad
+	steerDigital: number, -- -1, 0, 1 from keys
+	steerAnalog: number?, -- gamepad stick or touch steer pad, nil when steering with keys
 	handbrake: boolean,
 	leanLeft: boolean,
 	leanRight: boolean,
@@ -103,22 +103,24 @@ function Input.get(dt: number, cfg: Config): InputState
 	out.twoWheel = raw.twoWheelButton or raw.leanLeft or raw.leanRight
 
 	if raw.steerAnalog ~= nil then
-		out.steer = raw.steerAnalog
-		steerRamped = out.steer
+		local target = raw.steerAnalog
+		if raw.source == "touch" then
+			-- The steer pad is positional, so the wheel chases the thumb at
+			-- a fixed rate: a jump across the pad is a quick counter-steer,
+			-- not an instant one.
+			local rate = cfg.input.touchSteerRatePerSec
+			steerRamped += math.clamp(target - steerRamped, -rate * dt, rate * dt)
+		else
+			steerRamped = target
+		end
+		out.steer = steerRamped
 	else
 		-- Digital steer ramps so a tap is a nudge and a hold is full lock.
-		-- Touch ramps slower and through a curve so thumbs get fine control.
 		local target = raw.steerDigital
-		local rampUp, rampDown, curve
-		if raw.source == "touch" then
-			rampUp, rampDown, curve = cfg.input.touchSteerRampPerSec, cfg.input.touchSteerReturnPerSec, cfg.input.touchSteerCurve
-		else
-			rampUp, rampDown, curve = cfg.input.keyboardSteerRampPerSec, cfg.input.keyboardSteerReturnPerSec, 1
-		end
 		local returning = math.abs(target) < math.abs(steerRamped) or target * steerRamped < 0
-		local rate = if returning then rampDown else rampUp
+		local rate = if returning then cfg.input.keyboardSteerReturnPerSec else cfg.input.keyboardSteerRampPerSec
 		steerRamped += math.clamp(target - steerRamped, -rate * dt, rate * dt)
-		out.steer = math.sign(steerRamped) * math.abs(steerRamped) ^ curve
+		out.steer = steerRamped
 	end
 
 	takeEdges(out)

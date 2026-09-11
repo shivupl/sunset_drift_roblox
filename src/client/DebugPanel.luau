@@ -1,6 +1,9 @@
 --!strict
--- On-screen numbers for tuning. Monospace block, top-left, 10 Hz.
+-- On-screen numbers for tuning. Monospace block, top-left, 10 Hz. Hidden on
+-- touch by default (debug.showOnTouch) and toggled by the DBG button; the
+-- Dbg* attributes for the harness are written whether or not it is shown.
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
@@ -13,6 +16,22 @@ local DebugPanel = {}
 
 local label: TextLabel? = nil
 local lastUpdate = 0
+local shown: boolean? = nil -- nil follows the config; set by toggle
+
+local function isTouch(): boolean
+	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
+end
+
+local function wantVisible(): boolean
+	local cfg = ConfigLoader.current()
+	if not cfg.debug.enabled then
+		return false
+	end
+	if shown ~= nil then
+		return shown
+	end
+	return cfg.debug.showOnTouch or not isTouch()
+end
 
 local function ensureLabel(): TextLabel
 	if label then
@@ -35,7 +54,8 @@ local function ensureLabel(): TextLabel
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.TextYAlignment = Enum.TextYAlignment.Top
 	l.AutomaticSize = Enum.AutomaticSize.XY
-	l.Position = UDim2.fromOffset(8, 8)
+	-- On a phone the top-left belongs to Roblox's chat button; drop below it.
+	l.Position = if isTouch() then UDim2.new(0, 8, 0.2, 0) else UDim2.fromOffset(8, 8)
 	l.Size = UDim2.fromOffset(0, 0)
 	l.Text = ""
 	l.Parent = gui
@@ -59,19 +79,41 @@ end
 
 function DebugPanel.update(state: VehicleState)
 	local cfg = ConfigLoader.current()
-	if not cfg.debug.enabled then
-		DebugPanel.hide()
-		return
-	end
 	local now = os.clock()
 	if now - lastUpdate < 1 / cfg.debug.updateHz then
 		return
 	end
 	lastUpdate = now
+	local w = state.wheels
 
+	-- Mirror for the MCP harness (client-side attributes, readable in the Client datamodel).
+	local p = Players.LocalPlayer
+	p:SetAttribute("DbgSpeedKmh", state.speedKmh)
+	p:SetAttribute("DbgGear", state.gear)
+	p:SetAttribute("DbgRpm", state.rpm)
+	p:SetAttribute("DbgDriftDeg", state.driftAngleDeg)
+	p:SetAttribute("DbgYawRate", state.yawRateDegPerSec)
+	p:SetAttribute("DbgSpins", state.spinCount)
+	p:SetAttribute("DbgSpinProgress", state.spinProgressDeg)
+	p:SetAttribute("DbgRollDeg", state.rollDeg)
+	p:SetAttribute("DbgLean", state.lean)
+	p:SetAttribute("DbgSteerLock", state.steerLock)
+	p:SetAttribute("DbgMode", state.twoWheelMode)
+	p:SetAttribute("DbgSlipFL", w[1].slipAngleDeg)
+	p:SetAttribute("DbgSlipFR", w[2].slipAngleDeg)
+	p:SetAttribute("DbgSlipRL", w[3].slipAngleDeg)
+	p:SetAttribute("DbgSlipRR", w[4].slipAngleDeg)
+	p:SetAttribute("DbgSpinRL", w[3].saturated)
+	p:SetAttribute("DbgSpinRR", w[4].saturated)
+	p:SetAttribute("DbgOmegaRL", w[3].visualOmega)
+	p:SetAttribute("DbgLockedFL", w[1].locked)
+
+	if not wantVisible() then
+		DebugPanel.hide()
+		return
+	end
 	local l = ensureLabel()
 	l.Visible = true
-	local w = state.wheels
 	local gear = if state.gear == -1 then "R" else tostring(state.gear)
 	l.Text = table.concat({
 		string.format("SPD %5.1f km/h   GEAR %s   RPM %4.0f", state.speedKmh, gear, state.rpm),
@@ -106,28 +148,14 @@ function DebugPanel.update(state: VehicleState)
 			state.driftAssist
 		),
 	}, "\n")
+end
 
-	-- Mirror for the MCP harness (client-side attributes, readable in the Client datamodel).
-	local p = Players.LocalPlayer
-	p:SetAttribute("DbgSpeedKmh", state.speedKmh)
-	p:SetAttribute("DbgGear", state.gear)
-	p:SetAttribute("DbgRpm", state.rpm)
-	p:SetAttribute("DbgDriftDeg", state.driftAngleDeg)
-	p:SetAttribute("DbgYawRate", state.yawRateDegPerSec)
-	p:SetAttribute("DbgSpins", state.spinCount)
-	p:SetAttribute("DbgSpinProgress", state.spinProgressDeg)
-	p:SetAttribute("DbgRollDeg", state.rollDeg)
-	p:SetAttribute("DbgLean", state.lean)
-	p:SetAttribute("DbgSteerLock", state.steerLock)
-	p:SetAttribute("DbgMode", state.twoWheelMode)
-	p:SetAttribute("DbgSlipFL", w[1].slipAngleDeg)
-	p:SetAttribute("DbgSlipFR", w[2].slipAngleDeg)
-	p:SetAttribute("DbgSlipRL", w[3].slipAngleDeg)
-	p:SetAttribute("DbgSlipRR", w[4].slipAngleDeg)
-	p:SetAttribute("DbgSpinRL", w[3].saturated)
-	p:SetAttribute("DbgSpinRR", w[4].saturated)
-	p:SetAttribute("DbgOmegaRL", w[3].visualOmega)
-	p:SetAttribute("DbgLockedFL", w[1].locked)
+-- DBG button on touch: flips the panel regardless of the platform default.
+function DebugPanel.toggle()
+	shown = not wantVisible()
+	if not shown then
+		DebugPanel.hide()
+	end
 end
 
 function DebugPanel.hide()

@@ -236,9 +236,15 @@ local config = {
 	input = {
 		keyboardSteerRampPerSec = 4,
 		keyboardSteerReturnPerSec = 8,
-		touchSteerRampPerSec = 3,
-		touchSteerReturnPerSec = 6,
-		touchSteerCurve = 1.5, -- exponent on the ramped touch steer
+		-- Touch steer pad: the thumb's position across the pad is the steer
+		-- angle. Full lock at touchPadFullAt of the half-width, nothing inside
+		-- the deadzone, curve > 1 for finer control near centre, and the wheel
+		-- follows the thumb at touchSteerRatePerSec (1/s of full lock).
+		touchSteerRatePerSec = 8,
+		touchPadDeadzone = 0.06,
+		touchPadFullAt = 0.8,
+		touchPadCurve = 1.3,
+		touchScale = 1, -- overall size of the touch controls
 		gamepadDeadzone = 0.12,
 		triggerDeadzone = 0.05,
 	},
@@ -344,8 +350,15 @@ local config = {
 		engineMaxPitch = 1.8, -- playback speed at redline
 	},
 
+	-- Driver HUD: speed, gear, drift angle, spins, natl roll. Top centre.
+	hud = {
+		enabled = true,
+		driftHighlightDeg = 20, -- the drift readout lights up from here
+	},
+
 	debug = {
 		enabled = true,
+		showOnTouch = false, -- hidden on phones until the DBG button is tapped
 		updateHz = 10,
 		spinSlipDeg = 45, -- yaw counts toward a 360 while |drift| is above this
 		spinResetDeg = 15, -- and the count clears once the car is back under this

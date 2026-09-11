@@ -7,11 +7,15 @@ local reloadRemote = remotes:WaitForChild("ReloadConfig") :: RemoteEvent
 local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
 local VehicleController = require(script.VehicleController)
 local DebugPanel = require(script.DebugPanel)
+local Hud = require(script.Hud)
+local Touch = require(script.Input.Touch)
 
 print("[Hajwala] client boot")
 VehicleController.onState = function(state)
+	Hud.update(state)
 	DebugPanel.update(state)
 end
+Touch.onDebugToggle = DebugPanel.toggle
 VehicleController.onReload = function()
 	local cfg, err = ConfigLoader.reload()
 	if err then
@@ -27,5 +31,6 @@ driveStart.OnClientEvent:Connect(function(car: Model)
 end)
 driveStop.OnClientEvent:Connect(function()
 	VehicleController.stop()
+	Hud.hide()
 	DebugPanel.hide()
 end)

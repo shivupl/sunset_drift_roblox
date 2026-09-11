@@ -2,6 +2,7 @@
 -- Runs VehicleSim on the car this client owns, every PreSimulation.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
@@ -66,6 +67,8 @@ function VehicleController.start(model: Model, remotes: Folder)
 	s:setCharacter(Players.LocalPlayer.Character)
 	sim = s
 	setJumpEnabled(false)
+	-- Roblox's own thumbstick and jump button would sit under our pad.
+	UserInputService.ModalEnabled = true
 	Keyboard.bind()
 	Gamepad.bind()
 	Touch.bind()
@@ -85,6 +88,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		end
 		local state = s:step(input, dt)
 		VehicleController.lastState = state
+		Touch.observe(state.twoWheelMode)
 		Touch.setLeanVisible(input.twoWheel)
 		DriftEffects.update(state)
 		CameraRig.setState(state)
@@ -99,6 +103,7 @@ function VehicleController.setConfig(config: ConfigLoader.Config)
 	if sim then
 		sim:setConfig(config)
 	end
+	Touch.relayout()
 end
 
 function VehicleController.stop()
@@ -125,6 +130,7 @@ function VehicleController.stop()
 	CameraRig.stop()
 	DriftEffects.detach()
 	setJumpEnabled(true)
+	UserInputService.ModalEnabled = false
 	sim = nil
 	car = nil
 	VehicleController.lastState = nil

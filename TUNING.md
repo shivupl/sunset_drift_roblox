@@ -126,8 +126,11 @@ key or button goes down.
 | Field | What it does |
 |---|---|
 | keyboardSteerRampPerSec / keyboardSteerReturnPerSec | Digital steer ramp. 4 = full lock in 0.25 s. |
-| touchSteerRampPerSec / touchSteerReturnPerSec | Same for touch buttons, slower. |
-| touchSteerCurve | Exponent on the ramped touch steer. Above 1 = finer control near centre. |
+| touchSteerRatePerSec | How fast the wheel chases the thumb on the steer pad, in full-locks per second. 8 = a jump across the pad is a 0.25 s counter-steer. Higher = snappier, lower = calmer. |
+| touchPadDeadzone | Fraction of the pad half-width around centre that reads as straight. Raise if the car wanders while the thumb rests. |
+| touchPadFullAt | Fraction of the pad half-width where steer reaches full lock. Lower = full lock sooner, easier throws, coarser fine control. |
+| touchPadCurve | Exponent on the pad position. Above 1 = finer control near centre, full lock still at the edge. |
+| touchScale | Overall size of every touch control. 1.2 for big thumbs, 0.85 to see more road. |
 | gamepadDeadzone / triggerDeadzone | Stick and trigger deadzones. |
 
 ## camera
@@ -183,9 +186,16 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | screechSoundId / screechMaxVolume | Looped tire screech, volume and pitch follow rear slip. Empty id = silent. Paste an asset id you own. |
 | engineSoundId / engineMaxVolume / engineMinPitch / engineMaxPitch | Looped engine sample, playback speed from idle pitch at idle to max pitch at redline, volume with throttle. Empty id = silent. |
 
+## hud
+| Field | What it does |
+|---|---|
+| enabled | Show the driver HUD (speed, gear, drift angle, spins, natl roll) top centre. |
+| driftHighlightDeg | The DRIFT readout turns orange from this angle. |
+
 ## debug
 | Field | What it does |
 |---|---|
-| enabled | Show the panel. |
+| enabled | Master switch for the tuning panel. |
+| showOnTouch | Show it on phones by default. Off: the DBG button toggles it. |
 | updateHz | Panel refresh rate. |
 | spinSlipDeg / spinResetDeg | The SPINS counter accumulates yaw while the drift angle is above spinSlipDeg and clears once it is back under spinResetDeg. Display only. |
