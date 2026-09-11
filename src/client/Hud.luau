@@ -209,7 +209,12 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 	labels.Spins.Text = `SPINS {state.spinCount}`
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
 	labels.Natl.Visible = up
-	labels.Natl.Text = `NATL {math.floor(math.abs(state.rollDeg) + 0.5)}°`
+	-- Balance feedback: blue on the angle, amber when the tip margin is
+	-- getting short, red when it is nearly gone. That colour is what the
+	-- player taps against.
+	local margin = state.rollMarginDeg
+	labels.Natl.TextColor3 = if margin < 8 then BAD elseif margin < 16 then HOT else NATL
+	labels.Natl.Text = `NATL {math.floor(math.abs(state.rollDeg) + 0.5)}°  {if margin < 8 then "TIP!" elseif margin < 16 then "catch" else "hold"}`
 
 	-- Cash and the records replicate as attributes, so there is nothing to
 	-- ask for here and nothing a client can write back.

@@ -406,8 +406,12 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		input.brake,
 		rearWheelSpeed,
 		rearSpinning,
-		-- Traction control only while the car is pointing where it is going.
-		math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg and self.handbrakeLevel <= 0
+		-- Traction control only while the car is pointing where it is going,
+		-- and never on two wheels: the airborne rear reads as spinning, and
+		-- cutting the throttle there takes away the yaw that holds a natl up.
+		math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
+			and self.handbrakeLevel <= 0
+			and not twoWheelActive
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their

@@ -25,6 +25,8 @@ return function(t: T)
 		holdFadeSpeedKmh = 30,
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
+		balanceSpring = 0, -- specs exercise the pure pendulum
+		landHoldSeconds = 99, -- and never auto-land
 	}
 	local FAST = 100 -- km/h, full authority everywhere
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }

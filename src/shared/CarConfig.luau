@@ -273,7 +273,18 @@ local config = {
 		-- 12 deg/s under 0.4 throttle and a tap was erased in half a second.
 		leanTorque = 150,
 		instability = 6, -- Nm/deg extra outward push above targetRollDeg
-		rollDamping = 60, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
+		-- Spring about targetRollDeg while balanced, Nm per degree. Measured
+		-- without it: holding Q at 90 km/h peaked at 37 degrees and sank
+		-- back to 12 with the key still down, because the gravity cancel is
+		-- a model and the real restoring torque was larger. The spring soaks
+		-- up that error so the car holds; taps and steering move it about
+		-- the hold. 0 restores the pure pendulum. Higher = stickier hold,
+		-- less to do; lower = more balancing to do.
+		-- 320 was a magnet: taps did nothing and holding the opposite key could
+		-- not land the car. 120 covers the model error and leaves the rest to
+		-- the driver.
+		balanceSpring = 160,
+		rollDamping = 80, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
 		-- Lean input (Q/E, gamepad bumpers, touch LEAN buttons). Two gains
 		-- because catching a lean needs more authority than adding to one.
 		-- Sized against rollDamping: leanIn/rollDamping is roughly the degrees
@@ -284,8 +295,8 @@ local config = {
 		-- away lifts it) and throttle (only the grounded rear drives, so gas
 		-- yaws the car away from the low side and holds it up). With the tap
 		-- envelope a press lands its whole gain at once, then decays.
-		leanInTorque = 1200, -- Nm at a fresh press toward the lifted side (go further up)
-		leanOutTorque = 4000, -- Nm at a fresh press toward the grounded side (come back down)
+		leanInTorque = 3500, -- Nm at a fresh press toward the lifted side (go further up)
+		leanOutTorque = 7000, -- Nm at a fresh press toward the grounded side (come back down); holding it lands the car against the spring
 		tipRollDeg = 62, -- past this the mode releases and gravity finishes the fall (static tip is atan(halfTrack/comHeight) ≈ 56°)
 		rimGripStartDeg = 42, -- roll where the tires start biting on rim/sidewall
 		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
@@ -302,6 +313,11 @@ local config = {
 		-- Stabilise by tapping against the lean, not by holding.
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
+		-- The key toward the grounded side held this long is a landing, not a
+		-- catch: the controller lets go and the car comes down. Measured
+		-- without it, a held E got the car to 4 degrees and the spring then
+		-- lifted it back to 11.
+		landHoldSeconds = 0.5,
 		-- Steering is the strongest balance lever there is on two wheels: a
 		-- turn toward the low side drops the car, away lifts it, and at 80 km/h
 		-- a 0.3 s tap of 0.2 steer was enough to flip it. Scale the lock while

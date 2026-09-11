@@ -54,6 +54,8 @@ export type Config = {
 	holdFadeSpeedKmh: number,
 	leanHoldDecaySeconds: number,
 	leanHoldFloor: number,
+	balanceSpring: number, -- Nm per degree of error from targetRollDeg while balanced
+	landHoldSeconds: number, -- the opposite key held this long means "land", not "tap"
 }
 
 export type Body = {
@@ -74,6 +76,7 @@ export type State = {
 	prevLeft: number, -- last step's left input, to detect a fresh press
 	prevRight: number,
 	authority: number, -- 0..1 how much the controller can do at this speed
+	outHeld: number, -- seconds the key toward the grounded side has been held
 }
 
 function TwoWheel.new(): State
@@ -88,6 +91,7 @@ function TwoWheel.new(): State
 		prevLeft = 0,
 		prevRight = 0,
 		authority = 0,
+		outHeld = 0,
 	}
 end
 
@@ -212,7 +216,14 @@ function TwoWheel.step(
 		-- All of it scales with hold authority, so at a crawl the cancel and
 		-- the lean die away and gravity puts the car back down honestly.
 		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel
-		torque = (cancel + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
+		-- The spring is the part that makes a natl holdable. The gravity
+		-- cancel is a model of the restoring torque, and anything the model
+		-- misses (grounded-side springs, tyre moments, the road) shows up
+		-- as the car drifting off its angle with the key held. A spring
+		-- about the target absorbs that error; the taps and the steering
+		-- then move the car about that hold instead of fighting to keep it.
+		local spring = cfg.balanceSpring * (cfg.targetRollDeg - roll)
+		torque = (cancel + spring + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
 			- cfg.rollDamping * rate
 	end
 
@@ -225,6 +236,16 @@ function TwoWheel.step(
 		local inKey = if s > 0 then state.envRight * leanRight else state.envLeft * leanLeft
 		local outKey = if s > 0 then state.envLeft * leanLeft else state.envRight * leanRight
 		torque += cfg.leanInTorque * inKey - cfg.leanOutTorque * outKey
+		-- A tap against the lean is a catch; the same key held on is the
+		-- driver saying "down". Past landHoldSeconds the controller lets
+		-- go and the landing damping takes over, so the balance spring
+		-- cannot pull the car back up against a held key.
+		local outRaw = if s > 0 then leanLeft else leanRight
+		state.outHeld = if outRaw ~= 0 then state.outHeld + dt else 0
+		if state.mode == "balanced" and state.outHeld >= cfg.landHoldSeconds then
+			state.mode = "landing"
+			state.outHeld = 0
+		end
 	elseif state.mode == "landing" then
 		torque = -cfg.landingDamping * rate
 		if groundedLeft + groundedRight >= 4 or roll < cfg.landedRollDeg then

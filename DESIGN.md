@@ -299,6 +299,28 @@ Two pieces of honest physics shaped the tuning:
 The loaded side's springs are stiffened while lifted because two springs
 now carry the whole car.
 
+## Two-wheel balance, revisited
+
+Measured after the driving rework: holding Q at 90 km/h lifted the car to
+37 degrees and it sank back to 12 with the key still down. Nothing in the
+controller pulls it down; the gravity cancel is a model of the restoring
+torque, and the real one (grounded-side springs, tyre moments, whatever the
+road adds) is larger. Chasing each source is a losing game, so the
+controller got a spring about the target angle. It absorbs the model error
+and no more: at 320 Nm per degree the car was a magnet and taps did nothing;
+at 160 it holds hands-off at 24 to 30 degrees, an E tap dips it four degrees
+and it comes back, a Q tap lifts it three.
+
+The other rule is that a held key is not a long tap. The tap envelope decays
+a held key to a third of its push, which the spring beats, so holding E
+brought the car to four degrees and then watched it climb back to eleven.
+Past `landHoldSeconds` the controller reads the held key as "down", lets go,
+and the landing damping brings the car onto four wheels in half a second.
+
+The HUD's NATL readout now colours by tip margin — blue with room to spare,
+amber when a catch is due, red just before it goes — so the player has
+something to tap against besides the horizon.
+
 ## Drift feedback
 Hajwala is watched as much as it is driven, so the car has to look like the
 clips: smoke off the rears, rubber on the road, wheels visibly spinning up
