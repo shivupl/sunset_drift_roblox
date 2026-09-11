@@ -231,3 +231,155 @@ scores every driven car from its own samples and never banks more than it saw.
 | showOnTouch | Show it on phones by default. Off: the DBG button toggles it. |
 | updateHz | Panel refresh rate. |
 | spinSlipDeg / spinResetDeg | The SPINS counter accumulates yaw while the drift angle is above spinSlipDeg and clears once it is back under spinResetDeg. Display only. |
+
+---
+
+# World (`src/server/World/WorldConfig.luau`)
+
+Separate file from CarConfig and not live-reloadable: the world is built once
+at server start, so a change here means restarting the server. `WORLD.md`
+explains the architecture and the performance reasoning; this is the field
+list. Scale comes from `CarConfig.units.metersPerStud`, so the world and the
+car stay the same size.
+
+## preset / presets
+| Field | What it does |
+|---|---|
+| preset | Which layout to build. `testRoad` is the Phase 0 physics road (2 km straight, 400 m pad at 900 m, 400 m radius 30° curve) and keeping it is how tuning keeps its reference surface. `ringRoad` is a longer loop for driving. |
+| presets.\<name\>.segments | List of `{ kind = "straight" | "curve", ... }` expanded into waypoints. A straight takes `lengthM`; a curve takes `radiusM`, `sweepDeg` and `direction` (-1 turns left). |
+| presets.\<name\>.waypoints | An explicit `{ xM, zM, widthM, bankingDeg }` list, used instead of segments when present. |
+| presets.\<name\>.pad | The wider stretch for left-right swings: `startM`, `lengthM`, `widthM`. |
+
+## road
+| Field | What it does |
+|---|---|
+| curveSegmentM | Arc length a curve is chopped into. Shorter is smoother and costs parts. At 400 m radius and 18 m steps the road sits 10 cm inside the true arc. |
+| straightThresholdDeg | Heading change under which two segments merge into one part. |
+| maxMergedRunM | Longest single merged part. **Raising this breaks streaming**: a part belongs to the region containing its centre, so a very long slab is absent until you are on top of it. Lower = more parts, smoother streaming. |
+| jointOverlapM | How far curve segments overlap to close the gap on the outside edge. Raise if you see slivers on tight curves; do not raise far, it is overlap on a visible surface. |
+| markingEpsilonM / markingThicknessM | How far paint and wear sit above the asphalt, and how thick. Raise epsilon if markings z-fight, lower it if the car feels a step. |
+| dashLengthM / dashGapM / dashWidthM | Lane divider dashes. |
+| edgeLineWidthM | Solid line at each road edge. |
+| laneCount | Lanes across the road. Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
+| shoulderWidthM / kerbWidthM / kerbHeightM | The strip outside the paint, and the lip beyond it. |
+| asphaltColor / padColor / shoulderColor / kerbColor / paintColor / bayColor | Surface tones. |
+
+### road.wear
+Surface realism. None of it is geometry the car can feel.
+| Field | What it does |
+|---|---|
+| slabTone | Per-slab colour jitter. 0 gives one flat colour over 2 km, which is the thing that reads as a prop. |
+| tyreTracksEnabled / tyreTrackWidthM / tyreTrackGapM / tyreTrackDarken | Polished strips where wheels actually run, two per lane. Darken too far and they read as paint. |
+| seamsEnabled / seamWidthM / seamDarken | A darker line across the road at each slab joint. |
+| patchesEnabled / patchSpacingM / patchChance / patchMinLengthM / patchMaxLengthM / patchTone | Repair patches in a different shade. |
+| markingWear | How far each dash's colour is pulled toward the road. 0 is crisp white, which no real road has. |
+| markingFadeMax | Most transparent a worn dash gets. |
+
+## ground
+| Field | What it does |
+|---|---|
+| tileM / marginM | Sand tile size and how far the desert reaches past the road. Bigger tiles = fewer parts, coarser colour banding. |
+| thicknessM / dropM | Slab thickness and how far the sand sits below the road. |
+| nearColor / farColor / farStartM | Two tones split by distance from the road, so the desert is not one colour sheet. |
+
+## barriers
+| Field | What it does |
+|---|---|
+| offsetM | Distance from the kerb to the barrier. |
+| heightM / baseWidthM / baseHeightM / flareHeightM / topWidthM | The jersey profile. `topWidthM` is the collidable wall; the base and flare are decoration. |
+| color / colorVariation | Base tone and per-run jitter. Variation 0 makes a kilometre of barrier read as one extruded object. |
+| scuffChance / scuffColor | Dark smears at bumper height. |
+| markerSpacingM / markerColor / markerSizeM | Reflective studs on the traffic face. |
+| railEnabled / railOffsetM / railHeightM / railDepthM / railThicknessM | Guard rail beam outside the jersey line. |
+| railPostSpacingM | **The most expensive number in the file.** Real posts are 2 m apart; at 2.2 km that is 1,100 posts a side and it cost 45 fps. 12 m still reads as a posted rail at speed. |
+
+## lamps
+| Field | What it does |
+|---|---|
+| spacingM | Distance between lamps. Drives both the rhythm of light and the part count. |
+| bothSides | False alternates sides and halves the part count. |
+| poleHeightM / poleWidthM | Pole size. Square section on purpose: a box is 12 triangles, a cylinder ~100. |
+| armLengthM | Boom reach. It has to clear the shoulder, kerb and barrier (about 6 m) before it is over any asphalt; shorter and every pool of light lands on the shoulder. |
+| headSizeM / poleColor / bulbColor / headOffColor | Housing size and colours. `headOffColor` is used at hours where lamps are not lit, so a bulb never glows in daylight. |
+| jitterSeed / yawJitterDeg / heightJitter | Per-lamp variation. Zero makes a row read as a copied object. |
+| lightColor | Colour of the pooled PointLights. |
+| maxLiveLights | **Hard cap on Light instances in the whole client.** The pool is this size, so the cap cannot be violated. Raising it past about 16 is where Roblox starts to hurt. |
+| lightUpdateInterval | How often the client re-picks which lamps are lit. Lower = tighter following, more CPU. Never per frame. |
+
+## timeOfDay / timesOfDay
+`timeOfDay` picks one of `dusk`, `goldenHour`, `blueHour`, `night`. Each preset:
+| Field | What it does |
+|---|---|
+| clockTime | Sun height. Measured at latitude 24.7: 17.7 = 4° up, 17.95 = on the horizon, 18.2 = 3° under. Lower = longer shadows and a darker sky. |
+| geographicLatitude | Tilts the sun's path. Riyadh is 24.7. There is no azimuth control; the sun is 91° to the road at every evening hour. |
+| ambient / outdoorAmbient | Fill light. This is the readability knob: too low and the car disappears between lamps. |
+| brightness | Sun strength. |
+| exposureCompensation | Overall exposure. |
+| colorShiftTop / colorShiftBottom | Tint on lit and unlit faces. What stops asphalt reading as grey plastic. |
+| globalShadows | Master shadow switch for the hour. |
+| atmosphere.density | Distance fade. The biggest "sells distance" knob, and the biggest risk: too high and the road edge vanishes, which is worse than the mood is good. |
+| atmosphere.offset | How far up the haze starts. |
+| atmosphere.color | Horizon glow colour. |
+| atmosphere.decay | Colour the sky falls to away from the sun. |
+| atmosphere.glare | Brightness right around the sun. |
+| atmosphere.haze | How far the atmosphere colour spreads up the dome. Above about 1 the warm tint reaches the zenith and mixes with blue into olive. |
+| sunRays.enabled / intensity / spread | Light shafts. Keep intensity low; it is a full-screen post effect. |
+| sky.useSkyObject | False draws Roblox's procedural dome, which tracks ClockTime. True renders the default painted daytime skybox instead, and is only the hook for a real skybox once six texture ids are vetted. |
+| sky.starCount / celestialBodiesShown / sunAngularSize | Only used when `useSkyObject` is true. |
+| lamps.enabled / brightness / rangeM | Whether street lamps are lit at this hour, and how hard. |
+
+## shadows
+Per-type switch. Shadow cost scales with the **number** of casters, not size.
+| Field | What it does |
+|---|---|
+| barriers | Off. A kilometre of barrier throws a thin strip nobody looks at, for hundreds of casters. Turning it on put 643 casters in frustum and cost 45 fps. |
+| lamps / signage / palms | On. Sparse, tall, and their long raking shadows across the road are most of the realism. |
+| rocks / cityscape | Off. Too small and too far to pay for themselves. |
+
+## signage
+| Field | What it does |
+|---|---|
+| gantrySpacingM / gantryFirstM | How often an overhead gantry appears. |
+| gantryHeightM / gantryPostWidthM / gantryBeamDepthM | Structure size. |
+| panelWidthM / panelHeightM / panelColor / postColor / textColor | Sign face. |
+| gantryTexts | `{ arabic, english, shield }` rows. **Placeholders** — replace with real Riyadh route names. |
+| roadsideEnabled / roadsideSpacingM / roadsideWidthM / roadsideHeightM / roadsidePostHeightM | Small signs between gantries. |
+
+## cityscape
+| Field | What it does |
+|---|---|
+| seed | Fixed, so every server draws the same city. |
+| distanceM / bandDepthM | Radius to the near edge of the ring and how far back buildings scatter. It is a ring, not a band: bands parallel to the road are invisible from the road. |
+| count | Buildings. |
+| minWidthM / maxWidthM / minHeightM / maxHeightM | The ordinary blocks. |
+| towerChance / towerMinHeightM / towerMaxHeightM | Occasional slim towers. Uniform heights read as a bar chart. |
+| color / colorVariation | A warm mid tone; the haze tints it to the hour. A near-black silhouette stays near-black at golden hour, which is the wrong read. |
+| windowBandsMin / windowBandsMax / windowColor / windowHeightM / windowInsetM | Emissive floor bands, cheaper than a texture and needing no asset. |
+| beaconChance / beaconColor | Red aircraft warning lights. |
+
+## scatter
+| Field | What it does |
+|---|---|
+| seed | Fixed, so the desert is identical on every server. |
+| falloffStartM / falloffEndM | Density falls off with distance from the road, so the near shoulder reads as maintained and the far desert as empty. |
+| palm.clumpSpacingM / clumpJitterM / minPerClump / maxPerClump / spreadM | Palms go in loose clumps. Evenly spaced trees read as generated; clumps read as planted. |
+| palm.minEdgeM / maxEdgeM | Band either side of the road they can occupy. Never inside the barrier line. |
+| palm.trunkHeightM / trunkWidthM / frondCount / frondLengthM / frondWidthM | The primitive stand-in's proportions, used until a mesh is approved. |
+| palm.leanMaxRad | Palms lean. A vertical pole reads as a lamp post. |
+| rock.* / debris.* | Same spacing, jitter and edge-distance rules at lower density. |
+
+## streaming
+| Field | What it does |
+|---|---|
+| enabled | Records intent. `Workspace.StreamingEnabled` is a place setting; a runtime script cannot write it. |
+| targetRadius / minRadius | Also place settings, and not exposed to Lua at all — set them in the Studio Properties panel. |
+| roadPersistent | Keeps the road replicated always. **Leave this on.** The client owns vehicle physics, so a car that outruns the streamer finds no road under it and falls out of the world. |
+| barriersPersistent | Same reasoning: a barrier that has not streamed in is one the car drives through. |
+| cityscapePersistent | Stops the horizon popping. ~300 small boxes. |
+
+## technology / fogEnabled / debug
+| Field | What it does |
+|---|---|
+| technology | The intended `Lighting.Technology`. A script can neither write nor read it, so this is a record and a reminder; set it by hand. `ShadowMap` is what the shadows are tuned for, `Voxel` is the mobile fallback and makes them blobby. |
+| fogEnabled | Legacy distance fog. Off: Atmosphere does the fade, and fog thick enough to sell distance hides the road edge. |
+| debug.report | Prints the per-system part and triangle report at build. |

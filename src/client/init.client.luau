@@ -12,8 +12,11 @@ local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
 local ScoreController = require(script.ScoreController)
 local Touch = require(script.Input.Touch)
+local WorldLights = require(script.WorldLights)
 
 print("[Hajwala] client boot")
+-- Lamp lights follow the camera whether or not the player is driving.
+WorldLights.start()
 ScoreController.submit = function(points: number)
 	submitSlide:FireServer(points)
 end

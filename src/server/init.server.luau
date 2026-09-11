@@ -3,14 +3,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleSim = require(Shared.VehicleSim)
-local RoadBuilder = require(script.RoadBuilder)
+local World = require(script.World)
 local Remotes = require(script.Remotes)
 local CarSpawner = require(script.CarSpawner)
 local ScoreService = require(script.ScoreService)
 
 print("[Hajwala] server boot")
 local config = ConfigLoader.current()
-local road = RoadBuilder.build(config)
+local world = World.build()
+local road = world.road
 local remotes = Remotes.create()
 CarSpawner.setSimFactory(function(model: Model, cfg: ConfigLoader.Config): CarSpawner.Sim
 	-- VehicleSim.Sim is a metatable type; cast to the spawner's structural Sim interface.
