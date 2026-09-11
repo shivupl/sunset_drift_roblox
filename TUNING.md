@@ -1,0 +1,150 @@
+# TUNING — every CarConfig field
+
+Legend for the goal columns: ↑ raise the value, ↓ lower it, — no direct effect.
+Goals: OS = more oversteer (rear steps out easier, holds bigger angle);
+INIT = easier drift initiation; 2W = more two-wheel stability.
+For the opposite effect move the other way. Press L in play to reload.
+
+## units
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| metersPerStud | World scale. Leave at 0.28. | — | — | — |
+| gravity | Effective gravity on the car. Lower = lighter car, less load, less grip everywhere, slower weight transfer. 54.9 disables the correction. | — | — | ↑ |
+
+## body
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| massKg | Total mass. More mass = more momentum in a slide, slower transitions. | — | ↓ | — |
+| bodySize | Box dimensions. Height changes roll inertia. | — | — | — |
+| centerOfMassOffset | Lower CoM = less roll, higher tip angle. Forward CoM = more front load = more rear slide, and more natural yaw toward the grounded side on two wheels. | forward ↑ | forward ↑ | lower (more negative Y) ↑ |
+| wheelbase | Longer = more stable, slower rotation. | ↓ | ↓ | — |
+| trackWidth | Wider = higher two-wheel tip angle, less roll. | — | — | ↑ |
+| wheelRadius | Bigger = taller gearing, less drive force. | — | ↓ | — |
+| shellMassFraction | Share of mass in the shell vs ballast. Only affects where the ballast sits. | — | — | — |
+| dragCoefficient / frontalArea / airDensity | Top speed and how fast a slide bleeds speed. | — | — | — |
+| rollingResistance | Coast-down drag. | — | — | — |
+
+## suspension
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| restLength | Ride height at full droop. | — | — | — |
+| travel | Usable compression before the bump stop. | — | — | ↑ |
+| rayMarginM | Extra ray length past full droop. Leave alone. | — | — | — |
+| stiffness | Softer = more visible weight transfer, slower response. | — | — | ↑ |
+| damping | Low = bouncy, high = dead. Aim for a bounce and a half. | — | — | ↑ |
+| bumpStopStiffness | Keeps the body off the wheels when bottomed. | — | — | ↑ |
+| antiRollFront | Stiffer front bar = front loses grip first = understeer. | ↓ | ↓ | — |
+| antiRollRear | Stiffer rear bar = rear loses grip first = oversteer. | ↑ | ↑ | — |
+
+## tires.front / tires.rear
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| grip | Peak friction. Rear lower than front = oversteer. | rear ↓ / front ↑ | rear ↓ | — |
+| peakSlipDeg | Slip angle at peak. Lower rear = rear breaks away sooner. | rear ↓ | rear ↓ | — |
+| slideSlipDeg | Where the fade ends. Wider gap to peak = gentler fade = more progressive slide. | — | — | — |
+| slideGripRatio | Grip floor while sliding. Lower rear = bigger angles, harder to catch; higher = holds and recovers easier. | rear ↓ | rear ↓ | — |
+| speedFadeMps | Speed below which lateral force fades. Only for parking jitter. | — | — | — |
+
+## drivetrain
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| torqueCurve | Engine torque by rpm. More torque = more power-over. | ↑ | ↑ | — |
+| gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. | ↑ | ↑ | — |
+| reverseRatio | Reverse gearing. | — | — | — |
+| drivelineEfficiency | Scales all drive force. | ↑ | ↑ | — |
+| idleRpm / redlineRpm | Rev range. | — | — | — |
+| upshiftRpm / downshiftRpm | Shift points. Later upshift keeps the engine in the fat part of the curve for kicks. | — | ↑ upshift | — |
+| shiftTime | Torque cut per shift. | — | — | — |
+| spinRpmRate | How fast rpm climbs while spinning. Cosmetic. | — | — | — |
+| engineBrakeTorque | Weight shift forward on lift. More = sharper lift-off rotation and easier transitions. | ↑ | ↑ | — |
+| brakeForce / brakeBias | Pedal strength and split. More rear bias = brake-induced rotation. | bias ↓ | bias ↓ | — |
+| brakeFadeMps | Anti-jitter at rest. | — | — | — |
+| reverseEngageMps | Below this speed, brake with no throttle selects reverse; throttle leaves it. | — | — | — |
+
+## steering
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| maxSteerDeg | Lock. Must exceed the drift angles you want to hold minus assist. | ↑ | ↑ | — |
+| steerSpeedDegPerSec | How fast the wheels turn in. Higher = snappier initiation, twitchier hold. | — | ↑ | — |
+| steerReturnDegPerSec | How fast they return. | — | — | — |
+| driftAssist | Automatic counter-steer fraction. Higher = easier hold, less skill. Keep low. Off on two wheels. | ↓ | — | — |
+
+## handbrake
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. | ↓ | ↓ | — |
+| brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
+
+## clutchKick
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| multiplier | Torque spike. Must push rear demand past the friction circle at your entry speed. | ↑ | ↑ | — |
+| duration | Spike length. | — | ↑ | — |
+
+## twoWheel
+| Field | What it does | OS | INIT | 2W |
+|---|---|---|---|---|
+| liftTorque | Roll torque while lifting. 12000 reaches the target in about a second at 70 km/h. | — | — | ↓ (gentler arrival) |
+| gravityCancel | Fraction of gravity's restoring torque cancelled while balanced. 1 = neutral pendulum. | — | — | ↓ |
+| targetRollDeg | Angle where lifting hands over to balancing. Keep below atan(tire grip) ≈ 45° or the base slides out. | — | — | ↓ |
+| leanTorque | Constant outward push while balanced. Below ~600 Nm the car's own front-heavy yaw wins and it settles back onto four wheels if ignored (Phase 0 choice); above, it tips. | — | — | ↓ |
+| instability | Extra outward push per degree above targetRollDeg. | — | — | ↓ |
+| rollDamping | Resists roll rate while balanced. Kills the lift-in overshoot. | — | — | ↑ |
+| balanceTorque | Explicit steer authority while lifted. The real balance comes from the turn the steer produces; this just adds bite at low speed. | — | — | ↑ |
+| tipRollDeg | Where the controller lets go. Set past the static tip (≈56°) so a tip is a real fall. | — | — | ↑ |
+| rimGripStartDeg / rimGripBoost | Roll where rim dig-in starts and how much grip it adds. Without it the base slides out at ~45° and a tip is impossible. | — | — | ↓ boost |
+| landingDamping | Softens the drop back to four wheels. | — | — | ↑ |
+| suspensionBias | Loaded-side spring multiplier while lifted. | — | — | ↑ |
+| sidePickSteer | Steer magnitude at the press that picks the roll side (right steer = roll right). Below it the car rolls left. | — | — | — |
+| balancedEntryMarginDeg | Lifting hands over to balancing this many degrees before the target. | — | — | ↑ (earlier handover, less overshoot) |
+| landedRollDeg | Roll under which the car counts as landed. | — | — | — |
+
+## input
+| Field | What it does |
+|---|---|
+| keyboardSteerRampPerSec / keyboardSteerReturnPerSec | Digital steer ramp. 4 = full lock in 0.25 s. |
+| touchSteerRampPerSec / touchSteerReturnPerSec | Same for touch buttons, slower. |
+| touchSteerCurve | Exponent on the ramped touch steer. Above 1 = finer control near centre. |
+| gamepadDeadzone / triggerDeadzone | Stick and trigger deadzones. |
+
+## camera
+| Field | What it does |
+|---|---|
+| positionLag / directionLag | Smoothing rates (1/s). Lower = lazier camera. |
+| profileBlendRate | How fast profile parameters cross-fade (1/s). |
+| minSpeedForSwingMps | Below this the camera ignores velocity direction. |
+| driftProfileEnterDeg / driftProfileExitDeg | Drift angle that switches to the drift profile and back (hysteresis). |
+
+### camera.profiles.normal / drift / twoWheel
+The two-wheel profile is active while lifting or balanced; the drift profile past the enter angle; normal otherwise.
+| Field | What it does |
+|---|---|
+| distance / height / lookHeight | Where the camera sits and aims, metres. |
+| lateralOffset | Sideways offset: toward the lifted side on two wheels (airborne wheels in frame), toward the outside of the slide in the drift profile. |
+| driftSwing | 0 looks along the heading, 1 along the velocity direction. |
+| baseFov / fovPerKmh / maxFov | Speed-widened field of view. |
+| rollFollow | Fraction of the car's roll applied as horizon tilt. Two-wheel profile only, by default. |
+
+## road
+| Field | What it does |
+|---|---|
+| lengthM / widthM / thicknessM | The straight. Segments are split automatically under Roblox's 2048-stud part limit. |
+| dashLengthM / dashGapM / dashWidthM | Centreline dashes. |
+| curveRadiusM / curveSweepDeg / curveSegments | The gentle left curve at the end. |
+| padStartM / padLengthM / padWidthM | Transition pad: a wider stretch of the straight (default 900 to 1300 m, 160 m wide) for left-right swings. Edge lines mark its start and end. |
+| bayLengthM | Parking bay behind the start line. |
+| groundTileM | Sand ground tile size; the plane covers the straight, the curve and 500 m of run-off. |
+
+## spawn
+| Field | What it does |
+|---|---|
+| spawnHeightM | Cars spawn this far above rest and settle on their springs. |
+| slotStartM / slotSpacingM | Bay slot layout, one per player. |
+| settleSpeedMps / settleSeconds | A driverless car below this speed for this long is anchored. |
+| fallBelowM | A car this far under the road is re-parked in its bay (self-healing). A destroyed chassis respawns the car. |
+
+## debug
+| Field | What it does |
+|---|---|
+| enabled | Show the panel. |
+| updateHz | Panel refresh rate. |

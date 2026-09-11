@@ -26,6 +26,7 @@ export type Config = {
 	brakeForce: number,
 	brakeBias: number,
 	brakeFadeMps: number,
+	reverseEngageMps: number,
 }
 
 export type KickConfig = { multiplier: number, duration: number }
@@ -50,7 +51,6 @@ export type Output = {
 }
 
 local RPM_PER_RAD_S = 60 / (2 * math.pi)
-local REVERSE_ENGAGE_MPS = 0.5
 
 function Drivetrain.new(cfg: Config): State
 	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, kickTimer = 0, kickHeld = false }
@@ -73,10 +73,10 @@ function Drivetrain.step(
 
 	-- Reverse: brake at a standstill engages it, throttle at a standstill leaves it.
 	if state.gear == -1 then
-		if throttleIn > 0 and speed > -REVERSE_ENGAGE_MPS then
+		if throttleIn > 0 and speed > -cfg.reverseEngageMps then
 			state.gear = 1
 		end
-	elseif brakeIn > 0 and throttleIn == 0 and math.abs(speed) < REVERSE_ENGAGE_MPS then
+	elseif brakeIn > 0 and throttleIn == 0 and math.abs(speed) < cfg.reverseEngageMps then
 		state.gear = -1
 	end
 

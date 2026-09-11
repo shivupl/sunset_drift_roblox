@@ -2,40 +2,61 @@
 
 Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 
-## Setup
+## Setup (once)
 1. Install Rokit: `curl -fsSL https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash`
-2. `rokit install` in this folder (installs the pinned Rojo and luau-lsp).
-3. `rojo plugin install` (puts the Rojo plugin in Studio's local plugins folder; restart Studio once).
+2. In this folder: `rokit install` (installs the pinned Rojo 7.7 and luau-lsp).
+3. `rojo plugin install`, then restart Roblox Studio so it loads the plugin.
 
-## Run
-1. `rojo serve` in this folder.
-2. Open Roblox Studio, open any place (a baseplate is fine), Rojo toolbar → Connect (localhost:34872).
-3. Press Play. The server builds the road and parks a car for you. Walk up, press E (or tap the prompt) to get in.
+## Play
+1. In this folder: `rojo serve`
+2. Studio: open any place (a baseplate is fine). Rojo toolbar → Connect (localhost:34872).
+   The tree appears under ReplicatedStorage/Shared, ServerScriptService/Server and
+   StarterPlayer/StarterPlayerScripts/Client.
+3. Press Play. The server builds the road, deletes the baseplate, and parks a white car
+   with a red hood stripe in the bay behind the start line. You spawn beside it.
+4. Walk up and press E (or tap the prompt on touch). The debug panel appears and the
+   chase camera takes over. E again gets out.
 
 ## Controls
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
-| Throttle / Brake | W / S | RT / LT | GAS / BRAKE (right) |
+| Throttle / Brake (brake at a stop = reverse) | W / S | RT / LT | GAS / BRAKE (right) |
 | Steer | A / D | left stick | < > (left) |
 | Handbrake | Space | B | HAND |
 | Clutch kick | Shift (tap) | X | KICK |
-| Two-wheel | F (hold) | Y (hold) | NATL |
+| Two-wheel (hold; steer picks the side) | F | Y | NATL |
 | Exit car | E | LB | EXIT |
-| Reset car | R | Back | RESET |
+| Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | RELOAD |
 
-## Tuning
-All numbers live in `src/shared/CarConfig.luau`. See `TUNING.md` for what each one does.
-Press L in play to reload the config without rejoining. Whether Rojo pushes file edits into a
-running play session is noted below once verified; editing the module inside Studio's script
-editor during play always works with the reload key.
-
 ## Phone test in Studio
-Test → Device → pick a phone → Play. Touch buttons appear because the emulator reports TouchEnabled.
+Test → Device → pick a phone → Play. Touch buttons appear because the emulator reports
+TouchEnabled: steer and NATL on the left, GAS/BRAKE/HAND/KICK on the right, EXIT/RESET/RELOAD
+along the top. Not yet verified on a real phone in this pass.
 
-## Strict type check without Studio
-`scripts/analyze.sh` runs luau-lsp over `src` with Roblox types.
+## Debug panel
+Top-left while driving: speed, gear, rpm, inputs, drift angle, yaw rate, two-wheel mode and
+roll with margin to tip, per-wheel slip angle / load / SPIN or AIR, handbrake, kick, assist.
 
-## Fallback sync without the Rojo plugin
-`scripts/mcp_sync.py --out DIR` emits Luau chunks that mirror `src` into a Studio DataModel with the
-same tree as `default.project.json`. Used by the Studio MCP during development; Rojo is the real path.
+## Tuning
+All numbers live in `src/shared/CarConfig.luau`; `TUNING.md` explains every field and which
+way to move it. Press L in play to reload without rejoining. Verified: a Source change on the
+server replicates to the client at runtime and L re-requires on both sides. Editing the module
+inside Studio's script editor during play works with the reload key. Whether the Rojo plugin
+pushes file edits into a running play session was not verified in this pass (the plugin was
+installed but not connected during development); if it does not, edit the module in Studio
+during play, or stop and replay after saving the file.
+
+## Where things are
+- `src/shared/VehicleSim/` — the physics: Suspension, Tire, Drivetrain, TwoWheel (pure) and
+  `init.luau` (Roblox glue). `DESIGN.md` explains the choices.
+- `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
+- `src/client/` — input (keyboard, gamepad, touch), vehicle controller, camera, debug panel.
+- `src/shared/Tests/` — spec runner. In Studio: `require(game.ReplicatedStorage.Shared.Tests)()`
+  (93 assertions).
+
+## Developer tooling
+- `scripts/analyze.sh` — luau-lsp strict analysis over `src` with Roblox types.
+- `scripts/mcp_sync.py --manifest` + `scripts/studio_loader.luau` — mirrors `src` into a Studio
+  DataModel over a local HTTP server (`python3 -m http.server 8765 --bind 127.0.0.1`) without
+  the Rojo plugin. Used with the Studio MCP during development; Rojo is the real path.

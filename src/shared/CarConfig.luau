@@ -31,6 +31,7 @@ local config = {
 	suspension = {
 		restLength = 0.35, -- hardpoint to wheel centre at full droop
 		travel = 0.2,
+		rayMarginM = 0.05, -- extra ray length past full droop so a hanging wheel still reports the ground
 		stiffness = 35000, -- N/m per corner
 		damping = 2600, -- Ns/m per corner
 		bumpStopStiffness = 350000, -- N/m past full travel
@@ -60,6 +61,7 @@ local config = {
 		brakeForce = 14000, -- N total at full pedal
 		brakeBias = 0.65, -- fraction on the front axle
 		brakeFadeMps = 0.5, -- brakes fade to zero below this speed (no jitter at rest)
+		reverseEngageMps = 0.5, -- below this speed, brake with no throttle selects reverse
 	},
 
 	steering = {
@@ -92,6 +94,9 @@ local config = {
 		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
 		landingDamping = 60, -- Nm per deg/s while coming down
 		suspensionBias = 1.8, -- grounded-side stiffness multiplier while lifted
+		sidePickSteer = 0.2, -- |steer| above this at the press picks the roll side; else rolls left
+		balancedEntryMarginDeg = 5, -- lifting hands over to balancing this many degrees before targetRollDeg
+		landedRollDeg = 3, -- below this roll the car counts as back on four wheels
 	},
 
 	input = {
@@ -105,16 +110,78 @@ local config = {
 	},
 
 	camera = {
-		distance = 7.5,
-		height = 2.6,
-		lookHeight = 0.8,
-		positionLag = 8, -- 1/s
-		directionLag = 4, -- 1/s
-		driftSwing = 0.6, -- 0 follow heading, 1 follow velocity
-		baseFov = 70,
-		fovPerKmh = 0.08,
-		maxFov = 85,
-		minSpeedForSwingMps = 3,
+		positionLag = 8, -- 1/s, how fast the camera position catches up
+		directionLag = 4, -- 1/s, how fast the look direction catches up
+		profileBlendRate = 3, -- 1/s, how fast profile parameters cross-fade
+		minSpeedForSwingMps = 3, -- below this the camera ignores the velocity direction
+		driftProfileEnterDeg = 25, -- |drift angle| that switches to the drift profile
+		driftProfileExitDeg = 12, -- and back to normal (hysteresis)
+		-- Profiles: normal driving, sliding, and two-wheel. All distances in
+		-- metres. lateralOffset is toward the lifted side while on two wheels
+		-- (so the airborne wheels are in frame), toward the outside of the
+		-- slide otherwise. rollFollow tilts the horizon with the car's roll.
+		profiles = {
+			normal = {
+				distance = 7.5,
+				height = 2.6,
+				lookHeight = 0.8,
+				lateralOffset = 0,
+				driftSwing = 0.3, -- 0 follow heading, 1 follow velocity
+				baseFov = 70,
+				fovPerKmh = 0.08,
+				maxFov = 85,
+				rollFollow = 0,
+			},
+			drift = {
+				distance = 8.5,
+				height = 3.0,
+				lookHeight = 0.8,
+				lateralOffset = 0,
+				driftSwing = 0.7,
+				baseFov = 74,
+				fovPerKmh = 0.08,
+				maxFov = 88,
+				rollFollow = 0,
+			},
+			twoWheel = {
+				distance = 8.0,
+				height = 2.0,
+				lookHeight = 1.0,
+				lateralOffset = 2.5,
+				driftSwing = 0.15,
+				baseFov = 72,
+				fovPerKmh = 0.05,
+				maxFov = 82,
+				rollFollow = 0.35,
+			},
+		},
+	},
+
+	road = {
+		lengthM = 2000, -- straight
+		widthM = 60,
+		thicknessM = 1,
+		dashLengthM = 6,
+		dashGapM = 6,
+		dashWidthM = 0.3,
+		curveRadiusM = 400,
+		curveSweepDeg = 30,
+		curveSegments = 24,
+		-- Transition pad: a wider stretch of the straight for left-right swings.
+		padStartM = 900, -- distance from the start line
+		padLengthM = 400,
+		padWidthM = 160, -- total width including the road
+		bayLengthM = 40,
+		groundTileM = 500,
+	},
+
+	spawn = {
+		spawnHeightM = 0.45, -- above rest height; the car drops and settles on spawn
+		slotStartM = -20, -- first bay slot, lateral
+		slotSpacingM = 4,
+		settleSpeedMps = 0.5, -- a driverless car below this speed...
+		settleSeconds = 1, -- ...for this long gets anchored
+		fallBelowM = 30, -- a car this far under the road surface is re-parked
 	},
 
 	debug = {

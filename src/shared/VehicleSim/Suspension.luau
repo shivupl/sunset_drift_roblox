@@ -14,6 +14,7 @@ local Suspension = {}
 export type Config = {
 	restLength: number,
 	travel: number,
+	rayMarginM: number,
 	stiffness: number,
 	damping: number,
 	bumpStopStiffness: number,
@@ -27,10 +28,8 @@ export type Result = {
 	grounded: boolean,
 }
 
-local RAY_MARGIN_M = 0.05
-
 function Suspension.rayLengthM(cfg: Config, wheelRadius: number): number
-	return cfg.restLength + wheelRadius + RAY_MARGIN_M
+	return cfg.restLength + wheelRadius + cfg.rayMarginM
 end
 
 function Suspension.step(

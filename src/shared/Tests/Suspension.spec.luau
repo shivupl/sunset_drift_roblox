@@ -4,7 +4,7 @@ local Tests = require(script.Parent)
 type T = Tests.T
 
 return function(t: T)
-	local cfg = { restLength = 0.35, travel = 0.2, stiffness = 35000, damping = 2600, bumpStopStiffness = 350000, antiRollFront = 8000, antiRollRear = 4000 }
+	local cfg = { restLength = 0.35, travel = 0.2, rayMarginM = 0.05, stiffness = 35000, damping = 2600, bumpStopStiffness = 350000, antiRollFront = 8000, antiRollRear = 4000 }
 	local r = 0.33
 
 	local miss = Suspension.step(0.1, nil, cfg, r, 1, 1 / 60)

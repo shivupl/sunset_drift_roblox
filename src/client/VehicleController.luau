@@ -46,6 +46,11 @@ local function resetCar(model: Model)
 	local surfaceY = if road then (road:GetAttribute("SurfaceY") :: number) else 0
 	local x = math.clamp(pos.X, -halfWidth + 5 / mps, halfWidth - 5 / mps)
 	local z = math.clamp(pos.Z, -length, 30 / mps)
+	-- Past the end of the straight (the curve or beyond) or well off the
+	-- side: go back to the start line instead of the edge of the world.
+	if pos.Z < -length or math.abs(pos.X) > halfWidth * 2 then
+		x, z = 0, 0
+	end
 	local y = surfaceY + (cfg.body.bodySize[2] / 2 + 0.4) / mps
 	model:PivotTo(CFrame.new(x, y, z)) -- identity rotation faces -Z, down the road
 	chassis.AssemblyLinearVelocity = Vector3.zero
@@ -78,6 +83,8 @@ function VehicleController.start(model: Model, remotes: Folder)
 		end
 		local state = s:step(input, dt)
 		VehicleController.lastState = state
+		CameraRig.setState(state)
+		Players.LocalPlayer:SetAttribute("DbgCamera", CameraRig.currentProfile())
 		if VehicleController.onState then
 			VehicleController.onState(state)
 		end

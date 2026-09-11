@@ -1,0 +1,134 @@
+# DESIGN — why the car is built this way
+
+## One rigid body, raycast suspension
+The car is a single physics assembly: a box, a hidden ballast, four visual
+wheels and a seat. Each corner fires a ray straight down (in the body frame)
+from a hardpoint. The distance to the ground gives that corner's spring
+compression, and the spring plus damper force is applied at the hardpoint.
+Weight transfer is not scripted: when the car pitches sideways the outside
+rays shorten, those springs load up, the inside springs unload, and the tire
+model sees those loads. That is the "heavy sedan leaning into a slide" look.
+
+We chose raycasts over SpringConstraint + CylindricalConstraint wheels
+because Roblox's built-in tire friction is close to on/off and cannot give a
+grip curve that peaks and then fades. With visual-only wheels every newton
+of tire force comes from our own model. It is also one body instead of five
+per car, which matters on phones, and one body means network ownership is
+a single handoff.
+
+The cost: wheels do not physically touch curbs or bumps. Phase 0 is a flat
+road, so nothing is lost yet. Bump stops on the springs keep the body from
+sinking through the wheels under hard loads.
+
+## Gravity
+Roblox gravity is 196.2 studs/s². At our scale (0.28 m per stud) that is
+5.6 times real gravity. If the tire model used real spring loads under that
+gravity the car would corner 5.6 times too hard and never slide, and body
+roll and two-wheel balance would be wrong. Changing workspace gravity would
+break characters and everything on foot in later phases, so the sim applies
+an upward counter-force of mass × (196.2 − g/0.28) on the chassis only.
+`CarConfig.units.gravity` sets g; 9.81 is honest, 54.9 turns the correction
+off for A/B comparison. Parked cars keep sitting on their springs because the
+server runs the same sim with zero input until they settle, then anchors them.
+
+## Units
+Config is in kilograms, metres, newtons, seconds. One Roblox mass unit is
+treated as one kilogram (densities are set so the assembly mass equals the
+config mass; verified 1600.0 in Studio). Forces are divided by 0.28 on the
+way out, torques by 0.28².
+
+## Tire model
+For each grounded wheel we take the contact patch velocity, split it into
+along-the-wheel and across-the-wheel, and compute the slip angle. Lateral
+grip rises linearly to a peak slip angle, then decays to a sliding floor.
+That fade is the whole point: past the peak the rear gives up some grip but
+not all, so a slide is a balance you can hold rather than a switch that
+flips. Front and rear have separate grip, peak, fade and floor numbers.
+
+Longitudinal and lateral share a friction circle. Drive and brake demand is
+taken first because the driver commands it; whatever is left of the circle
+goes to lateral. So throttle in a slide eats rear lateral grip (more angle,
+eventually a spin) and lifting gives it back (the car straightens). If
+longitudinal demand exceeds the circle the wheel is spinning or locked and
+both components drop to the sliding level.
+
+Tire forces act at ground level and spring forces at the hardpoints, so the
+lateral force times the centre-of-mass height is a real roll moment that
+loads the outside springs in a slide.
+
+## Drivetrain
+Torque curve by rpm, automatic gearbox, welded-diff behaviour (equal drive
+to both rear wheels). Wheel spin is not integrated; the tire reports when
+demand exceeded grip and the engine rpm floats up while it does. Clutch kick
+is a short torque multiplier. Engine braking on lift shifts weight forward,
+which is what makes a lift-and-flick transition swing the rear across.
+
+## Handbrake
+Multiplies rear grip by a fraction and drags the rear wheels with a capped
+force. The circle shrinks, the rear lets go, the car keeps most of its
+speed (measured: 94 → 85 km/h over a 0.6 s pull that reached 86° of angle).
+It cannot stop the car because the front is untouched.
+
+## Steering and drift assist
+Steer angle chases the input at a rate, faster on return. Drift assist adds
+a fraction of the car's slip angle as automatic counter-steer. Default is
+low; the physics already makes counter-steer effective because the front
+tires are on the rising side of their curve while the rear is on the floor.
+Assist is switched off on two wheels (see below).
+
+## Two-wheel ("natl")
+On two wheels the car is an inverted pendulum pivoting on the grounded
+contact patches. Gravity restores it below the static tip angle
+atan(halfTrack / comHeight) (about 56° for the default car) and pushes it
+over above. The controller measures that geometry in the body frame every
+step, cancels gravity's restoring torque, and adds a small constant outward
+lean. Nothing pulls the car toward a target angle, so it never feels
+magnetized.
+
+Two pieces of honest physics shaped the tuning:
+
+- The front carries more load than the rear, so on two wheels the front
+  spring's horizontal component out-yaws the rear's and the car turns gently
+  toward the grounded side. That turn's inertial torque brings the car back
+  down by a few hundred newton-metres. Below about 600 Nm of lean torque the
+  car therefore settles back onto four wheels if the player does nothing;
+  above it, it keeps leaning and tips. The owner chose the settling
+  behaviour for Phase 0. Steering toward the grounded side strengthens that
+  turn and drops the car fast; steering away lifts it.
+- Drift assist must be off on two wheels. It read the sideways creep as a
+  slide and steered into it, which turned the car and brought it down on its
+  own, exactly the "magnetized" feel we wanted to avoid.
+- On tread, tires slide out at atan(grip) ≈ 45° before the car can reach the
+  static tip angle. Past `rimGripStartDeg` the grounded tires gain extra
+  grip (rim and sidewall dig-in), which is what makes a real natl flip
+  possible if `leanTorque` is raised.
+
+The loaded side's springs are stiffened while lifted because two springs
+now carry the whole car.
+
+## Camera
+Three profiles in CarConfig (normal, drift, two-wheel) cross-fade by rate.
+The drift profile swings the look direction toward the velocity so the angle
+is visible from behind and steps to the outside of the slide. The two-wheel
+profile drops lower, steps toward the lifted side so the airborne wheels are
+in frame, and tilts the horizon with a fraction of the car's roll.
+
+## Road
+Built from CarConfig.road: a 2 km straight, a 400 m transition pad from 900
+to 1300 m where the straight widens to 160 m (two flush wings, no overlap,
+so no z-fighting), a 400 m radius / 30° left curve at the end, and a sand
+plane that covers the straight, the curve and 500 m of run-off. The pad is
+where left-right transitions get practised without running off the 60 m road.
+
+## Network
+Server builds and parks cars and runs the sim with zero input for parked
+ones. Sitting (through the ProximityPrompt) hands network ownership to the
+driver; their client runs the sim on its own car and steers the camera.
+Leaving returns ownership to the server. Reset is client-side while driving
+because the client owns the assembly.
+
+## Live reload
+`ConfigLoader.reload()` clones the CarConfig ModuleScript and requires the
+clone, which re-runs the current Source. Verified in Studio: a Source change
+made on the server replicates to the client at runtime, and L reloads on
+both sides.

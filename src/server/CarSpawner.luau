@@ -30,6 +30,7 @@ type Entry = {
 	driver: Player?,
 	sim: Sim?,
 	stillTime: number,
+	slotX: number,
 }
 
 local CarSpawner = {}
@@ -42,8 +43,7 @@ local road: Model
 local slotCounter = 0
 local zeroInput = Types.newInput()
 
-local STILL_SPEED_STUDS = 0.5 / 0.28 -- 0.5 m/s
-local STILL_SECONDS = 1
+local FALL_CHECK_SECONDS = 1
 
 local function s(m: number): number
 	return m / config.units.metersPerStud
@@ -94,6 +94,28 @@ local function onOccupantChanged(entry: Entry)
 	end
 end
 
+local function bayPose(slotX: number): CFrame
+	local bay = road:GetAttribute("BayCFrame") :: CFrame
+	local restHeight = s(config.body.bodySize[2] / 2 + config.spawn.spawnHeightM) -- a little high, let it settle
+	return bay * CFrame.new(slotX, restHeight, 0)
+end
+
+-- Put the car back in its bay slot, upright, still. Keeps the driver seated;
+-- the server briefly takes the assembly back so the move is authoritative.
+local function repark(entry: Entry)
+	local driver = entry.driver
+	if not entry.chassis.Anchored then
+		entry.chassis:SetNetworkOwner(nil)
+	end
+	entry.model:PivotTo(bayPose(entry.slotX))
+	entry.chassis.AssemblyLinearVelocity = Vector3.zero
+	entry.chassis.AssemblyAngularVelocity = Vector3.zero
+	entry.stillTime = 0
+	if driver and not entry.chassis.Anchored then
+		entry.chassis:SetNetworkOwner(driver)
+	end
+end
+
 local function carsFolder(): Folder
 	local f = workspace:FindFirstChild("Cars")
 	if f and f:IsA("Folder") then
@@ -105,7 +127,8 @@ local function carsFolder(): Folder
 	return folder
 end
 
-local function spawnFor(player: Player)
+local spawnFor: (Player) -> ()
+spawnFor = function(player: Player)
 	if cars[player] then
 		return
 	end
@@ -115,11 +138,9 @@ local function spawnFor(player: Player)
 	local seat = model:FindFirstChild("DriverSeat") :: VehicleSeat
 	local prompt = chassis:FindFirstChild("EnterPrompt") :: ProximityPrompt
 
-	local bay = road:GetAttribute("BayCFrame") :: CFrame
-	local slotX = -s(20) + slotCounter * s(4)
+	local slotX = s(config.spawn.slotStartM) + (slotCounter % 10) * s(config.spawn.slotSpacingM)
 	slotCounter += 1
-	local restHeight = s(config.body.bodySize[2] / 2 + 0.45) -- spawn a little high, let it settle
-	model:PivotTo(bay * CFrame.new(slotX, restHeight, 0))
+	model:PivotTo(bayPose(slotX))
 	model.Parent = carsFolder()
 
 	local entry: Entry = {
@@ -131,8 +152,21 @@ local function spawnFor(player: Player)
 		driver = nil,
 		sim = if simFactory then simFactory(model, config) else nil,
 		stillTime = 0,
+		slotX = slotX,
 	}
 	cars[player] = entry
+
+	-- If the chassis ever gets destroyed (fell past FallenPartsDestroyHeight,
+	-- deleted in Studio), give the player a fresh car.
+	chassis:GetPropertyChangedSignal("Parent"):Connect(function()
+		if chassis.Parent == nil and cars[player] == entry then
+			cars[player] = nil
+			entry.model:Destroy()
+			if player.Parent then
+				task.delay(0.5, spawnFor, player)
+			end
+		end
+	end)
 
 	-- With no sim the car stays anchored where it spawned.
 	chassis.Anchored = entry.sim == nil
@@ -163,15 +197,32 @@ local function despawn(player: Player)
 	entry.model:Destroy()
 end
 
+local fallCheckTimer = 0
+local function checkFallen(dt: number)
+	fallCheckTimer += dt
+	if fallCheckTimer < FALL_CHECK_SECONDS then
+		return
+	end
+	fallCheckTimer = 0
+	local surfaceY = (road:GetAttribute("SurfaceY") :: number) or 0
+	for _, entry in cars do
+		if entry.chassis.Position.Y < surfaceY - s(config.spawn.fallBelowM) then
+			warn("[Hajwala] car fell off the world, re-parking:", entry.model.Name)
+			repark(entry)
+		end
+	end
+end
+
 local function stepDriverless(dt: number)
+	checkFallen(dt)
 	for _, entry in cars do
 		if entry.driver ~= nil or entry.sim == nil or entry.chassis.Anchored then
 			continue
 		end
 		entry.sim:step(zeroInput, dt)
-		if entry.chassis.AssemblyLinearVelocity.Magnitude < STILL_SPEED_STUDS then
+		if entry.chassis.AssemblyLinearVelocity.Magnitude < s(config.spawn.settleSpeedMps) then
 			entry.stillTime += dt
-			if entry.stillTime >= STILL_SECONDS then
+			if entry.stillTime >= config.spawn.settleSeconds then
 				entry.chassis.Anchored = true
 			end
 		else

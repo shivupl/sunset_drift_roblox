@@ -31,6 +31,9 @@ export type Config = {
 	tipRollDeg: number,
 	landingDamping: number,
 	suspensionBias: number,
+	sidePickSteer: number,
+	balancedEntryMarginDeg: number,
+	landedRollDeg: number,
 }
 
 export type Body = {
@@ -46,10 +49,6 @@ export type State = {
 	rollDeg: number,
 	marginDeg: number, -- degrees left before tipRollDeg
 }
-
-local SIDE_PICK_STEER = 0.2
-local BALANCED_ENTRY_MARGIN_DEG = 5
-local LANDED_ROLL_DEG = 3
 
 function TwoWheel.new(): State
 	return { mode = "idle", side = -1, rollDeg = 0, marginDeg = 0 }
@@ -85,7 +84,7 @@ function TwoWheel.step(
 			state.marginDeg = cfg.tipRollDeg
 			return 0
 		end
-		state.side = if steer > SIDE_PICK_STEER then 1 elseif steer < -SIDE_PICK_STEER then -1 else -1
+		state.side = if steer > cfg.sidePickSteer then 1 elseif steer < -cfg.sidePickSteer then -1 else -1
 		state.mode = "lifting"
 	elseif not held and state.mode ~= "landing" then
 		state.mode = if state.mode == "tipped" then "idle" else "landing"
@@ -101,7 +100,7 @@ function TwoWheel.step(
 
 	if state.mode == "lifting" then
 		torque = cfg.liftTorque
-		if roll >= cfg.targetRollDeg - BALANCED_ENTRY_MARGIN_DEG then
+		if roll >= cfg.targetRollDeg - cfg.balancedEntryMarginDeg then
 			state.mode = "balanced"
 		end
 	end
@@ -112,7 +111,7 @@ function TwoWheel.step(
 			state.marginDeg = 0
 			return 0
 		end
-		if roll < LANDED_ROLL_DEG then
+		if roll < cfg.landedRollDeg then
 			-- Came back down while still held: allow a fresh lift next press.
 			state.mode = "idle"
 			return 0
@@ -133,7 +132,7 @@ function TwoWheel.step(
 		torque -= cfg.balanceTorque * steer * s
 	elseif state.mode == "landing" then
 		torque = -cfg.landingDamping * rate
-		if groundedLeft + groundedRight >= 4 or roll < LANDED_ROLL_DEG then
+		if groundedLeft + groundedRight >= 4 or roll < cfg.landedRollDeg then
 			state.mode = "idle"
 		end
 	elseif state.mode == "tipped" then

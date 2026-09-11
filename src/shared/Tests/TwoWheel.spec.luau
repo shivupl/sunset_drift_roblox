@@ -15,6 +15,9 @@ return function(t: T)
 		tipRollDeg = 60,
 		landingDamping = 60,
 		suspensionBias = 1.8,
+		sidePickSteer = 0.2,
+		balancedEntryMarginDeg = 5,
+		landedRollDeg = 3,
 	}
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }
 	local dt = 1 / 60

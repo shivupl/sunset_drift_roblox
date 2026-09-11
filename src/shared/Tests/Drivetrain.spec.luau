@@ -20,6 +20,7 @@ return function(t: T)
 		brakeForce = 14000,
 		brakeBias = 0.65,
 		brakeFadeMps = 0.5,
+		reverseEngageMps = 0.5,
 	}
 	local kick = { multiplier = 2.5, duration = 0.3 }
 	local r = 0.33
