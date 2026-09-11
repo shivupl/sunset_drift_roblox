@@ -73,7 +73,7 @@ end
 local function takeEdges(out: InputState)
 	out.exit = edges.exit
 	out.reset = out.reset or edges.reset
-	out.reload = edges.reload
+	out.reload = out.reload or edges.reload
 	edges.exit, edges.reset, edges.reload = false, false, false
 end
 

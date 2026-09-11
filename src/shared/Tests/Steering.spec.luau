@@ -28,6 +28,8 @@ return function(t: T)
 		throwMinSpeedKmh = 30,
 		throwFullSpeedKmh = 70,
 		throwFinishAuthority = 0.6,
+		throwFinishFromDeg = 25,
+		throwFinishCarryDeg = 120,
 		slideYawDamping = 130,
 	}
 

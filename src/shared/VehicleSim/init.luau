@@ -579,7 +579,13 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		-- bailing out of a spin at 150 degrees never leaves the player
 		-- travelling backwards; the wheel still overrides. Starting a spin
 		-- is gated by the lever and the speeds as before.
-		local finishing = math.abs(driftAngleDeg) > 90 and speed > Units.kmhToMps(st.throwMinSpeedKmh)
+		-- Lever out, wheel centred, and sideways past throwFinishFromDeg is
+		-- the same request: bring it back. Below that the damping and the
+		-- hands-off assist are enough; above it the tyres alone took three
+		-- seconds from 60 degrees.
+		local handsOffNow = throwNow <= 0 and math.abs(input.steer) <= 0.05
+		local finishFrom = if handsOffNow then st.throwFinishFromDeg else 90
+		local finishing = math.abs(driftAngleDeg) > finishFrom and speed > Units.kmhToMps(st.throwMinSpeedKmh)
 		local throwLevel = math.max(throwNow, if self.flickTimer > 0 or finishing then 1 else 0)
 		if throwLevel > 0 then
 			if finishing then
@@ -588,14 +594,17 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local driftRateNow = yawRateDeg - self.pathRateDeg
 			local driftRate = 0
 			local cap = st.throwYawMaxTorque
-			if finishing and throwNow <= 0 and math.abs(input.steer) <= 0.05 then
-				-- Keep the rotation it has; if the damping already killed
-				-- it, take the short way back to straight. Yawing right
-				-- takes the drift angle down, so a positive angle wants
-				-- positive yaw.
-				local s = if math.abs(yawRateDeg) > st.throwHoldSettleDegPerSec
-					then math.sign(yawRateDeg)
-					else math.sign(driftAngleDeg)
+			if finishing and handsOffNow then
+				-- The short way back to straight, unless the car is nearly
+				-- backwards and still rotating, when carrying on round is
+				-- shorter than fighting the momentum. Keeping the rotation
+				-- below that carried a 60-degree bail the long way through
+				-- 180. Yawing right takes the drift angle down, so a
+				-- positive angle wants positive yaw.
+				local s = math.sign(driftAngleDeg)
+				if math.abs(driftAngleDeg) > st.throwFinishCarryDeg and math.abs(yawRateDeg) > st.throwHoldSettleDegPerSec then
+					s = math.sign(yawRateDeg)
+				end
 				driftRate = s * st.throwYawRateDegPerSec * st.throwFinishAuthority
 				self.holdLatched = false
 			elseif math.abs(input.steer) > 0.05 then

@@ -250,24 +250,37 @@ Numbers, from the same harness as Part 2:
 
 | | Part 2 | now |
 |---|---|---|
-| held lever + full lock from 110, 360 | stalled at 180 | 2.7 s, exits 73 km/h |
+| held lever + full lock from 110, 360 | stalled at 180 | 2.6 s, exits 76 km/h |
 | 720 from 150 | — | 2.7 s and 5.2 s |
 | 720 from 110 | — | stalls backwards in the second turn |
 | handbrake to 20° from 95 | 0.43 s | 0.30 s |
 | flick to 20° from 95 | 0.62 s | 0.35 s |
-| let go at 28°, hands off | peaks 61°, returns | peaks ~60°, returns |
-| tap under the lever, centred | — | holds 39° |
+| let go at 28°, hands off | peaks 61°, returns | peaks 40°, straight in 1.4 s |
+| tap under the lever, centred | — | holds 22°; full lock centred at 34 settles 46 |
 | plain full steer at 95 / lock at 130 / throttle-only at 60 | 4° / 6° / 2° | 3° / 5° / 2° |
-| 0–60 / 0–100 | 3.8 s / 6.3 s | 3.0 s / 5.0 s |
+| 0–60 / 0–100 | 3.8 s / 6.3 s | 2.6 s / 4.4 s |
 
-Past 90 degrees the car comes round regardless of the lever, at
-`throwFinishAuthority`. Two failure modes forced that. A 720 from 110 ran
-out of speed in the second turn and stalled at 180 with the lever in,
-rolling backwards to a stop; and bailing out of a spin at 150 degrees left
-the car travelling backwards at 55 km/h with nothing the assist could do.
-Now the first finishes slowly (exits at 40 km/h, which is its cost) and the
-second unwinds to straight in 2.8 s, the way a real driver would ride it
-round. The wheel still overrides, and starting a spin is gated as before.
+The catch is the same controller. Two failure modes forced that. A 720
+from 110 ran out of speed in the second turn and stalled at 180 with the
+lever in, rolling backwards to a stop; and bailing out of a spin at 150
+degrees left the car travelling backwards at 55 km/h with nothing the
+assist could do. So past 90 degrees with the lever in the speed fade is
+lifted to `throwFinishAuthority` and the spin finishes (a starved 720 exits
+under 50 km/h, which is its cost), and with the lever out and the wheel
+centred, past `throwFinishFromDeg` the same authority brings the car back
+to straight, the short way, or on round if it is nearly backwards and still
+rotating. The first version of that kept whatever rotation the car had,
+which carried a 60-degree bail the long way through 180; the direction
+rule is the fix. Measured hands off from 110: straight in 1.9 s from 150
+degrees, 1.5 from 110, 0.9 from 60, 1.4 from 28, every one ending on zero
+with no swing past. The wheel still overrides, and starting a spin is gated
+as before.
+
+A note on method: the harness's live-reload attribute was being clobbered
+by the edge merge in the input layer, so three rounds of config trials
+(gain, cap, launch, deep floors) were measured against stale values before
+it was caught by the missing "config reloaded" line in the console. Every
+number in this document was re-measured after the fix.
 
 Speed through a spin is the other half of "people will want to do this".
 The lever's drag came down from 8,000 N (half a g on its own, 11 km/h for
@@ -281,9 +294,12 @@ entry.
 The launch is a separate fix. It was grip-limited with a round friction
 circle and the traction control hunting under it. Tread bites harder along
 its rolling direction than across, so the rear's circle is an ellipse
-(`longitudinalGrip` 1.25): more drive before it spins, nothing different
-sideways, so no drift number moved. With the TC floor at 0.5 and a faster
-recovery, 0–60 went from 3.8 s to 3.0 and 0–100 from 6.3 to 5.0.
+(`longitudinalGrip` 1.4): more drive before it spins, nothing different
+sideways, so no drift number moved. Below 100 km/h that grip (8.6 kN on the
+rear axle) is the whole story and torque does nothing; above it, in third,
+the engine is the limit, so the curve went up 15% for 100 to 150. With the
+TC floor at 0.6 and a faster recovery, 0–60 went from 3.8 s to 2.6, 0–100
+from 6.3 to 4.4, and 0–150 is 7.4.
 
 A 360 is scored. Scoring measures the drift angle unwrapped inside a slide,
 and every full turn pays `spinBonusPoints` times the chain multiplier, on

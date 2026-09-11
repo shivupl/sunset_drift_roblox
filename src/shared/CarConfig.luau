@@ -100,28 +100,32 @@ local config = {
 			-- handbrake cuts the rear to 0.08 regardless, so a Ta'geed still
 			-- comes round, and a released slide now has enough rear to stop.
 			deepSlideSlipDeg = 45,
-			deepSlideGripRatio = 0.65,
+			deepSlideGripRatio = 0.55,
 			-- Drive grip as a multiple of the lateral peak. Launch was grip
 			-- limited with the circle round: 0-60 in 3.8 s with the traction
 			-- control hunting the edge. Tread bites harder along its rolling
 			-- direction than across, so the rear gets an ellipse. This only
 			-- touches how much throttle the rear takes before it spins; what
 			-- it does sideways, and so every drift number, is unchanged.
-			-- 1.4 was tried and bought nothing (0-60 still 2.9-3.1 s, rear
-			-- spinning a quarter of launch frames): the launch is at the
-			-- grip ceiling for this mass.
-			longitudinalGrip = 1.25,
+			-- 1.4 measured the same as 1.25 in an unfocused Studio window
+			-- (0-60 2.9-3.1 s, rear spinning a quarter of launch frames),
+			-- but that window runs the sim at 14 fps and the traction
+			-- control's one-frame lag is 70 ms there; a real client at 60
+			-- fps hunts the edge far tighter, and there the extra grip is
+			-- what it has to work with.
+			longitudinalGrip = 1.4,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
 
 	drivetrain = {
 		-- Tafheet lives at 160-260 km/h. Bumped about a third over the first
-		-- pass so highway speed arrives in a few seconds rather than ten.
-		-- Raised again for the mission's "brisk off the line": launch is
-		-- traction-limited so the gain is mostly in the midrange, with the
-		-- extra rear grip carrying more of it to the road.
-		torqueCurve = { { 1000, 330 }, { 2500, 480 }, { 4000, 550 }, { 5500, 530 }, { 6500, 430 }, { 7000, 0 } },
+		-- pass so highway speed arrives in a few seconds rather than ten,
+		-- and another 15% later. Below about 100 km/h the launch is grip
+		-- limited (8.6 kN on the rear axle, traction control hunting the
+		-- edge) and torque makes no difference to it; above that, in third
+		-- and up, the engine is the limit and this is what pulls 100-150.
+		torqueCurve = { { 1000, 380 }, { 2500, 550 }, { 4000, 640 }, { 5500, 620 }, { 6500, 500 }, { 7000, 0 } },
 		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
@@ -170,9 +174,9 @@ local config = {
 		-- Floor raised and recovery quickened for the launch: at 0.35 and
 		-- 1.2/s each spin cost half a second of throttle before the loop
 		-- wound back to the edge.
-		tractionControlMin = 0.5,
+		tractionControlMin = 0.6,
 		tractionControlCutRate = 5,
-		tractionControlRecoverRate = 3,
+		tractionControlRecoverRate = 4,
 	},
 
 	steering = {
@@ -278,6 +282,14 @@ local config = {
 		-- stalling backwards with the lever in. Starting a spin is still
 		-- gated by the speeds above.
 		throwFinishAuthority = 0.6,
+		-- With the lever out and the wheel centred the same authority brings
+		-- the car back from anything past this angle, so letting go is
+		-- always a catch. Under it the damping and the hands-off assist do
+		-- the job on their own. The wheel overrides.
+		throwFinishFromDeg = 25,
+		-- Hands off past this angle and still rotating, the car carries on
+		-- round rather than coming back the short way.
+		throwFinishCarryDeg = 120,
 		-- Yaw damping while the car is NOT being thrown (no lever, no flick
 		-- window), Nm per degree per second of yaw rate. A slip-angle tyre
 		-- model has almost no yaw stiffness once both axles are sliding: the
@@ -306,7 +318,7 @@ local config = {
 		-- 11 km/h for every second of a spin, before the tyres scrubbed
 		-- anything. The rotation no longer needs it; what is left is the
 		-- locked-rear feel and a little speed bleed under the lever.
-		brakeForce = 2000, -- N total on the rear axle
+		brakeForce = 1000, -- N total on the rear axle
 		-- Grip comes back over this long after the lever is let go instead of
 		-- snapping back in one step, so releasing mid-slide reads as a hand-off
 		-- to throttle rather than a jolt.
@@ -354,8 +366,10 @@ local config = {
 		-- The gravity cancel winds down on the same envelope, to this
 		-- fraction of itself. Needed because a fully cancelled pendulum is
 		-- neutral at every angle: with the spring at its floor the ignored
-		-- car hovered at 9 degrees instead of coming home.
-		balanceCancelFloor = 0.85,
+		-- car hovered at 9 degrees instead of coming home. 0.8: at 0.85 the
+		-- engine's extra torque on the grounded rear held an ignored car up
+		-- for 7 s.
+		balanceCancelFloor = 0.8,
 		rollDamping = 80, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
 		-- Lean input (Q/E, gamepad bumpers, touch LEAN buttons). Two gains
 		-- because catching a lean needs more authority than adding to one.
