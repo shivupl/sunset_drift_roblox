@@ -31,12 +31,13 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 | Reload CarConfig | L | — | RELOAD |
 
 ## Two-wheel ("natl")
-Holding Q or E is what puts the car up: the key you hold picks the side and keeps leaning
-that way, so hold Q to climb onto the left pair. Hold both for a neutral hold, switch to the
-opposite key to lean back down and catch it, release both to land. Steering is left alone the
-whole time so you can correct the car's yaw while you balance. Leaning all the way back down
-while still holding lands the car and will not fling it up again until you release and press
-again.
+Get above about 45 km/h first; nothing lifts at parking speed, and the lift is full from 80.
+Holding Q or E puts the car up: the key you hold picks the side, so Q climbs onto the left pair.
+Once it is up, balance by tapping: each press of the opposite key lands a full catch that fades
+if you keep holding, so tap against the lean rather than leaning on the key. Steering still
+steers, and it is the strongest lever up there: a small turn toward the low side drops the car,
+away lifts it, and gas holds it up (only the grounded rear drives). If you slow to a crawl the
+car settles back onto four wheels by itself. Release both keys to land.
 
 Touch is the exception, because the lean buttons cannot be on screen before the mode exists:
 hold NATL to open it and a LEAN< / LEAN> pair appears inboard of the throttle cluster. The

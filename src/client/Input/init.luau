@@ -54,8 +54,11 @@ local function readOverride(player: Player): InputState
 	out.brake = math.clamp(tonumber(player:GetAttribute("OvBrake")) or 0, 0, 1)
 	out.steer = math.clamp(tonumber(player:GetAttribute("OvSteer")) or 0, -1, 1)
 	out.handbrake = player:GetAttribute("OvHandbrake") == true
-	out.lean = math.clamp(tonumber(player:GetAttribute("OvLean")) or 0, -1, 1)
-	out.twoWheel = player:GetAttribute("OvTwoWheel") == true or out.lean ~= 0
+	local ovLean = math.clamp(tonumber(player:GetAttribute("OvLean")) or 0, -1, 1)
+	out.leanLeft = if player:GetAttribute("OvLeanLeft") == true or ovLean < 0 then 1 else 0
+	out.leanRight = if player:GetAttribute("OvLeanRight") == true or ovLean > 0 then 1 else 0
+	out.lean = out.leanRight - out.leanLeft
+	out.twoWheel = player:GetAttribute("OvTwoWheel") == true or out.leanLeft ~= 0 or out.leanRight ~= 0
 	if player:GetAttribute("OvClutchKick") == true then
 		out.clutchKick = true
 		player:SetAttribute("OvClutchKick", false)
@@ -91,11 +94,13 @@ function Input.get(dt: number, cfg: Config): InputState
 	out.handbrake = raw.handbrake
 	-- Lean is digital and unramped: balancing wants the torque the instant
 	-- the key goes down, not a ramp.
-	out.lean = (if raw.leanRight then 1 else 0) - (if raw.leanLeft then 1 else 0)
+	out.leanLeft = if raw.leanLeft then 1 else 0
+	out.leanRight = if raw.leanRight then 1 else 0
+	out.lean = out.leanRight - out.leanLeft
 	-- Holding a lean control is what puts the car up on two wheels. Touch is
 	-- the exception: there the NATL button opens the mode and the lean
-	-- buttons only then appear.
-	out.twoWheel = raw.twoWheelButton or out.lean ~= 0
+	-- buttons only then appear. Both keys held is a live, neutral hold.
+	out.twoWheel = raw.twoWheelButton or raw.leanLeft or raw.leanRight
 
 	if raw.steerAnalog ~= nil then
 		out.steer = raw.steerAnalog

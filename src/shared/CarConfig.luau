@@ -153,21 +153,52 @@ local config = {
 		liftTorque = 12000, -- Nm extra while lifting
 		gravityCancel = 1.0, -- fraction of gravity's restoring torque cancelled while balanced (>1 leans off faster)
 		targetRollDeg = 35, -- keep below atan(tire grip) or the base slides out from under the car
-		leanTorque = 400, -- Nm outward lean while balanced. Below ~600 the natural front-heavy yaw wins and the car settles back onto four wheels if ignored; above it, it tips
-		instability = 10, -- Nm/deg extra outward push above targetRollDeg
+		-- Outward lean while balanced. Throttle already pushes the car outward
+		-- on its own (only the grounded rear drives, so gas yaws the car away
+		-- from the low side), so this stays small: at 400 the car leaned in at
+		-- 12 deg/s under 0.4 throttle and a tap was erased in half a second.
+		leanTorque = 150,
+		instability = 6, -- Nm/deg extra outward push above targetRollDeg
 		rollDamping = 60, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
 		-- Lean input (Q/E, gamepad bumpers, touch LEAN buttons). Two gains
 		-- because catching a lean needs more authority than adding to one.
 		-- Sized against rollDamping: leanIn/rollDamping is roughly the degrees
 		-- per second the car climbs while you hold the key, so 450/60 is about
 		-- 7°/s in and 1800/60 about 30°/s back down.
-		leanInTorque = 450, -- Nm at full lean toward the lifted side (go further up)
-		leanOutTorque = 1800, -- Nm at full lean toward the grounded side (come back down)
+		-- Taps have to compete with the two big levers the physics already
+		-- gives the player: steering (a turn toward the low side drops the car,
+		-- away lifts it) and throttle (only the grounded rear drives, so gas
+		-- yaws the car away from the low side and holds it up). With the tap
+		-- envelope a press lands its whole gain at once, then decays.
+		leanInTorque = 1200, -- Nm at a fresh press toward the lifted side (go further up)
+		leanOutTorque = 4000, -- Nm at a fresh press toward the grounded side (come back down)
 		tipRollDeg = 62, -- past this the mode releases and gravity finishes the fall (static tip is atan(halfTrack/comHeight) ≈ 56°)
 		rimGripStartDeg = 42, -- roll where the tires start biting on rim/sidewall
 		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
 		landingDamping = 60, -- Nm per deg/s while coming down
 		suspensionBias = 1.8, -- grounded-side stiffness multiplier while lifted
+		-- Speed gates, like a real sidewall skier: nothing lifts at parking
+		-- speed, full lift from fullLiftSpeedKmh, and the balance fades away
+		-- below holdFadeSpeedKmh so a car that has slowed down settles.
+		minLiftSpeedKmh = 45,
+		fullLiftSpeedKmh = 80,
+		holdFadeSpeedKmh = 30,
+		-- Tap balance: a press gives its whole push at once, then decays
+		-- toward leanHoldFloor over leanHoldDecaySeconds while held.
+		-- Stabilise by tapping against the lean, not by holding.
+		leanHoldDecaySeconds = 0.45,
+		leanHoldFloor = 0.3,
+		-- Steering is the strongest balance lever there is on two wheels: a
+		-- turn toward the low side drops the car, away lifts it, and at 80 km/h
+		-- a 0.3 s tap of 0.2 steer was enough to flip it. Scale the lock while
+		-- lifted so a touch tap (which ramps to ~0.9 steer in 0.3 s) is a
+		-- correction, not a roll-over. Measured at 0.35: a 0.5 tap away
+		-- still tipped it; 0.22 leaves that as a catchable lean.
+		steerScale = 0.22,
+		-- Extra scale on a turn AWAY from the low side while lifted. That is
+		-- the direction that flips the car; toward the low side is the catch
+		-- and keeps the full steerScale.
+		steerAwayScale = 0.5,
 		sidePickLean = 0.2, -- |lean| above this picks the roll side; with none held the car rolls left
 		sidePickRollDeg = 15, -- while lifting below this roll a lean the other way still flips the side
 		balancedEntryMarginDeg = 5, -- lifting hands over to balancing this many degrees before targetRollDeg

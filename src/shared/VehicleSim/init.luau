@@ -225,7 +225,16 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- deliberate throw (handbrake held, or inside the clutch-kick window).
 	local throwing = math.max(self.handbrakeLevel, if self.drivetrain.kickTimer > 0 then 1 else 0)
 	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg, throwing)
-	local steerTarget = input.steer * cfg.steering.maxSteerDeg * lockFactor
+	-- On two wheels the lock is scaled, and scaled again for a turn away
+	-- from the low side, which is the one that flips the car.
+	local steerScale = 1
+	if twoWheelActive then
+		steerScale = cfg.twoWheel.steerScale
+		if input.steer * self.twoWheel.side < 0 then
+			steerScale *= cfg.twoWheel.steerAwayScale
+		end
+	end
+	local steerTarget = input.steer * cfg.steering.maxSteerDeg * lockFactor * steerScale
 	local returning = math.abs(steerTarget) < math.abs(self.steerDeg) or steerTarget * self.steerDeg < 0
 	local rate = if returning then cfg.steering.steerReturnDegPerSec else cfg.steering.steerSpeedDegPerSec
 	self.steerDeg += math.clamp(steerTarget - self.steerDeg, -rate * dt, rate * dt)
@@ -438,12 +447,14 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		cfg.twoWheel,
 		body,
 		input.twoWheel,
-		input.lean,
+		input.leanLeft,
+		input.leanRight,
 		rollDeg,
 		rollRate,
 		groundedLeft,
 		groundedRight,
-		dt
+		dt,
+		Units.mpsToKmh(speed)
 	)
 	totalTorque += forward * rollTorque
 

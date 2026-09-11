@@ -20,7 +20,13 @@ return function(t: T)
 		sidePickRollDeg = 15,
 		balancedEntryMarginDeg = 5,
 		landedRollDeg = 3,
+		minLiftSpeedKmh = 45,
+		fullLiftSpeedKmh = 80,
+		holdFadeSpeedKmh = 30,
+		leanHoldDecaySeconds = 0.45,
+		leanHoldFloor = 0.3,
 	}
+	local FAST = 100 -- km/h, full authority everywhere
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }
 	local dt = 1 / 60
 
@@ -32,12 +38,12 @@ return function(t: T)
 
 	-- Idle, not held: nothing
 	local st = TwoWheel.new()
-	t.near(TwoWheel.step(st, cfg, body, false, 0, 0, 0, 2, 2, dt), 0, 1e-9, "idle no torque")
+	t.near(TwoWheel.step(st, cfg, body, false, 0, 0, 0, 0, 2, 2, dt, FAST), 0, 1e-9, "idle no torque")
 	t.eq(st.mode, "idle", "stays idle")
 	t.eq(TwoWheel.isActive(st), false, "idle inactive")
 
 	-- Held with no lean (the touch NATL button): lifts to the left, side -1
-	local tq = TwoWheel.step(st, cfg, body, true, 0, 0, 0, 2, 2, dt)
+	local tq = TwoWheel.step(st, cfg, body, true, 0, 0, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.mode, "lifting", "enters lifting")
 	t.eq(st.side, -1, "default side left")
 	t.near(tq, -12000, 1e-9, "lift torque toward left")
@@ -45,72 +51,121 @@ return function(t: T)
 
 	-- Lean right at the press picks the right side and adds lean-in torque
 	st = TwoWheel.new()
-	tq = TwoWheel.step(st, cfg, body, true, 1, 0, 0, 2, 2, dt)
+	tq = TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.side, 1, "lean picks the side")
 	t.near(tq, 12000 + 1500, 1e-9, "lift plus lean-in")
 
 	-- Early in the lift a lean the other way still flips the side (touch flow)
 	st = TwoWheel.new()
-	TwoWheel.step(st, cfg, body, true, 0, 0, 0, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.side, -1, "started left")
-	TwoWheel.step(st, cfg, body, true, 1, -5, 0, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 1, -5, 0, 2, 2, dt, FAST)
 	t.eq(st.side, 1, "lean re-picks the side below sidePickRollDeg")
 
 	-- Past that window the side is locked in
 	st = TwoWheel.new()
-	TwoWheel.step(st, cfg, body, true, 0, 0, 0, 2, 2, dt)
-	TwoWheel.step(st, cfg, body, true, 1, -20, 0, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 1, -20, 0, 2, 2, dt, FAST)
 	t.eq(st.side, -1, "side locked once the car is up")
 
 	-- Balanced: gravity cancel + lean torque + damping, no divergence below target
 	st = TwoWheel.new()
-	TwoWheel.step(st, cfg, body, true, 1, 0, 0, 2, 2, dt)
-	tq = TwoWheel.step(st, cfg, body, true, 0, 38, 10, 0, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	tq = TwoWheel.step(st, cfg, body, true, 0, 0, 38, 10, 0, 2, dt, FAST)
 	t.eq(st.mode, "balanced", "enters balanced")
 	local expected = TwoWheel.gravityRestoringTorque(body, 38) * 1.0 + 300 - 20 * 10
 	t.near(tq, expected, 1e-6, "balanced torque (no divergence below target)")
 	t.near(st.marginDeg, 60 - 38, 1e-9, "margin to tip")
-	local above = TwoWheel.step(st, cfg, body, true, 0, 50, 0, 0, 2, dt)
+	local above = TwoWheel.step(st, cfg, body, true, 0, 0, 50, 0, 0, 2, dt, FAST)
 	t.near(above, TwoWheel.gravityRestoringTorque(body, 50) + 300 + 5 * 8, 1e-6, "divergence above target")
 
 	-- Lean in and lean out have separate gains
-	local leanIn = TwoWheel.step(st, cfg, body, true, 1, 38, 0, 0, 2, dt)
-	local neutral = TwoWheel.step(st, cfg, body, true, 0, 38, 0, 0, 2, dt)
-	local leanOut = TwoWheel.step(st, cfg, body, true, -1, 38, 0, 0, 2, dt)
+	local leanIn = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	local neutral = TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+	local leanOut = TwoWheel.step(st, cfg, body, true, 1, 0, 38, 0, 0, 2, dt, FAST)
 	t.near(leanIn - neutral, 1500, 1e-6, "lean toward the lifted side adds leanInTorque")
 	t.near(neutral - leanOut, 2500, 1e-6, "lean toward the grounded side subtracts leanOutTorque")
 
+	-- Speed gates: no lift at parking speed, partial lift between the gates,
+	-- and the hold fades away at a crawl so the car settles by itself.
+	st = TwoWheel.new()
+	t.near(TwoWheel.step(st, cfg, body, true, 1, 0, 0, 0, 2, 2, dt, 20), 0, 1e-9, "no lift at 20 km/h")
+	t.eq(st.mode, "idle", "stays idle below minLiftSpeedKmh")
+	st = TwoWheel.new()
+	local partial = TwoWheel.step(st, cfg, body, true, 0, 0, 0, 0, 2, 2, dt, 62.5)
+	t.eq(st.mode, "lifting", "lifts between the gates")
+	t.near(partial, -12000 * 0.5, 1e-6, "half lift authority halfway between the gates")
+	st = TwoWheel.new()
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+	local slow = TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, 30)
+	t.near(slow, 0, 1e-9, "hold authority is zero at holdFadeSpeedKmh: gravity takes it down")
+	local midSlow = TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, 37.5)
+	t.near(midSlow, (TwoWheel.gravityRestoringTorque(body, 38) + 300) * 0.5, 1e-6, "half authority halfway to minLiftSpeedKmh")
+
+	-- Tap envelope: a fresh press is full strength, holding decays toward the floor
+	st = TwoWheel.new()
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+	local base = TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+	local tap = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	t.near(tap - base, 1500, 1e-6, "fresh press pushes at full leanInTorque")
+	local heldTorque = tap
+	for _ = 1, 120 do
+		heldTorque = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	end
+	t.near(heldTorque - base, 1500 * 0.3, 15, "held for 2 s it has decayed to the floor")
+	TwoWheel.step(st, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+	local retap = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	t.near(retap - base, 1500, 1e-6, "release and press again is full strength again")
+	local flip = TwoWheel.step(st, cfg, body, true, 1, 0, 38, 0, 0, 2, dt, FAST)
+	t.near(base - flip, 2500, 1e-6, "switching direction is a fresh press the other way")
+
+	-- Tapping the other key while one is held is a full catch against the
+	-- held key's faded push, and letting it go does not re-fire the held key.
+	st = TwoWheel.new()
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	local heldRef = 0
+	for _ = 1, 120 do
+		heldRef = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	end
+	local both = TwoWheel.step(st, cfg, body, true, 1, 1, 38, 0, 0, 2, dt, FAST)
+	t.near(heldRef - both, 2500, 5, "tap the other key: full leanOut against the faded hold")
+	local after = TwoWheel.step(st, cfg, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+	t.near(after, heldRef, 25, "releasing the tap does not re-fire the held key")
+
 	-- Steering is not a balance input any more: it never reaches this module.
 	-- Past the tip angle: tipped, zero torque
-	tq = TwoWheel.step(st, cfg, body, true, 0, 61, 0, 0, 2, dt)
+	tq = TwoWheel.step(st, cfg, body, true, 0, 0, 61, 0, 0, 2, dt, FAST)
 	t.eq(st.mode, "tipped", "tips")
 	t.near(tq, 0, 1e-9, "no torque when tipped")
 	t.eq(TwoWheel.isActive(st), false, "tipped inactive")
-	TwoWheel.step(st, cfg, body, false, 0, 80, 0, 0, 0, dt)
+	TwoWheel.step(st, cfg, body, false, 0, 0, 80, 0, 0, 0, dt, FAST)
 	t.eq(st.mode, "idle", "release after tip -> idle")
 
 	-- Release while balanced -> landing with damping, then idle when all four touch
 	st = TwoWheel.new()
-	TwoWheel.step(st, cfg, body, true, 1, 0, 0, 2, 2, dt)
-	TwoWheel.step(st, cfg, body, true, 0, 40, 0, 0, 2, dt)
-	tq = TwoWheel.step(st, cfg, body, false, 0, 40, 30, 0, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 40, 0, 0, 2, dt, FAST)
+	tq = TwoWheel.step(st, cfg, body, false, 0, 0, 40, 30, 0, 2, dt, FAST)
 	t.eq(st.mode, "landing", "release -> landing")
 	t.near(tq, -60 * 30, 1e-6, "landing damping opposes roll rate")
-	TwoWheel.step(st, cfg, body, false, 0, 1, 5, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, false, 0, 0, 1, 5, 2, 2, dt, FAST)
 	t.eq(st.mode, "idle", "landed")
 
 	-- Leaning back down while still held lands it, and it does not fling
 	-- itself up again until the lean is released and pressed afresh.
 	st = TwoWheel.new()
-	TwoWheel.step(st, cfg, body, true, 1, 0, 0, 2, 2, dt)
-	TwoWheel.step(st, cfg, body, true, 0, 40, 0, 0, 2, dt)
-	TwoWheel.step(st, cfg, body, true, -1, 2, -50, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 0, 0, 40, 0, 0, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 1, 0, 2, -50, 2, 2, dt, FAST)
 	t.eq(st.mode, "idle", "leaned back down while held -> idle")
-	local stillHeld = TwoWheel.step(st, cfg, body, true, -1, 0, 0, 2, 2, dt)
+	local stillHeld = TwoWheel.step(st, cfg, body, true, 1, 0, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.mode, "idle", "stays down while the lean is still held")
 	t.near(stillHeld, 0, 1e-9, "no torque while disarmed")
-	TwoWheel.step(st, cfg, body, false, 0, 0, 0, 2, 2, dt)
-	TwoWheel.step(st, cfg, body, true, -1, 0, 0, 2, 2, dt)
+	TwoWheel.step(st, cfg, body, false, 0, 0, 0, 0, 2, 2, dt, FAST)
+	TwoWheel.step(st, cfg, body, true, 1, 0, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.mode, "lifting", "re-lifts after the lean is released and pressed again")
 	t.eq(st.side, -1, "lean left picks the left side")
 end

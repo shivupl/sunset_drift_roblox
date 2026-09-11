@@ -5,7 +5,9 @@ export type InputState = {
 	throttle: number, -- 0..1
 	brake: number, -- 0..1
 	steer: number, -- -1..1, + = right
-	lean: number, -- -1..1, two-wheel balance axis, + = lean right
+	lean: number, -- -1..1, two-wheel balance axis, + = lean right (right minus left)
+	leanLeft: number, -- 0/1, the left lean control by itself
+	leanRight: number, -- 0/1, the right lean control by itself
 	handbrake: boolean,
 	twoWheel: boolean, -- mode held (a lean key, or the touch NATL button)
 	clutchKick: boolean, -- true for one step on press
@@ -60,6 +62,8 @@ function Types.newInput(): InputState
 		brake = 0,
 		steer = 0,
 		lean = 0,
+		leanLeft = 0,
+		leanRight = 0,
 		handbrake = false,
 		twoWheel = false,
 		clutchKick = false,

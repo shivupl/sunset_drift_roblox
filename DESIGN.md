@@ -162,6 +162,27 @@ before the thing they belong to exists. Steering stays steering throughout,
 which is the point: on two wheels the car yaws, and the player needs the
 wheel to correct it while the lean axis handles the lean.
 
+Real sidewall skiing starts at speed, off a ramp or a sharp turn, and is
+balanced with the steering, with the grounded tires softened to make it
+easier. So the lift has no authority below a speed floor and full authority
+from a higher one, and the balance controller's authority fades away at a
+crawl: a car that has slowed down settles back onto four wheels on its own,
+because nobody can balance a car that is barely moving. The lean keys are
+taps rather than levers. A press lands its whole gain at once and decays
+toward a floor while the key is held, so the way to stabilise is to tap
+against the lean, the way a stick is balanced.
+
+Three levers act on the car once it is up, and the measurements below are
+from 80 km/h. Steering is by far the strongest: a turn toward the low side
+drops the car, a turn away lifts it, and at full lock a 0.3 s tap of 0.2
+steer was enough to flip it, so the lock is scaled to about a fifth while
+lifted and halved again in the away direction. Throttle is the second: only
+the grounded rear wheel drives, so gas yaws the car away from the low side
+and that turn's inertial torque holds it up. The lean taps are the trim on
+top, with a gain per key so a tap of E lands its full catch even while Q is
+still held. Left alone at 0.4 throttle the car wobbles from 40° up to 50°
+and back to 28° over two seconds; three taps of E hold it at 40°.
+
 Two pieces of honest physics shaped the tuning:
 
 - The front carries more load than the rear, so on two wheels the front

@@ -96,15 +96,20 @@ For the opposite effect move the other way. Press L in play to reload.
 | liftTorque | Roll torque while lifting. 12000 reaches the target in about a second at 70 km/h. | — | — | ↓ (gentler arrival) |
 | gravityCancel | Fraction of gravity's restoring torque cancelled while balanced. 1 = neutral pendulum. | — | — | ↓ |
 | targetRollDeg | Angle where lifting hands over to balancing. Keep below atan(tire grip) ≈ 45° or the base slides out. | — | — | ↓ |
-| leanTorque | Constant outward push while balanced. Below ~600 Nm the car's own front-heavy yaw wins and it settles back onto four wheels if ignored (Phase 0 choice); above, it tips. | — | — | ↓ |
+| leanTorque | Constant outward push while balanced. Keep it small: throttle already pushes the car outward (only the grounded rear drives, so gas yaws the car away from the low side). At 400 the car leaned in at 12°/s under 0.4 throttle and a tap was erased in half a second; at 150 it wobbles slowly (from 40° up to 50° and back to 28° over 2 s with no input) and three E taps hold it at 40°. | — | — | ↓ |
 | instability | Extra outward push per degree above targetRollDeg. | — | — | ↓ |
 | rollDamping | Resists roll rate while balanced. Kills the lift-in overshoot. | — | — | ↑ |
-| leanInTorque | Lean toward the lifted side (the key you are holding). Divide by rollDamping for roughly the degrees per second you climb while holding it. Too high and holding the key flips the car before you can catch it. | — | — | ↓ |
-| leanOutTorque | Lean toward the grounded side (the opposite key). Same rule of thumb for how fast it comes back down. This is the catch, so it wants to be several times leanInTorque. | — | — | ↑ |
+| leanInTorque | Gain of a fresh press toward the lifted side. With the tap envelope it lands all at once and decays, so this sets how much one tap climbs. | — | — | ↓ |
+| leanOutTorque | Gain of a fresh press toward the grounded side. This is the catch. It competes with throttle, which yaws the car away from the low side (only the grounded rear drives) and holds it up; measured, a 1.5 s hold-out at 4000 brings the car from 45° to 8°. | — | — | ↑ |
 | tipRollDeg | Where the controller lets go. Set past the static tip (≈56°) so a tip is a real fall. | — | — | ↑ |
 | rimGripStartDeg / rimGripBoost | Roll where rim dig-in starts and how much grip it adds. Without it the base slides out at ~45° and a tip is impossible. | — | — | ↓ boost |
 | landingDamping | Softens the drop back to four wheels. | — | — | ↑ |
 | suspensionBias | Loaded-side spring multiplier while lifted. | — | — | ↑ |
+| minLiftSpeedKmh / fullLiftSpeedKmh | Nothing lifts below the first; lift torque scales up to full at the second. Real sidewall skiing starts at speed, off a ramp or a sharp turn, not from a standstill. | — | — | ↑ min (harder to start) |
+| holdFadeSpeedKmh | The balance controller's authority fades to nothing at this speed, so a car that has slowed to a crawl settles back onto four wheels by itself. You cannot balance a car that is barely moving. | — | — | ↓ |
+| leanHoldDecaySeconds / leanHoldFloor | Tap envelope. A fresh press lands the whole lean gain at once, then decays to the floor over the decay time while held. Stabilise by tapping against the lean; a long hold is a weak steady push. Floor 1 turns taps back into levers. | — | — | ↑ floor |
+| steerScale | Steering lock while lifted. Steering is the strongest balance lever on two wheels (toward the low side drops the car, away lifts it) and at full lock a short tap flips it. Measured at 80 km/h with 0.22 and steerAwayScale 0.5: a 0.5 tap toward drops 10°, the same tap away leans 20° and is still catchable, a full-lock tap away tips. Raise for a twitchier, more expert car. | — | — | ↓ |
+| steerAwayScale | Extra scale on a turn away from the low side while lifted, the direction that flips the car. Toward the low side keeps the full steerScale. | — | — | ↓ |
 | sidePickLean | Lean magnitude that picks the roll side (E/right = roll right). With nothing held, as when touch opens the mode with NATL, the car rolls left. | — | — | — |
 | sidePickRollDeg | While lifting below this roll, a lean the other way still flips the side. This is what lets a touch player pick the side after NATL has already started the lift. | — | — | — |
 | balancedEntryMarginDeg | Lifting hands over to balancing this many degrees before the target. | — | — | ↑ (earlier handover, less overshoot) |
