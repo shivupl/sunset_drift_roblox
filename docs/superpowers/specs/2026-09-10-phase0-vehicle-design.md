@@ -292,7 +292,7 @@ units.metersPerStud            0.28
 units.gravity                  9.81      m/s² effective on the car
 body.massKg                    1600
 body.bodySize                  {4.9, 1.3, 1.8} m (L, H, W)
-body.centerOfMassOffset        {0, -0.15, 0.2} m from box centre (up, forward)
+body.centerOfMassOffset        {0, -0.15, 0.2} m from box centre (lateral, up, forward)
 body.wheelbase                 2.8 m
 body.trackWidth                1.55 m
 body.wheelRadius               0.33 m
