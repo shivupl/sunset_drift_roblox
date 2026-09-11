@@ -551,12 +551,14 @@ local config = {
 		skidLifetime = 8, -- seconds a mark stays on the road
 		skidTransparency = 0.45,
 		wheelSpinUpRate = 6, -- 1/s, how quickly a spinning wheel model winds up to engine speed
-		-- Audio hooks. Empty ids play nothing; paste "rbxassetid://..." ids
-		-- you own or have licensed. Screech follows rear slip, engine follows
-		-- rpm and throttle.
-		screechSoundId = "",
+		-- Audio. Free Creator Store loops, checked to load and play in this
+		-- place: the engine is Roblox Resources' "Car-Engine-Loop"
+		-- (80317022777602, 9.2 s), the screech is zdjack's "skid_loop_01"
+		-- (4842084452, 1.7 s). Screech follows rear slip, engine follows rpm
+		-- and throttle. Empty ids play nothing.
+		screechSoundId = "rbxassetid://4842084452",
 		screechMaxVolume = 0.6,
-		engineSoundId = "",
+		engineSoundId = "rbxassetid://80317022777602",
 		engineMaxVolume = 0.5,
 		engineMinPitch = 0.6, -- playback speed at idle
 		engineMaxPitch = 1.8, -- playback speed at redline
