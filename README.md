@@ -40,12 +40,13 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 | Toggle debug panel | — | — | DBG |
 
 ## Two-wheel ("natl")
-Get above about 45 km/h first; nothing lifts at parking speed, and the lift is full from 80.
-Tap Q or E and the car goes up on that side in a third of a second. It wants to come back
-down: the first tap gets it up, and you keep it up by tapping the same key every second and a
-half or so, because gravity is only mostly cancelled and an ignored car drops back onto four
-wheels in about three seconds. Tap the other key to catch it if it climbs too far; hold that
-key and the car lands at once.
+Get to 90 km/h first; nothing lifts below that. Tap Q or E and the car throws itself up on
+that side, big, to around 50 degrees. It wants to come back down: the first tap gets it up, and
+you keep it up by tapping the same key every second and a half or so, because gravity is only
+mostly cancelled and an ignored car drops back onto four wheels in about three seconds. Do
+not hold the key: leaning on it keeps pushing and the car goes over in about a second. Keep
+the speed up too; below 90 the hold fades and the car settles down even while you tap. Tap
+the other key to catch it if it climbs too far; hold that key and the car lands at once.
 Steering still steers, and it is the strongest lever up there: a small turn toward the low side
 drops the car, away lifts it. With gas on the car runs straight (open diff, so the grounded rear
 barely drives). If you slow to a crawl the car settles back onto four wheels by itself.

@@ -463,6 +463,19 @@ car also returns to idle once it is on its wheels again; with the mode
 latched on a tap there was no key release to clear it and it stayed
 "tipped" for good.
 
+Then the owner's spec for the tip: only from 90 km/h, a big first tip,
+tap-tap to keep it, holding the key topples, speed lost brings it down. The
+lift gate and the speed fade are two numbers; the big tip is 18,000 Nm of
+lift (a tap at 100 peaks at 49 to 52 degrees, just under the 56-degree
+static tip); the topple needed two changes. The key toward the lifted side
+now keeps its full push while held instead of decaying to a third, and the
+balance spring became one-sided, lifting a sagged car but doing nothing
+above the target: symmetric, it pulled a held key back to a hover at 56
+degrees and nothing ever went over. Measured: Q held after the lift topples
+in 1.1 s; a tap every 1.5 to 2 s keeps the car up with the gas on; lifted
+at 100 with the gas off and a light brake it is under 90 at 3.2 s and down
+at 4.5 while still being tapped; the catch key held lands it in 0.7 s.
+
 The ride scores. Scoring takes the roll as a third input alongside speed
 and drift angle, on the client from the sim and on the server from the
 replicated pose (the right vector's Y is the sine of the roll), and past

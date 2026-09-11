@@ -62,7 +62,8 @@ export type Config = {
 	fullLiftSpeedKmh: number,
 	holdFadeSpeedKmh: number,
 	leanHoldDecaySeconds: number,
-	leanHoldFloor: number,
+	leanHoldFloor: number, -- the catch key held decays to this
+	leanInHoldFloor: number, -- the key toward the lifted side held decays to this; 1 keeps pushing, which is the topple
 	balanceSpring: number, -- Nm per degree of error from targetRollDeg while balanced
 	balanceSpringDecaySeconds: number, -- the spring winds down to its floor over this long with no in-tap
 	balanceSpringFloor: number, -- fraction of balanceSpring left once it has wound down
@@ -159,17 +160,21 @@ function TwoWheel.step(
 
 	-- Tap envelopes, one per key: a fresh press starts at 1 and decays
 	-- toward leanHoldFloor while the key stays down; released is 0.
-	local function envelope(env: number, now: number, prev: number): number
+	local function envelope(env: number, now: number, prev: number, floor: number): number
 		if now ~= 0 and prev == 0 then
 			return 1
 		elseif now ~= 0 then
 			local k = 1 - math.exp(-dt / math.max(cfg.leanHoldDecaySeconds, 1e-3))
-			return env + (cfg.leanHoldFloor - env) * k
+			return env + (floor - env) * k
 		end
 		return 0
 	end
-	state.envLeft = envelope(state.envLeft, leanLeft, state.prevLeft)
-	state.envRight = envelope(state.envRight, leanRight, state.prevRight)
+	-- The key toward the lifted side keeps its own floor: held, it goes on
+	-- pushing, and a car pushed past the tip goes over. That is the price
+	-- of leaning on the key instead of tapping it.
+	local inIsLeft = state.side < 0
+	state.envLeft = envelope(state.envLeft, leanLeft, state.prevLeft, if inIsLeft then cfg.leanInHoldFloor else cfg.leanHoldFloor)
+	state.envRight = envelope(state.envRight, leanRight, state.prevRight, if inIsLeft then cfg.leanHoldFloor else cfg.leanInHoldFloor)
 	state.prevLeft, state.prevRight = leanLeft, leanRight
 	local lean = leanRight - leanLeft -- for side picking
 
@@ -268,7 +273,12 @@ function TwoWheel.step(
 			state.springEnv = 1
 		end
 		state.springEnv = math.max(cfg.balanceSpringFloor, state.springEnv - dt / math.max(cfg.balanceSpringDecaySeconds, 1e-3))
-		local spring = cfg.balanceSpring * state.springEnv * (cfg.targetRollDeg - roll)
+		-- One-sided: the spring lifts a car that has sagged below the target
+		-- and does nothing above it. A symmetric spring pulled a held in-key
+		-- back to a hover at 56 degrees, so leaning on the key never
+		-- toppled; above the target the car is on its own, and the catch
+		-- tap is what saves it.
+		local spring = cfg.balanceSpring * state.springEnv * math.max(cfg.targetRollDeg - roll, 0)
 		-- The gravity cancel winds down with the same envelope, to
 		-- balanceCancelFloor of itself. A fully cancelled pendulum is
 		-- neutral at every angle, so with the spring gone the car just

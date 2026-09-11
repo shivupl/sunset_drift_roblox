@@ -107,13 +107,10 @@ local config = {
 			-- direction than across, so the rear gets an ellipse. This only
 			-- touches how much throttle the rear takes before it spins; what
 			-- it does sideways, and so every drift number, is unchanged.
-			-- 1.4 measured the same as 1.25 in an unfocused Studio window
-			-- (0-60 2.9-3.1 s, rear spinning a quarter of launch frames),
-			-- but that window runs the sim at 14 fps and the traction
-			-- control's one-frame lag is 70 ms there; a real client at 60
-			-- fps hunts the edge far tighter, and there the extra grip is
-			-- what it has to work with.
-			longitudinalGrip = 1.4,
+			-- 1.55 with the TC floor at 0.7: 0-70 in 2.65 s and 0-100 in 3.9
+			-- (1.4 / 0.6 was 3.0 and 4.35). Power-over at 40-60 km/h under
+			-- full lock still peaks at 1-3 degrees, so the drift is untouched.
+			longitudinalGrip = 1.55,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
@@ -174,7 +171,7 @@ local config = {
 		-- Floor raised and recovery quickened for the launch: at 0.35 and
 		-- 1.2/s each spin cost half a second of throttle before the loop
 		-- wound back to the edge.
-		tractionControlMin = 0.6,
+		tractionControlMin = 0.7,
 		tractionControlCutRate = 5,
 		tractionControlRecoverRate = 4,
 	},
@@ -359,7 +356,9 @@ local config = {
 		-- 20,000 from 12,000: the owner called the lift slow and heavy. With
 		-- the roll damping it reached 30 degrees in about a second; this is
 		-- about half that.
-		liftTorque = 15000, -- Nm extra while lifting
+		-- 18,000: the owner wants the first tip big. With the rest of the
+		-- balance it peaks in the high 40s from a single tap at 95 km/h.
+		liftTorque = 18000, -- Nm extra while lifting
 		-- 0.9 from 1.0: a fully cancelled pendulum is neutral and needs
 		-- nothing from the driver. Leaving a tenth of gravity in makes the
 		-- car want to come down the whole time, so it has to be worked.
@@ -423,14 +422,20 @@ local config = {
 		-- Speed gates, like a real sidewall skier: nothing lifts at parking
 		-- speed, full lift from fullLiftSpeedKmh, and the balance fades away
 		-- below holdFadeSpeedKmh so a car that has slowed down settles.
-		minLiftSpeedKmh = 45,
-		fullLiftSpeedKmh = 80,
-		holdFadeSpeedKmh = 30,
+		-- The owner's rule: nothing tips under 90 km/h. Full lift from 100.
+		-- The hold fades out below 90 and is gone by 60, so a car that does
+		-- not keep its speed up comes back down on its own, slowly.
+		minLiftSpeedKmh = 90,
+		fullLiftSpeedKmh = 100,
+		holdFadeSpeedKmh = 60,
 		-- Tap balance: a press gives its whole push at once, then decays
 		-- toward leanHoldFloor over leanHoldDecaySeconds while held.
 		-- Stabilise by tapping against the lean, not by holding.
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
+		-- The key toward the lifted side does not decay when held: leaning
+		-- on it keeps pushing the car over, and past the tip it goes. Tap it.
+		leanInHoldFloor = 1,
 		-- The key toward the grounded side held this long is a landing, not a
 		-- catch: the controller lets go and the car comes down. Measured
 		-- without it, a held E got the car to 4 degrees and the spring then

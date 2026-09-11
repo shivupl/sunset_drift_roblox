@@ -25,6 +25,7 @@ return function(t: T)
 		holdFadeSpeedKmh = 30,
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
+		leanInHoldFloor = 0.3, -- the topple is exercised below with its own config
 		balanceSpring = 0, -- specs exercise the pure pendulum
 		balanceSpringDecaySeconds = 3,
 		balanceSpringFloor = 0.3,
@@ -51,6 +52,42 @@ return function(t: T)
 		t.eq(tipped.mode, "idle", "back on four wheels: idle again")
 		TwoWheel.step(tipped, cfg, body, false, 1, 0, 0, 0, 2, 2, dt, FAST)
 		t.eq(tipped.mode, "lifting", "and a tap lifts it again")
+	end
+
+	-- The balance spring lifts below the target and does nothing above it
+	do
+		local sprung = table.clone(cfg)
+		sprung.balanceSpring = 100
+		local st3 = TwoWheel.new()
+		TwoWheel.step(st3, sprung, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+		TwoWheel.step(st3, sprung, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+		local below = TwoWheel.step(st3, sprung, body, true, 0, 0, 32, 0, 0, 2, dt, FAST)
+		local expectBelow = TwoWheel.gravityRestoringTorque(body, 32) * 1.0 + 300 + 100 * st3.springEnv * 10
+		t.near(below, expectBelow, 1e-6, "below the target the spring lifts")
+		local above = TwoWheel.step(st3, sprung, body, true, 0, 0, 50, 0, 0, 2, dt, FAST)
+		t.near(above, TwoWheel.gravityRestoringTorque(body, 50) + 300 + 5 * 8, 1e-6, "above it the spring is silent")
+	end
+
+	-- Held in-key with leanInHoldFloor 1 never lets up (the topple); the
+	-- catch key still decays.
+	do
+		local topple = table.clone(cfg)
+		topple.leanInHoldFloor = 1
+		local st2 = TwoWheel.new()
+		TwoWheel.step(st2, cfg, body, true, 0, 1, 0, 0, 2, 2, dt, FAST) -- right side
+		TwoWheel.step(st2, cfg, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+		local base = TwoWheel.step(st2, topple, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+		local pushed = base
+		for _ = 1, 120 do
+			pushed = TwoWheel.step(st2, topple, body, true, 0, 1, 38, 0, 0, 2, dt, FAST)
+		end
+		t.near(pushed - base, 1500, 1e-6, "the in-key held 2 s still pushes at full leanInTorque")
+		local caught = base
+		TwoWheel.step(st2, topple, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+		for _ = 1, 120 do
+			caught = TwoWheel.step(st2, topple, body, true, 1, 0, 38, 0, 0, 2, dt, FAST)
+		end
+		t.near(base - caught, 2500 * 0.3, 30, "the catch key held 2 s has decayed to the floor")
 	end
 
 	-- Idle, not held: nothing
