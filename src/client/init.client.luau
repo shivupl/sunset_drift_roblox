@@ -4,15 +4,25 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes") :: Folder
 local driveStart = remotes:WaitForChild("DriveStart") :: RemoteEvent
 local driveStop = remotes:WaitForChild("DriveStop") :: RemoteEvent
 local reloadRemote = remotes:WaitForChild("ReloadConfig") :: RemoteEvent
+local submitSlide = remotes:WaitForChild("SubmitSlide") :: RemoteEvent
+local slideResult = remotes:WaitForChild("SlideResult") :: RemoteEvent
 local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
 local VehicleController = require(script.VehicleController)
 local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
+local ScoreController = require(script.ScoreController)
 local Touch = require(script.Input.Touch)
 
 print("[Hajwala] client boot")
-VehicleController.onState = function(state)
-	Hud.update(state)
+ScoreController.submit = function(points: number)
+	submitSlide:FireServer(points)
+end
+slideResult.OnClientEvent:Connect(function(points: number, cash: number)
+	Hud.flashResult(points, cash)
+end)
+VehicleController.onState = function(state, dt)
+	ScoreController.step(state, dt)
+	Hud.update(state, ScoreController.state)
 	DebugPanel.update(state)
 end
 Touch.onDebugToggle = DebugPanel.toggle
@@ -31,6 +41,7 @@ driveStart.OnClientEvent:Connect(function(car: Model)
 end)
 driveStop.OnClientEvent:Connect(function()
 	VehicleController.stop()
+	ScoreController.clear()
 	Hud.hide()
 	DebugPanel.hide()
 end)

@@ -19,7 +19,7 @@ type VehicleState = Types.VehicleState
 
 local VehicleController = {}
 VehicleController.lastState = nil :: VehicleState?
-VehicleController.onState = nil :: ((VehicleState) -> ())?
+VehicleController.onState = nil :: ((VehicleState, number) -> ())?
 VehicleController.onReload = nil :: (() -> ())?
 
 local sim: VehicleSim.Sim? = nil
@@ -94,7 +94,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		CameraRig.setState(state)
 		Players.LocalPlayer:SetAttribute("DbgCamera", CameraRig.currentProfile())
 		if VehicleController.onState then
-			VehicleController.onState(state)
+			VehicleController.onState(state, dt)
 		end
 	end)
 end

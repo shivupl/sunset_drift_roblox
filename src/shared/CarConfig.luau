@@ -350,10 +350,42 @@ local config = {
 		engineMaxPitch = 1.8, -- playback speed at redline
 	},
 
-	-- Driver HUD: speed, gear, drift angle, spins, natl roll. Top centre.
+	-- Drift scoring. A slide opens past minAngleDeg above minSpeedKmh and
+	-- banks after graceSeconds of going straight. See TUNING.md; the last
+	-- block is server-side validation and is not a feel knob.
+	scoring = {
+		minAngleDeg = 12, -- drift angle a slide needs to stay open
+		minSpeedKmh = 30, -- and the speed it needs
+		graceSeconds = 1.2, -- straight for this long banks the slide
+		spinOutSpeedKmh = 12, -- dropping under this mid-slide is a spin-out
+		impactDecelKmhPerSec = 250, -- a sustained decel this hard is a crash
+		impactSmoothSeconds = 0.15, -- window the speed drop is measured over
+		-- Points per second at referenceAngleDeg and referenceSpeedKmh, x1.
+		pointsPerSecond = 100,
+		referenceAngleDeg = 45,
+		referenceSpeedKmh = 100,
+		maxAngleFactor = 2.5, -- ceiling on angle / referenceAngleDeg
+		chainStep = 0.5, -- each direction change adds this to the multiplier
+		chainMax = 5,
+		minBankPoints = 50, -- anything smaller banks silently
+		cashPerPoint = 0.01,
+		-- Validation. The server scores every driven car from its own
+		-- samples and never banks more than it saw.
+		maxPlausibleSpeedKmh = 320,
+		teleportToleranceM = 8, -- movement beyond speed x dt plus this is a teleport
+		serverTolerance = 1.25, -- how far a claim may exceed the server's own total
+		claimWindowSeconds = 1.5, -- how long a claim stays usable
+		sampleHz = 20, -- server sampling rate
+		autosaveSeconds = 120, -- cash autosave interval
+	},
+
+	-- Driver HUD: speed, gear, drift angle, spins, natl roll, live slide
+	-- score, cash and records. Top centre.
 	hud = {
 		enabled = true,
 		driftHighlightDeg = 20, -- the drift readout lights up from here
+		scale = 1, -- overall HUD size
+		flashSeconds = 2, -- how long a banked or dropped slide stays on screen
 	},
 
 	debug = {

@@ -35,6 +35,13 @@ type Entry = {
 
 local CarSpawner = {}
 
+-- Set by whoever needs to follow the driver (ScoreService). model is nil
+-- when the player gets out.
+CarSpawner.driverChanged = nil :: ((player: Player, model: Model?) -> ())?
+-- Fired after a live CarConfig reload, so other services pick up the new
+-- tunables without each of them listening to the remote.
+CarSpawner.configChanged = nil :: ((config: Config) -> ())?
+
 local cars: { [Player]: Entry } = {}
 local config: Config = ConfigLoader.current()
 local simFactory: SimFactory? = nil
@@ -74,6 +81,9 @@ local function onOccupantChanged(entry: Entry)
 		entry.chassis.Anchored = false
 		entry.chassis:SetNetworkOwner(player)
 		remotes.DriveStart:FireClient(player, entry.model)
+		if CarSpawner.driverChanged then
+			CarSpawner.driverChanged(player, entry.model)
+		end
 	else
 		local prev = entry.driver
 		entry.driver = nil
@@ -83,6 +93,9 @@ local function onOccupantChanged(entry: Entry)
 			entry.chassis:SetNetworkOwner(nil)
 		end
 		if prev then
+			if CarSpawner.driverChanged then
+				CarSpawner.driverChanged(prev, nil)
+			end
 			remotes.DriveStop:FireClient(prev)
 			local character = prev.Character
 			if character then
@@ -241,6 +254,9 @@ function CarSpawner.setConfig(newConfig: Config)
 		if entry.sim then
 			entry.sim:setConfig(newConfig)
 		end
+	end
+	if CarSpawner.configChanged then
+		CarSpawner.configChanged(newConfig)
 	end
 end
 
