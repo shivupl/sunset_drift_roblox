@@ -282,6 +282,27 @@ by the edge merge in the input layer, so three rounds of config trials
 it was caught by the missing "config reloaded" line in the console. Every
 number in this document was re-measured after the fix.
 
+Throttle is the second permission. A slide started on the lever is held on
+the gas: past `throwThrottleHold` with the car already past
+`throwThrottleHoldFromDeg` the controller stays alive with the lever out,
+full rear grip, no lever drag. It latches through the straight moment of a
+transition (the first version dropped the permission at zero and every flick
+on the gas died there) and lets go after half a second under the gate with
+the wheel centred, or when the gas is lifted. Throttle alone never starts
+a slide, so the planted numbers for turning under power are untouched.
+
+The speed a held slide bled turned out to be the fronts, not the rear. With
+the wheel centred the fronts sit 27 degrees off the velocity and scrub; a
+real driver counter-steers, which aligns them. So the hands-off assist now
+runs under a hold too. The controller owns the angle there, so the assist
+is not a request to straighten; it just points the fronts down the path.
+Measured at 27 degrees from 100 km/h: 98 to 92 over four seconds on the
+gas, where it had been 98 to 73. Two flicks on the gas chain 30, 35 and 31
+degrees at 85 to 89 km/h. A 360 on the gas after a 0.3 s lever tap comes
+round in 2.3 s and exits at 63; on the lever, 2.6 s and 76. The lever's
+cut rear scrubs less through a full rotation, the gas's gripping rear
+bleeds less in a held angle, and the driver gets to pick.
+
 Speed through a spin is the other half of "people will want to do this".
 The lever's drag came down from 8,000 N (half a g on its own, 11 km/h for
 every second of a spin) to 2,000, and the fronts' deep-slide floor from 0.75

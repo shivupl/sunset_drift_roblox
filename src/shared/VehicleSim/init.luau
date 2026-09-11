@@ -72,6 +72,8 @@ export type Sim = typeof(setmetatable(
 		pathRateDeg: number, -- filtered rate the velocity direction is turning, deg/s, + = right
 		holdAngleDeg: number, -- drift angle the throw controller is holding with the wheel centred
 		holdLatched: boolean, -- that angle is fixed (the momentum from the turn-in has settled)
+		throttleHoldStraight: number, -- seconds the drift has been under the throttle-hold gate
+		throttleHoldOn: boolean, -- throttle is currently a throw permission
 		spinAccumDeg: number, -- signed, unwrapped drift-angle travel of the current spin
 		spinCount: number,
 		lastDriftDeg: number,
@@ -184,6 +186,8 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		pathRateDeg = 0,
 		holdAngleDeg = 0,
 		holdLatched = false,
+		throttleHoldStraight = 0,
+		throttleHoldOn = false,
 		spinAccumDeg = 0,
 		spinCount = 0,
 		lastDriftDeg = 0,
@@ -245,9 +249,36 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- round. Hands off, with no lever, is the opposite request, so the
 	-- hands-off assist does not fade: lift and straighten always means
 	-- "bring it back", whatever the angle.
-	local handsOff = not twoWheelActive
-		and not input.handbrake
-		and math.abs(input.steer) < cfg.steering.driftAssistHandsOffBelow
+	-- Throttle is the second permission for the throw, once the car is
+	-- already sideways: gas past throwThrottleHold with the drift past
+	-- throwThrottleHoldFromDeg keeps the controller alive with the lever
+	-- out, so a slide started on the lever is held on the gas, with full
+	-- rear grip and no lever drag. Throttle alone never starts one. Once
+	-- on, it stays on through the straight moment of a transition: it
+	-- only drops when the car has been under the gate for
+	-- throwThrottleHoldGraceSeconds with the wheel centred, or the gas is
+	-- lifted. Without that a flick on the gas died at zero.
+	local gasOn = not twoWheelActive and input.throttle >= cfg.steering.throwThrottleHold
+	local sidewaysNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldFromDeg
+	if sidewaysNow or math.abs(input.steer) > 0.05 then
+		self.throttleHoldStraight = 0
+	else
+		self.throttleHoldStraight += dt
+	end
+	if not gasOn then
+		self.throttleHoldOn = false
+	elseif sidewaysNow then
+		self.throttleHoldOn = true
+	elseif self.throttleHoldStraight >= cfg.steering.throwThrottleHoldGraceSeconds then
+		self.throttleHoldOn = false
+	end
+	local throttleHold = self.throttleHoldOn
+	-- Hands off the wheel, whatever the lever and the gas are doing, and
+	-- the assist aligns the fronts with the velocity. Under a hold that is
+	-- not a request to straighten (the controller holds the angle); it is
+	-- what stops the fronts scrubbing 27 degrees off the path, which was
+	-- most of the speed a held slide bled.
+	local handsOff = not twoWheelActive and math.abs(input.steer) < cfg.steering.driftAssistHandsOffBelow
 	if handsOff then
 		assistGain = math.max(assistGain, cfg.steering.driftAssistHandsOff)
 	else
@@ -269,7 +300,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- trips it, however fast the key was pressed, so the taper that keeps the
 	-- car planted on a steady bend stays in force; only the reversal is read
 	-- as "I want the tail out".
-	local throwNow = self.handbrakeLevel
+	local throwNow = math.max(self.handbrakeLevel, if throttleHold then 1 else 0)
 	local fl = cfg.steering
 	self.flickAge += dt
 	local steerMag = math.abs(input.steer)

@@ -196,7 +196,10 @@ local config = {
 		-- When the driver's hands are off the wheel (|steer| under
 		-- driftAssistHandsOffBelow) the assist rises to this, so lifting and
 		-- straightening brings the car back on its own. Hands on, the driver's
-		-- authority is untouched.
+		-- authority is untouched. It also runs under a held slide (lever or
+		-- gas, wheel centred): there the controller holds the angle and the
+		-- assist only aligns the fronts with the path, which is what keeps
+		-- the speed in.
 		driftAssistHandsOff = 0.7, -- 0.4 was 17 deg of counter-steer at 43 deg of slide, not enough to catch it
 		driftAssistHandsOffBelow = 0.1,
 		-- Speed-sensitive lock: km/h -> fraction of maxSteerDeg. Full lock for
@@ -290,6 +293,19 @@ local config = {
 		-- Hands off past this angle and still rotating, the car carries on
 		-- round rather than coming back the short way.
 		throwFinishCarryDeg = 120,
+		-- Throttle is the second permission. Gas past throwThrottleHold with
+		-- the car already past throwThrottleHoldFromDeg of drift keeps the
+		-- controller alive with the lever out, so a slide started on the
+		-- lever is held on the gas: full rear grip, no lever drag, the
+		-- wheel still the dial. Lift and the car comes back. Throttle alone
+		-- never starts a slide (the angle gate), so the planted numbers for
+		-- turning under power are untouched.
+		throwThrottleHold = 0.8,
+		throwThrottleHoldFromDeg = 20,
+		-- Once on, the gas permission survives the straight moment of a
+		-- transition and only drops after this long under the gate with
+		-- the wheel centred (or when the gas is lifted).
+		throwThrottleHoldGraceSeconds = 0.5,
 		-- Yaw damping while the car is NOT being thrown (no lever, no flick
 		-- window), Nm per degree per second of yaw rate. A slip-angle tyre
 		-- model has almost no yaw stiffness once both axles are sliding: the

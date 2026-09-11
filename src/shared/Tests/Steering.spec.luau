@@ -30,6 +30,9 @@ return function(t: T)
 		throwFinishAuthority = 0.6,
 		throwFinishFromDeg = 25,
 		throwFinishCarryDeg = 120,
+		throwThrottleHold = 0.8,
+		throwThrottleHoldFromDeg = 20,
+		throwThrottleHoldGraceSeconds = 0.5,
 		slideYawDamping = 130,
 	}
 

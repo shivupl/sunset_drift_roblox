@@ -114,8 +114,11 @@ is how fast the car comes round; centre it and the car holds whatever angle it h
 other way and the angle comes back. Let go of HAND and the car catches itself.
 
 Held slide: at 100 km/h pull HAND, tap the wheel to one side for a moment and centre it. The
-car settles at 35 to 40 degrees and stays there, gas on, for as long as you hold the lever.
-Counter-steer to bring it back, or let the lever go.
+car settles at 25 to 40 degrees and stays there. Now let the lever go and keep the gas
+floored: the gas holds the slide with the rear gripping again, so it barely loses speed.
+Flick the wheel the other way for half a second and centre it and the car swings through and
+holds the other side; keep going and the chain multiplier climbs. Lift the gas and the car
+comes back to straight on its own. Counter-steer at any point to bring the angle down.
 
 Ta'geed (360): at 110 km/h or more, full lock and HAND together, gas on, and keep both until
 the SPINS counter ticks (about 2.7 s), then let go and the car straightens. It exits around
