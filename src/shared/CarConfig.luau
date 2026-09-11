@@ -585,6 +585,11 @@ local config = {
 		-- what two seconds fully sideways at 100 km/h pays, so a Ta'geed is
 		-- worth roughly double the same time spent in a plain slide.
 		spinBonusPoints = 500,
+		-- Two wheels: past this roll the run pays natlPointsPerSecond at
+		-- referenceSpeedKmh, scaled by speed, on top of any drift points.
+		-- A natl at 90 km/h is worth about what a 30-degree slide is.
+		natlMinRollDeg = 15,
+		natlPointsPerSecond = 80,
 		cashPerPoint = 0.01,
 		-- Validation. The server scores every driven car from its own
 		-- samples and never banks more than it saw.

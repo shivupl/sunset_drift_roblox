@@ -19,6 +19,8 @@ return function(t: T)
 		chainMax = 5,
 		minBankPoints = 50,
 		spinBonusPoints = 500,
+		natlMinRollDeg = 15,
+		natlPointsPerSecond = 80,
 		cashPerPoint = 0.01,
 		maxPlausibleSpeedKmh = 320,
 		teleportToleranceM = 8,
@@ -41,7 +43,7 @@ return function(t: T)
 	local function run(state, speed: number, angle: number, seconds: number, dt: number): Run
 		local got: Run = { banked = 0, dropped = false, reason = "" }
 		for _ = 1, math.round(seconds / dt) do
-			Scoring.step(state, cfg, { speedKmh = speed, driftAngleDeg = angle }, dt)
+			Scoring.step(state, cfg, { speedKmh = speed, driftAngleDeg = angle, rollDeg = 0 }, dt)
 			got.banked += state.banked
 			if state.dropped then
 				got.dropped = true
@@ -56,7 +58,7 @@ return function(t: T)
 		local steps = math.round(seconds / dt)
 		for i = 1, steps do
 			local speed = from + (to - from) * (i / steps)
-			Scoring.step(state, cfg, { speedKmh = speed, driftAngleDeg = angle }, dt)
+			Scoring.step(state, cfg, { speedKmh = speed, driftAngleDeg = angle, rollDeg = 0 }, dt)
 			got.banked += state.banked
 			if state.dropped then
 				got.dropped = true
@@ -65,6 +67,33 @@ return function(t: T)
 		end
 		return got
 	end
+	-- Two wheels, going straight.
+	local function ride(state, speed: number, roll: number, seconds: number, dt: number): number
+		local banked = 0
+		for _ = 1, math.round(seconds / dt) do
+			Scoring.step(state, cfg, { speedKmh = speed, driftAngleDeg = 0, rollDeg = roll }, dt)
+			banked += state.banked
+		end
+		return banked
+	end
+
+	-- A natl opens a run and pays natlPointsPerSecond at the reference speed
+	t.near(Scoring.natlRate(cfg, 100), 80, 1e-9, "natl rate at the reference speed")
+	local n = Scoring.new()
+	ride(n, 100, 30, 1, 0.05)
+	t.ok(n.active, "two wheels opens a run")
+	t.near(n.points, 80, 1e-6, "one second up pays the natl rate")
+	local low = Scoring.new()
+	ride(low, 100, 10, 1, 0.05)
+	t.eq(low.active, false, "under natlMinRollDeg is not a natl")
+	local landed = ride(n, 100, 0, 1.3, 0.05)
+	t.eq(landed, 80, "landing and going straight banks it after the grace")
+	-- Drift and natl together pay both
+	local both = Scoring.new()
+	for _ = 1, 20 do
+		Scoring.step(both, cfg, { speedKmh = 100, driftAngleDeg = 45, rollDeg = 30 }, 0.05)
+	end
+	t.near(both.points, 180, 1e-6, "sideways on two wheels pays drift plus natl")
 
 	local s = Scoring.new()
 	run(s, 100, 45, 1, 0.05)
@@ -108,7 +137,7 @@ return function(t: T)
 		for i = 1, steps do
 			local a = -(i / steps) * 360 * turns
 			local wrapped = ((a + 180) % 360) - 180
-			Scoring.step(state, cfg, { speedKmh = 100, driftAngleDeg = wrapped }, dt)
+			Scoring.step(state, cfg, { speedKmh = 100, driftAngleDeg = wrapped, rollDeg = 0 }, dt)
 			paid += state.spun
 		end
 		return paid

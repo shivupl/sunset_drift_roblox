@@ -13,6 +13,11 @@
 -- transition one long slide instead of two short ones, and every direction
 -- change inside a slide steps the multiplier.
 --
+-- Two wheels score too: while the roll is past natlMinRollDeg the run pays
+-- natlPointsPerSecond scaled by speed, on top of any drift points, and the
+-- same grace window closes it. The server reads the roll off the replicated
+-- pose the same way it reads the drift angle.
+--
 -- A 360 pays a bonus on top. It is measured on the drift angle, unwrapped:
 -- one full turn of the car relative to where it is going is one spin,
 -- whatever the path did, and the server sees the same angle at 20 Hz (a
@@ -36,6 +41,8 @@ export type Config = {
 	chainMax: number,
 	minBankPoints: number,
 	spinBonusPoints: number,
+	natlMinRollDeg: number,
+	natlPointsPerSecond: number,
 	cashPerPoint: number,
 	maxPlausibleSpeedKmh: number,
 	teleportToleranceM: number,
@@ -47,6 +54,7 @@ export type Config = {
 export type Sample = {
 	speedKmh: number,
 	driftAngleDeg: number, -- + = velocity to the right of the heading
+	rollDeg: number, -- + = right side lower; 0 on four wheels
 }
 
 export type State = {
@@ -119,6 +127,11 @@ function Scoring.rate(cfg: Config, speedKmh: number, driftAngleDeg: number): num
 	return cfg.pointsPerSecond * angleFactor * speedFactor
 end
 
+-- Points per second on two wheels at this speed, before the multiplier.
+function Scoring.natlRate(cfg: Config, speedKmh: number): number
+	return cfg.natlPointsPerSecond * speedKmh / cfg.referenceSpeedKmh
+end
+
 local function bank(state: State, cfg: Config)
 	local amount = math.floor(state.points)
 	local worth = amount >= cfg.minBankPoints
@@ -187,15 +200,16 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 	end
 
 	local sliding = angle >= cfg.minAngleDeg and speed >= cfg.minSpeedKmh
-	if sliding then
-		local side = if sample.driftAngleDeg >= 0 then 1 else -1
+	local riding = math.abs(sample.rollDeg) >= cfg.natlMinRollDeg and speed >= cfg.minSpeedKmh
+	if sliding or riding then
+		local side = if sliding then (if sample.driftAngleDeg >= 0 then 1 else -1) else state.side
 		if state.active then
 			-- A direction change links the next slide onto this one. Works
 			-- both for a flick that crosses zero in a frame and for a swing
 			-- that spends time straight inside the grace window. The sign
 			-- also flips when a spin passes through 180, and that is not a
 			-- transition, so the crossing has to happen on the straight side.
-			if state.side ~= 0 and side ~= state.side and angle < 90 then
+			if sliding and state.side ~= 0 and side ~= state.side and angle < 90 then
 				state.transitions += 1
 				state.multiplier = math.min(1 + state.transitions * cfg.chainStep, cfg.chainMax)
 			end
@@ -212,7 +226,12 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 		end
 		state.side = side
 		state.graceTime = 0
-		state.points += Scoring.rate(cfg, speed, sample.driftAngleDeg) * state.multiplier * dt
+		if sliding then
+			state.points += Scoring.rate(cfg, speed, sample.driftAngleDeg) * state.multiplier * dt
+		end
+		if riding then
+			state.points += Scoring.natlRate(cfg, speed) * state.multiplier * dt
+		end
 		state.slideTime += dt
 	elseif state.active then
 		state.graceTime += dt
@@ -250,26 +269,28 @@ function Scoring.step(state: State, cfg: Config, sample: Sample, dt: number): St
 	return state
 end
 
--- Speed and drift angle from a chassis pose and its velocity. The server
--- derives its own samples this way from replicated physics; the client reads
--- the same quantities straight off VehicleState.
-function Scoring.observe(cf: CFrame, velocity: Vector3, metersPerStud: number): (number, number)
+-- Speed, drift angle and roll from a chassis pose and its velocity. The
+-- server derives its own samples this way from replicated physics; the
+-- client reads the same quantities straight off VehicleState. Roll uses the
+-- sim's convention: + = right side lower.
+function Scoring.observe(cf: CFrame, velocity: Vector3, metersPerStud: number): (number, number, number)
+	local rollDeg = math.deg(math.asin(math.clamp(-cf.RightVector.Y, -1, 1)))
 	local flat = Vector3.new(velocity.X, 0, velocity.Z)
 	local speedKmh = flat.Magnitude * metersPerStud * 3.6
 	if flat.Magnitude < 1e-3 then
-		return speedKmh, 0
+		return speedKmh, 0, rollDeg
 	end
 	local look = cf.LookVector
 	local fwd = Vector3.new(look.X, 0, look.Z)
 	if fwd.Magnitude < 1e-3 then
-		return speedKmh, 0
+		return speedKmh, 0, rollDeg
 	end
 	fwd = fwd.Unit
 	-- Right derived from the flattened heading rather than cf.RightVector,
 	-- which points at the sky when the car is up on two wheels.
 	local right = Vector3.new(-fwd.Z, 0, fwd.X)
 	local dir = flat.Unit
-	return speedKmh, math.deg(math.atan2(dir:Dot(right), dir:Dot(fwd)))
+	return speedKmh, math.deg(math.atan2(dir:Dot(right), dir:Dot(fwd))), rollDeg
 end
 
 -- Server-side plausibility. False means this sample cannot have come from a

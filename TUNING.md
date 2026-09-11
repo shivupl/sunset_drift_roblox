@@ -223,6 +223,7 @@ turn of the car relative to where it is going, whatever the path did.
 | chainStep | How much each direction change adds to the multiplier. |
 | chainMax | Ceiling on the multiplier. |
 | minBankPoints | Slides worth less than this bank silently, so a twitch does not flash the HUD. |
+| natlMinRollDeg / natlPointsPerSecond | Two wheels. Past the roll the run pays this many points per second at referenceSpeedKmh, scaled by speed, on top of any drift points, and the same grace window closes it. The server reads the roll off the replicated pose. 80 makes a natl at 90 km/h worth about what a 30-degree slide is; measured, a six-second ride banks about 430. |
 | spinBonusPoints | Paid, times the multiplier, each time the drift angle travels a full 360 inside one slide; a 720 pays twice. 500 is about what two seconds fully sideways at 100 km/h earns, so a Ta'geed is worth roughly double the same time in a plain slide. The HUD flashes "360!" beside the live counter. The sign flip a spin makes at 180 is not a chain transition; only a crossing through straight is. |
 | cashPerPoint | Points to cash. 0.01 = 1000 points is 10 cash. |
 

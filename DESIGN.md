@@ -443,6 +443,14 @@ The HUD's NATL readout now colours by tip margin — blue with room to spare,
 amber when a catch is due, red just before it goes — so the player has
 something to tap against besides the horizon.
 
+The ride scores. Scoring takes the roll as a third input alongside speed
+and drift angle, on the client from the sim and on the server from the
+replicated pose (the right vector's Y is the sine of the roll), and past
+`natlMinRollDeg` the run pays `natlPointsPerSecond` scaled by speed. It
+opens and closes a run the way a slide does, and sideways on two wheels
+pays both. A six-second ride at 90 km/h banks about 430 points; the server
+reproduces the client's number the way it does for drift.
+
 ## Two-wheel: tap to lift, tap to keep
 
 The owner's brief for the natl was "first tap gets it up, subsequent taps

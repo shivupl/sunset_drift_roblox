@@ -31,6 +31,7 @@ function ScoreController.step(vehicleState: VehicleState, dt: number)
 	local state = Scoring.step(ScoreController.state, cfg, {
 		speedKmh = vehicleState.speedKmh,
 		driftAngleDeg = vehicleState.driftAngleDeg,
+		rollDeg = vehicleState.rollDeg,
 	}, dt)
 	if state.banked > 0 and ScoreController.submit then
 		ScoreController.submit(state.banked)

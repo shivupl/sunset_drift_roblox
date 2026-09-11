@@ -83,6 +83,8 @@ A slide opens past `scoring.minAngleDeg` of drift above `scoring.minSpeedKmh` an
 x speed x time. Every direction change inside the slide steps the multiplier, and the grace
 window is what links a left-right swing into one long slide instead of two short ones. A full
 360 inside the slide adds `scoring.spinBonusPoints` times the multiplier; a 720 adds it twice.
+Two wheels score too: past `scoring.natlMinRollDeg` of roll the run pays
+`scoring.natlPointsPerSecond` scaled by speed, on top of anything the drift angle is earning.
 Going straight banks it and converts to cash at `scoring.cashPerPoint`. Hitting something
 hard, or spinning to a stop without ever straightening up, drops the run.
 

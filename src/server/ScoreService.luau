@@ -113,7 +113,7 @@ local function sample(session: Session, dt: number)
 		return
 	end
 	local pos = chassis.Position
-	local speedKmh, driftAngleDeg = Scoring.observe(chassis.CFrame, chassis.AssemblyLinearVelocity, config.units.metersPerStud)
+	local speedKmh, driftAngleDeg, rollDeg = Scoring.observe(chassis.CFrame, chassis.AssemblyLinearVelocity, config.units.metersPerStud)
 
 	-- A car that moved further than its own speed allows, or is reporting a
 	-- speed no car reaches, is not driving: throw the slide away rather than
@@ -130,7 +130,7 @@ local function sample(session: Session, dt: number)
 	session.lastSpeedKmh = speedKmh
 	session.lastDriftDeg = driftAngleDeg
 
-	local state = Scoring.step(session.state, cfg, { speedKmh = speedKmh, driftAngleDeg = driftAngleDeg }, dt)
+	local state = Scoring.step(session.state, cfg, { speedKmh = speedKmh, driftAngleDeg = driftAngleDeg, rollDeg = rollDeg }, dt)
 	if state.banked > 0 then
 		settle(session, state.banked)
 	elseif state.dropped then
