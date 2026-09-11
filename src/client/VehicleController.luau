@@ -48,10 +48,24 @@ local function resetCar(model: Model)
 	local surfaceY = if road then (road:GetAttribute("SurfaceY") :: number) else 0
 	local x = math.clamp(pos.X, -halfWidth + 5 / mps, halfWidth - 5 / mps)
 	local z = math.clamp(pos.Z, -length, 30 / mps)
+	-- The road is a dual carriageway now, so the corridor's centre is the
+	-- median. Snap to the centre of whichever carriageway the car is nearer,
+	-- read off the median strip if the world built one.
+	local medianHalf = 0
+	local median = if road then road:FindFirstChild("Median") else nil
+	local strip = if median then median:FindFirstChildWhichIsA("BasePart") else nil
+	if strip then
+		medianHalf = strip.Size.X / 2
+	end
+	local laneCentre = medianHalf + (halfWidth - medianHalf) / 2
+	local side = if pos.X < 0 then -1 else 1
+	if medianHalf > 0 then
+		x = side * laneCentre
+	end
 	-- Past the end of the straight (the curve or beyond) or well off the
 	-- side: go back to the start line instead of the edge of the world.
 	if pos.Z < -length or math.abs(pos.X) > halfWidth * 2 then
-		x, z = 0, 0
+		x, z = side * laneCentre, 0
 	end
 	local y = surfaceY + (cfg.body.bodySize[2] / 2 + 0.4) / mps
 	model:PivotTo(CFrame.new(x, y, z)) -- identity rotation faces -Z, down the road

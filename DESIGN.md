@@ -149,6 +149,66 @@ so a bigger spike changes nothing. Only a grip cut broke the rear loose,
 which made the kick a second copy of the handbrake with its own numbers to
 keep honest.
 
+## Driving rework (mission Part 2)
+
+Three complaints: it lost control on its own, drift was hard to get on purpose,
+and acceleration was sluggish with no top speed. Measured before and after,
+from 95 km/h unless stated:
+
+| | before | after |
+|---|---|---|
+| plain full steer held, peak drift | 7° | 4° |
+| steady full lock at 130, peak | 11° | 6° |
+| throttle alone at 60, steer 0.33, peak | 10° | 2° |
+| handbrake to 20° | 0.35 s | 0.43 s |
+| flick (reversal) to 20° | did not break | 0.62 s |
+| released at 28° with hands off | spun to 180 | peaks 61°, returns |
+| 0–100 km/h | 6.7 s | 6.3 s (grip ceiling ~5.3) |
+| top speed | unbounded | 210, as a limiter |
+
+What actually moved it, in order of how much it mattered:
+
+**Yaw damping.** The central finding. In a slip-angle tyre model, once both
+axles are saturated the front and rear lateral forces point the same way and
+their moments about the centre of mass nearly cancel, so a sliding car has
+almost no yaw stiffness. A released slide kept rotating at a constant
+110 deg/s all the way to 180 with full counter-steer applied and half brake
+made it worse. Real tyres self-align as the rear comes back; the model does
+not, so `slideYawDamping` stands in for it, at full strength when the driver
+is not throwing the car and a fraction under the lever. Every "on ice"
+complaint traced back to this.
+
+**The lever cuts to a locked tyre, not to ice.** The rear grip multiplier
+under the handbrake had been driven down to 0.08 to make initiation fast.
+That is what made every slide unrecoverable: with no rear friction the yaw
+rate hit 176 deg/s by 28 degrees of drift and kept climbing after release.
+It is 0.45 now, which is sliding friction, and initiation speed comes from an
+onset impulse instead.
+
+**The onset impulse.** A pull or a flick gets a yaw kick for a fifth of a
+second in the direction of the wheel. It replaces the clutch kick's job and
+the ice-cut's job in one knob, and it only fires on a deliberate throw, never
+on a held turn. It was 15,000 Nm at one point, which met the 0.3 s criterion
+and produced a car that could not be caught; 6,500 is where the two goals
+balance, at 0.43 s.
+
+**The flick.** A hard steer one way then the other inside 0.45 s is read as
+a throw: it gets the taper relief, the impulse (scaled up, since it has to
+reverse a yaw already under way) and a brief rear grip cut for the weight
+transfer a real pendulum turn produces. A held turn never trips it, so the
+speed-sensitive taper that keeps the car planted on a bend is untouched.
+
+**Traction control.** A loop, not a cap: throttle winds down while the rear
+spins and back up while it grips, so drive hunts the edge of traction. It
+runs through the midrange but only while the drift angle is under 8 degrees
+and the lever is out, so it never touches a slide. A fixed cap was tried
+first and sat under the grip limit; 0-100 got slower.
+
+**The criterion.** Phase 0 asked for 20 degrees in 0.3 s. The car does 0.43.
+It can do 0.29, and did, and the same setting spun it to 180 every time it
+was let go. The mission says not to tune to satisfy a test; 0.43 is the
+number where a pull is quick and a mistake is recoverable.
+
 ## Handbrake
 Multiplies rear grip by a fraction and drags the rear wheels with a capped
 force. The circle shrinks, the rear lets go, the car keeps most of its

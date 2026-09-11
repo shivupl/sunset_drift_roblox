@@ -37,6 +37,10 @@ For the opposite effect move the other way. Press L in play to reload.
 | antiRollRear | Stiffer rear bar = rear loses grip first = oversteer. | ↑ | ↑ | — |
 
 ## tires.front / tires.rear
+Part 2 set the rear (1.06) above the front (1.05): a rear that out-grips the front pushes wide
+at speed instead of stepping out, which is what "planted" means. Initiation is paid for with
+the throw impulse and the lever's grip cut, not by softening the rear.
+
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
 | grip | Peak friction. Rear lower than front = oversteer. | rear ↓ / front ↑ | rear ↓ | — |
@@ -64,6 +68,8 @@ For the opposite effect move the other way. Press L in play to reload.
 | brakeForce / brakeBias | Pedal strength and split. More rear bias = brake-induced rotation. | bias ↓ | bias ↓ | — |
 | brakeFadeMps | Anti-jitter at rest. | — | — | — |
 | reverseEngageMps | Speed under which the car counts as stopped for selecting reverse. | — | — | — |
+| topSpeedKmh / topSpeedFadeKmh | The ceiling, as a limiter: drive fades to nothing over the last fade band so the car sits at the top instead of hitting a wall. 210 because the 400 m curve is at the grip limit at 220 and the straight takes 34 s. Raise for a faster map, lower for a tighter one. |
+| tractionControlBelowKmh / tractionControlMaxDriftDeg / tractionControlMin / tractionControlCutRate / tractionControlRecoverRate | Traction control, a loop that winds throttle down while the rear spins and back up while it grips. Active under the speed and only while the drift angle is under the max and the lever is out, so it never touches a slide. Measured: 0-100 went 7.3 s (fixed cap) to 6.3 s (loop through the midrange). The grip ceiling for this mass is about 5.3 s; past that you need more rear grip or less car. |
 | reverseHoldSeconds | How long the brake must be held once stopped before reverse engages. Any throttle returns to drive and resets it. Raise if stopping hard drops you into reverse; lower if reversing out feels sticky. The gearbox is automatic and there is no manual shift, so this is the only gear choice a player makes. | — | — | — |
 
 ## steering
@@ -79,11 +85,16 @@ For the opposite effect move the other way. Press L in play to reload.
 | counterSteerRelief | How much of the taper a correction lifts. 1 gives the whole wheel back, 0 disables the exception and the taper applies to counter-steer too, which makes big angles uncatchable at speed. | — | — | — |
 | throwRelief | How much of the taper a deliberate throw lifts, while the handbrake is held. 1 = the wheel you actually turned, 0 = the taper still applies. Without it a Ta'geed at 160 km/h starts with 13° of steer and never comes round. | — | ↑ | — |
 | throwReliefTailSeconds | How long the throw relief lingers after the lever is let go, so the wheel does not shrink to a third mid-spin. | — | ↑ | — |
+| flickFromLock / flickWindowSeconds / flickRelief | The flick: a hard steer past flickFromLock one way then the other within the window is a deliberate throw and gets the taper back. A held turn never trips it. 0 relief disables it. | — | ↑ | — |
+| flickRearGripMultiplier / flickGripSeconds | The reversal also cuts rear grip briefly, standing in for the weight transfer of a real pendulum turn. Lower = the flick breaks the rear harder. | — | ↓ | — |
+| throwYawImpulse / throwImpulseSeconds / flickImpulseScale | Yaw kick at the start of a pull or flick, in the direction of the wheel. This is the initiation-speed knob: 6,500 for 0.22 s gives 20 degrees in 0.43 s from 95 km/h. 15,000 gave 0.29 s and a car that spun every time it was let go, which is the "on ice" feel. Flicks get the scale on top. | — | ↑ | — |
+| slideYawDamping / throwYawDampingFraction | Yaw damping, Nm per deg/s. A slip-angle tyre model has no yaw stiffness once both axles slide, so a released slide kept rotating at 110 deg/s to 180 with full counter-steer on. This stands in for the rear's self-aligning. Full value when the driver is not throwing; the fraction of it under the lever or in a flick. Raise slideYawDamping for a car that settles faster after a slide; raise the fraction and a held Ta'geed slows down. | ↓ | ↓ | — |
+| driftAssistHandsOff / driftAssistHandsOffBelow | When the wheel is centred (|steer| under the threshold) and the lever is out, the assist rises to this and does not fade with angle: lift and straighten means "bring it back". Hands on, the driver's authority is untouched. | — | — | — |
 
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
-| rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
+| rearGripMultiplier (0.45) | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
 | brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
 | releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. Note a tapped handbrake never completes a 360 at any value (the rears roll again once the car is backwards and their grip stops the rotation); hold it through the spin. | ↑ | — | — |
 

@@ -34,6 +34,12 @@ export type Config = {
 	brakeFadeMps: number,
 	reverseEngageMps: number,
 	reverseHoldSeconds: number,
+	topSpeedKmh: number,
+	topSpeedFadeKmh: number,
+	tractionControlBelowKmh: number,
+	tractionControlMin: number,
+	tractionControlCutRate: number,
+	tractionControlRecoverRate: number,
 }
 
 export type State = {
@@ -42,6 +48,7 @@ export type State = {
 	spinRpm: number,
 	shiftTimer: number,
 	reverseHold: number, -- seconds the brake has been held at a standstill
+	tc: number, -- traction control throttle multiplier, 0..1
 }
 
 export type Output = {
@@ -57,7 +64,7 @@ export type Output = {
 local RPM_PER_RAD_S = 60 / (2 * math.pi)
 
 function Drivetrain.new(cfg: Config): State
-	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, reverseHold = 0 }
+	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, reverseHold = 0, tc = 1 }
 end
 
 function Drivetrain.step(
@@ -68,10 +75,32 @@ function Drivetrain.step(
 	throttleIn: number,
 	brakeIn: number,
 	rearWheelSpeedMps: number,
-	rearSpinning: boolean
+	rearSpinning: boolean,
+	tractionControlAllowed: boolean
 ): Output
 	local speed = rearWheelSpeedMps
 	local throttle, brake = throttleIn, brakeIn
+
+	-- Launch traction control. Off the line the rear spins at anything past
+	-- half throttle and the car crawls away in a cloud of its own smoke. A
+	-- fixed cap was tried and sat under the grip limit for most of the
+	-- launch (0-100 got slower, not faster). This is a loop: while the rear
+	-- is spinning the multiplier winds down, while it grips it winds back
+	-- up, so the drive hunts the edge of traction the way a real TC does.
+	-- Only below tractionControlBelowKmh; power-over at speed and a
+	-- handbrake launch are untouched.
+	-- The caller withholds permission while the car is sliding sideways, so
+	-- a power-over drift keeps every bit of throttle the driver gives it.
+	if tractionControlAllowed and math.abs(speed) * 3.6 < cfg.tractionControlBelowKmh then
+		if rearSpinning then
+			state.tc = math.max(cfg.tractionControlMin, state.tc - cfg.tractionControlCutRate * dt)
+		else
+			state.tc = math.min(1, state.tc + cfg.tractionControlRecoverRate * dt)
+		end
+		throttle *= state.tc
+	else
+		state.tc = math.min(1, state.tc + cfg.tractionControlRecoverRate * dt)
+	end
 
 	-- Reverse. Coming to a stop on the brakes is the common case and must not
 	-- select reverse, so the brake has to stay down for reverseHoldSeconds
@@ -125,9 +154,14 @@ function Drivetrain.step(
 	end
 
 	-- Crank torque. Zero during a shift and at the rev limiter.
+	-- The top speed is a limiter, not a physics outcome: drive fades to
+	-- nothing over the last topSpeedFadeKmh so the car sits at the ceiling
+	-- instead of hitting a wall, the way a governor feels.
 	local torque = 0
 	if state.shiftTimer <= 0 and rpm < cfg.redlineRpm then
-		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle
+		local speedKmh = math.abs(speed) * 3.6
+		local ceiling = math.clamp((cfg.topSpeedKmh - speedKmh) / math.max(cfg.topSpeedFadeKmh, 1), 0, 1)
+		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle * ceiling
 	end
 	local drivePerRearWheel = torque * overall * cfg.drivelineEfficiency / wheelRadius / 2
 

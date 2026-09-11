@@ -65,6 +65,11 @@ export type Sim = typeof(setmetatable(
 		comHeightM: number,
 		handbrakeLevel: number,
 		throwTail: number,
+		flickSign: number, -- sign of the last strong steer input, 0 none
+		flickAge: number, -- seconds since that input
+		flickTimer: number, -- seconds of rear grip cut left after a flick
+		throwIsFlick: boolean, -- the current throw started as a flick
+		throwAge: number, -- seconds since the current throw began, for the onset impulse
 		spinAccumDeg: number,
 		spinCount: number,
 		lastState: VehicleState,
@@ -168,6 +173,11 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		comHeightM = 0.5,
 		handbrakeLevel = 0,
 		throwTail = 0,
+		flickSign = 0,
+		flickAge = 0,
+		flickTimer = 0,
+		throwAge = 0,
+		throwIsFlick = false,
 		spinAccumDeg = 0,
 		spinCount = 0,
 		lastState = emptyState(wheels),
@@ -222,8 +232,17 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local driftAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, vLongBody)) else 0
 	-- Assist uses |vLong| so reversing does not read as a 180° drift.
 	local assistAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, math.abs(vLongBody))) else 0
-	-- Past the fade the assist lets a spin be a spin instead of steering against it.
-	do
+	-- Past the fade the assist lets a spin be a spin instead of steering
+	-- against it: a driver holding the lever through a Ta'geed wants to come
+	-- round. Hands off, with no lever, is the opposite request, so the
+	-- hands-off assist does not fade: lift and straighten always means
+	-- "bring it back", whatever the angle.
+	local handsOff = not twoWheelActive
+		and not input.handbrake
+		and math.abs(input.steer) < cfg.steering.driftAssistHandsOffBelow
+	if handsOff then
+		assistGain = math.max(assistGain, cfg.steering.driftAssistHandsOff)
+	else
 		local a = math.abs(assistAngleDeg)
 		local fade = 1 - math.clamp(
 			(a - cfg.steering.driftAssistFadeStartDeg)
@@ -237,13 +256,49 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- deliberate throw (the handbrake). A throw keeps its relief for a tail
 	-- after the lever is let go, so a 360 started with the handbrake does not
 	-- lose its lock halfway round.
+	-- A flick is the other deliberate throw: a hard steer one way followed
+	-- quickly by a hard steer the other, the pendulum turn. A held turn never
+	-- trips it, however fast the key was pressed, so the taper that keeps the
+	-- car planted on a steady bend stays in force; only the reversal is read
+	-- as "I want the tail out".
 	local throwNow = self.handbrakeLevel
+	local fl = cfg.steering
+	self.flickAge += dt
+	local steerMag = math.abs(input.steer)
+	if steerMag >= fl.flickFromLock then
+		local sign = if input.steer > 0 then 1 else -1
+		if self.flickSign ~= 0 and sign ~= self.flickSign and self.flickAge <= fl.flickWindowSeconds and fl.flickRelief > 0 then
+			throwNow = math.max(throwNow, fl.flickRelief)
+			self.throwIsFlick = true
+			self.throwAge = 0 -- a reversal is a fresh throw, even mid-tail
+			-- The reversal also unloads the rear for a moment. The steering
+			-- relief alone does not break a rear that out-grips the front;
+			-- this is the weight transfer a real pendulum turn gets for free.
+			self.flickTimer = fl.flickGripSeconds
+		end
+		if sign ~= self.flickSign then
+			self.flickSign = sign
+			self.flickAge = 0
+		end
+	end
 	if throwNow > 0 then
 		self.throwTail = 1
 	elseif self.throwTail > 0 then
 		self.throwTail = math.max(0, self.throwTail - dt / math.max(cfg.steering.throwReliefTailSeconds, 1e-3))
 	end
 	local throwing = math.max(throwNow, self.throwTail)
+	-- Age of the current throw, for the onset impulse below.
+	if throwNow > 0 then
+		self.throwAge += dt
+	else
+		self.throwAge = 0
+		self.throwIsFlick = false
+	end
+	if self.flickTimer <= 0 and self.handbrakeLevel >= 1 then
+		self.throwIsFlick = false
+	end
+	self.flickTimer = math.max(0, self.flickTimer - dt)
+	local flickCut = if self.flickTimer > 0 then cfg.steering.flickRearGripMultiplier else 1
 	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg, throwing)
 	-- On two wheels the lock is scaled, and scaled again for a turn away
 	-- from the low side, which is the one that flips the car.
@@ -350,7 +405,9 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		input.throttle,
 		input.brake,
 		rearWheelSpeed,
-		rearSpinning
+		rearSpinning,
+		-- Traction control only while the car is pointing where it is going.
+		math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg and self.handbrakeLevel <= 0
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
@@ -382,6 +439,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
 			fxDemand = drive.drivePerRearWheel * diffShare
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
+			gripMult *= flickCut
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
@@ -472,6 +530,27 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		Units.mpsToKmh(speed)
 	)
 	totalTorque += forward * rollTorque
+	-- Throw onset impulse. The tires alone rotate this car to 20 degrees in
+	-- about 0.4 s from 95 km/h: the fronts have to build slip before they
+	-- push, and 1,600 kg of yaw inertia takes its time. A real handbrake
+	-- pull gets a kick from the locked rears scrubbing sideways that the
+	-- friction-circle model does not produce, so it is added here as a yaw
+	-- impulse for the first throwImpulseSeconds of a pull or a flick, in
+	-- the direction the wheel is turned. It only ever fires on a deliberate
+	-- throw, never on a held turn.
+	-- Yaw damping when the driver is not throwing the car. See the config
+	-- note: a sliding car in this tyre model has no yaw stiffness of its own.
+	if not twoWheelActive then
+		local throwingNow = throwNow > 0 or self.flickTimer > 0
+		local damping = cfg.steering.slideYawDamping * (if throwingNow then cfg.steering.throwYawDampingFraction else 1)
+		totalTorque -= up * (damping * math.deg(angVel:Dot(up)))
+	end
+	if throwNow > 0 and self.throwAge <= cfg.steering.throwImpulseSeconds and not twoWheelActive then
+		local dir = if input.steer > 0 then 1 elseif input.steer < 0 then -1 else 0
+		local speedFactor = math.clamp(speed / Units.kmhToMps(60), 0, 1)
+		local scale = if self.throwIsFlick then cfg.steering.flickImpulseScale else 1
+		totalTorque -= up * (dir * cfg.steering.throwYawImpulse * scale * speedFactor)
+	end
 	if twoWheelActive then
 		-- Steady yaw damping while lifted, the driver's micro-corrections.
 		totalTorque -= up * (cfg.twoWheel.yawDamping * math.deg(angVel:Dot(up)))

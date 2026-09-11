@@ -13,6 +13,16 @@ return function(t: T)
 		counterSteerReliefDeg = 25,
 		counterSteerRelief = 1,
 		throwRelief = 1,
+		flickFromLock = 0.5,
+		flickWindowSeconds = 0.45,
+		flickRelief = 1,
+		flickRearGripMultiplier = 0.45,
+		flickGripSeconds = 0.35,
+		throwYawImpulse = 9000,
+		throwImpulseSeconds = 0.25,
+		flickImpulseScale = 1.8,
+		slideYawDamping = 130,
+		throwYawDampingFraction = 0.4,
 	}
 
 	-- Straight-line driving: full lock up to 40 km/h, then tapering

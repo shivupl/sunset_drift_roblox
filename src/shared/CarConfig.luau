@@ -59,15 +59,21 @@ local config = {
 			peakSlipDeg = 8,
 			riseShape = 0.85,
 			slideSlipDeg = 25,
-			slideGripRatio = 0.75,
+			-- Fronts keep most of their bite when thrown. They are what turns
+			-- the car in a handbrake pull and what catches it at 40 degrees of
+			-- counter-steer, so this is both initiation speed and authority
+			-- at large angles.
+			slideGripRatio = 0.85,
 			falloffShape = 1.2,
-			-- Fronts stay grippy when deep: they are what drives the rotation
-			-- in a throw, so easing them off slows a 360 down.
 			deepSlideSlipDeg = 50,
-			deepSlideGripRatio = 0.6,
+			deepSlideGripRatio = 0.75,
 		},
 		rear = {
-			grip = 1.0,
+			-- Above the front now. A rear that out-grips the front is what
+			-- "planted" means: turning at speed runs the fronts out first and
+			-- the car pushes wide rather than stepping out. The handbrake cut
+			-- was deepened to match so a deliberate throw still breaks it.
+			grip = 1.06,
 			peakSlipDeg = 9.5,
 			riseShape = 0.55,
 			-- The gentle falloff ends at 26 deg and the deep floor starts at 30:
@@ -76,12 +82,20 @@ local config = {
 			-- 40 deg the rear had 98% grip at 40 and a tapped handbrake snapped
 			-- the car straight instead of letting it come round.
 			slideSlipDeg = 26,
-			slideGripRatio = 0.75,
-			falloffShape = 1.8,
+			-- Higher floor and a straighter falloff: grip goes away gradually
+			-- past the peak, which is the warning the driver feels before it
+			-- lets go, instead of holding then dropping off a cliff.
+			slideGripRatio = 0.82,
+			falloffShape = 1.4,
 			-- Rear lets go deep: this is what lets the car keep rotating and
 			-- carry its speed through a Ta'geed instead of scrubbing to a stop.
-			deepSlideSlipDeg = 30,
-			deepSlideGripRatio = 0.3,
+			-- Raised twice from 0.3 at 30 degrees. At 0.3 and again at 0.5 a
+			-- car let go at 43 degrees with hands off kept rotating to 180.
+			-- This floor only matters once the lever is released: a held
+			-- handbrake cuts the rear to 0.08 regardless, so a Ta'geed still
+			-- comes round, and a released slide now has enough rear to stop.
+			deepSlideSlipDeg = 45,
+			deepSlideGripRatio = 0.65,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
@@ -89,7 +103,10 @@ local config = {
 	drivetrain = {
 		-- Tafheet lives at 160-260 km/h. Bumped about a third over the first
 		-- pass so highway speed arrives in a few seconds rather than ten.
-		torqueCurve = { { 1000, 240 }, { 2500, 350 }, { 4000, 405 }, { 5500, 390 }, { 6500, 320 }, { 7000, 0 } },
+		-- Raised again for the mission's "brisk off the line": launch is
+		-- traction-limited so the gain is mostly in the midrange, with the
+		-- extra rear grip carrying more of it to the road.
+		torqueCurve = { { 1000, 330 }, { 2500, 480 }, { 4000, 550 }, { 5500, 530 }, { 6500, 430 }, { 7000, 0 } },
 		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
@@ -117,21 +134,53 @@ local config = {
 		-- ...and only after the brake has been held that long while stopped,
 		-- so braking to a standstill does not snap into reverse.
 		reverseHoldSeconds = 0.4,
+		-- Top speed as a limiter. 210 km/h: the map's 400 m curve is at the
+		-- grip limit at 220 (v^2/r = 9.3 m/s^2), the 2 km straight takes 34 s,
+		-- and it is still 20 over what most players will hold a lane at. Drive
+		-- fades over the last topSpeedFadeKmh so the ceiling is a plateau.
+		topSpeedKmh = 210,
+		topSpeedFadeKmh = 20,
+		-- Launch traction control, active under this speed. A loop, not a
+		-- cap: the throttle multiplier winds down at cutRate while the rear
+		-- spins and back up at recoverRate while it grips, never below min.
+		-- With no TC the first two seconds of a launch sat at 7-23 km/h in
+		-- wheelspin; a fixed 0.55 cap was slower still. The grip ceiling for
+		-- 1,600 kg at this rear grip is about 5.3 s to 100.
+		-- Active through the midrange too: measured at 64 km/h the rear was
+		-- spinning at 82% of peak grip and the car pulled 3.6 m/s^2 instead of
+		-- 4.7. Gated off above tractionControlMaxDriftDeg of slide and while the
+		-- lever is in, so it never touches a drift.
+		tractionControlBelowKmh = 120,
+		tractionControlMaxDriftDeg = 8,
+		tractionControlMin = 0.35,
+		tractionControlCutRate = 5,
+		tractionControlRecoverRate = 1.2,
 	},
 
 	steering = {
 		maxSteerDeg = 38,
-		steerSpeedDegPerSec = 180,
-		steerReturnDegPerSec = 360,
+		-- Quick hands. Lock to lock in a flick took 0.26 s at 240/360, a third
+		-- of the whole initiation time.
+		steerSpeedDegPerSec = 320,
+		steerReturnDegPerSec = 520,
+		-- Back to 0.15 from a trial at 0.2: the assist counter-steers against
+		-- every initiation too, and at 0.2 it cost the handbrake a tenth of a
+		-- second to 20 degrees. The taper and the rear bias do the stability.
 		driftAssist = 0.15, -- 0..1, adds this fraction of the drift angle as counter-steer
 		-- The assist fades out past these angles so it stops fighting a spin:
 		-- at 90 deg of drift it was steering 13 deg against the rotation.
 		driftAssistFadeStartDeg = 45,
 		driftAssistFadeEndDeg = 75,
+		-- When the driver's hands are off the wheel (|steer| under
+		-- driftAssistHandsOffBelow) the assist rises to this, so lifting and
+		-- straightening brings the car back on its own. Hands on, the driver's
+		-- authority is untouched.
+		driftAssistHandsOff = 0.7, -- 0.4 was 17 deg of counter-steer at 43 deg of slide, not enough to catch it
+		driftAssistHandsOffBelow = 0.1,
 		-- Speed-sensitive lock: km/h -> fraction of maxSteerDeg. Full lock for
 		-- parking and low-speed work, tapering at highway speed so turning
 		-- alone cannot pitch the car sideways.
-		speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.6 }, { 150, 0.35 }, { 220, 0.3 }, { 300, 0.3 } },
+		speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.55 }, { 150, 0.32 }, { 220, 0.28 }, { 300, 0.28 } },
 		-- The taper lifts back toward full lock as the car goes sideways, so a
 		-- slide stays catchable at speed. Degrees of slip for full relief, and
 		-- how much of the taper it lifts (0 disables it, 1 gives the whole
@@ -145,6 +194,47 @@ local config = {
 		-- Keep the throw relief for this long after the handbrake is let go
 		-- so the wheel does not shrink to a third mid-spin.
 		throwReliefTailSeconds = 1.5,
+		-- The flick: a hard steer past flickFromLock one way, then the other
+		-- way within flickWindowSeconds, is read as a deliberate throw and gets
+		-- flickRelief of the taper back (1 = the whole wheel) for the throw
+		-- tail. A held turn never trips it, so the taper that keeps the car
+		-- planted on a bend is untouched. 0 disables the flick.
+		flickFromLock = 0.5,
+		flickWindowSeconds = 0.45,
+		flickRelief = 1,
+		-- The reversal also cuts rear grip for flickGripSeconds, standing in
+		-- for the weight transfer a real pendulum turn gets. Without it the
+		-- relief alone peaked at 10 degrees from 95 km/h.
+		flickRearGripMultiplier = 0.35,
+		flickGripSeconds = 0.5,
+		-- Yaw kick at the start of a throw (handbrake or flick), Nm about the
+		-- vertical, in the direction of the wheel, for this long. Measured
+		-- without it: 0.43 s to 20 degrees from a pull at 95 km/h, 0.75 s
+		-- from a flick, both over the 0.3 s criterion. Raise it for a snappier
+		-- initiation, lower it if a pull feels like being shoved.
+		-- 15,000 for 0.3 s put the car at 185 deg/s of yaw by 20 degrees of
+		-- drift: that is the "on ice" whip, and nothing recovers from it. A
+		-- pull should build angle at a yaw rate the rear can still damp.
+		throwYawImpulse = 6500,
+		throwImpulseSeconds = 0.22,
+		-- A flick reverses a yaw that is already going the other way, so it
+		-- gets this much more kick than a pull from straight.
+		flickImpulseScale = 3,
+		-- Yaw damping while the car is NOT being thrown (no lever, no flick
+		-- window), Nm per degree per second of yaw rate. A slip-angle tyre
+		-- model has almost no yaw stiffness once both axles are sliding: the
+		-- front and rear forces point the same way and their moments cancel,
+		-- so a released slide kept rotating at a constant 110 deg/s all the way
+		-- to 180 with full counter-steer applied. Real tyres self-align as
+		-- the rear comes back; this stands in for that. It is off during a
+		-- throw so a held Ta'geed still comes round. Raise it for a car that
+		-- settles faster after a slide, lower it for one that swings further.
+		slideYawDamping = 130,
+		-- Fraction of that damping kept during a throw. Zero and the yaw rate
+		-- runs away to 115 deg/s under the lever and a released slide stalls
+		-- at 98 degrees; some damping under the lever is what makes the angle
+		-- build and then plateau, which is the warning before it goes.
+		throwYawDampingFraction = 0.12,
 	},
 
 	handbrake = {
@@ -152,8 +242,14 @@ local config = {
 		-- holds far more grip a few degrees past peak, which slowed the pull
 		-- from 0.24 s to 0.33 s to reach 20 deg; cutting deeper puts that back
 		-- without touching the falloff that made the car stable.
-		rearGripMultiplier = 0.25,
-		brakeForce = 6000, -- N total on the rear axle
+		-- 0.4 is a locked tyre, not ice. It was cut to 0.08 to make the pull
+		-- fast enough, and that is what made every slide unrecoverable: with
+		-- no rear friction the yaw rate hit 176 deg/s by 28 degrees of drift
+		-- and kept climbing after the lever was let go. A locked wheel keeps
+		-- sliding friction that damps yaw. The throw impulse in `steering`
+		-- now does the initiation work instead.
+		rearGripMultiplier = 0.45,
+		brakeForce = 8000, -- N total on the rear axle
 		-- Grip comes back over this long after the lever is let go instead of
 		-- snapping back in one step, so releasing mid-slide reads as a hand-off
 		-- to throttle rather than a jolt.
@@ -162,7 +258,9 @@ local config = {
 		-- roll again and their grip kills the rotation. A held handbrake
 		-- keeps them locked and comes round in ~3.4 s, which is the real
 		-- Ta'geed technique. 0.4 keeps a release mid-slide soft.
-		releaseSeconds = 0.4,
+		-- 0.2, down from 0.4: with the lever let go at 43 degrees and hands off,
+		-- 0.4 s of a still-cut rear was enough to spin the car to 175.
+		releaseSeconds = 0.15,
 	},
 
 	twoWheel = {
@@ -387,7 +485,7 @@ local config = {
 	debug = {
 		enabled = true,
 		showOnTouch = false, -- hidden on phones until the DBG button is tapped
-		updateHz = 10,
+		updateHz = 30, -- 10 quantised every timing measurement to a tenth of a second
 		spinSlipDeg = 45, -- yaw counts toward a 360 while |drift| is above this
 		spinResetDeg = 15, -- and the count clears once the car is back under this
 	},
