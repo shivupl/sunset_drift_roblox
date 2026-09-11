@@ -8,11 +8,12 @@
 -- atan(halfTrack / comHeight) and pushes it over past that.
 --
 -- While balanced the controller cancels a configurable fraction of that
--- restoring torque and adds a small divergence (instability) so the
--- equilibrium is slightly unstable: ignore it and the car leans further,
--- correct it with steer and it comes back. Nothing here ever pulls the car
--- back toward the target angle by itself, so it is never "magnetized".
--- Past tipRollDeg the controller lets go and gravity finishes the job.
+-- restoring torque, then adds a constant outward lean (leanTorque) plus
+-- extra divergence above the target angle (instability). Ignore it and the
+-- car keeps leaning until it tips; steer toward the grounded side and the
+-- turn's inertial torque brings it back. Nothing here ever pulls the car
+-- toward a target angle, so it is never "magnetized". Past tipRollDeg the
+-- controller lets go and gravity finishes the job.
 --
 -- Frame: all torques are computed "toward the chosen side" (positive =
 -- rolling further onto two wheels) and converted to the world roll sign
@@ -23,6 +24,7 @@ export type Config = {
 	liftTorque: number,
 	gravityCancel: number,
 	targetRollDeg: number,
+	leanTorque: number,
 	instability: number,
 	rollDamping: number,
 	balanceTorque: number,
@@ -115,10 +117,14 @@ function TwoWheel.step(
 			state.mode = "idle"
 			return 0
 		end
-		-- Cancel (most of) gravity's restoring torque, then diverge gently
-		-- from the target so the player has to keep balancing.
+		-- Cancel (most of) gravity's restoring torque, then lean outward so
+		-- the player has to keep balancing. One-sided on purpose: below the
+		-- target this must not turn into a restoring spring.
 		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel
-		torque = cancel + cfg.instability * (roll - cfg.targetRollDeg) - cfg.rollDamping * rate
+		torque = cancel
+			+ cfg.leanTorque
+			+ cfg.instability * math.max(roll - cfg.targetRollDeg, 0)
+			- cfg.rollDamping * rate
 	end
 
 	if state.mode == "lifting" or state.mode == "balanced" then

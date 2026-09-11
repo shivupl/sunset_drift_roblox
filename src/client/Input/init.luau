@@ -60,10 +60,21 @@ local function readOverride(player: Player): InputState
 	return out
 end
 
+local function takeEdges(out: InputState)
+	out.clutchKick = out.clutchKick or edges.clutchKick
+	out.exit = edges.exit
+	out.reset = out.reset or edges.reset
+	out.reload = edges.reload
+	edges.clutchKick, edges.exit, edges.reset, edges.reload = false, false, false, false
+end
+
 function Input.get(dt: number, cfg: Config): InputState
 	local player = Players.LocalPlayer
 	if player:GetAttribute("InputOverride") == true then
-		return readOverride(player)
+		-- Keys like L (reload) and E (exit) still work while the harness drives.
+		local out = readOverride(player)
+		takeEdges(out)
+		return out
 	end
 
 	local raw = Input.raw
@@ -92,11 +103,7 @@ function Input.get(dt: number, cfg: Config): InputState
 		out.steer = math.sign(steerRamped) * math.abs(steerRamped) ^ curve
 	end
 
-	out.clutchKick = edges.clutchKick
-	out.exit = edges.exit
-	out.reset = edges.reset
-	out.reload = edges.reload
-	edges.clutchKick, edges.exit, edges.reset, edges.reload = false, false, false, false
+	takeEdges(out)
 	return out
 end
 

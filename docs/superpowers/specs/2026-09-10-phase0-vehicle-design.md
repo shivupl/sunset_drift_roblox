@@ -201,11 +201,17 @@ State: `idle | lifting | balanced | landing`.
   two grounded tires carry double load and the friction circle shrinks
   honestly.
 - When roll ≥ `targetRollDeg − 5`: enter `balanced`. Torque =
-  `holdTorque + instability × (roll − targetRollDeg) − rollDamping × rollRate
-  + balanceTorque × steerInput × side`. `holdTorque` approximately cancels
-  gravity torque at target roll. `instability` > 0 makes the equilibrium
-  slightly unstable (time constant ≈ 1.5 s) so ignoring it tips further;
-  steer input recovers it.
+  `gravityCancel × gravityRestoringTorque(roll) + leanTorque
+  + instability × max(roll − targetRollDeg, 0) − rollDamping × rollRate
+  − balanceTorque × steerInput × side`. The gravity term is computed from
+  the measured pendulum geometry (centre-of-mass height above and half-track
+  from the grounded contact line, in the body frame). Drift assist is off
+  while on two wheels.
+- Decision 2026-09-10 (owner): the "tips if ignored" requirement is dropped.
+  With the default `leanTorque` the car's own front-heavy yaw brings it back
+  onto four wheels if the player does nothing; raising `leanTorque` above
+  about 600 Nm makes it tip instead. Past `rimGripStartDeg` the grounded
+  tires gain `rimGripBoost` grip (rim dig-in) so a tip is physically reachable.
 - Roll ≥ `tipRollDeg` (65°): mode auto-releases, car falls over honestly.
 - Release: `landing`, torque removed, `rollDamping` applied until all four
   wheels have contact, then `idle`.

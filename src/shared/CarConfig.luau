@@ -81,12 +81,15 @@ local config = {
 
 	twoWheel = {
 		liftTorque = 12000, -- Nm extra while lifting
-		gravityCancel = 1.0, -- fraction of gravity's restoring torque cancelled while balanced
-		targetRollDeg = 42,
-		instability = 5, -- Nm/deg net divergence at target (about 1.5 s time constant)
-		rollDamping = 20, -- Nm per deg/s
+		gravityCancel = 1.0, -- fraction of gravity's restoring torque cancelled while balanced (>1 leans off faster)
+		targetRollDeg = 35, -- keep below atan(tire grip) or the base slides out from under the car
+		leanTorque = 400, -- Nm outward lean while balanced. Below ~600 the natural front-heavy yaw wins and the car settles back onto four wheels if ignored; above it, it tips
+		instability = 10, -- Nm/deg extra outward push above targetRollDeg
+		rollDamping = 60, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
 		balanceTorque = 1500, -- Nm at full steer
-		tipRollDeg = 60, -- past this the mode releases and the car falls
+		tipRollDeg = 62, -- past this the mode releases and gravity finishes the fall (static tip is atan(halfTrack/comHeight) ≈ 56°)
+		rimGripStartDeg = 42, -- roll where the tires start biting on rim/sidewall
+		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
 		landingDamping = 60, -- Nm per deg/s while coming down
 		suspensionBias = 1.8, -- grounded-side stiffness multiplier while lifted
 	},

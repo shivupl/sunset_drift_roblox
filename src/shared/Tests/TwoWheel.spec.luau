@@ -8,6 +8,7 @@ return function(t: T)
 		liftTorque = 12000,
 		gravityCancel = 1.0,
 		targetRollDeg = 42,
+		leanTorque = 300,
 		instability = 5,
 		rollDamping = 20,
 		balanceTorque = 1500,
@@ -47,9 +48,11 @@ return function(t: T)
 	TwoWheel.step(st, cfg, body, true, 0.6, 0, 0, 2, 2, dt)
 	tq = TwoWheel.step(st, cfg, body, true, 0, 38, 10, 0, 2, dt)
 	t.eq(st.mode, "balanced", "enters balanced")
-	local expected = TwoWheel.gravityRestoringTorque(body, 38) * 1.0 + 5 * (38 - 42) - 20 * 10
-	t.near(tq, expected, 1e-6, "balanced torque")
+	local expected = TwoWheel.gravityRestoringTorque(body, 38) * 1.0 + 300 - 20 * 10
+	t.near(tq, expected, 1e-6, "balanced torque (no divergence below target)")
 	t.near(st.marginDeg, 60 - 38, 1e-9, "margin to tip")
+	local above = TwoWheel.step(st, cfg, body, true, 0, 50, 0, 0, 2, dt)
+	t.near(above, TwoWheel.gravityRestoringTorque(body, 50) + 300 + 5 * 8, 1e-6, "divergence above target")
 
 	-- Steering toward the grounded side (steer +, side +) reduces the torque
 	local withBalance = TwoWheel.step(st, cfg, body, true, 1, 38, 0, 0, 2, dt)

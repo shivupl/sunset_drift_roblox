@@ -8,6 +8,10 @@ local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleSim = require(Shared.VehicleSim)
 local Input = require(script.Parent.Input)
+local Keyboard = require(script.Parent.Input.Keyboard)
+local Gamepad = require(script.Parent.Input.Gamepad)
+local Touch = require(script.Parent.Input.Touch)
+local CameraRig = require(script.Parent.CameraRig)
 
 type VehicleState = Types.VehicleState
 
@@ -56,6 +60,10 @@ function VehicleController.start(model: Model, remotes: Folder)
 	s:setCharacter(Players.LocalPlayer.Character)
 	sim = s
 	setJumpEnabled(false)
+	Keyboard.bind()
+	Gamepad.bind()
+	Touch.bind()
+	CameraRig.start(model)
 	conn = RunService.PreSimulation:Connect(function(dt: number)
 		local cfg = ConfigLoader.current()
 		local input = Input.get(dt, cfg)
@@ -100,6 +108,10 @@ function VehicleController.stop()
 			end
 		end
 	end
+	Keyboard.unbind()
+	Gamepad.unbind()
+	Touch.unbind()
+	CameraRig.stop()
 	setJumpEnabled(true)
 	sim = nil
 	car = nil

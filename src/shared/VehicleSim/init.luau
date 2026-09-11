@@ -197,6 +197,12 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	totalForce += Vector3.new(0, mass * (workspace.Gravity * mps - g), 0)
 
 	-- 2. Steering with rate limits and drift assist.
+	-- Assist is off while on two wheels: it would read the sideways creep as
+	-- a slide and steer into it, which turns the car toward the grounded side
+	-- and brings it down by itself. On two wheels that steer is the player's
+	-- balance input, not the assist's.
+	local twoWheelActive = TwoWheel.isActive(self.twoWheel)
+	local assistGain = if twoWheelActive then 0 else cfg.steering.driftAssist
 	local vLongBody = vel:Dot(forward)
 	local vLatBody = vel:Dot(right)
 	local driftAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, vLongBody)) else 0
@@ -209,17 +215,16 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- Drift angle + means velocity is right of heading (tail out left), so
 	-- counter-steer is to the right: add a fraction of it.
 	local effectiveSteerDeg = math.clamp(
-		self.steerDeg + cfg.steering.driftAssist * assistAngleDeg,
+		self.steerDeg + assistGain * assistAngleDeg,
 		-cfg.steering.maxSteerDeg,
 		cfg.steering.maxSteerDeg
 	)
 
 	-- 3. Raycasts and suspension.
-	local twoWheelActive = TwoWheel.isActive(self.twoWheel)
 	local rayLenM = Suspension.rayLengthM(cfg.suspension, cfg.body.wheelRadius)
 	local contacts: { Contact } = {}
 	local groundedLeft, groundedRight = 0, 0
-	local groundYSum, groundCount = 0, 0
+	local groundLocalYSum, groundCount = 0, 0
 	for _, wheel in self.wheels do
 		local hpStuds = wheel.attachment.WorldPosition
 		local hit = workspace:Raycast(hpStuds, -up * (rayLenM / mps), self.rayParams)
@@ -240,7 +245,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			else
 				groundedRight += 1
 			end
-			groundYSum += contactM.Y
+			-- Body-frame contact height, for the two-wheel pendulum geometry.
+			groundLocalYSum += cf:PointToObjectSpace(hit.Position).Y * mps
 			groundCount += 1
 		end
 		local steerDeg = if wheel.front then effectiveSteerDeg else 0
@@ -292,13 +298,24 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		rearSpinning
 	)
 
+	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
+	-- sidewalls and rims, which bite harder than tread. Without this the base
+	-- slides out at atan(grip) and the car can never reach the static tip
+	-- angle, so "ignore it and it falls" would be impossible on flat asphalt.
+	local rollNow = math.deg(math.asin(math.clamp(-right.Y, -1, 1)))
+	local rimGrip = 1
+	if twoWheelActive or self.twoWheel.mode == "tipped" then
+		local t = math.clamp((math.abs(rollNow) - cfg.twoWheel.rimGripStartDeg) / 10, 0, 1)
+		rimGrip = 1 + cfg.twoWheel.rimGripBoost * t
+	end
+
 	-- 5. Tire forces at the contact patches, suspension forces at the hardpoints.
 	for _, c in contacts do
 		local w = c.wheel
 		local brakeFade = math.clamp(math.abs(c.vLong) / cfg.drivetrain.brakeFadeMps, 0, 1)
 		local brakeDir = -math.sign(c.vLong)
 		local fxDemand = 0
-		local gripMult = 1
+		local gripMult = rimGrip
 		if w.front then
 			fxDemand = brakeDir * drive.brakePerFrontWheel * brakeFade
 		else
@@ -306,7 +323,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
 			if input.handbrake then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
-				gripMult = cfg.handbrake.rearGripMultiplier
+				gripMult *= cfg.handbrake.rearGripMultiplier
 				fxDemand += brakeDir * cfg.handbrake.brakeForce / 2 * brakeFade
 			end
 		end
@@ -349,12 +366,21 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	end
 
 	-- 7. Two-wheel roll torque about the forward axis.
-	local rollDeg = math.deg(math.asin(math.clamp(-right.Y, -1, 1))) -- + = right side lower
+	local rollDeg = rollNow -- + = right side lower
 	local rollRate = math.deg(angVel:Dot(forward)) -- same sign convention
+	-- Pendulum geometry in the body frame: the centre of mass sits comHeightM
+	-- above the contact line along body up and halfTrackM to the side of it.
+	-- Measured in the body frame so the numbers stay constant as the car rolls.
+	local comLocal = cf:PointToObjectSpace(chassis.AssemblyCenterOfMass) * mps
 	if groundCount > 0 then
-		self.comHeightM = comM.Y - groundYSum / groundCount
+		self.comHeightM = comLocal.Y - groundLocalYSum / groundCount
 	end
-	local body = { massKg = mass, gravity = g, comHeightM = self.comHeightM, halfTrackM = cfg.body.trackWidth / 2 }
+	local body = {
+		massKg = mass,
+		gravity = g,
+		comHeightM = self.comHeightM,
+		halfTrackM = cfg.body.trackWidth / 2 - self.twoWheel.side * comLocal.X,
+	}
 	local rollTorque = TwoWheel.step(
 		self.twoWheel,
 		cfg.twoWheel,
