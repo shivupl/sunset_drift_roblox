@@ -64,19 +64,24 @@ local config = {
 			-- Fronts stay grippy when deep: they are what drives the rotation
 			-- in a throw, so easing them off slows a 360 down.
 			deepSlideSlipDeg = 50,
-			deepSlideGripRatio = 0.7,
+			deepSlideGripRatio = 0.6,
 		},
 		rear = {
 			grip = 1.0,
 			peakSlipDeg = 9.5,
 			riseShape = 0.55,
-			slideSlipDeg = 32,
+			-- The gentle falloff ends at 26 deg and the deep floor starts at 30:
+			-- below ~25 deg (a held drift) the rear is still near full grip,
+			-- past 30 it lets go progressively. With the first floor lasting to
+			-- 40 deg the rear had 98% grip at 40 and a tapped handbrake snapped
+			-- the car straight instead of letting it come round.
+			slideSlipDeg = 26,
 			slideGripRatio = 0.75,
 			falloffShape = 1.8,
 			-- Rear lets go deep: this is what lets the car keep rotating and
 			-- carry its speed through a Ta'geed instead of scrubbing to a stop.
-			deepSlideSlipDeg = 50,
-			deepSlideGripRatio = 0.45,
+			deepSlideSlipDeg = 30,
+			deepSlideGripRatio = 0.3,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 	},
@@ -89,6 +94,13 @@ local config = {
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
 		drivelineEfficiency = 0.9,
+		-- Differential lock, 0 open to 1 welded. An open diff sends torque to
+		-- the wheel with the least grip, so on two wheels the airborne rear
+		-- takes it and the grounded one barely drives, which is why a real
+		-- natl can run straight. A welded diff drives the grounded wheel
+		-- alone and yaws the car. Partial lock keeps the welded feel in a
+		-- four-wheel drift (loads stay close) and opens up when one lifts.
+		diffLock = 0.25,
 		idleRpm = 900,
 		redlineRpm = 6800,
 		upshiftRpm = 6400,
@@ -109,6 +121,10 @@ local config = {
 		steerSpeedDegPerSec = 180,
 		steerReturnDegPerSec = 360,
 		driftAssist = 0.15, -- 0..1, adds this fraction of the drift angle as counter-steer
+		-- The assist fades out past these angles so it stops fighting a spin:
+		-- at 90 deg of drift it was steering 13 deg against the rotation.
+		driftAssistFadeStartDeg = 45,
+		driftAssistFadeEndDeg = 75,
 		-- Speed-sensitive lock: km/h -> fraction of maxSteerDeg. Full lock for
 		-- parking and low-speed work, tapering at highway speed so turning
 		-- alone cannot pitch the car sideways.
@@ -123,6 +139,9 @@ local config = {
 		-- lifts for that window (1 = full wheel, 0 = taper still applies).
 		-- Without it a Ta'geed at 160 km/h has 13 deg of steer to start with.
 		throwRelief = 1,
+		-- Keep the throw relief for this long after the handbrake is let go
+		-- or the kick ends, so the wheel does not shrink to a third mid-spin.
+		throwReliefTailSeconds = 1.5,
 	},
 
 	handbrake = {
@@ -135,7 +154,12 @@ local config = {
 		-- Grip comes back over this long after the lever is let go instead of
 		-- snapping back in one step, so releasing mid-slide reads as a hand-off
 		-- to throttle rather than a jolt.
-		releaseSeconds = 0.25,
+		-- A tapped handbrake will not complete a 360 at any setting here
+		-- (measured 255-346 deg): once the car travels backwards the rears
+		-- roll again and their grip kills the rotation. A held handbrake
+		-- keeps them locked and comes round in ~3.4 s, which is the real
+		-- Ta'geed technique. 0.4 keeps a release mid-slide soft.
+		releaseSeconds = 0.4,
 	},
 
 	clutchKick = {
@@ -199,6 +223,10 @@ local config = {
 		-- the direction that flips the car; toward the low side is the catch
 		-- and keeps the full steerScale.
 		steerAwayScale = 0.5,
+		-- Yaw damping while lifted, Nm per deg/s. The front-heavy spring yaw
+		-- and any drive on the grounded rear turn the car; this is the
+		-- driver's steady micro-corrections, so a natl can run straight.
+		yawDamping = 250,
 		sidePickLean = 0.2, -- |lean| above this picks the roll side; with none held the car rolls left
 		sidePickRollDeg = 15, -- while lifting below this roll a lean the other way still flips the side
 		balancedEntryMarginDeg = 5, -- lifting hands over to balancing this many degrees before targetRollDeg

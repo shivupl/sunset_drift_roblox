@@ -36,8 +36,8 @@ Holding Q or E puts the car up: the key you hold picks the side, so Q climbs ont
 Once it is up, balance by tapping: each press of the opposite key lands a full catch that fades
 if you keep holding, so tap against the lean rather than leaning on the key. Steering still
 steers, and it is the strongest lever up there: a small turn toward the low side drops the car,
-away lifts it, and gas holds it up (only the grounded rear drives). If you slow to a crawl the
-car settles back onto four wheels by itself. Release both keys to land.
+away lifts it. With gas on the car runs straight (open diff, so the grounded rear barely drives).
+If you slow to a crawl the car settles back onto four wheels by itself. Release both keys to land.
 
 Touch is the exception, because the lean buttons cannot be on screen before the mode exists:
 hold NATL to open it and a LEAN< / LEAN> pair appears inboard of the throttle cluster. The
@@ -62,10 +62,11 @@ SPINS counter for completed 360s, two-wheel mode and roll with margin to tip, pe
 angle / load / SPIN or AIR, handbrake, kick, assist.
 
 ## Tafheet moves
-Ta'geed (360): at 120 km/h or more, a little steer, then HAND and full lock the same way; hold
-until the car comes round, then catch it. Sefty: the same, a short straight slide, then the
-other way. The car rotates freely once past 50° of slip and keeps most of its speed; the
-SPINS counter on the panel tells you when a full rotation is done.
+Ta'geed (360): at 110 km/h or more, full lock and HAND together, and keep HAND held the whole
+way round with the gas on. A tap will not do it: once the car is going backwards the rears grip
+again and stop the rotation, a held handbrake keeps them locked and it comes round in about
+3.5 s. Let go as the SPINS counter ticks and catch it. Sefty: the same, a short straight slide,
+then the other way.
 
 ## Tuning
 All numbers live in `src/shared/CarConfig.luau`; `TUNING.md` explains every field and which

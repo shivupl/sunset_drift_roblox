@@ -64,6 +64,7 @@ export type Sim = typeof(setmetatable(
 		steerDeg: number,
 		comHeightM: number,
 		handbrakeLevel: number,
+		throwTail: number,
 		spinAccumDeg: number,
 		spinCount: number,
 		lastState: VehicleState,
@@ -167,6 +168,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		steerDeg = 0,
 		comHeightM = 0.5,
 		handbrakeLevel = 0,
+		throwTail = 0,
 		spinAccumDeg = 0,
 		spinCount = 0,
 		lastState = emptyState(wheels),
@@ -221,9 +223,28 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local driftAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, vLongBody)) else 0
 	-- Assist uses |vLong| so reversing does not read as a 180° drift.
 	local assistAngleDeg = if speed > 1 then math.deg(math.atan2(vLatBody, math.abs(vLongBody))) else 0
+	-- Past the fade the assist lets a spin be a spin instead of steering against it.
+	do
+		local a = math.abs(assistAngleDeg)
+		local fade = 1 - math.clamp(
+			(a - cfg.steering.driftAssistFadeStartDeg)
+				/ math.max(cfg.steering.driftAssistFadeEndDeg - cfg.steering.driftAssistFadeStartDeg, 1),
+			0,
+			1
+		)
+		assistGain *= fade
+	end
 	-- Speed-sensitive lock, lifted again when the input is a correction or a
 	-- deliberate throw (handbrake held, or inside the clutch-kick window).
-	local throwing = math.max(self.handbrakeLevel, if self.drivetrain.kickTimer > 0 then 1 else 0)
+	-- A throw keeps its relief for a tail after the lever is let go, so a
+	-- 360 started with the handbrake does not lose its lock halfway round.
+	local throwNow = math.max(self.handbrakeLevel, if self.drivetrain.kickTimer > 0 then 1 else 0)
+	if throwNow > 0 then
+		self.throwTail = 1
+	elseif self.throwTail > 0 then
+		self.throwTail = math.max(0, self.throwTail - dt / math.max(cfg.steering.throwReliefTailSeconds, 1e-3))
+	end
+	local throwing = math.max(throwNow, self.throwTail)
 	local lockFactor = Steering.lockFactor(cfg.steering, Units.mpsToKmh(speed), input.steer, assistAngleDeg, throwing)
 	-- On two wheels the lock is scaled, and scaled again for a turn away
 	-- from the low side, which is the one that flips the car.
@@ -356,7 +377,13 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		if w.front then
 			fxDemand = brakeDir * drive.brakePerFrontWheel * brakeFade
 		else
-			fxDemand = drive.drivePerRearWheel
+			-- Differential: an open diff can only push this wheel as hard as
+			-- the other rear can react, so drive here scales with the other
+			-- wheel's load. diffLock blends toward a welded split.
+			local other = if w.left then contacts[4] else contacts[3]
+			local ratio = if c.susp.force > 1e-3 then math.clamp(other.susp.force / c.susp.force, 0, 1) else 1
+			local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
+			fxDemand = drive.drivePerRearWheel * diffShare
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
 			if drive.kicking then
 				-- A clutch kick shock-loads the rear contact patch. The torque
@@ -457,6 +484,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		Units.mpsToKmh(speed)
 	)
 	totalTorque += forward * rollTorque
+	if twoWheelActive then
+		-- Steady yaw damping while lifted, the driver's micro-corrections.
+		totalTorque -= up * (cfg.twoWheel.yawDamping * math.deg(angVel:Dot(up)))
+	end
 
 	-- Spin counter (Ta'geed): yaw accumulates while the car is properly
 	-- sideways and clears once it is straight again. Display only.

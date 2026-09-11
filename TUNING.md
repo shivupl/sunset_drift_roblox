@@ -55,6 +55,7 @@ For the opposite effect move the other way. Press L in play to reload.
 | gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. | ↑ | ↑ | — |
 | reverseRatio | Reverse gearing. | — | — | — |
 | drivelineEfficiency | Scales all drive force. | ↑ | ↑ | — |
+| diffLock | 0 open to 1 welded. An open diff sends torque to the wheel with least grip, so on two wheels the airborne rear takes it and the grounded one barely drives; that is why a natl can run straight. Welded drives the grounded wheel alone and yaws the car (measured: 11° of heading drift in 4 s at 0.4 throttle; 3° at full throttle with 0.25 and yaw damping). In a four-wheel drift the loads stay close so partial lock still feels welded. | ↑ | ↑ | ↓ |
 | idleRpm / redlineRpm | Rev range. | — | — | — |
 | upshiftRpm / downshiftRpm | Shift points. Later upshift keeps the engine in the fat part of the curve for kicks. | — | ↑ upshift | — |
 | shiftTime | Torque cut per shift. | — | — | — |
@@ -71,17 +72,19 @@ For the opposite effect move the other way. Press L in play to reload.
 | steerSpeedDegPerSec | How fast the wheels turn in. Higher = snappier initiation, twitchier hold. | — | ↑ | — |
 | steerReturnDegPerSec | How fast they return. | — | — | — |
 | driftAssist | Automatic counter-steer fraction. Higher = easier hold, less skill. Keep low. Off on two wheels. | ↓ | — | — |
+| driftAssistFadeStartDeg / driftAssistFadeEndDeg | The assist fades to nothing between these drift angles so it stops fighting a spin (at 90° it was steering 13° against the rotation). Lower both for easier 360s, raise for a car that always tries to catch itself. | — | — | — |
 | speedLockCurve | Speed-sensitive lock, km/h to fraction of maxSteerDeg. Full lock for parking, tapering at highway speed so turning alone cannot pitch the car sideways. Raise the high-speed end if the car feels unresponsive at speed, lower it if a flick still breaks the rear loose. | ↑ high end | ↑ high end | — |
 | counterSteerReliefDeg | Slip angle at which the taper is fully lifted, so a correction always gets the whole wheel. Lower = the full wheel comes back sooner in a slide. | — | — | — |
 | counterSteerRelief | How much of the taper a correction lifts. 1 gives the whole wheel back, 0 disables the exception and the taper applies to counter-steer too, which makes big angles uncatchable at speed. | — | — | — |
 | throwRelief | How much of the taper a deliberate throw lifts, while the handbrake is held or inside the clutch-kick window. 1 = the wheel you actually turned, 0 = the taper still applies. Without it a Ta'geed at 160 km/h starts with 13° of steer and never comes round. | — | ↑ | — |
+| throwReliefTailSeconds | How long the throw relief lingers after the lever is let go or the kick ends, so the wheel does not shrink to a third mid-spin. | — | ↑ | — |
 
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
 | rearGripMultiplier | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
 | brakeForce | Rear drag while pulled. Too high scrubs speed. | — | ↑ | — |
-| releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. | ↑ | — | — |
+| releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. Note a tapped handbrake never completes a 360 at any value (the rears roll again once the car is backwards and their grip stops the rotation); hold it through the spin. | ↑ | — | — |
 
 ## clutchKick
 | Field | What it does | OS | INIT | 2W |
@@ -110,6 +113,7 @@ For the opposite effect move the other way. Press L in play to reload.
 | leanHoldDecaySeconds / leanHoldFloor | Tap envelope. A fresh press lands the whole lean gain at once, then decays to the floor over the decay time while held. Stabilise by tapping against the lean; a long hold is a weak steady push. Floor 1 turns taps back into levers. | — | — | ↑ floor |
 | steerScale | Steering lock while lifted. Steering is the strongest balance lever on two wheels (toward the low side drops the car, away lifts it) and at full lock a short tap flips it. Measured at 80 km/h with 0.22 and steerAwayScale 0.5: a 0.5 tap toward drops 10°, the same tap away leans 20° and is still catchable, a full-lock tap away tips. Raise for a twitchier, more expert car. | — | — | ↓ |
 | steerAwayScale | Extra scale on a turn away from the low side while lifted, the direction that flips the car. Toward the low side keeps the full steerScale. | — | — | ↓ |
+| yawDamping | Steady yaw damping while lifted, Nm per °/s: the driver's micro-corrections, so a natl runs straight. Measured at full throttle: 3° of heading drift over 4 s at 250. | — | — | ↑ |
 | sidePickLean | Lean magnitude that picks the roll side (E/right = roll right). With nothing held, as when touch opens the mode with NATL, the car rolls left. | — | — | — |
 | sidePickRollDeg | While lifting below this roll, a lean the other way still flips the side. This is what lets a touch player pick the side after NATL has already started the lift. | — | — | — |
 | balancedEntryMarginDeg | Lifting hands over to balancing this many degrees before the target. | — | — | ↑ (earlier handover, less overshoot) |

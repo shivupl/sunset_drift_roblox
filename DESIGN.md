@@ -87,6 +87,15 @@ clutch kick is an explicit throw, so the taper lifts for that window, the
 same way it already lifts for a correction. Turning alone at speed is still
 tapered, which is the whole point of it.
 
+A Ta'geed is driven with the handbrake held through the spin, and that is
+not a limitation of the model but the physics of the move: once the car is
+travelling backwards the rear tires roll again and their grip kills the
+rotation, so a tapped handbrake stalls at about 260° at any setting, while
+a locked rear has no cornering stiffness and comes round in about 3.4 s
+from 110 to 160 km/h. The drift assist fades out past 45° so it does not
+steer against the rotation, and the throw relief lingers after the lever
+so the wheel is still there mid-spin.
+
 The debug panel counts completed 360s while the car is sideways, so a
 Ta'geed or a Sefty can be checked by number rather than by eye.
 
@@ -171,6 +180,17 @@ because nobody can balance a car that is barely moving. The lean keys are
 taps rather than levers. A press lands its whole gain at once and decays
 toward a floor while the key is held, so the way to stabilise is to tap
 against the lean, the way a stick is balanced.
+
+The car has to be able to run straight on two wheels, and the first
+version could not: the sim was a welded differential, so the one grounded
+rear wheel got all the drive and yawed the car away from the low side.
+A stock Camry has an open diff, which sends the torque to the wheel with the
+least grip, the one in the air, so the grounded wheel barely drives and the
+car goes where it is pointed. diffLock is now a blend, open enough on two
+wheels, close to welded in a four-wheel drift where the loads stay similar,
+plus a steady yaw damping while lifted that stands in for the driver's
+micro-corrections. Measured at full throttle: 3° of heading drift over four
+seconds, holding 38° of roll.
 
 Three levers act on the car once it is up, and the measurements below are
 from 80 km/h. Steering is by far the strongest: a turn toward the low side
