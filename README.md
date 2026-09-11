@@ -41,10 +41,11 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 
 ## Two-wheel ("natl")
 Get above about 45 km/h first; nothing lifts at parking speed, and the lift is full from 80.
-Tap Q or E and the car goes up on that side and stays there: the first tap gets it up, and
-you keep it up by tapping the same key every couple of seconds, because the hold winds down
-on its own and an ignored car sinks back onto four wheels in about four seconds. Tap the other
-key to catch it if it climbs too far; hold that key for half a second and the car lands.
+Tap Q or E and the car goes up on that side in a third of a second. It wants to come back
+down: the first tap gets it up, and you keep it up by tapping the same key every second and a
+half or so, because gravity is only mostly cancelled and an ignored car drops back onto four
+wheels in about three seconds. Tap the other key to catch it if it climbs too far; hold that
+key and the car lands at once.
 Steering still steers, and it is the strongest lever up there: a small turn toward the low side
 drops the car, away lifts it. With gas on the car runs straight (open diff, so the grounded rear
 barely drives). If you slow to a crawl the car settles back onto four wheels by itself.

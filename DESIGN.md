@@ -448,6 +448,21 @@ The HUD's NATL readout now colours by tip margin — blue with room to spare,
 amber when a catch is due, red just before it goes — so the player has
 something to tap against besides the horizon.
 
+Lighter, and harder. After driving it the owner called the natl slow and
+heavy and asked for something that drops back and has to be balanced. The
+weight was the roll damping (80) and the fully cancelled pendulum: a car
+that is neutral at every angle and heavily damped does nothing on its own
+and answers a tap slowly. Now the lift is 15,000 Nm (30 degrees in 0.33 s,
+peaking at 42; 20,000 overshot to 58 with the tip at 62), the damping is
+60, only 93% of gravity is cancelled and the spring is 110. Left alone the
+car sags and lands in three seconds; a tap every second and a half keeps it
+swinging between 12 and 38 degrees, two and a half seconds is too slow, a
+catch tap drops it 12 degrees, the catch key held lands it in 0.35 s, and a
+0.3 steer toward the low side for a third of a second drops it 17. A tipped
+car also returns to idle once it is on its wheels again; with the mode
+latched on a tap there was no key release to clear it and it stayed
+"tipped" for good.
+
 The ride scores. Scoring takes the roll as a third input alongside speed
 and drift angle, on the client from the sim and on the server from the
 replicated pose (the right vector's Y is the sine of the roll), and past

@@ -41,6 +41,18 @@ return function(t: T)
 	t.near(TwoWheel.gravityRestoringTorque(body, tipDeg), 0, 1e-6, "zero at tip angle")
 	t.ok(TwoWheel.gravityRestoringTorque(body, 70) < 0, "negative past tip")
 
+	-- A tipped car comes back to idle once it is on its wheels again
+	do
+		local tipped = TwoWheel.new()
+		tipped.mode = "tipped"
+		TwoWheel.step(tipped, cfg, body, false, 0, 0, 70, 0, 0, 2, dt, FAST)
+		t.eq(tipped.mode, "tipped", "still over: still tipped")
+		TwoWheel.step(tipped, cfg, body, false, 0, 0, 1, 0, 2, 2, dt, FAST)
+		t.eq(tipped.mode, "idle", "back on four wheels: idle again")
+		TwoWheel.step(tipped, cfg, body, false, 1, 0, 0, 0, 2, 2, dt, FAST)
+		t.eq(tipped.mode, "lifting", "and a tap lifts it again")
+	end
+
 	-- Idle, not held: nothing
 	local st = TwoWheel.new()
 	t.near(TwoWheel.step(st, cfg, body, false, 0, 0, 0, 0, 2, 2, dt, FAST), 0, 1e-9, "idle no torque")

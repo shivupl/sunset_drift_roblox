@@ -356,15 +356,21 @@ local config = {
 	},
 
 	twoWheel = {
-		liftTorque = 12000, -- Nm extra while lifting
-		gravityCancel = 1.0, -- fraction of gravity's restoring torque cancelled while balanced (>1 leans off faster)
+		-- 20,000 from 12,000: the owner called the lift slow and heavy. With
+		-- the roll damping it reached 30 degrees in about a second; this is
+		-- about half that.
+		liftTorque = 15000, -- Nm extra while lifting
+		-- 0.9 from 1.0: a fully cancelled pendulum is neutral and needs
+		-- nothing from the driver. Leaving a tenth of gravity in makes the
+		-- car want to come down the whole time, so it has to be worked.
+		gravityCancel = 0.93, -- fraction of gravity's restoring torque cancelled while balanced (>1 leans off faster); 0.9 needed a tap every second
 		targetRollDeg = 35, -- keep below atan(tire grip) or the base slides out from under the car
 		-- Outward lean while balanced. Throttle already pushes the car outward
 		-- on its own (only the grounded rear drives, so gas yaws the car away
 		-- from the low side), so this stays small: at 400 the car leaned in at
 		-- 12 deg/s under 0.4 throttle and a tap was erased in half a second.
 		leanTorque = 150,
-		instability = 6, -- Nm/deg extra outward push above targetRollDeg
+		instability = 8, -- Nm/deg extra outward push above targetRollDeg; 8 from 6 so a lean past the target runs away a little faster
 		-- Spring about targetRollDeg while balanced, Nm per degree. Measured
 		-- without it: holding Q at 90 km/h peaked at 37 degrees and sank
 		-- back to 12 with the key still down, because the gravity cancel is
@@ -375,7 +381,10 @@ local config = {
 		-- 320 was a magnet: taps did nothing and holding the opposite key could
 		-- not land the car. 120 covers the model error and leaves the rest to
 		-- the driver.
-		balanceSpring = 160,
+		-- 90 from 160: less of a hold, more of a pendulum. The spring only
+		-- has to cover the model error now that gravity itself does the
+		-- pulling down.
+		balanceSpring = 110,
 		-- The spring winds down to balanceSpringFloor of itself over
 		-- balanceSpringDecaySeconds with no tap toward the lifted side, and a
 		-- tap winds it back to full. At the floor the model error wins and
@@ -393,7 +402,7 @@ local config = {
 		-- engine's extra torque on the grounded rear held an ignored car up
 		-- for 7 s.
 		balanceCancelFloor = 0.8,
-		rollDamping = 80, -- Nm per deg/s; kills the lift-in roll rate in ~0.3 s
+		rollDamping = 60, -- Nm per deg/s; 60 from 80: 45 let a 20,000 lift overshoot to 58 degrees
 		-- Lean input (Q/E, gamepad bumpers, touch LEAN buttons). Two gains
 		-- because catching a lean needs more authority than adding to one.
 		-- Sized against rollDamping: leanIn/rollDamping is roughly the degrees
@@ -404,12 +413,12 @@ local config = {
 		-- away lifts it) and throttle (only the grounded rear drives, so gas
 		-- yaws the car away from the low side and holds it up). With the tap
 		-- envelope a press lands its whole gain at once, then decays.
-		leanInTorque = 3500, -- Nm at a fresh press toward the lifted side (go further up)
-		leanOutTorque = 7000, -- Nm at a fresh press toward the grounded side (come back down); holding it lands the car against the spring
+		leanInTorque = 5500, -- Nm at a fresh press toward the lifted side (go further up); a tap should visibly lift against the sag
+		leanOutTorque = 4500, -- Nm at a fresh press toward the grounded side (come back down); 6000 dropped 16 degrees a tap, holding it lands the car
 		tipRollDeg = 62, -- past this the mode releases and gravity finishes the fall (static tip is atan(halfTrack/comHeight) ≈ 56°)
 		rimGripStartDeg = 42, -- roll where the tires start biting on rim/sidewall
 		rimGripBoost = 0.7, -- extra grip fraction at full dig-in (10° past the start)
-		landingDamping = 60, -- Nm per deg/s while coming down
+		landingDamping = 30, -- Nm per deg/s while coming down; 30 from 60 so the drop is a drop, not a float
 		suspensionBias = 1.8, -- grounded-side stiffness multiplier while lifted
 		-- Speed gates, like a real sidewall skier: nothing lifts at parking
 		-- speed, full lift from fullLiftSpeedKmh, and the balance fades away
@@ -433,7 +442,7 @@ local config = {
 		-- lifted so a touch tap (which ramps to ~0.9 steer in 0.3 s) is a
 		-- correction, not a roll-over. Measured at 0.35: a 0.5 tap away
 		-- still tipped it; 0.22 leaves that as a catchable lean.
-		steerScale = 0.22,
+		steerScale = 0.3, -- 0.3 from 0.22: the wheel is the real balance lever and it should be felt
 		-- Extra scale on a turn AWAY from the low side while lifted. That is
 		-- the direction that flips the car; toward the low side is the catch
 		-- and keeps the full steerScale.

@@ -181,6 +181,12 @@ function TwoWheel.step(
 
 	local toggledOff = state.prevHeld and not held
 	state.prevHeld = held
+	-- A tipped car is back in play once it is on its wheels again (a reset,
+	-- or it rolled back). With the mode latched on a tap there is no key
+	-- release to clear it, and without this it stayed "tipped" for good.
+	if state.mode == "tipped" and (groundedLeft + groundedRight >= 4 or math.abs(rollDeg) < cfg.landedRollDeg) then
+		state.mode = "idle"
+	end
 	if state.mode == "idle" then
 		-- A tap of either lean key, or the toggle, starts a lift. The key
 		-- picks the side; the toggle takes the lean axis or defaults left.
