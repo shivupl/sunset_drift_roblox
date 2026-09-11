@@ -169,6 +169,8 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | skidLifetime | Seconds a mark stays on the road. |
 | skidTransparency | How dark the marks are. |
 | wheelSpinUpRate | How fast a driven wheel that has broken loose visually winds up to engine speed, and how fast a locked wheel stops. |
+| screechSoundId / screechMaxVolume | Looped tire screech, volume and pitch follow rear slip. Empty id = silent. Paste an asset id you own. |
+| engineSoundId / engineMaxVolume / engineMinPitch / engineMaxPitch | Looped engine sample, playback speed from idle pitch at idle to max pitch at redline, volume with throttle. Empty id = silent. |
 
 ## debug
 | Field | What it does |

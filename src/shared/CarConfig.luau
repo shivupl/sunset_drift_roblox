@@ -256,6 +256,15 @@ local config = {
 		skidLifetime = 8, -- seconds a mark stays on the road
 		skidTransparency = 0.45,
 		wheelSpinUpRate = 6, -- 1/s, how quickly a spinning wheel model winds up to engine speed
+		-- Audio hooks. Empty ids play nothing; paste "rbxassetid://..." ids
+		-- you own or have licensed. Screech follows rear slip, engine follows
+		-- rpm and throttle.
+		screechSoundId = "",
+		screechMaxVolume = 0.6,
+		engineSoundId = "",
+		engineMaxVolume = 0.5,
+		engineMinPitch = 0.6, -- playback speed at idle
+		engineMaxPitch = 1.8, -- playback speed at redline
 	},
 
 	debug = {

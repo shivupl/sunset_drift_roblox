@@ -169,7 +169,9 @@ the wheel models are the one place it is shown: a driven wheel past the
 friction circle winds up toward the speed the engine is turning it, and a
 locked wheel stops. Emitters and skid-mark attachments hang off the chassis
 at each wheel's rest contact point rather than off the spinning wheel parts.
-Sound is not in yet; it needs audio assets we have not sourced.
+Sound is wired the same way (screech from rear slip, engine from rpm and
+throttle) but plays nothing until asset ids are supplied in CarConfig; no
+ids are invented here.
 
 ## Camera
 Three profiles in CarConfig (normal, drift, two-wheel) cross-fade by rate.

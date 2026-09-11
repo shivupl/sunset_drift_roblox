@@ -52,7 +52,8 @@ left thumb and the LEAN pair under the right, so leaning means coming off GAS.
 ## Drift feedback
 Smoke off the rear tires, skid marks, and wheels that spin up or lock, all driven by the
 sim's per-wheel slip and saturation. Tunables live under `effects` in CarConfig; set
-`effects.enabled = false` on a weak phone. No sound yet.
+`effects.enabled = false` on a weak phone. Sound is wired but silent until you paste asset ids you
+own into `effects.screechSoundId` and `effects.engineSoundId`.
 
 ## Debug panel
 Top-left while driving: speed, gear, rpm, inputs, drift angle, yaw rate, two-wheel mode and

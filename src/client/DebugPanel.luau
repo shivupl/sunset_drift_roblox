@@ -118,6 +118,8 @@ function DebugPanel.update(state: VehicleState)
 	p:SetAttribute("DbgSlipRR", w[4].slipAngleDeg)
 	p:SetAttribute("DbgSpinRL", w[3].saturated)
 	p:SetAttribute("DbgSpinRR", w[4].saturated)
+	p:SetAttribute("DbgOmegaRL", w[3].visualOmega)
+	p:SetAttribute("DbgLockedFL", w[1].locked)
 end
 
 function DebugPanel.hide()

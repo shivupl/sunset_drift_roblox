@@ -26,6 +26,9 @@ local DriftEffects = {}
 
 local wheels: { WheelFx } = {}
 local folder: Folder? = nil
+local screech: Sound? = nil
+local engine: Sound? = nil
+local screechLevel = 0
 
 local WHEEL_DEFS = {
 	{ name = "FL", front = true, x = -1, z = -1 },
@@ -84,6 +87,21 @@ local function makeTrail(a0: Attachment, a1: Attachment, cfg: typeof(ConfigLoade
 	return t
 end
 
+local function makeSound(parent: BasePart, name: string, id: string, volume: number): Sound?
+	if id == "" then
+		return nil
+	end
+	local s = Instance.new("Sound")
+	s.Name = name
+	s.SoundId = id
+	s.Looped = true
+	s.Volume = 0
+	s.RollOffMaxDistance = 120
+	s.Parent = parent
+	s:Play()
+	return s
+end
+
 function DriftEffects.attach(model: Model)
 	DriftEffects.detach()
 	local cfg = ConfigLoader.current()
@@ -91,6 +109,11 @@ function DriftEffects.attach(model: Model)
 		return
 	end
 	local chassis = model.PrimaryPart :: BasePart
+	screech = makeSound(chassis, "Screech", cfg.effects.screechSoundId, cfg.effects.screechMaxVolume)
+	engine = makeSound(chassis, "Engine", cfg.effects.engineSoundId, cfg.effects.engineMaxVolume)
+	if engine then
+		engine.Volume = cfg.effects.engineMaxVolume * 0.4
+	end
 	local mps = cfg.units.metersPerStud
 	local f = Instance.new("Folder")
 	f.Name = "DriftEffects"
@@ -167,6 +190,28 @@ function DriftEffects.update(state: VehicleState)
 		w.smoke.Rate = rate
 		w.trail.Enabled = sliding
 	end
+
+	-- Screech follows the louder of the two rears, smoothed so it swells and
+	-- fades rather than clicking on and off.
+	if screech then
+		local rl, rr = state.wheels[3], state.wheels[4]
+		local slip = math.max(math.abs(rl.slipAngleDeg), math.abs(rr.slipAngleDeg))
+		local target = if state.speedMps >= cfg.smokeMinSpeedMps
+			then math.clamp((slip - cfg.smokeSlipStartDeg) / (cfg.smokeSlipFullDeg - cfg.smokeSlipStartDeg), 0, 1)
+			else 0
+		if (rl.saturated or rr.saturated) and state.speedMps >= cfg.smokeMinSpeedMps then
+			target = math.max(target, 0.7)
+		end
+		screechLevel += (target - screechLevel) * 0.25
+		screech.Volume = cfg.screechMaxVolume * screechLevel
+		screech.PlaybackSpeed = 0.9 + 0.4 * screechLevel
+	end
+	if engine then
+		local redline = ConfigLoader.current().drivetrain.redlineRpm
+		local t = math.clamp(state.rpm / redline, 0, 1)
+		engine.PlaybackSpeed = cfg.engineMinPitch + (cfg.engineMaxPitch - cfg.engineMinPitch) * t
+		engine.Volume = cfg.engineMaxVolume * (0.4 + 0.6 * state.throttle)
+	end
 end
 
 function DriftEffects.detach()
@@ -175,6 +220,15 @@ function DriftEffects.detach()
 		w.trail.Enabled = false
 	end
 	table.clear(wheels)
+	if screech then
+		screech:Destroy()
+		screech = nil
+	end
+	if engine then
+		engine:Destroy()
+		engine = nil
+	end
+	screechLevel = 0
 	if folder then
 		local chassis = folder.Parent
 		folder:Destroy()
