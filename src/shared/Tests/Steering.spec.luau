@@ -27,6 +27,7 @@ return function(t: T)
 		throwHoldSettleDegPerSec = 25,
 		throwMinSpeedKmh = 30,
 		throwFullSpeedKmh = 70,
+		throwFinishAuthority = 0.6,
 		slideYawDamping = 130,
 	}
 

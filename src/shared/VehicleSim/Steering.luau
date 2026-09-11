@@ -41,6 +41,7 @@ export type Config = {
 	throwHoldSettleDegPerSec: number,
 	throwMinSpeedKmh: number,
 	throwFullSpeedKmh: number,
+	throwFinishAuthority: number,
 	slideYawDamping: number,
 }
 

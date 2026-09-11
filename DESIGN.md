@@ -260,6 +260,15 @@ Numbers, from the same harness as Part 2:
 | plain full steer at 95 / lock at 130 / throttle-only at 60 | 4° / 6° / 2° | 3° / 5° / 2° |
 | 0–60 / 0–100 | 3.8 s / 6.3 s | 3.0 s / 5.0 s |
 
+Past 90 degrees the car comes round regardless of the lever, at
+`throwFinishAuthority`. Two failure modes forced that. A 720 from 110 ran
+out of speed in the second turn and stalled at 180 with the lever in,
+rolling backwards to a stop; and bailing out of a spin at 150 degrees left
+the car travelling backwards at 55 km/h with nothing the assist could do.
+Now the first finishes slowly (exits at 40 km/h, which is its cost) and the
+second unwinds to straight in 2.8 s, the way a real driver would ride it
+round. The wheel still overrides, and starting a spin is gated as before.
+
 Speed through a spin is the other half of "people will want to do this".
 The lever's drag came down from 8,000 N (half a g on its own, 11 km/h for
 every second of a spin) to 2,000, and the fronts' deep-slide floor from 0.75

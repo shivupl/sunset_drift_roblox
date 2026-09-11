@@ -107,6 +107,9 @@ local config = {
 			-- direction than across, so the rear gets an ellipse. This only
 			-- touches how much throttle the rear takes before it spins; what
 			-- it does sideways, and so every drift number, is unchanged.
+			-- 1.4 was tried and bought nothing (0-60 still 2.9-3.1 s, rear
+			-- spinning a quarter of launch frames): the launch is at the
+			-- grip ceiling for this mass.
 			longitudinalGrip = 1.25,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
@@ -270,6 +273,11 @@ local config = {
 		-- a 720 needs more entry speed.
 		throwMinSpeedKmh = 30,
 		throwFullSpeedKmh = 70,
+		-- Past 90 degrees of drift the fade is lifted to this much authority
+		-- so a spin that has run out of speed still comes round instead of
+		-- stalling backwards with the lever in. Starting a spin is still
+		-- gated by the speeds above.
+		throwFinishAuthority = 0.6,
 		-- Yaw damping while the car is NOT being thrown (no lever, no flick
 		-- window), Nm per degree per second of yaw rate. A slip-angle tyre
 		-- model has almost no yaw stiffness once both axles are sliding: the

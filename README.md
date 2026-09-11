@@ -119,8 +119,9 @@ Counter-steer to bring it back, or let the lever go.
 
 Ta'geed (360): at 110 km/h or more, full lock and HAND together, gas on, and keep both until
 the SPINS counter ticks (about 2.7 s), then let go and the car straightens. It exits around
-70 km/h, so a 720 from 110 runs out of speed halfway through the second turn and stalls
-backwards; from 150 it comes round twice. Sefty: a held slide, then full opposite lock under
+70 km/h, so a 720 from 110 crawls through its second turn and exits at 40; from 150 it comes
+round twice with speed to spare. Bail out at any angle and the car rides itself round to
+straight rather than ending up backwards. Sefty: a held slide, then full opposite lock under
 the lever swings it through to the other side in about a second, and centring holds it there.
 
 ## Tuning

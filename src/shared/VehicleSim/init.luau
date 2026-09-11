@@ -566,17 +566,39 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- what catches a released slide.
 	if not twoWheelActive then
 		local st = cfg.steering
-		local throwLevel = math.max(throwNow, if self.flickTimer > 0 then 1 else 0)
+		local speedFactor = math.clamp(
+			(Units.mpsToKmh(speed) - st.throwMinSpeedKmh) / math.max(st.throwFullSpeedKmh - st.throwMinSpeedKmh, 1),
+			0,
+			1
+		)
+		-- Past 90 degrees the car is coming round whether the lever is in
+		-- or not, at throwFinishAuthority. With the lever in, that lifts the
+		-- speed fade so a spin that has run out of speed still finishes
+		-- instead of stalling backwards at 45 km/h. With the lever out and
+		-- the wheel centred it carries the car on round to straight, so
+		-- bailing out of a spin at 150 degrees never leaves the player
+		-- travelling backwards; the wheel still overrides. Starting a spin
+		-- is gated by the lever and the speeds as before.
+		local finishing = math.abs(driftAngleDeg) > 90 and speed > Units.kmhToMps(st.throwMinSpeedKmh)
+		local throwLevel = math.max(throwNow, if self.flickTimer > 0 or finishing then 1 else 0)
 		if throwLevel > 0 then
-			local speedFactor = math.clamp(
-				(Units.mpsToKmh(speed) - st.throwMinSpeedKmh) / math.max(st.throwFullSpeedKmh - st.throwMinSpeedKmh, 1),
-				0,
-				1
-			)
+			if finishing then
+				speedFactor = math.max(speedFactor, st.throwFinishAuthority)
+			end
 			local driftRateNow = yawRateDeg - self.pathRateDeg
 			local driftRate = 0
 			local cap = st.throwYawMaxTorque
-			if math.abs(input.steer) > 0.05 then
+			if finishing and throwNow <= 0 and math.abs(input.steer) <= 0.05 then
+				-- Keep the rotation it has; if the damping already killed
+				-- it, take the short way back to straight. Yawing right
+				-- takes the drift angle down, so a positive angle wants
+				-- positive yaw.
+				local s = if math.abs(yawRateDeg) > st.throwHoldSettleDegPerSec
+					then math.sign(yawRateDeg)
+					else math.sign(driftAngleDeg)
+				driftRate = s * st.throwYawRateDegPerSec * st.throwFinishAuthority
+				self.holdLatched = false
+			elseif math.abs(input.steer) > 0.05 then
 				driftRate = input.steer * st.throwYawRateDegPerSec
 				self.holdLatched = false
 			else
