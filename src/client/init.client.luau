@@ -1,13 +1,16 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local remotes = ReplicatedStorage:WaitForChild("Remotes") :: Folder
 local driveStart = remotes:WaitForChild("DriveStart") :: RemoteEvent
 local driveStop = remotes:WaitForChild("DriveStop") :: RemoteEvent
+local VehicleController = require(script.VehicleController)
 
 print("[Hajwala] client boot")
 driveStart.OnClientEvent:Connect(function(car: Model)
 	print("[Hajwala] DriveStart", car:GetFullName())
+	VehicleController.start(car, remotes)
 end)
 driveStop.OnClientEvent:Connect(function()
 	print("[Hajwala] DriveStop")
+	VehicleController.stop()
 end)
