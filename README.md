@@ -140,11 +140,12 @@ installed but not connected during development); if it does not, edit the module
 during play, or stop and replay after saving the file.
 
 ## Where things are
-- `src/shared/VehicleSim/` — the physics: Suspension, Tire, Drivetrain, TwoWheel (pure) and
-  `init.luau` (Roblox glue). `DESIGN.md` explains the choices.
+- `src/shared/VehicleSim/` — the physics: Suspension, Tire, Drivetrain, TwoWheel, Throw (the
+  360 / held-slide / catch controller), all pure, and `init.luau` (Roblox glue). `DESIGN.md`
+  explains the choices.
 - `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
 - `src/client/` — input (keyboard, gamepad, touch HUD), vehicle controller, camera, driver HUD, debug panel.
-- `src/shared/Tests/` — spec runner (102 assertions). Run it from `scripts/studio_tests.luau`,
+- `src/shared/Tests/` — spec runner (252 assertions). Run it from `scripts/studio_tests.luau`,
   which clones the Shared folder first; requiring `Shared.Tests` directly can re-run stale code
   because Studio caches modules per instance and editing Source does not always invalidate it.
 

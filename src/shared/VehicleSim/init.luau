@@ -15,6 +15,7 @@ local Suspension = require(script.Suspension)
 local Tire = require(script.Tire)
 local Drivetrain = require(script.Drivetrain)
 local TwoWheel = require(script.TwoWheel)
+local Throw = require(script.Throw)
 
 type Config = CarConfig.Config
 type InputState = Types.InputState
@@ -70,8 +71,7 @@ export type Sim = typeof(setmetatable(
 		flickTimer: number, -- seconds of rear grip cut left after a flick
 		lastFlatVel: Vector3, -- last step's horizontal velocity, for the path's turn rate
 		pathRateDeg: number, -- filtered rate the velocity direction is turning, deg/s, + = right
-		holdAngleDeg: number, -- drift angle the throw controller is holding with the wheel centred
-		holdLatched: boolean, -- that angle is fixed (the momentum from the turn-in has settled)
+		throw: Throw.State,
 		throttleHoldStraight: number, -- seconds the drift has been under the throttle-hold gate
 		throttleHoldOn: boolean, -- throttle is currently a throw permission
 		spinAccumDeg: number, -- signed, unwrapped drift-angle travel of the current spin
@@ -184,8 +184,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		flickTimer = 0,
 		lastFlatVel = Vector3.zero,
 		pathRateDeg = 0,
-		holdAngleDeg = 0,
-		holdLatched = false,
+		throw = Throw.new(),
 		throttleHoldStraight = 0,
 		throttleHoldOn = false,
 		spinAccumDeg = 0,
@@ -577,107 +576,19 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	else
 		self.pathRateDeg = 0
 	end
-	-- The throw. The tyre model on its own cannot do a hajwala 360: the
-	-- fronts have to build slip before they push, both axles lose their
-	-- yaw stiffness once they slide, and past 90 degrees the steered
-	-- fronts fight the rotation, so a held lever from 110 km/h stalled at
-	-- 180 going backwards. A real Ta'geed gets its rotation from the
-	-- locked rears scrubbing and the driver's throttle, neither of which
-	-- the friction circle produces, so while the driver is throwing the
-	-- car (lever in, or the flick window) the rate the drift angle builds
-	-- is steered toward a target instead: the wheel's direction times
-	-- throwYawRateDegPerSec, scaled by how far the wheel is turned, on top
-	-- of the path's own turn rate. So under the lever the steer is how fast
-	-- and which way the angle changes: full lock and it comes round for a
-	-- 360, centred and it holds whatever angle it has (a held slide),
-	-- counter-steered and the angle comes back. The lever is permission.
-	-- A rate target is also what keeps this off ice: it cannot run away
-	-- past the target. The moment the lever is out the target is gone and
-	-- slideYawDamping stands in for the rear's self-aligning, which is
-	-- what catches a released slide.
+	-- The throw controller: see Throw.luau. Everything sideways that the
+	-- tyres cannot do on their own (the 360, the held slide, the catch) is in
+	-- there, and it is pure so it has its own spec.
 	if not twoWheelActive then
-		local st = cfg.steering
-		local speedFactor = math.clamp(
-			(Units.mpsToKmh(speed) - st.throwMinSpeedKmh) / math.max(st.throwFullSpeedKmh - st.throwMinSpeedKmh, 1),
-			0,
-			1
-		)
-		-- Past 90 degrees the car is coming round whether the lever is in
-		-- or not, at throwFinishAuthority. With the lever in, that lifts the
-		-- speed fade so a spin that has run out of speed still finishes
-		-- instead of stalling backwards at 45 km/h. With the lever out and
-		-- the wheel centred it carries the car on round to straight, so
-		-- bailing out of a spin at 150 degrees never leaves the player
-		-- travelling backwards; the wheel still overrides. Starting a spin
-		-- is gated by the lever and the speeds as before.
-		-- Lever out, wheel centred, and sideways past throwFinishFromDeg is
-		-- the same request: bring it back. Below that the damping and the
-		-- hands-off assist are enough; above it the tyres alone took three
-		-- seconds from 60 degrees.
-		local handsOffNow = throwNow <= 0 and math.abs(input.steer) <= 0.05
-		local finishFrom = if handsOffNow then st.throwFinishFromDeg else 90
-		local finishing = math.abs(driftAngleDeg) > finishFrom and speed > Units.kmhToMps(st.throwMinSpeedKmh)
-		local throwLevel = math.max(throwNow, if self.flickTimer > 0 or finishing then 1 else 0)
-		if throwLevel > 0 then
-			if finishing then
-				speedFactor = math.max(speedFactor, st.throwFinishAuthority)
-			end
-			local driftRateNow = yawRateDeg - self.pathRateDeg
-			local driftRate = 0
-			local cap = st.throwYawMaxTorque
-			if finishing and handsOffNow then
-				-- The short way back to straight, unless the car is nearly
-				-- backwards and still rotating, when carrying on round is
-				-- shorter than fighting the momentum. Keeping the rotation
-				-- below that carried a 60-degree bail the long way through
-				-- 180. Yawing right takes the drift angle down, so a
-				-- positive angle wants positive yaw.
-				local s = math.sign(driftAngleDeg)
-				if math.abs(driftAngleDeg) > st.throwFinishCarryDeg and math.abs(yawRateDeg) > st.throwHoldSettleDegPerSec then
-					s = math.sign(yawRateDeg)
-				end
-				driftRate = s * st.throwYawRateDegPerSec * st.throwFinishAuthority
-				self.holdLatched = false
-			elseif math.abs(input.steer) > 0.05 then
-				driftRate = input.steer * st.throwYawRateDegPerSec
-				self.holdLatched = false
-			else
-				-- Wheel centred: hold the angle. The yaw the turn-in built
-				-- takes a moment to absorb, so the hold angle tracks the
-				-- drift until the angle has stopped moving, then latches;
-				-- from there a rate proportional to the error keeps it.
-				-- Without the latch a rate target alone let the angle creep
-				-- at 13 deg/s from the tyres' own moment.
-				-- The catch gets a higher cap than the onset: at the onset
-				-- cap the yaw from a full-lock turn-in took 0.4 s to absorb
-				-- and the car settled 40 degrees past where the wheel was
-				-- centred.
-				cap = st.throwHoldMaxTorque
-				if not self.holdLatched then
-					self.holdAngleDeg = driftAngleDeg
-					if math.abs(driftRateNow) < st.throwHoldSettleDegPerSec then
-						self.holdLatched = true
-					end
-				else
-					local err = self.holdAngleDeg - driftAngleDeg
-					if err > 180 then
-						err -= 360
-					elseif err < -180 then
-						err += 360
-					end
-					-- Drift + means velocity right of the nose; yawing right
-					-- turns the nose toward the velocity, so a positive
-					-- error (want more drift) needs negative yaw.
-					driftRate = math.clamp(-st.throwHoldGain * err, -st.throwYawRateDegPerSec, st.throwYawRateDegPerSec)
-				end
-			end
-			local target = self.pathRateDeg + driftRate
-			local torque = math.clamp(st.throwYawGain * (target - yawRateDeg), -cap, cap)
-			totalTorque -= up * (torque * throwLevel * speedFactor)
-		else
-			self.holdLatched = false
-			totalTorque -= up * (st.slideYawDamping * math.deg(angVel:Dot(up)))
-		end
+		totalTorque -= up * Throw.step(self.throw, cfg.steering, {
+			steer = input.steer,
+			permission = throwNow,
+			flick = self.flickTimer > 0,
+			driftAngleDeg = driftAngleDeg,
+			yawRateDeg = yawRateDeg,
+			pathRateDeg = self.pathRateDeg,
+			speedKmh = Units.mpsToKmh(speed),
+		})
 	end
 	if twoWheelActive then
 		-- Steady yaw damping while lifted, the driver's micro-corrections.

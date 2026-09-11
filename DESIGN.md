@@ -276,6 +276,11 @@ degrees, 1.5 from 110, 0.9 from 60, 1.4 from 28, every one ending on zero
 with no swing past. The wheel still overrides, and starting a spin is gated
 as before.
 
+The controller is its own pure module now, `Throw.luau`, with a spec that
+pins the rate target, the hold latch, the finish direction rule and the
+speed fade. The direction bug above would have been a one-line failure in
+it instead of a car going the long way round in Studio.
+
 A note on method: the harness's live-reload attribute was being clobbered
 by the edge merge in the input layer, so three rounds of config trials
 (gain, cap, launch, deep floors) were measured against stale values before
