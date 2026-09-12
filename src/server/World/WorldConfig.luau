@@ -472,20 +472,38 @@ local config = {
 	cityscape = {
 		enabled = true,
 		seed = 20260911,
-		-- The skyline is a ring around the middle of the road, not a band
-		-- beside it: bands parallel to the road are invisible from the road.
-		-- Two rings of ordinary city, then a dense downtown cluster ahead of
-		-- the road (the direction the player spends the session looking),
-		-- with two landmark towers in it. Rebuilt on request: the first pass
-		-- was ninety boxes in one ring and read as a bar chart.
-		-- One far ring: the separate skyline on the horizon that was there
-		-- from the first pass, which the owner wants visible from a distance.
-		-- Tall blocks and towers only, far out, so from the road it reads as
-		-- a skyline and never as scattered small buildings (the near ring of
-		-- low blocks that did read that way is gone). Anything that would
-		-- land in the city grid is skipped.
+		-- THE BACKDROP SKYLINE is a separate city on the horizon, and it now
+		-- sits in one place rather than in a ring all round the road.
+		--
+		-- The ring came from a time before the berms. Now that the edge of
+		-- the playable area is a 13 m dune either side, a ring puts most of
+		-- its buildings behind that dune where nobody sees them, and the
+		-- few that clear it are scattered thinly in every direction. So it
+		-- is one cluster instead, in the one direction that is free: the sun
+		-- and the far dune field are both on the left, and the detailed city
+		-- is straight ahead, which leaves the right-hand side.
+		--
+		-- It has to clear the berm to be worth building. The driving-side
+		-- crest hides anything under about 2.8 degrees from the driver's
+		-- eye, which at 3.3 km is 160 m, so nothing here is shorter than
+		-- that and the towers go to 450.
 		rings = {
-			{ distanceM = 2700, depthM = 900, count = 110, minWidthM = 45, maxWidthM = 160, minHeightM = 45, maxHeightM = 120, towerChance = 0.3, towerMinHeightM = 130, towerMaxHeightM = 270 },
+			{
+				sectorOffsetDeg = 90, -- +90 is the road's right; the free quarter
+				sectorDeg = 26, -- half-angle, so a 52 degree spread of city
+				-- 2.7 km rather than 3.3: at golden hour the haze is thick
+				-- enough that further out the city stopped reading at all.
+				distanceM = 2700,
+				depthM = 700,
+				count = 90,
+				minWidthM = 55,
+				maxWidthM = 170,
+				minHeightM = 180,
+				maxHeightM = 320,
+				towerChance = 0.5, -- half towers: the verticals are what carry a silhouette
+				towerMinHeightM = 300,
+				towerMaxHeightM = 460,
+			},
 		},
 		-- Downtown: a KAFD-style cluster in a sector centred on the road's
 		-- direction of travel. Dense, tall, slim.

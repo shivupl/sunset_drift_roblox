@@ -186,9 +186,19 @@ floating on the horizon with nothing behind them. At golden hour they are
 glass instead. The city's own shopfronts are left lit: they only read as bars
 from an altitude no player reaches.
 
-**The skyline is a ring, not a band.** Two bands parallel to the road are
-invisible *from* the road: looking down the straight you see the gap between
-them. A ring puts skyline in every viewing direction.
+**The backdrop skyline is one cluster, on the side that is free.** It used
+to be a ring all round the road, which was right before the berms existed: a
+ring puts skyline in every viewing direction. Now that the edge of the
+playable area is a 13 m dune either side, a ring hides most of its buildings
+behind that dune and scatters the few that clear it. So it is a single city
+in one direction instead. The sun and the far dune field are both on the
+left and the detailed city is straight ahead, which leaves the right-hand
+side; the cluster sits in a 52 degree spread there at 2.7 to 3.4 km. The
+driving-side crest hides anything under about 2.8 degrees from the driver's
+eye, which at 2.7 km is 132 m, so nothing in it is shorter than 180 m and
+the towers run to 460. A ring entry with a `sectorDeg` is a cluster rather
+than a circle, and the sector is measured round from the road's direction of
+travel, so it follows the road rather than the world axes.
 
 ## Lighting and the time of day
 

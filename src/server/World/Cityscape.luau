@@ -257,11 +257,17 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 		}
 	end
 
-	-- The rings, stratified by angle so there are no bald patches.
+	-- The backdrop skyline, stratified by angle so there are no bald
+	-- patches. A ring entry with a sectorDeg is a cluster in one direction
+	-- instead of a full circle: the span is centred sectorOffsetDeg round
+	-- from the road's direction of travel, so it follows the road rather
+	-- than the world axes.
 	for _, ring in c.rings do
-		local slice = (math.pi * 2) / ring.count
+		local span = if ring.sectorDeg then math.rad(ring.sectorDeg) * 2 else math.pi * 2
+		local base = if ring.sectorDeg then forwardAngle + math.rad(ring.sectorOffsetDeg or 0) - span / 2 else 0
+		local slice = span / ring.count
 		for i = 1, ring.count do
-			local angle = (i - 1) * slice + rng:NextNumber(0, slice)
+			local angle = base + (i - 1) * slice + rng:NextNumber(0, slice)
 			local radius = ring.distanceM + rng:NextNumber() * ring.depthM
 			local tower = rng:NextNumber() < ring.towerChance
 			local width = rng:NextNumber(ring.minWidthM, ring.maxWidthM)

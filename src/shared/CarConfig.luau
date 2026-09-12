@@ -356,9 +356,9 @@ local config = {
 		-- 20,000 from 12,000: the owner called the lift slow and heavy. With
 		-- the roll damping it reached 30 degrees in about a second; this is
 		-- about half that.
-		-- 18,000: the owner wants the first tip big. With the rest of the
-		-- balance it peaks in the high 40s from a single tap at 95 km/h.
-		liftTorque = 18000, -- Nm extra while lifting
+		-- 15,000. 18,000 was tried for a bigger first tip and came back as
+		-- too strong and overwhelming, so this is back where it was.
+		liftTorque = 15000, -- Nm extra while lifting
 		-- 0.9 from 1.0: a fully cancelled pendulum is neutral and needs
 		-- nothing from the driver. Leaving a tenth of gravity in makes the
 		-- car want to come down the whole time, so it has to be worked.
@@ -384,6 +384,10 @@ local config = {
 		-- has to cover the model error now that gravity itself does the
 		-- pulling down.
 		balanceSpring = 110,
+		-- Symmetric: the spring holds the car near the target from both
+		-- sides, so it hovers instead of going over. true is lift-only,
+		-- which is what made a held key topple.
+		balanceSpringOneSided = false,
 		-- The spring winds down to balanceSpringFloor of itself over
 		-- balanceSpringDecaySeconds with no tap toward the lifted side, and a
 		-- tap winds it back to full. At the floor the model error wins and
@@ -433,9 +437,10 @@ local config = {
 		-- Stabilise by tapping against the lean, not by holding.
 		leanHoldDecaySeconds = 0.45,
 		leanHoldFloor = 0.3,
-		-- The key toward the lifted side does not decay when held: leaning
-		-- on it keeps pushing the car over, and past the tip it goes. Tap it.
-		leanInHoldFloor = 1,
+		-- Same floor as the catch key: the in-key decays when held, so
+		-- leaning on it stops pushing rather than carrying the car over.
+		-- 1 makes a held key topple, which was tried and was too punishing.
+		leanInHoldFloor = 0.3,
 		-- The key toward the grounded side held this long is a landing, not a
 		-- catch: the controller lets go and the car comes down. Measured
 		-- without it, a held E got the car to 4 degrees and the spring then

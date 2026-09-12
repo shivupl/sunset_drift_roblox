@@ -65,6 +65,11 @@ export type Config = {
 	leanHoldFloor: number, -- the catch key held decays to this
 	leanInHoldFloor: number, -- the key toward the lifted side held decays to this; 1 keeps pushing, which is the topple
 	balanceSpring: number, -- Nm per degree of error from targetRollDeg while balanced
+	-- One-sided: the spring lifts a sagging car and does nothing above the
+	-- target, so leaning on the in-key carries the car over. Symmetric: it
+	-- also pulls the car back down from above, which is what makes a held
+	-- key settle to a hover instead of toppling.
+	balanceSpringOneSided: boolean,
 	balanceSpringDecaySeconds: number, -- the spring winds down to its floor over this long with no in-tap
 	balanceSpringFloor: number, -- fraction of balanceSpring left once it has wound down
 	balanceCancelFloor: number, -- fraction of gravityCancel left once the spring has wound down
@@ -273,12 +278,16 @@ function TwoWheel.step(
 			state.springEnv = 1
 		end
 		state.springEnv = math.max(cfg.balanceSpringFloor, state.springEnv - dt / math.max(cfg.balanceSpringDecaySeconds, 1e-3))
-		-- One-sided: the spring lifts a car that has sagged below the target
-		-- and does nothing above it. A symmetric spring pulled a held in-key
-		-- back to a hover at 56 degrees, so leaning on the key never
-		-- toppled; above the target the car is on its own, and the catch
-		-- tap is what saves it.
-		local spring = cfg.balanceSpring * state.springEnv * math.max(cfg.targetRollDeg - roll, 0)
+		-- Symmetric by default: the spring lifts a sagging car and pulls a
+		-- high one back down, so the car settles to a hover near the target
+		-- and a held key does not carry it over. One-sided (lift only, and
+		-- silent above the target) is what makes leaning on the in-key
+		-- topple, which is a much less forgiving feel.
+		local err = cfg.targetRollDeg - roll
+		if cfg.balanceSpringOneSided then
+			err = math.max(err, 0)
+		end
+		local spring = cfg.balanceSpring * state.springEnv * err
 		-- The gravity cancel winds down with the same envelope, to
 		-- balanceCancelFloor of itself. A fully cancelled pendulum is
 		-- neutral at every angle, so with the spring gone the car just

@@ -27,6 +27,7 @@ return function(t: T)
 		leanHoldFloor = 0.3,
 		leanInHoldFloor = 0.3, -- the topple is exercised below with its own config
 		balanceSpring = 0, -- specs exercise the pure pendulum
+		balanceSpringOneSided = true, -- the symmetric spring gets its own case below
 		balanceSpringDecaySeconds = 3,
 		balanceSpringFloor = 0.3,
 		balanceCancelFloor = 1, -- and never let gravity back in
@@ -66,6 +67,21 @@ return function(t: T)
 		t.near(below, expectBelow, 1e-6, "below the target the spring lifts")
 		local above = TwoWheel.step(st3, sprung, body, true, 0, 0, 50, 0, 0, 2, dt, FAST)
 		t.near(above, TwoWheel.gravityRestoringTorque(body, 50) + 300 + 5 * 8, 1e-6, "above it the spring is silent")
+	end
+
+	-- Symmetric (the shipped setting): above the target the spring pulls the
+	-- car back down, which is what stops a held key carrying it over.
+	do
+		local sym = table.clone(cfg)
+		sym.balanceSpring = 100
+		sym.balanceSpringOneSided = false
+		local st4 = TwoWheel.new()
+		TwoWheel.step(st4, sym, body, true, 0, 1, 0, 0, 2, 2, dt, FAST)
+		TwoWheel.step(st4, sym, body, true, 0, 0, 38, 0, 0, 2, dt, FAST)
+		local above = TwoWheel.step(st4, sym, body, true, 0, 0, 50, 0, 0, 2, dt, FAST)
+		local expectAbove = TwoWheel.gravityRestoringTorque(body, 50) + 300 + 5 * 8 + 100 * st4.springEnv * (42 - 50)
+		t.near(above, expectAbove, 1e-6, "above the target the symmetric spring pulls back down")
+		t.ok(100 * st4.springEnv * (42 - 50) < 0, "and that pull is negative, toward level")
 	end
 
 	-- Held in-key with leanInHoldFloor 1 never lets up (the topple); the
