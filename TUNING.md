@@ -306,6 +306,27 @@ Surface realism. None of it is geometry the car can feel.
 | thicknessM / dropM | Slab thickness and how far the sand sits below the road. |
 | nearColor / farColor / farStartM | Two tones split by distance from the road, so the desert is not one colour sheet. |
 
+## duneField
+The border on the sunset side. Every distance is metres from the road
+centreline or along the road; the build prints the tallest crest angle next
+to the sun's elevation, so check that line after changing heights.
+
+| Field | What it does |
+|---|---|
+| side | `sun` reads Lighting at build time and puts the field on the sunset side; `left` / `right` pin it. |
+| innerM / outerM | Nearest and farthest crest from the road centreline. Closer is more imposing and starts eating the sun. |
+| startM / endM | Extent along the road; negative starts behind the start line. |
+| edgeHeightM / fullHeightM / fullDepthM | Crest height envelope: from the inner edge up to full height by fullDepthM into the field. Height over distance is the silhouette angle. |
+| gapNoiseScaleM / gapThreshold | Patchiness. Raise the threshold for more bays and gaps, lower it toward -1 for a wall. |
+| sheets.* | Broad flat ellipsoids laid first so the floor rolls. |
+| ridges.* | Round-crested ridges parallel to the road. Tilt is the roll toward the road: bigger is a steeper slip face. spacingFrac keeps ridges off each other. |
+| seifs.* | Sharp-crested prisms. slipFaceDeg / windwardDeg are real slope angles; sink buries the prism's foot. |
+| barchans.* | Crescents: body across the wind, two horns swept toward the road. |
+| mounds.* | Low mounds, biased to the inner edge by innerBias. |
+| outcrops.* | Sandstone meshes from AssetRegistry.outcrops, scaled 2 to 4 times. |
+| color / moundColor / colorVariation | Red Sands palette with per-form variation. |
+| clearSkylineBehind / skylineMarginM | Drops skyline ring sites that would stand behind the field. |
+
 ## road (dual carriageway)
 | Field | What it does |
 |---|---|

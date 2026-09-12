@@ -162,6 +162,125 @@ local config = {
 		},
 	},
 
+	-- The dune field: a natural border on the sunset side of the road. It
+	-- starts far enough out that nothing in it rises above the sun (the
+	-- build prints the tallest crest angle next to the sun's elevation) and
+	-- it is never collidable. Every form is a sand ellipsoid, rolled so the
+	-- side facing the road is the steep slip face, sunk so its foot is
+	-- buried; the rock outcrops are store meshes. All distances in metres.
+	duneField = {
+		enabled = true,
+		seed = 4471,
+		-- "sun" picks the side Lighting's sun is on at build time; "left"
+		-- and "right" are relative to the direction of travel.
+		side = "sun",
+		innerM = 750, -- nearest crest to the road centreline
+		outerM = 1900,
+		startM = -900, -- along the road; negative is behind the start line
+		endM = 3300, -- past the city
+		-- Crest height envelope: small at the inner edge, full height by
+		-- fullDepthM into the field, so the border rises away from the road.
+		-- 70 m at 1,300 m out is a 3.1 degree silhouette against a sun at
+		-- 5.4 degrees; the build prints both.
+		edgeHeightM = 12,
+		fullHeightM = 70,
+		fullDepthM = 550,
+		-- Patchiness. Positions where this noise is under the threshold get
+		-- nothing, so the field has bays and gaps instead of a wall.
+		gapNoiseScaleM = 800,
+		gapThreshold = -0.45,
+		-- Broad flat sheets laid first, so the floor between the dunes rolls
+		-- instead of showing the plane.
+		sheets = {
+			count = 45,
+			minLengthM = 400,
+			maxLengthM = 900,
+			minWidthM = 200,
+			maxWidthM = 420,
+			minHeightM = 6,
+			maxHeightM = 14,
+			sink = 0.6,
+		},
+		-- Long seif ridges parallel to the road, the bulk of the silhouette.
+		ridges = {
+			count = 200,
+			minLengthM = 260,
+			maxLengthM = 620,
+			minWidthM = 90,
+			maxWidthM = 170,
+			minHeightFrac = 0.6, -- of the envelope
+			maxHeightFrac = 1,
+			minTiltDeg = 24, -- roll toward the road: bigger is a steeper slip face
+			maxTiltDeg = 38,
+			yawJitterDeg = 22,
+			sink = 0.4, -- fraction of the ellipsoid below ground
+			spacingFrac = 0.1, -- of length; two ridges never sit closer than this
+		},
+		-- Sharp-crested seifs: a prism with a long windward slope away from
+		-- the road and a short slip face toward it at the angle of repose,
+		-- with a mound over each end so the prism's cut ends never show.
+		seifs = {
+			count = 70,
+			minLengthM = 200,
+			maxLengthM = 480,
+			minHeightFrac = 0.7,
+			maxHeightFrac = 1,
+			slipFaceDeg = 33,
+			windwardDeg = 17,
+			yawJitterDeg = 14,
+			sink = 0.25, -- of height, buried
+			spacingFrac = 0.16,
+		},
+		-- Crescents: a body across the wind with two horns toward the road.
+		barchans = {
+			count = 70,
+			minBodyM = 130, -- across the wind (along the road)
+			maxBodyM = 240,
+			minDepthM = 90, -- upwind to slip face
+			maxDepthM = 150,
+			minHeightFrac = 0.45,
+			maxHeightFrac = 0.75,
+			hornLengthFrac = 0.6, -- of body
+			hornWidthFrac = 0.28,
+			hornHeightFrac = 0.42,
+			hornAngleDeg = 48, -- from the wind line
+			tiltDeg = 24,
+			sink = 0.42,
+		},
+		-- Low mounds, biased to the inner edge, so the field fades in rather
+		-- than starting with a wall.
+		mounds = {
+			count = 420,
+			minWidthM = 40,
+			maxWidthM = 140,
+			minHeightM = 3,
+			maxHeightM = 14,
+			elongation = 2.4, -- max length over width
+			sink = 0.55,
+			innerBias = 1.4, -- >1 pushes them toward the inner edge
+		},
+		-- Sandstone outcrops between the dunes, from AssetRegistry.outcrops.
+		outcrops = {
+			count = 30,
+			minDepthFrac = 0.15,
+			maxDepthFrac = 0.9,
+			minScale = 2,
+			maxScale = 4,
+		},
+		-- Scrub at the foot of the field, for anyone who drives out there.
+		scrubCount = 60,
+		scrubDepthM = 140,
+		-- Red Sands palette; per-form variation keeps the field from being
+		-- one flat colour.
+		color = Color3.fromRGB(170, 124, 80),
+		moundColor = Color3.fromRGB(150, 118, 82),
+		colorVariation = 0.1,
+		-- Skyline ring buildings that would stand behind the field are
+		-- dropped, so the sunset side is dunes against sky and nothing else.
+		clearSkylineBehind = true,
+		skylineMarginM = 400,
+	},
+
 	-- No barriers. There is nothing between the road and the sand; running
 	-- wide costs speed, not the run. The module was removed rather than
 	-- disabled so nothing can bring it back by accident.
@@ -567,6 +686,7 @@ local config = {
 		palms = true,
 		rocks = false,
 		cityscape = false,
+		dunes = true,
 	},
 
 	-- Legacy distance fog stays off: Atmosphere does the distance fade, and
@@ -600,6 +720,9 @@ local config = {
 		-- none were in frustum and the reservation was bare ahead of the car.
 		-- About 650 mesh pieces, always replicated.
 		palmsPersistent = true,
+		-- The dune field sits past the streaming radius; as a border it has
+		-- to be there from every viewpoint.
+		dunesPersistent = true,
 	},
 
 	debug = {

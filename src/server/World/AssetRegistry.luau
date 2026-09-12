@@ -179,6 +179,42 @@ local WHEEL: Prop = {
 	pieces = { { meshId = 9496370049, textureId = 0, sizeM = Vector3.new(0.24, 0.56, 0.56), offsetM = Vector3.new(0, 0.28, 0), color = Color3.fromRGB(30, 30, 32), material = Enum.Material.Rubber } },
 }
 
+-- Rock outcrops for the dune field, from "Desert Mountain" by falterize
+-- (store 12809476227, free, script-free): red sandstone pieces with their
+-- own colour maps, which go on as TextureID so nothing but the mesh and
+-- the image ship. Sizes are the pack's proportions in metres at scale 1;
+-- the field scales them two to four times.
+local OUTCROP_SHELF: Prop = {
+	name = "Sandstone shelf with boulders",
+	creator = "falterize (store 12809476227)",
+	notes = "Mesh 6118647397, colour map 6118662723.",
+	pieces = { { meshId = 6118647397, textureId = 6118662723, sizeM = Vector3.new(43.4, 6.5, 29.4), offsetM = Vector3.new(0, 3.25, 0) } },
+}
+local OUTCROP_SLAB: Prop = {
+	name = "Sandstone slab",
+	creator = "falterize (store 12809476227)",
+	notes = "Mesh 6131721594, colour map 6131723936.",
+	pieces = { { meshId = 6131721594, textureId = 6131723936, sizeM = Vector3.new(38.1, 2.8, 18.1), offsetM = Vector3.new(0, 1.4, 0) } },
+}
+local OUTCROP_PEAK: Prop = {
+	name = "Sandstone peak",
+	creator = "falterize (store 12809476227)",
+	notes = "Mesh 6133590047, colour map 6133591423.",
+	pieces = { { meshId = 6133590047, textureId = 6133591423, sizeM = Vector3.new(14.6, 9.9, 4.8), offsetM = Vector3.new(0, 4.95, 0) } },
+}
+local OUTCROP_MESA: Prop = {
+	name = "Sandstone mesa",
+	creator = "falterize (store 12809476227)",
+	notes = "Mesh 5435533376, colour map 5435508188.",
+	pieces = { { meshId = 5435533376, textureId = 5435508188, sizeM = Vector3.new(18.5, 8.0, 6.0), offsetM = Vector3.new(0, 4, 0) } },
+}
+local OUTCROP_RIDGE: Prop = {
+	name = "Sandstone ridge",
+	creator = "falterize (store 12809476227)",
+	notes = "Mesh 6131708095, colour map 6131710471.",
+	pieces = { { meshId = 6131708095, textureId = 6131710471, sizeM = Vector3.new(16.1, 4.8, 20.6), offsetM = Vector3.new(0, 2.4, 0) } },
+}
+
 AssetRegistry.props = {
 	tent = TENT,
 	camel = CAMEL,
@@ -194,7 +230,16 @@ AssetRegistry.props = {
 	carA = CAR_A,
 	carB = CAR_B,
 	wheel = WHEEL,
+	outcropShelf = OUTCROP_SHELF,
+	outcropSlab = OUTCROP_SLAB,
+	outcropPeak = OUTCROP_PEAK,
+	outcropMesa = OUTCROP_MESA,
+	outcropRidge = OUTCROP_RIDGE,
 } :: { [string]: Prop }
+
+-- The outcrop keys, in the order the dune field cycles through them. The
+-- peak is registered but not used: at field scale it reads as a dark shard.
+AssetRegistry.outcrops = { "outcropShelf", "outcropSlab", "outcropMesa", "outcropRidge" }
 
 -- Facade textures: tiled window grids for building walls. Every id here is
 -- the IMAGE behind a Creator Store decal, not the decal itself: a decal id
@@ -275,6 +320,9 @@ AssetRegistry.rejected = {
 	"123728150857841, 14047515737: satellite dishes are plain-part builds; built from a tilted cylinder instead",
 	"120535861432410: the Cybertruck and Rimac in the car pack are real-world brands; only the two generic bodies are used",
 	"98926724774714: parked cars named after real models",
+	"4896956679, 5060124620: the only smooth store 'sand dune' shapes are Unions, which cannot be rebuilt from an id at runtime",
+	"11061004551, 106033234039801: 'dune' meshes are flat sand tiles under two metres high",
+	"74792817716663, 73103955467301: AI-generated dunes came out as a blob and a cone; the field is ellipsoids instead",
 }
 
 -- Cache of loaded template MeshParts per mesh id. CreateMeshPartAsync yields

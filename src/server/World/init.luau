@@ -14,6 +14,7 @@ local RoadNetwork = require(script.RoadNetwork)
 local AssetRegistry = require(script.AssetRegistry)
 local WorldLighting = require(script.Lighting)
 local Cityscape = require(script.Cityscape)
+local Dunes = require(script.Dunes)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
 local City = require(script.City)
@@ -88,6 +89,11 @@ function World.build(): Result
 	if cfg.cityscape.enabled then
 		local folder = Cityscape.build(cfg, ctx, path, world)
 		tally("cityscape", folder)
+	end
+
+	if cfg.duneField.enabled then
+		local model = Dunes.build(cfg, ctx, path, world)
+		tally("dunes", model)
 	end
 
 	if cfg.signage.enabled then

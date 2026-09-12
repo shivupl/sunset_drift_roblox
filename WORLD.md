@@ -15,6 +15,7 @@ only in the place file. Change a number in the config and restart the server.
 | `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
 | `Cityscape.luau` | The skyline: two rings, a downtown cluster ahead of the road, two landmarks. |
 | `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
+| `Dunes.luau` | The dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
 | `AssetRegistry.luau` | Mesh props by id, the loader, and the provenance of everything vetted. |
 
 There is no barrier module any more. Nothing stands between the road and the
@@ -90,6 +91,27 @@ first pass used 900 m tiles, a Part axis silently caps at 2,048 studs, and
 the desert had holes in it near the curve. Undulation is low ridges built from
 two wedges back to back, most of each sunk into the plane, scattered beyond
 the shoulder band from the same seeded random as everything else.
+
+**The dune field is ellipsoids, because nothing else was available.** The
+sunset side of the road gets a border of dunes from 750 m to 1.9 km out,
+running from 900 m behind the start line to past the city. Terrain was the
+obvious tool and is ruled out by streaming: terrain past the streaming radius
+never reaches the client, and the field is entirely past it. EditableMesh
+heightfields are locked behind an Experience security setting. The Creator
+Store's only smooth dune shapes are Unions, which cannot be rebuilt from an
+id at runtime, and the AI mesh generator produced a blob and a cone. So every
+dune is a Part with a sphere SpecialMesh, which renders at any aspect (a Ball
+part does not), rolled about its long axis so the road-facing side is a steep
+slip face and sunk so the foot is buried. Five kinds layer up: broad flat
+sheets so the floor rolls, long ridges parallel to the road, sharp-crested
+seifs (two wedges at 33 and 17 degrees, a mound over each cut end), crescents
+with horns toward the road, and low mounds that fade the field in from its
+inner edge. Sandstone outcrops are store meshes. The tallest crest is 70 m at
+1.3 km, a 3.1 degree silhouette under a sun at 5.4 degrees; the build prints
+both numbers, and the skyline ring drops any site that would stand behind the
+field so that side is dunes against sky. A field this far out is soft in the
+golden-hour haze by design; the knob for that is the preset's atmosphere
+density. Nothing in the field collides, and the whole model is Persistent.
 
 **The skyline is a ring, not a band.** Two bands parallel to the road are
 invisible *from* the road: looking down the straight you see the gap between
@@ -314,6 +336,7 @@ Whole world, `testRoad` preset, six lanes each way in a 64 m corridor with an
 | cityscape (two rings, downtown, two landmarks; Persistent) | 2,071 | 0 |
 | signage | 40 | 0 |
 | scatter (palms, scrub, rocks, dunes, camps, camels) | 629 | ~520 |
+| dune field (sheets, ridges, seifs, crescents, mounds, outcrops, scrub; Persistent) | 1,011 | ~90 |
 | **total** | **5,620** | **~520** |
 
 The skyline is the biggest change from the first pass, which was ninety

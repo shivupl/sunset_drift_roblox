@@ -22,6 +22,7 @@ local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local CityConfig = require(script.Parent.City.CityConfig)
 local AssetRegistry = require(script.Parent.AssetRegistry)
+local Dunes = require(script.Parent.Dunes)
 
 local SIDE_FACES = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
 
@@ -261,7 +262,7 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 				depth *= rng:NextNumber(0.35, 0.6)
 			end
 			local site = siteAt(angle, radius, width, depth, height, tower)
-			if not inGrid(site.base) then
+			if not inGrid(site.base) and not Dunes.behind(cfg, ctx, path, site.base) then
 				building(cfg, ctx, rng, model, site)
 			end
 		end

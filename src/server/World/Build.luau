@@ -118,7 +118,10 @@ function Build.estimateTriangles(root: Instance): number
 			tris += 8
 		elseif d:IsA("Part") then
 			local shape = (d :: Part).Shape
-			if shape == Enum.PartType.Ball then
+			local special = d:FindFirstChildWhichIsA("SpecialMesh")
+			if special and special.MeshType == Enum.MeshType.Sphere then
+				tris += 400 -- the dune ellipsoids; Roblox's sphere mesh is not counted anywhere it can be read
+			elseif shape == Enum.PartType.Ball then
 				tris += 96
 			elseif shape == Enum.PartType.Cylinder then
 				tris += 108

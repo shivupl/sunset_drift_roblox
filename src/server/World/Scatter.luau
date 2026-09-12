@@ -148,12 +148,15 @@ local function dune(cfg: Config, ctx: Context, at: Vector3, rng: Random, parent:
 	local tint = rng:NextNumber(-0.08, 0.08)
 	local color = if tint < 0 then d.color:Lerp(Color3.new(0, 0, 0), -tint) else d.color:Lerp(Color3.new(1, 1, 1), tint)
 	-- Sunk a quarter so the foot of the ridge disappears into the plane.
+	-- A WedgePart's tall face is at its +Z end and the slope runs down to
+	-- -Z, so the half on the +Z side is turned round to put its tall face
+	-- at the ridge line.
 	local sink = height * 0.25
 	for _, side in { -1, 1 } do
 		Build.wedge({
 			name = "Dune",
 			size = Vector3.new(length, height, width / 2),
-			cframe = base * CFrame.new(0, height / 2 - sink, side * width / 4) * CFrame.Angles(0, if side > 0 then 0 else math.pi, 0),
+			cframe = base * CFrame.new(0, height / 2 - sink, side * width / 4) * CFrame.Angles(0, if side > 0 then math.pi else 0, 0),
 			color = color,
 			material = Enum.Material.Sand,
 			parent = parent,
