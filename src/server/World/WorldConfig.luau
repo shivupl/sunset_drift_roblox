@@ -185,7 +185,7 @@ local config = {
 		-- scattered beyond the shoulder band and sunk into the plane. Sixteen
 		-- triangles each. Never collidable and never near the road.
 		dunes = {
-			enabled = true,
+			enabled = false, -- plain flat sand; the ridges come back with the borders
 			seed = 3311,
 			spacingM = 110, -- along the road
 			jitterM = 50,
@@ -208,7 +208,8 @@ local config = {
 	-- side facing the road is the steep slip face, sunk so its foot is
 	-- buried; the rock outcrops are store meshes. All distances in metres.
 	duneField = {
-		enabled = true,
+		-- OFF, with the berm: plain flat sand to the horizon.
+		enabled = false,
 		seed = 4471,
 		-- "sun" picks the side Lighting's sun is on at build time; "left"
 		-- and "right" are relative to the direction of travel.
@@ -336,7 +337,11 @@ local config = {
 	-- is the one piece of sand the car is ever near. It all collides, at
 	-- real slopes, so running wide feels like sand and the crest stops you.
 	relief = {
-		enabled = true,
+		-- OFF. The owner wants plain flat sand again: the terrain strip and
+		-- the berm are kept here for when a border is wanted back, but the
+		-- desert is the plane and nothing else. With this off nothing stops
+		-- the car leaving the road; running wide costs speed, not the run.
+		enabled = false,
 		seed = 8083,
 		innerGapM = 40, -- from the asphalt edge to the strip
 		featherM = 26, -- the strip's inner and outer edges blend down to the plane over this
@@ -491,18 +496,20 @@ local config = {
 			{
 				sectorOffsetDeg = 90, -- +90 is the road's right; the free quarter
 				sectorDeg = 26, -- half-angle, so a 52 degree spread of city
-				-- 2.7 km rather than 3.3: at golden hour the haze is thick
-				-- enough that further out the city stopped reading at all.
-				distanceM = 2700,
-				depthM = 700,
+				-- 1.7 to 2.5 km. It was 2.7 to 3.4 and the owner could not find
+				-- it from the road: golden-hour haze takes almost everything past
+				-- 2.5 km, and it only ever showed as a ghost. This is the range
+				-- at which the far dune field read clearly, so the city does too.
+				distanceM = 1700,
+				depthM = 800,
 				count = 90,
-				minWidthM = 55,
-				maxWidthM = 170,
-				minHeightM = 180,
-				maxHeightM = 320,
+				minWidthM = 50,
+				maxWidthM = 160,
+				minHeightM = 90,
+				maxHeightM = 240,
 				towerChance = 0.5, -- half towers: the verticals are what carry a silhouette
-				towerMinHeightM = 300,
-				towerMaxHeightM = 460,
+				towerMinHeightM = 240,
+				towerMaxHeightM = 400,
 			},
 		},
 		-- Downtown: a KAFD-style cluster in a sector centred on the road's
@@ -517,8 +524,8 @@ local config = {
 			-- detailed city keeps the view straight ahead to itself.
 			sectorOffsetDeg = 90,
 			sectorDeg = 22, -- half-angle of the sector
-			minDistanceM = 2250,
-			maxDistanceM = 3000,
+			minDistanceM = 1900,
+			maxDistanceM = 2500,
 			count = 64,
 			minWidthM = 28,
 			maxWidthM = 64,
@@ -540,8 +547,8 @@ local config = {
 		-- top) and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 2400 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 2500 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 2050 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 2150 },
 		},
 		-- Building detail. Tiers: a second, narrower box on top of a share
 		-- of the blocks and towers. Crowns: a dim lit band at the top of a

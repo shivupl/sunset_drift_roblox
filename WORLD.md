@@ -125,6 +125,14 @@ times brighter than a part for the same tint, so the terrain tints sit one
 step darker to come out as the same sand; that was matched from the air,
 where the strip and the plane meet over the berm's back.
 
+**The borders are off: plain flat sand.** The terrain strip, the berm and
+the far dune field are all built and all disabled (`relief.enabled`,
+`duneField.enabled`, `ground.dunes.enabled`). The owner asked for the desert
+to go back to a plain flat plane, so it is the plane, the sand material, the
+roadside scatter and nothing else; nothing stops the car leaving the road,
+and running wide costs speed, not the run. The paragraphs below describe the
+borders as built, for when they are wanted back.
+
 **The near desert and the berm are one terrain surface.** A strip of smooth
 terrain runs either side of the road, and it carries the whole cross-section
 from a single height function: the desert floor from 40 m past the asphalt,
@@ -194,13 +202,13 @@ buildings behind that dune and scatters the few that clear it, so it is a
 single city in one direction instead. The sun and the far dune field are both
 on the left and the detailed city is straight ahead, which leaves the right.
 Both the surrounding blocks and the dense downtown core sit in that quarter
-at 2.2 to 3.4 km, with the two landmarks among them, so they read as one city
+at 1.7 to 2.5 km (it was 2.7 to 3.4, and from the road it only ever showed
+as a ghost: golden-hour haze takes almost everything past 2.5 km), with the two landmarks among them, so they read as one city
 with a downtown in it rather than two separate skylines. The sunset keeps the
 left to itself and the highway keeps the view straight ahead.
 
-Nothing in it is shorter than 180 m, because the driving-side crest hides
-anything under about 2.8 degrees from the driver's eye, which at 2.7 km is
-132 m; the towers run to 460. A ring entry with a `sectorDeg` is a cluster
+With the berm off nothing hides its base, so the blocks run from 90 m and
+the towers from 240 to 400. A ring entry with a `sectorDeg` is a cluster
 rather than a circle, and the sector is measured round from the road's
 direction of travel, so it follows the road rather than the world axes.
 

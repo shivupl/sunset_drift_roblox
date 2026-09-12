@@ -349,9 +349,9 @@ to the sun's elevation, so check that line after changing heights.
 | medianColor / medianMaterial / medianDropM | The strip between carriageways. It is ground, so it collides. |
 | kerbWidthM / kerbHeightM | A visual lip only; collision is off. |
 
-There are no barriers at the road. Running wide costs speed and dignity, not
-the run; the edge of the world is the berm, 170 m out on the driving side and
-200 m on the sunset side, and it is part of the terrain (see `relief.berm`).
+There are no barriers anywhere: the berm and the dune field are built but
+switched off (`relief.enabled`, `duneField.enabled`), so the desert is a flat
+plane and running wide costs speed and dignity, not the run.
 
 ## relief
 The near desert and the berm, as one terrain surface either side of the road.
