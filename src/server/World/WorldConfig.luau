@@ -10,6 +10,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CarConfig = require(Shared.CarConfig)
 
+-- ONE PALETTE FOR THE SAND. Every sand surface in the world -- the plane,
+-- the terrain strip, the berm, the far dune field, the drifts, the median --
+-- takes its colour from these three, so nothing can drift out of match
+-- again. They are light because they multiply the sand colour map.
+--
+-- SAND is the ground tone. LIGHT is wind-blown and crest sand, which catches
+-- more light. DARK is compacted, shadowed or gravel-mixed ground.
+local SAND = Color3.fromRGB(198, 172, 132)
+local SAND_LIGHT = Color3.fromRGB(216, 194, 156)
+local SAND_DARK = Color3.fromRGB(170, 146, 110)
+
 -- A road is described either by an explicit waypoint list or by segment
 -- descriptors that expand into one. Declared up front so a preset can mix
 -- straights and curves in the same array under strict types.
@@ -47,7 +58,7 @@ local config = {
 		-- Narrowed from 26 to 14, then to 8 on request: a strip with a lamp
 		-- post down the middle and a palm either side of it, no more.
 		medianWidthM = 8,
-		medianColor = Color3.fromRGB(150, 128, 94),
+		medianColor = SAND_DARK,
 		medianMaterial = Enum.Material.Ground,
 		medianDropM = 0.04, -- median sits this far below the asphalt
 		thicknessM = 1,
@@ -96,6 +107,19 @@ local config = {
 		kerbColor = Color3.fromRGB(120, 118, 112),
 		paintColor = Color3.fromRGB(232, 226, 205),
 		bayColor = Color3.fromRGB(58, 58, 62),
+		-- The asphalt itself: a MaterialVariant on Roblox's Asphalt, built
+		-- from a CC0 road surface (ambientCG Road007 colour via Euvanoa,
+		-- Poly Haven asphalt_01 normal via dorndaft; the ids are the images
+		-- behind those store decals). Only the carriageways, pad and bay are
+		-- Asphalt; kerbs, shoulders and every marking are Concrete, so the
+		-- paint stays crisp over a grainy surface. Same declare-in-the-place
+		-- rule as the sand variant.
+		asphalt = {
+			enabled = true,
+			colorMap = 106466177146374,
+			normalMap = 11226165423,
+			studsPerTile = 26, -- about 7 m: grain without a visible repeat at speed
+		},
 
 		-- Surface wear. The road is the biggest thing on screen and a single
 		-- flat colour is what makes it read as a prop. None of this is
@@ -136,22 +160,11 @@ local config = {
 		marginM = 4000,
 		thicknessM = 1,
 		dropM = 0.05, -- sand sits this far below the asphalt; small so running wide is a bump, not a drop
-		-- Tone by distance from the road: a smooth blend from nearColor at
-		-- nearStartM to farColor at farStartM, on sub-tiles near the road so
-		-- the blend and the tint noise have something to work with. The
-		-- colours tint the sand maps below, so they stay close to white-warm.
-		nearColor = Color3.fromRGB(206, 180, 140),
-		farColor = Color3.fromRGB(178, 154, 118),
-		nearStartM = 120,
-		farStartM = 900,
-		-- Tiles within splitDistanceM of the road are cut splitN by splitN
-		-- and each piece gets a slow noise tint, so the plane reads as
-		-- patches of sand rather than one sheet. 4x4 on the near tiles is
-		-- about six hundred more parts.
-		splitDistanceM = 800,
-		splitN = 4,
-		tintNoiseScaleM = 260,
-		tintVariation = 0.07,
+		-- One tone. The sand map below supplies the grain and the atmosphere
+		-- supplies the distance fade, so a second tone is not needed; the
+		-- near/far split and the per-tile noise tint that used to live here
+		-- drew the tile grid on the desert as visible rectangles.
+		color = SAND,
 		-- The sand itself: a MaterialVariant on the Sand material built at
 		-- server start from a CC0 PBR set (3Dtextures "Sand 005" via
 		-- PixelHix, store decals 8282523787 / 8282524799 / 8282525263; the
@@ -166,7 +179,7 @@ local config = {
 			-- Roblox and gave the desert a wet sheen and specular glints on
 			-- every dune crest toward the sun. 0 leaves it out: matte sand.
 			roughnessMap = 0,
-			studsPerTile = 18, -- about 5 m; smaller shows more grain close to the car but repeats sooner
+			studsPerTile = 20, -- about 5.6 m; smaller shows more grain close to the car but repeats sooner
 		},
 		-- Undulation, cheaply: low ridges built from two wedges back to back,
 		-- scattered beyond the shoulder band and sunk into the plane. Sixteen
@@ -184,7 +197,7 @@ local config = {
 			maxWidthM = 90,
 			minHeightM = 1.5,
 			maxHeightM = 5,
-			color = Color3.fromRGB(130, 112, 82),
+			color = SAND_DARK,
 		},
 	},
 
@@ -206,10 +219,12 @@ local config = {
 		endM = 3300, -- past the city
 		-- Crest height envelope: small at the inner edge, full height by
 		-- fullDepthM into the field, so the border rises away from the road.
-		-- Kept under the sun: 42 m at 1.3 km is 1.9 degrees against a sun at
-		-- 5.4, so the crests sit in the disc's lower rim, not across it.
+		-- Kept under the sun and over the berm: 50 m at 1.3 km is 2.2
+		-- degrees, clear of the sun-side berm crest at 1.3 and well under a
+		-- sun at 5.4, so the field reads as a horizon without touching the
+		-- disc. The build prints the tallest crest angle and the sun's.
 		edgeHeightM = 8,
-		fullHeightM = 42,
+		fullHeightM = 50,
 		fullDepthM = 550,
 		-- Patchiness. Positions where this noise is under the threshold get
 		-- nothing, so the field has bays and gaps instead of a wall.
@@ -276,9 +291,9 @@ local config = {
 		-- Low mounds, biased to the inner edge, so the field fades in rather
 		-- than starting with a wall.
 		mounds = {
-			count = 420,
-			minWidthM = 40,
-			maxWidthM = 140,
+			count = 260,
+			minWidthM = 55,
+			maxWidthM = 170,
 			minHeightM = 3,
 			maxHeightM = 14,
 			elongation = 2.4, -- max length over width
@@ -298,8 +313,8 @@ local config = {
 		scrubDepthM = 140,
 		-- Red Sands palette; per-form variation keeps the field from being
 		-- one flat colour.
-		color = Color3.fromRGB(170, 124, 80),
-		moundColor = Color3.fromRGB(150, 118, 82),
+		color = SAND,
+		moundColor = SAND_DARK,
 		colorVariation = 0.1,
 		-- Skyline ring buildings that would stand behind the field are
 		-- dropped, so the sunset side is dunes against sky and nothing else.
@@ -307,27 +322,35 @@ local config = {
 		skylineMarginM = 400,
 	},
 
-	-- The near desert floor: a strip of smooth terrain either side of the
-	-- road, from innerGapM past the asphalt edge to the berm's foot, with
-	-- gentle noise undulation, small hummocks and gravel patches. Terrain is
-	-- used here and nowhere else because it only streams within the radius,
-	-- and this strip is always near the car. It collides at real slopes.
+	-- THE NEAR DESERT, AND THE EDGE OF THE WORLD.
+	--
+	-- One strip of smooth terrain either side of the road carries the whole
+	-- cross-section: the desert floor from innerGapM past the asphalt, then
+	-- the berm rising out of that same floor to a crest, then a back slope
+	-- down to the plane again. It is one height function, so there is no
+	-- seam anywhere in it -- the berm used to be a separate stack of wedges
+	-- and boxes, and every one of its cut edges showed.
+	--
+	-- Terrain is used here and nowhere else in the world because it only
+	-- reaches the client inside the streaming radius (573 m), and this strip
+	-- is the one piece of sand the car is ever near. It all collides, at
+	-- real slopes, so running wide feels like sand and the crest stops you.
 	relief = {
 		enabled = true,
 		seed = 8083,
 		innerGapM = 40, -- from the asphalt edge to the strip
-		outerMarginM = 6, -- the strip ends this far before the berm foot
-		outerM = 170, -- used only if the berm is off
-		featherM = 26, -- edges blend down to the plane over this distance
-		liftM = 0.15, -- strip surface above the sand plane, so the plane never shows through
-		depthM = 3, -- solid below the plane
-		-- math.noise spans about -0.5..0.5, so these are twice the swing.
+		featherM = 26, -- the strip's inner and outer edges blend down to the plane over this
+		liftM = 0.15, -- floor above the sand plane, so the plane never shows through
+		shellM = 3.5, -- solid sand below the surface; a shell, because nothing digs
+		-- Two octaves of undulation over the whole strip, berm included, so
+		-- the berm is a dune ridge and not an extrusion. math.noise spans
+		-- about -0.5..0.5, so amplitude is twice the swing.
 		swellWavelengthM = 70,
 		swellAmplitudeM = 2.4,
 		rippleWavelengthM = 22,
 		rippleAmplitudeM = 0.8,
 		hummocks = {
-			perKm = 110, -- per side
+			perKm = 110, -- per side, on the floor only, never on the berm
 			minRadiusM = 3,
 			maxRadiusM = 9,
 			minHeightM = 0.5,
@@ -337,59 +360,44 @@ local config = {
 		-- Patches of a darker, coarser material where a slow noise is high:
 		-- gravel flats between the sand.
 		gravel = { threshold = 0.36, scaleM = 60, material = Enum.Material.Ground },
-		-- Terrain textures are lighter than the part sand maps, so these
-		-- tints sit darker than ground.nearColor to come out the same.
-		sandColor = Color3.fromRGB(178, 152, 114),
-		gravelColor = Color3.fromRGB(112, 96, 76),
+		-- Terrain renders about 1.15x brighter than a part for the same tint,
+		-- so these sit one step darker than ground.color to come out as the
+		-- same sand. Matched by eye from the air, where the strip and the
+		-- plane meet over the berm's back.
+		sandColor = SAND_DARK,
+		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
-	},
 
-	-- The berm: the playable area's edge on both sides of the highway, a
-	-- long sand hill the car can drive up. A gentle collidable slope rises
-	-- from the foot to a short steep lip, an invisible wall stands on the
-	-- crest so nothing gets over, and a cosmetic rounded crest and back
-	-- slope make it read as a dune line rather than a ramp. The sun side is
-	-- farther out and lower so the sunset and the far field stay in view.
-	-- Distances in metres from the road centreline.
-	berm = {
-		enabled = true,
-		seed = 6121,
-		endM = 1940, -- stops short of the city gateway; the start line end is open
-		runCapM = 480, -- profile pieces along the road; under the 573 m part cap
-		wallHeightM = 150, -- invisible; a car launched off the lip at 200 km/h still meets it
-		sun = {
-			footM = 200,
-			slopeDeg = 4,
-			slopeWidthM = 60,
-			lipDeg = 30,
-			lipWidthM = 3,
-			backDeg = 16,
-			crestMoundMinM = 0.5, -- above the lip's crest
-			crestMoundMaxM = 1.5,
+		-- The berm: the edge of the playable area, a sand hill the car can
+		-- drive up with a natural stop at the top. The rise is a smoothstep,
+		-- so there is no kink where it leaves the floor and none at the
+		-- crest; its steepest point is 1.5 * height / riseWidth. The foot
+		-- and the crest height wander along the road from a slow noise, so
+		-- the crest is a dune line rather than a straight ramp.
+		--
+		-- The sun side is farther out, lower and gentler, so the sunset and
+		-- the far dune field stay in view over it.
+		berm = {
+			enabled = true,
+			endM = 1940, -- stops short of the city gateway; the start-line end is open
+			wallHeightM = 150, -- the invisible stop; a car off the crest at 200 km/h still meets it
+			wallRunCapM = 480, -- wall pieces along the road; under the 573 m part cap
+			wanderWavelengthM = 420, -- how fast the foot and the crest height wander
+			footJitterM = 8,
+			heightVariation = 0.3, -- crest height wanders by this fraction
+			sun = {
+				footM = 200,
+				riseWidthM = 78, -- gentler: 1.5 * 7 / 78 is a 7.7 degree steepest slope
+				crestHeightM = 7,
+				backWidthM = 42,
+			},
+			other = {
+				footM = 170,
+				riseWidthM = 70, -- 1.5 * 13 / 70 is a 15.6 degree steepest slope
+				crestHeightM = 13,
+				backWidthM = 36,
+			},
 		},
-		other = {
-			footM = 170,
-			slopeDeg = 9,
-			slopeWidthM = 60,
-			lipDeg = 35,
-			lipWidthM = 5,
-			backDeg = 22,
-			crestMoundMinM = 3,
-			crestMoundMaxM = 8,
-		},
-		-- Rounded hilltops along the crest, cosmetic, sitting behind the
-		-- lip so nothing hangs over the drivable slope. Width is across the
-		-- berm, length along it.
-		moundSpacingM = 70,
-		moundJitterM = 25,
-		moundMinWidthM = 50,
-		moundMaxWidthM = 110,
-		moundMinLengthM = 90,
-		moundMaxLengthM = 220,
-		moundBackFrac = 0.4, -- of width: how far behind the crest the mound centre sits
-		color = Color3.fromRGB(134, 114, 84),
-		crestColor = Color3.fromRGB(146, 124, 90),
-		colorVariation = 0.06,
 	},
 
 	-- No barriers at the road. There is nothing between the road and the
@@ -634,7 +642,7 @@ local config = {
 			maxWidthM = 2.8,
 			minHeightM = 0.1,
 			maxHeightM = 0.28,
-			color = Color3.fromRGB(214, 190, 150),
+			color = SAND_LIGHT,
 		},
 		-- Density falls off with distance from the road so the near shoulder
 		-- reads as maintained and the far desert as empty.

@@ -23,6 +23,15 @@ local RoadNetwork = require(script.Parent.RoadNetwork)
 local CityConfig = require(script.Parent.City.CityConfig)
 local AssetRegistry = require(script.Parent.AssetRegistry)
 local Dunes = require(script.Parent.Dunes)
+local WorldLighting = require(script.Parent.Lighting)
+
+-- Whether the skyline's windows are lit, decided once per build from the
+-- time of day. This is the same rule the street lamps follow, and for the
+-- same reason: a Neon slab in daylight is not a lit window, it is a sticker.
+-- Seen through golden-hour haze, which swallows the building bodies long
+-- before it swallows an emissive part, unlit-time Neon bands read as orange
+-- bars floating on the horizon with nothing behind them.
+local litWindows = true
 
 local SIDE_FACES = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
 
@@ -103,8 +112,8 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				name = "Windows",
 				size = Vector3.new(segW * rng:NextNumber(0.7, 0.98), ctx.s(c.windowHeightM), inset),
 				cframe = cf * CFrame.new(x, y, -depth / 2 - inset / 2),
-				color = windowColor,
-				material = Enum.Material.Neon,
+				color = if litWindows then windowColor else bodyColor:Lerp(Color3.fromRGB(46, 54, 70), 0.55),
+				material = if litWindows then Enum.Material.Neon else Enum.Material.Glass,
 				parent = parent,
 				transparency = rng:NextNumber(0.25, 0.8),
 			})
@@ -117,8 +126,8 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				name = "Crown",
 				size = Vector3.new(width * 1.02, ctx.s(1.6), depth * 1.02),
 				cframe = cf * CFrame.new(0, topY - ctx.s(1.2), 0),
-				color = c.crownColor,
-				material = Enum.Material.Neon,
+				color = if litWindows then c.crownColor else bodyColor,
+				material = if litWindows then Enum.Material.Neon else Enum.Material.Metal,
 				parent = parent,
 				transparency = 0.35,
 			})
@@ -165,10 +174,10 @@ local function kingdom(cfg: Config, ctx: Context, rng: Random, parent: Instance,
 	local bridgeH = h * (1 - k.bridgeFrac)
 	Build.part({ name = "KingdomBridge", size = Vector3.new(w, bridgeH, d), cframe = cf * CFrame.new(0, slabH + pillarH + bridgeH / 2, 0), color = colour, material = Enum.Material.Metal, parent = parent })
 	-- Lit edges: one band across the bridge and one strip up each pillar.
-	Build.part({ name = "Windows", size = Vector3.new(w * 0.9, ctx.s(2.4), ctx.s(0.5)), cframe = cf * CFrame.new(0, slabH + pillarH + bridgeH / 2, -d / 2 - ctx.s(0.3)), color = c.windowColorCool, material = Enum.Material.Neon, parent = parent, transparency = 0.2 })
+	Build.part({ name = "Windows", size = Vector3.new(w * 0.9, ctx.s(2.4), ctx.s(0.5)), cframe = cf * CFrame.new(0, slabH + pillarH + bridgeH / 2, -d / 2 - ctx.s(0.3)), color = if litWindows then c.windowColorCool else Color3.fromRGB(52, 62, 82), material = if litWindows then Enum.Material.Neon else Enum.Material.Glass, parent = parent, transparency = 0.2 })
 	for i = 1, 6 do
 		local y = slabH * (i / 7)
-		Build.part({ name = "Windows", size = Vector3.new(w * 0.86, ctx.s(c.windowHeightM), ctx.s(0.5)), cframe = cf * CFrame.new(0, y, -d / 2 - ctx.s(0.3)), color = c.windowColorCool, material = Enum.Material.Neon, parent = parent, transparency = rng:NextNumber(0.15, 0.5) })
+		Build.part({ name = "Windows", size = Vector3.new(w * 0.86, ctx.s(c.windowHeightM), ctx.s(0.5)), cframe = cf * CFrame.new(0, y, -d / 2 - ctx.s(0.3)), color = if litWindows then c.windowColorCool else Color3.fromRGB(52, 62, 82), material = if litWindows then Enum.Material.Neon else Enum.Material.Glass, parent = parent, transparency = rng:NextNumber(0.15, 0.5) })
 	end
 	Build.part({ name = "Beacon", size = Vector3.new(ctx.s(2), ctx.s(2), ctx.s(2)), cframe = cf * CFrame.new(0, h + ctx.s(1), 0), color = c.beaconColor, material = Enum.Material.Neon, parent = parent })
 end
@@ -198,14 +207,14 @@ local function faisaliah(cfg: Config, ctx: Context, rng: Random, parent: Instanc
 		})
 	end
 	local globeD = ctx.s(f.globeDiameterM)
-	local globe = Build.part({ name = "FaisaliahGlobe", size = Vector3.new(globeD, globeD, globeD), cframe = cf * CFrame.new(0, h * f.globeFrac, 0), color = c.windowColorWarm, material = Enum.Material.Neon, parent = parent, transparency = 0.15 })
+	local globe = Build.part({ name = "FaisaliahGlobe", size = Vector3.new(globeD, globeD, globeD), cframe = cf * CFrame.new(0, h * f.globeFrac, 0), color = if litWindows then c.windowColorWarm else Color3.fromRGB(74, 70, 62), material = if litWindows then Enum.Material.Neon else Enum.Material.Glass, parent = parent, transparency = 0.15 })
 	globe.Shape = Enum.PartType.Ball
 	-- Lit floors up the near face.
 	for i = 1, 8 do
 		local frac = i / 10
 		local y = h * frac
 		local wAt = w * (1 - frac) * 0.8
-		Build.part({ name = "Windows", size = Vector3.new(wAt, ctx.s(c.windowHeightM), ctx.s(0.5)), cframe = cf * CFrame.new(0, y, -w * (1 - frac) / 2 - ctx.s(0.3)), color = c.windowColorWarm, material = Enum.Material.Neon, parent = parent, transparency = rng:NextNumber(0.2, 0.55) })
+		Build.part({ name = "Windows", size = Vector3.new(wAt, ctx.s(c.windowHeightM), ctx.s(0.5)), cframe = cf * CFrame.new(0, y, -w * (1 - frac) / 2 - ctx.s(0.3)), color = if litWindows then c.windowColorWarm else Color3.fromRGB(74, 70, 62), material = if litWindows then Enum.Material.Neon else Enum.Material.Glass, parent = parent, transparency = rng:NextNumber(0.2, 0.55) })
 	end
 	Build.part({ name = "Beacon", size = Vector3.new(ctx.s(2), ctx.s(2), ctx.s(2)), cframe = cf * CFrame.new(0, h + ctx.s(1), 0), color = c.beaconColor, material = Enum.Material.Neon, parent = parent })
 end
@@ -217,6 +226,7 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	model.Name = "Skyline"
 	model.Parent = folder
 
+	litWindows = WorldLighting.timeOfDay(cfg).lamps.enabled
 	local rng = Build.rng(c.seed)
 	local mid = path[math.max(1, math.floor(#path / 2))]
 	local centre = mid.position

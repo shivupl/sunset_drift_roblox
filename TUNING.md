@@ -304,9 +304,21 @@ Surface realism. None of it is geometry the car can feel.
 | tileM / marginM | Sand tile size and how far the desert reaches past the road. **tileM must stay under 573 m**: a Part axis caps at 2,048 studs and a bigger tile silently shrinks and leaves holes. |
 | dunes.* | Low wedge ridges beyond the shoulder band: spacing, edge distances, size range. Non-collidable. |
 | thicknessM / dropM | Slab thickness and how far the sand sits below the road. |
-| nearColor / farColor / nearStartM / farStartM | Warm tints that blend by distance from the road. They multiply the sand maps, so keep them light. |
-| splitDistanceM / splitN / tintNoiseScaleM / tintVariation | Near tiles are cut splitN by splitN and each piece gets a slow noise tint. |
-| sand.* | The MaterialVariant: colour, normal and roughness image ids and studsPerTile. roughnessMap 0 leaves it out (the set's map reads glossy). enabled false falls back to Roblox's sand. |
+| color | One tone for the whole plane, from the SAND palette at the top of the file. It multiplies the sand map, so keep it light. |
+| sand.* | The sand MaterialVariant: colour, normal and roughness image ids and studsPerTile. roughnessMap 0 leaves it out (the set's map reads glossy). enabled false falls back to Roblox's sand. |
+
+## the sand palette
+Three constants at the top of `WorldConfig.luau` feed every sand surface in
+the world: the plane, the terrain, the berm, the far dune field, the drifts,
+the median and the city kerb dust. Change one and everything moves together;
+that is the whole point, because six separate sand colours are what made
+nothing match.
+
+| Constant | Where it lands |
+|---|---|
+| SAND | Ground plane, far dune ridges and crescents, terrain floor. |
+| SAND_LIGHT | Shoulder drifts and wind-blown crest sand. |
+| SAND_DARK | Terrain tint, dune mounds, median, roadside ridges. Terrain renders ~1.15x brighter for the same tint, which is why it takes the dark one. |
 
 ## duneField
 The border on the sunset side. Every distance is metres from the road
@@ -337,36 +349,32 @@ to the sun's elevation, so check that line after changing heights.
 | kerbWidthM / kerbHeightM | A visual lip only; collision is off. |
 
 There are no barriers at the road. Running wide costs speed and dignity, not
-the run; the edge of the world is the berm, 170 m out on the right and 200 m
-on the sunset side.
+the run; the edge of the world is the berm, 170 m out on the driving side and
+200 m on the sunset side, and it is part of the terrain (see `relief.berm`).
 
 ## relief
-The terrain strip beside the road, from innerGapM past the asphalt to the
-berm foot. Everything in metres.
+The near desert and the berm, as one terrain surface either side of the road.
+Everything in metres from the road centreline.
 
 | Field | What it does |
 |---|---|
-| innerGapM / outerMarginM / featherM | Where the strip starts and stops, and how far its edges blend down to the plane. |
-| liftM / depthM | How far the surface sits above the plane (so the plane never shows through) and how deep the voxels go. |
-| swellWavelengthM / swellAmplitudeM / rippleWavelengthM / rippleAmplitudeM | Two octaves of undulation. math.noise spans about -0.5..0.5, so amplitude is twice the swing. |
-| hummocks.* | Small mounds per km per side, radius and height range, and the chance of a scrub tuft on top. |
+| innerGapM / featherM | Where the strip starts past the asphalt, and how far both its edges blend down under the plane so it has no rim. |
+| liftM / shellM | Floor height above the plane (so the plane never shows through) and how thick the solid sand shell is. Thicker costs terrain cells for something nobody sees. |
+| swellWavelengthM / swellAmplitudeM / rippleWavelengthM / rippleAmplitudeM | Two octaves of undulation over the whole strip, berm included. math.noise spans about -0.5..0.5, so amplitude is twice the swing. |
+| hummocks.* | Small mounds per km per side on the floor only, radius and height range, and the chance of a scrub tuft on top. |
 | gravel.* | A second terrain material where a slow noise is above threshold. |
-| sandColor / gravelColor | Terrain tints; darker than the part tints because terrain textures are lighter. |
+| sandColor / gravelColor | Terrain tints. One step darker than `ground.color` because terrain renders brighter for the same tint. |
 | chunkStuds | Voxel write chunk. 128 is 32 columns; bigger chunks mean fewer, larger writes. |
 
-## berm
-The drivable sand hill either side of the highway, with an invisible wall on
-its crest. `sun` and `other` are the two profiles, picked by which side
-Lighting's sun is on at build time.
+### relief.berm
+The hill the car drives up, out of the same height function as the floor.
 
 | Field | What it does |
 |---|---|
 | endM | Where the berm stops along the road; the start-line end is open. |
-| runCapM | Length of each profile piece along the road; keep under 573 m. |
-| wallHeightM | The invisible wall on the crest. A car launched off the lip at 200 km/h carries 150 m of climb, so keep it tall. |
-| sun.* / other.* | Per-side profile: footM (centreline to the foot), slopeDeg / slopeWidthM (the drivable part), lipDeg / lipWidthM (the steep bit at the top), backDeg (cosmetic back slope), crestMoundMinM / MaxM (hilltops above the crest). Lower and farther on the sun side keeps the sunset and the far dunes in view. |
-| moundSpacingM / moundJitterM / moundMin*M / moundMax*M / moundBackFrac | The rounded hilltops along the crest, cosmetic, sitting behind the lip so nothing hangs over the slope. |
-| color / crestColor / colorVariation | Sand tones; the crest is a touch lighter. |
+| wallHeightM / wallRunCapM | The invisible stop standing on the crest, and how long each piece of it is (keep under 573 m). A car off the crest at 200 km/h carries 150 m of climb, so keep it tall. |
+| wanderWavelengthM / footJitterM / heightVariation | How far and how fast the foot and the crest height wander along the road. This is what makes the crest a dune line instead of a ramp; zero them and you get an extrusion. |
+| sun.* / other.* | Per-side profile: footM, riseWidthM, crestHeightM, backWidthM. **Steepest slope is 1.5 x crestHeightM / riseWidthM** — that one number decides whether the car climbs it or bounces off. Lower and farther on the sun side keeps the sunset and the far dunes in view. |
 
 ## lamps
 | Field | What it does |

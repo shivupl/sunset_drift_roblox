@@ -181,7 +181,7 @@ local function parcelRing(ctx: Context, c: CCfg, rng: Random, parent: Instance, 
 	local s = c.surface
 	local k = c.boulevard.kerbWidthM
 	local pw = s.pavementWidthM
-	local kerb = s.kerbColor:Lerp(WorldConfig.ground.nearColor, s.kerbDust)
+	local kerb = s.kerbColor:Lerp(WorldConfig.ground.color, s.kerbDust)
 	local pave = s.pavementColor
 	-- Pavement ring: the north and south slabs span the corners.
 	local w = rect.maxX - rect.minX
@@ -217,7 +217,7 @@ local function roundabout(ctx: Context, c: CCfg, rng: Random, parent: Instance, 
 		p.Shape = Enum.PartType.Cylinder
 		return p
 	end
-	local kerb = c.surface.kerbColor:Lerp(WorldConfig.ground.nearColor, c.surface.kerbDust)
+	local kerb = c.surface.kerbColor:Lerp(WorldConfig.ground.color, c.surface.kerbDust)
 	disc("IslandKerb", r.islandRadiusM, r.islandHeightM, tinted(kerb, rng, 0.05), Enum.Material.Concrete)
 	disc("Island", r.islandRadiusM - 0.8, r.islandHeightM + 0.12, c.surface.medianColor, Enum.Material.Ground)
 end
@@ -369,7 +369,7 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 			-- Median: ground a hair up, kerbed both sides.
 			local mk = b.kerbWidthM
 			local mkh = b.medianKerbHeightM
-			local kerb = s.kerbColor:Lerp(WorldConfig.ground.nearColor, s.kerbDust)
+			local kerb = s.kerbColor:Lerp(WorldConfig.ground.color, s.kerbDust)
 			local len = if alongX then math.abs(seg.bx - seg.ax) else math.abs(seg.bz - seg.az)
 			local cx, cz = (seg.ax + seg.bx) / 2, (seg.az + seg.bz) / 2
 			if alongX then

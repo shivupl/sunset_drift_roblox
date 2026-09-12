@@ -389,61 +389,27 @@ local function buildGround(ctx: Context, path: Path, parent: Instance): number
 	local tile = ctx.s(g.tileM)
 	local thickness = ctx.s(g.thicknessM)
 	local y = ctx.surfaceY - ctx.s(g.dropM) - thickness / 2
-	local nearStart, farStart = ctx.s(g.nearStartM), ctx.s(g.farStartM)
-	local splitDistance = ctx.s(g.splitDistanceM)
-	local noiseScale = ctx.s(g.tintNoiseScaleM)
 	local made = 0
-	-- Nearest approach to the road, in studs.
-	local function distance(cx: number, cz: number): number
-		local nearest = math.huge
-		for _, p in path do
-			local dx, dz = p.position.X - cx, p.position.Z - cz
-			nearest = math.min(nearest, dx * dx + dz * dz)
-		end
-		return math.sqrt(nearest)
-	end
-	-- Tone: a smooth blend from near to far by distance, then a slow noise
-	-- tint so neighbouring pieces differ a little, like real ground.
-	local function tone(cx: number, cz: number, nearest: number): Color3
-		local t = math.clamp((nearest - nearStart) / math.max(farStart - nearStart, 1), 0, 1)
-		local c = g.nearColor:Lerp(g.farColor, t)
-		local n = math.noise(cx / noiseScale, cz / noiseScale, 7.31) * g.tintVariation
-		return if n < 0 then c:Lerp(Color3.new(0, 0, 0), -n) else c:Lerp(Color3.new(1, 1, 1), n)
-	end
-	local function slab(cx: number, cz: number, size: number, nearest: number)
-		Build.part({
-			name = "Sand",
-			size = Vector3.new(size, thickness, size),
-			cframe = CFrame.new(cx, y, cz),
-			color = tone(cx, cz, nearest),
-			material = Enum.Material.Sand,
-			parent = parent,
-			collide = true,
-		})
-		made += 1
-	end
+	-- One tone, one tile size. The sand material supplies the grain and the
+	-- atmosphere supplies the distance fade. An earlier pass split the near
+	-- tiles and gave each a noise tint to break up the sheet; from the air
+	-- that drew the tile grid on the desert as hard-edged rectangles, which
+	-- is worse than a flat sheet. The plane is only ever seen beyond the
+	-- berm anyway, where haze has it.
 	local nx = math.ceil((maxX - minX) / tile)
 	local nz = math.ceil((maxZ - minZ) / tile)
 	for ix = 0, nx - 1 do
 		for iz = 0, nz - 1 do
-			local cx = minX + (ix + 0.5) * tile
-			local cz = minZ + (iz + 0.5) * tile
-			local nearest = distance(cx, cz)
-			if nearest < splitDistance and g.splitN > 1 then
-				-- Near the road: cut the tile so the blend and the tint
-				-- noise vary across it.
-				local n = g.splitN
-				local sub = tile / n
-				for sx = 0, n - 1 do
-					for sz = 0, n - 1 do
-						local px = cx - tile / 2 + (sx + 0.5) * sub
-						local pz = cz - tile / 2 + (sz + 0.5) * sub
-						slab(px, pz, sub, distance(px, pz))
-					end
-				end
-			else
-				slab(cx, cz, tile, nearest)
-			end
+			Build.part({
+				name = "Sand",
+				size = Vector3.new(tile, thickness, tile),
+				cframe = CFrame.new(minX + (ix + 0.5) * tile, y, minZ + (iz + 0.5) * tile),
+				color = g.color,
+				material = Enum.Material.Sand,
+				parent = parent,
+				collide = true,
+			})
+			made += 1
 		end
 	end
 	return made

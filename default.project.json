@@ -27,7 +27,16 @@
           "BaseMaterial": "Sand",
           "ColorMap": "rbxassetid://8282523778",
           "NormalMap": "rbxassetid://8282524789",
-          "StudsPerTile": 18
+          "StudsPerTile": 20
+        }
+      },
+      "HajwalaAsphalt": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Asphalt",
+          "ColorMap": "rbxassetid://106466177146374",
+          "NormalMap": "rbxassetid://11226165423",
+          "StudsPerTile": 26
         }
       }
     }
