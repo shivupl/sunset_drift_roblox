@@ -12,9 +12,9 @@ only in the place file. Change a number in the config and restart the server.
 | `WorldConfig.luau` | Every tunable, in metres and degrees, grouped by system. |
 | `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, ground, bay, spawn; and the markings and wear, which it puts in a separate streamed `RoadDetail` model. |
 | `Lighting.luau` | Lamp posts on both shoulders and down the median (one store mesh each), sky, atmosphere, every Lighting setting. |
-| `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
+| `Signage.luau` | Lattice gantries with a framed board over each carriageway, roadside boards on twin posts, speed-limit signs. |
 | `Cityscape.luau` | The backdrop skyline: a band along the right of the road, a downtown cluster near the start, two landmarks. |
-| `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
+| `Scatter.luau` | Palms, scrub clusters, acacia trees, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
 | `Relief.luau` | The near desert and the edge of the world as one terrain surface: floor, berm, crest, back slope, plus the invisible stop. |
 | `Materials.luau` | The sand and asphalt MaterialVariants, stamped across everything after the build. |
@@ -71,7 +71,18 @@ curve the faces meet at an angle, resolve cleanly, and the overlap closes the
 wedge gap on the outside edge.
 
 **Boxes, not cylinders.** A Roblox cylinder is roughly 100 triangles and a box
-is 12. Gantry posts and beams are boxes. Nobody can tell at that section.
+is 12.
+
+**Signs are modelled, not sourced.** Every "highway sign" on the store is
+a plain-part build of a US exit sign, so the gantries are built here the
+way a Saudi motorway gantry is built: a lattice portal frame, each leg two
+galvanised columns with ties and diagonals on a concrete base, the beam a
+truss of two chords with verticals and a diagonal every bay, and a green
+board hung under it on brackets over each carriageway, with a white border
+strip round the face and stiffening rails on the back. Roadside boards
+stand on twin posts and alternate green direction boards with blue
+distance boards; a red-ring speed sign stands every 500 m on both
+shoulders. About 130 parts a gantry, four gantries.
 
 **The lamp post is one mesh.** A box pole with a box arm and a box head never
 read as a lamp, from any distance: the owner called them out. The post is now
@@ -387,6 +398,21 @@ samples), and earlier along a boulevard through three roundabouts, a side
 street and the plaza: no gaps, the surface within 5 cm everywhere except
 the roundabout islands.
 
+**Mesh buildings.** Two thirds of the shop slots and half the tower spots
+take a textured store mesh instead of a box: three office buildings from
+one pack (a 71 m curtain-wall tower on a podium, a 37 m grey block, a 27 m
+cream block with green glass), a 38 m slab, and four mid-rise blocks from
+a facade pack (ochre, cream, tan with an arched ground floor, grey). Each
+is one MeshPart, cloned from a template loaded once by id, so nothing from
+the store model itself ships. A block is scaled so its long side fills the
+slot's frontage and its front sits on the shops' setback line, turned so
+its long axis runs along the street; a tower is scaled within a per-mesh
+range and never wider than a podium slot. This is where the real facades,
+recessed windows and plant rooms come from; the box buildings around them
+carry the tiled textures below. The same packs' brick manor, Russian
+dachas and hangar are rejected in the registry: none of them stands in
+Riyadh.
+
 **Facade textures.** Every building body in the city and the skyline
 carries a tiled window-grid texture on its four sides, three storeys a
 tile, tinted toward the wall colour, with a random tile offset per
@@ -404,8 +430,19 @@ parts, for the glow at dusk.
 **Assets vetted and rejected.** In `AssetRegistry.luau`. The traffic light
 and satellite dish listings were plain-part builds with scripts and are
 built from boxes instead; the car pack's Cybertruck and Rimac are brands
-and are not used; "Pacifico Parked Cars" are named after real models. No
-paid kit was needed.
+and are not used; "Pacifico Parked Cars" are named after real models. Of
+twenty-five "mesh building", "highway sign" and "desert bush" listings put
+in the viewport for this pass, eight buildings, five plant clumps and one
+tree were real single meshes; the rest were hundreds of plain parts, a
+1.7 m prop titled as a building, or a green box. No paid kit was needed.
+
+**Scrub and trees.** The verge scrub draws from five desert grass and
+shrub clumps (two free foliage sets that share meshes) plus the old bush,
+all coloured to one olive, placed in clusters of one to four every 9 m
+because desert scrub grows where the last plant held the sand; and an
+acacia-style tree (a textured crown over a trunk) stands on the verge
+every 150 m or so, the one thing besides the palms that breaks the horizon
+at a driver's eye height.
 
 **Frame rate.** Not measured from a focused window: the Studio window
 cannot be focused from the MCP session and throttles to 15 fps unfocused.

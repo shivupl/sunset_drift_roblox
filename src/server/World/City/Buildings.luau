@@ -3,9 +3,11 @@
 -- filled by its district: a commercial parcel gets a row of shop buildings
 -- along its boulevard frontages, a residential parcel gets walled villa
 -- compounds around its edges, the tower parcel gets podium-and-tower blocks,
--- the plaza is a flat painted car park, and a lot is left as sand. All boxes
--- and the odd cylinder, from CityConfig and the seeded random, nothing
--- sourced.
+-- the plaza is a flat painted car park, and a lot is left as sand. Boxes
+-- and the odd cylinder from CityConfig and the seeded random, and on a
+-- share of the shop slots and tower spots a textured store mesh building
+-- from AssetRegistry (cityBlocks, cityTowers), which is where the real
+-- facades come from.
 --
 -- Silhouettes are broken on purpose: widths, depths and heights vary per
 -- building, rows have gaps, villas get a smaller upper tier, towers a
@@ -115,7 +117,7 @@ local function windows(ctx: Context, c: CCfg, rng: Random, parent: Instance, f: 
 		for i = 1, segs do
 			if rng:NextNumber() < b.litChance then
 				local along = -usable / 2 + segW * (i - 0.5)
-				onFace(ctx, parent, "Window", f, along, y, segW * 0.7, b.windowBandHeightM * 0.8, b.windowInsetM, b.windowLit, Enum.Material.Neon, rng:NextNumber(0.25, 0.5))
+				onFace(ctx, parent, "Window", f, along, y, segW * 0.7, b.windowBandHeightM * 0.8, b.windowInsetM, b.windowLit, Enum.Material.Neon, rng:NextNumber(0.5, 0.75))
 			end
 		end
 	end
@@ -148,12 +150,58 @@ local function roofClutter(ctx: Context, c: CCfg, rng: Random, parent: Instance,
 	end
 end
 
+-- A mesh building in a shop slot: one of AssetRegistry.cityBlocks scaled
+-- so its long side fills the slot's frontage, its front on the same
+-- setback line the box shops use, long axis along the street. Returns
+-- false if no mesh is available, and the caller builds the box shop.
+local function meshBlock(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: number, cz: number, sx: number, sz: number, mainDir: string): boolean
+	local keys = AssetRegistry.cityBlocks
+	local key = keys[rng:NextInteger(1, #keys)]
+	if not AssetRegistry.hasProp(key) then
+		return false
+	end
+	local size = AssetRegistry.sizeM(key)
+	local long, short = math.max(size.X, size.Z), math.min(size.X, size.Z)
+	local alongStreet = if mainDir == "N" or mainDir == "S" then sx else sz
+	local scale = math.clamp(alongStreet / long, c.buildings.meshMinScale, c.buildings.meshMaxScale)
+	local depth = short * scale
+	-- The long axis along the street: for a north or south frontage the
+	-- street runs along X, so a mesh whose long axis is Z turns a quarter.
+	local longIsX = size.X >= size.Z
+	local streetIsX = mainDir == "N" or mainDir == "S"
+	local yaw = if longIsX == streetIsX then 0 else math.pi / 2
+	if rng:NextNumber() < 0.5 then
+		yaw += math.pi -- both facades get used
+	end
+	local px, pz: number
+	if mainDir == "N" then
+		px, pz = cx, cz + sz / 2 - depth / 2
+	elseif mainDir == "S" then
+		px, pz = cx, cz - sz / 2 + depth / 2
+	elseif mainDir == "E" then
+		px, pz = cx + sx / 2 - depth / 2, cz
+	else
+		px, pz = cx - sx / 2 + depth / 2, cz
+	end
+	local base = CFrame.new(ctx.s(px), ctx.surfaceY, ctx.s(pz)) * CFrame.Angles(0, yaw, 0)
+	local model = AssetRegistry.place(key, base, scale, ctx.mps, parent, c.shadows.buildings, true)
+	if not model then
+		return false
+	end
+	model.Name = "MeshBlock"
+	return true
+end
+
 -- One shop building: body, stain, windows on the street faces, awning and
 -- fascia on the main face, parapet, roof clutter.
 local function shop(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: number, cz: number, sx: number, sz: number, storeys: number, mainDir: string, otherDir: string?)
 	local b = c.buildings
 	local cm = b.commercial
 	local h = storeys * b.storeyM
+	-- A share of the slots take a mesh building instead of the box shop.
+	if rng:NextNumber() < b.meshChance and meshBlock(ctx, c, rng, parent, cx, cz, sx, sz, mainDir) then
+		return
+	end
 	local colour = wallColour(c, rng)
 	local material = WALL_MATERIALS[rng:NextInteger(1, #WALL_MATERIALS)]
 	local model = Instance.new("Model")
@@ -467,6 +515,29 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 	local model = Instance.new("Model")
 	model.Name = "Tower"
 	model.Parent = parent
+	-- A share of the tower spots take a mesh tower: a real office tower
+	-- with its own podium, plant room and curtain wall, scaled within the
+	-- range CityConfig gives it and never wider than a podium slot.
+	if rng:NextNumber() < tw.meshChance then
+		local keys = AssetRegistry.cityTowers
+		local key = keys[rng:NextInteger(1, #keys)]
+		local range = tw.meshScales[key]
+		if range and AssetRegistry.hasProp(key) then
+			local size = AssetRegistry.sizeM(key)
+			local scale = rng:NextNumber(range[1], range[2])
+			local foot = math.max(size.X, size.Z) * scale
+			if foot > tw.podiumMaxM then
+				scale *= tw.podiumMaxM / foot
+			end
+			local yaw = rng:NextInteger(0, 3) * math.pi / 2
+			local base = CFrame.new(ctx.s(cx), ctx.surfaceY, ctx.s(cz)) * CFrame.Angles(0, yaw, 0)
+			if AssetRegistry.place(key, base, scale, ctx.mps, model, c.shadows.buildings, true) then
+				local topY = size.Y * scale
+				box(ctx, model, "Beacon", cx, topY + 0.8, cz, 0.8, 0.8, 0.8, Color3.fromRGB(255, 70, 60), Enum.Material.Neon, false, false)
+				return
+			end
+		end
+	end
 	local podium = rng:NextNumber(tw.podiumMinM, tw.podiumMaxM)
 	local ph = tw.podiumStoreys * b.storeyM
 	local podiumColour = wallColour(c, rng)

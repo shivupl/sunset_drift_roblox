@@ -90,7 +90,11 @@ local function scrub(cfg: Config, ctx: Context, at: Vector3, rng: Random, parent
 	local size = rng:NextNumber(sc.minSizeM, sc.maxSizeM)
 	local base = CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
 	if cfg.scatter.useMeshes then
-		local model = AssetRegistry.place("scrub", base, size / 2, ctx.mps, parent, false)
+		-- One of the desert clumps at random: grasses, a broad-leaf shrub,
+		-- the low bush. A verge of one bush repeated reads as a stamp.
+		local key = AssetRegistry.scrubs[rng:NextInteger(1, #AssetRegistry.scrubs)]
+		local unit = if key == "scrub" then 2 else 1.12
+		local model = AssetRegistry.place(key, base, size / unit, ctx.mps, parent, false)
 		if model then
 			local tint = rng:NextNumber(-sc.colorVariation, sc.colorVariation)
 			for _, part in model:GetChildren() do
@@ -263,9 +267,13 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			local side = if rng:NextNumber() < 0.5 then -1 else 1
 			local edgeM = rng:NextNumber(math.max(s.minEdgeM, vergeM + 1), s.maxEdgeM)
 			if rng:NextNumber() <= density(cfg, edgeM) then
-				local pos = ground(along, side * (lay.totalM / 2 + edgeM))
-				if free(pos, ctx.s(1.2)) then
-					scrub(cfg, ctx, pos, rng, bushes)
+				-- A cluster, not one clump: desert scrub grows where the
+				-- last plant held the sand.
+				for _ = 1, rng:NextInteger(s.clusterMin, s.clusterMax) do
+					local pos = ground(along + rng:NextNumber(-s.clusterSpreadM, s.clusterSpreadM), side * (lay.totalM / 2 + edgeM + rng:NextNumber(-s.clusterSpreadM, s.clusterSpreadM)))
+					if free(pos, ctx.s(0.9)) then
+						scrub(cfg, ctx, pos, rng, bushes)
+					end
 				end
 			end
 			-- Sparse low scrub between the median palms.
@@ -277,6 +285,27 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 				end
 			end
 			d += s.spacingM
+		end
+	end
+
+	-- Desert trees: the odd acacia out on the verge, the one thing besides
+	-- the palms that breaks the horizon line at a driver's eye height.
+	if sc.tree.enabled and AssetRegistry.hasProp("desertTree") then
+		local trees = Build.folder("Trees", folder)
+		local t = sc.tree
+		local d = t.spacingM
+		while d < totalM do
+			local along = d + rng:NextNumber(-t.jitterM, t.jitterM)
+			local side = if rng:NextNumber() < 0.5 then -1 else 1
+			local edgeM = rng:NextNumber(math.max(t.minEdgeM, vergeM + 3), t.maxEdgeM)
+			if rng:NextNumber() < t.chance then
+				local pos = ground(along, side * (lay.totalM / 2 + edgeM))
+				if free(pos, ctx.s(4)) then
+					local base = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+					AssetRegistry.place("desertTree", base, rng:NextNumber(t.minScale, t.maxScale), ctx.mps, trees, cfg.shadows.palms)
+				end
+			end
+			d += t.spacingM
 		end
 	end
 

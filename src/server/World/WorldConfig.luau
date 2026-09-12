@@ -480,13 +480,25 @@ local config = {
 		gantrySpacingM = 600,
 		gantryFirstM = 300,
 		setbackM = 1.5, -- from the kerb to the post
-		gantryHeightM = 7.2,
-		gantryPostWidthM = 0.5,
-		gantryBeamDepthM = 0.7,
-		panelWidthM = 7,
-		panelHeightM = 3,
-		panelColor = Color3.fromRGB(22, 96, 58),
-		postColor = Color3.fromRGB(86, 88, 92),
+		gantryHeightM = 7.6,
+		-- The gantry is a lattice portal frame, the kind that spans every
+		-- Saudi motorway: each leg two columns with ties, the beam a truss
+		-- of two chords with verticals and diagonals every bayM.
+		legColumnM = 0.32,
+		legSpreadM = 1.3, -- between the two columns of a leg
+		trussDepthM = 1.5,
+		chordM = 0.24,
+		bayM = 3.2,
+		braceM = 0.14,
+		panelWidthM = 7.5,
+		panelHeightM = 3.2,
+		-- Panels: green with a white border strip, the way Saudi direction
+		-- signs are, hung from the truss on two brackets.
+		panelColor = Color3.fromRGB(16, 92, 52),
+		panelBlueColor = Color3.fromRGB(10, 56, 140), -- distance and service signs
+		borderWidthM = 0.12,
+		borderColor = Color3.fromRGB(236, 236, 230),
+		postColor = Color3.fromRGB(150, 152, 156), -- galvanised
 		textColor = Color3.fromRGB(240, 240, 235),
 		-- PLACEHOLDER road names. Replace with real Riyadh route names.
 		-- Each entry is { arabic, english, shield }.
@@ -496,11 +508,28 @@ local config = {
 			{ "الدرعية", "Diriyah", "12 km" },
 			{ "طريق الملك خالد", "King Khalid Rd", "N 40" },
 		},
+		-- Roadside signs on twin posts, alternating sides and alternating
+		-- green direction boards with blue distance boards.
 		roadsideEnabled = true,
 		roadsideSpacingM = 250,
-		roadsideWidthM = 1.6,
-		roadsideHeightM = 1.1,
-		roadsidePostHeightM = 2.2,
+		roadsideWidthM = 2.4,
+		roadsideHeightM = 1.5,
+		roadsidePostHeightM = 2.6,
+		roadsideTexts = {
+			{ "الرياض", "Riyadh", "18 km" },
+			{ "مخرج", "Exit", "2 km" },
+			{ "الخرج", "Al Kharj", "64 km" },
+			{ "استراحة", "Rest area", "5 km" },
+		},
+		-- Round speed-limit signs on a single post: red ring, white disc.
+		speedSigns = {
+			enabled = true,
+			spacingM = 500,
+			firstM = 150,
+			limit = "120",
+			diameterM = 0.9,
+			postHeightM = 2.4,
+		},
 	},
 
 	cityscape = {
@@ -705,17 +734,34 @@ local config = {
 			trunkColor = Color3.fromRGB(78, 64, 46),
 			frondColor = Color3.fromRGB(38, 52, 32),
 		},
+		-- Scrub is drawn from AssetRegistry.scrubs: five desert grass and
+		-- shrub clumps plus the old bush, coloured to the same olive.
 		scrub = {
 			enabled = true,
-			spacingM = 16,
-			jitterM = 7,
+			spacingM = 9,
+			jitterM = 4,
+			clusterMin = 1, -- clumps per spot
+			clusterMax = 4,
+			clusterSpreadM = 3.5,
 			minEdgeM = 4,
 			maxEdgeM = 140,
 			medianChance = 0.25, -- some low scrub in the median between clumps
-			minSizeM = 0.7,
-			maxSizeM = 1.9,
-			color = Color3.fromRGB(78, 88, 56),
-			colorVariation = 0.2,
+			minSizeM = 0.9,
+			maxSizeM = 2.4,
+			color = Color3.fromRGB(104, 112, 74),
+			colorVariation = 0.22,
+		},
+		-- Acacia-style desert trees on the verge, sparse: one every couple
+		-- of hundred metres is what the Riyadh ring road actually has.
+		tree = {
+			enabled = true,
+			spacingM = 150,
+			jitterM = 60,
+			chance = 0.7,
+			minEdgeM = 12,
+			maxEdgeM = 90,
+			minScale = 1.3, -- the mesh is 4.5 m tall at 1
+			maxScale = 2.1,
 		},
 		rock = {
 			enabled = true,

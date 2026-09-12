@@ -118,11 +118,17 @@ local config = {
 		windowInsetM = 0.15,
 		windowDark = Color3.fromRGB(38, 40, 48),
 		windowLit = Color3.fromRGB(255, 214, 150),
-		litChance = 0.35, -- fraction of window segments lit at golden hour
+		litChance = 0.18, -- fraction of window segments lit at golden hour; the mesh buildings are unlit, so the box ones stay quiet too
 		windowSegmentsPerFace = 3,
 		acUnitChance = 0.8,
 		acUnitsMax = 4,
 		waterTankChance = 0.6,
+		-- Share of shop slots that take a textured mesh building
+		-- (AssetRegistry.cityBlocks) instead of the box shop, and how far
+		-- a mesh may be scaled to fill its slot's frontage.
+		meshChance = 0.65,
+		meshMinScale = 0.75,
+		meshMaxScale = 1.25,
 		commercial = {
 			minWidthM = 18,
 			maxWidthM = 36,
@@ -178,6 +184,15 @@ local config = {
 			frameColor = Color3.fromRGB(210, 206, 196),
 			setbackChance = 0.5,
 			crownColor = Color3.fromRGB(255, 186, 120),
+			-- Share of tower spots that take a mesh tower (AssetRegistry.
+			-- cityTowers), and the scale range for each: the office tower
+			-- is 71 m at 1, the slab 38 m, the grey block 37 m.
+			meshChance = 0.5,
+			meshScales = {
+				officeTowerA = { 1.0, 1.3 },
+				officeSlab = { 1.5, 1.9 },
+				officeMidA = { 1.2, 1.6 },
+			},
 		},
 		plaza = {
 			bayLengthM = 5,

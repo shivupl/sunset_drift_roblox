@@ -430,10 +430,12 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | gantrySpacingM / gantryFirstM | How often an overhead gantry appears. |
-| gantryHeightM / gantryPostWidthM / gantryBeamDepthM | Structure size. |
-| panelWidthM / panelHeightM / panelColor / postColor / textColor | Sign face. |
-| gantryTexts | `{ arabic, english, shield }` rows. **Placeholders** — replace with real Riyadh route names. |
-| roadsideEnabled / roadsideSpacingM / roadsideWidthM / roadsideHeightM / roadsidePostHeightM | Small signs between gantries. |
+| gantryHeightM / legColumnM / legSpreadM | Portal frame height; each leg is two columns this thick, this far apart, with ties and diagonals between. |
+| trussDepthM / chordM / bayM / braceM | The beam truss: depth, chord section, bay length (a vertical and a diagonal per bay), brace section. |
+| panelWidthM / panelHeightM / panelColor / panelBlueColor / borderWidthM / borderColor / postColor / textColor | Boards: green direction, blue distance, the white border strip round each, galvanised steel, text. |
+| gantryTexts / roadsideTexts | `{ arabic, english, shield }` rows. **Placeholders** — replace with real Riyadh route names. |
+| roadsideEnabled / roadsideSpacingM / roadsideWidthM / roadsideHeightM / roadsidePostHeightM | Boards on twin posts between gantries, alternating sides and colours. |
+| speedSigns.* | Red-ring speed signs on one post, both shoulders: spacing, first, the number, disc diameter, post height. |
 
 ## cityscape
 | Field | What it does |
@@ -456,7 +458,8 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | palm.medianEnabled / medianClumpSpacingM / medianJitterM / medianMarginM / medianMaxPerClump | The planting down the reservation: a clump of up to medianMaxPerClump every spacing, jittered along and across, never inside the margin of a kerb. Sparse now (a pair every 90 m in the 8 m median) on request. |
 | palm.varietyFraction | Fraction of palms that use the second mesh. |
 | palm.minScale / maxScale | Height range. Uniform height is the thing that reads as copied. |
-| scrub.* | Low bushes on the verges and, at `medianChance`, between the median palms. |
+| scrub.* | Desert clumps on the verges (AssetRegistry.scrubs: five grasses and shrubs plus the old bush) in clusters of clusterMin..clusterMax within clusterSpreadM every spacingM, and at `medianChance` between the median palms. minSizeM/maxSizeM is the clump size. |
+| tree.* | Acacia-style trees on the verge: spacing, jitter, chance, edge band, scale range (the mesh is 4.5 m at 1). |
 | artifacts.campSpacingM / campJitterM / campChance | A roadside camp every spacing or so: a tent facing the road, a carpet in front of it, camels loitering beside. |
 | artifacts.minEdgeM / maxEdgeM | How far out from the verge a camp can sit. |
 | artifacts.camelsMin / camelsMax / camelSpreadM | Camels per camp and how far they wander from the tent. |
@@ -496,9 +499,11 @@ Not live-reloadable either; restart the server.
 | surface.* | Slab thickness, run cap (streaming), colours, tone jitter, kerb dust, marking sizes, tyre tracks, pavement width. |
 | districts | One row per block row, one entry per block: commercial, towers, plaza, residential, lot. |
 | buildings.palette / accentPalette / accentChance / tone | Sand, cream and warm grey, the odd colour, per-part jitter. |
+| buildings.meshChance / meshMinScale / meshMaxScale | Share of shop slots that take a textured mesh building (AssetRegistry.cityBlocks) instead of a box shop, and how far a mesh may be scaled to fill its frontage. 0 gives the all-box city back. |
 | buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. |
+| buildings.litChance | Fraction of first-floor window segments that glow. Low (0.18) so the box shops sit quietly next to the unlit mesh buildings. |
 | buildings.residential.* | Lot size, wall height, gate, villa size and storeys, tier and dish chance. |
-| buildings.towers.* | Podium size and storeys, tower storeys and width, glass and frame colours, setback chance, crown colour. |
+| buildings.towers.* | Podium size and storeys, tower storeys and width, glass and frame colours, setback chance, crown colour. meshChance is the share of tower spots that take a mesh tower (AssetRegistry.cityTowers), meshScales the scale range per mesh; a mesh tower is never wider than podiumMaxM. |
 | buildings.plaza.* | Bay geometry for the few painted rows. |
 | furniture.* | Palm, lamp, bin, bench, parked-car and signal densities. A parked car is five parts; parkedCarChance is the first thing to cut on a slow phone. |
 | shadows.* | Which city things cast: buildings and palms yes, compound walls, lamps and furniture no. |

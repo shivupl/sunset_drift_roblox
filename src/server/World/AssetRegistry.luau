@@ -200,6 +200,67 @@ local WHEEL: Prop = {
 	pieces = { { meshId = 9496370049, textureId = 0, sizeM = Vector3.new(0.24, 0.56, 0.56), offsetM = Vector3.new(0, 0.28, 0), color = Color3.fromRGB(30, 30, 32), material = Enum.Material.Rubber } },
 }
 
+-- CITY BUILDINGS: textured single-mesh buildings, one mesh each, so a
+-- parcel gets real facades, recessed windows, plant rooms and podiums
+-- instead of a box with a window texture. All from free, script-free
+-- store models, checked in the viewport for brands (none) and for style:
+-- the same packs also carry a brick manor, Russian dachas and a hangar,
+-- which are left out because none of them stands in Riyadh. Sizes are
+-- the mesh bounds in metres at scale 1; the foot is the bbox bottom.
+--
+-- Provenance: 6675851831/6675849341/6675924510 from "Mesh building ..."
+-- models 105938035335403, 116360956427807, 136401792754378 (three
+-- uploads of the same office pack); 518xxx/555xxx from
+-- "Mesh Buildings Facade Architecture Modern" 76260913000195
+-- (Scytheh0HyperM172482); 8509990171 from "Building Mesh Modern City
+-- Construction" 94380683717997 (b3ar_992003).
+local function building(name: string, meshId: number, textureId: number, sx: number, sy: number, sz: number, notes: string): Prop
+	return {
+		name = name,
+		creator = "store, see the provenance note above",
+		notes = notes,
+		pieces = { { meshId = meshId, textureId = textureId, sizeM = Vector3.new(sx, sy, sz), offsetM = Vector3.new(0, sy / 2, 0) } },
+	}
+end
+local OFFICE_TOWER_A = building("Office tower, dark curtain wall on a concrete podium", 6675851831, 6675851918, 47.8, 70.8, 34.33, "20 storeys. Podium two floors, plant room on the roof.")
+local OFFICE_SLAB = building("Office slab, narrow, glass strip", 8509990171, 8509990452, 21.74, 38.04, 8.33, "Thin slab tower; reads well end-on from the boulevard.")
+local OFFICE_MID_A = building("Office block, grey, dark windows", 6675849341, 6675849437, 33.61, 36.99, 32.95, "10 storeys, ground floor shops.")
+local OFFICE_MID_B = building("Office block, cream, green glass", 6675924510, 6675924553, 20.3, 26.58, 41.23, "7 storeys, long axis Z.")
+local BLOCK_YELLOW = building("Apartment block, ochre render", 5181345097, 5181345194, 18.38, 21.93, 43.74, "6 storeys, long axis Z, blank gable ends.")
+local BLOCK_CREAM = building("Apartment block, cream, classical windows", 5181539643, 5181539759, 18.46, 18.6, 28.47, "5 storeys, long axis Z.")
+local BLOCK_TAN = building("Commercial block, tan, arched ground floor", 5182478735, 5182478811, 21.14, 20.56, 56.9, "5 storeys, long axis Z.")
+local BLOCK_GREY = building("Block, grey render", 5553816968, 5553817152, 19.58, 27.57, 32.36, "7 storeys, long axis Z.")
+
+-- DESERT PLANTS. Five untextured grass and shrub clumps from two free
+-- foliage sets (123524818424620 Storshad7100, 132269903897062
+-- Wikkfli4871; the meshes are shared between them), coloured here to
+-- desert olive, and a textured acacia-style tree (81027325503795,
+-- Dekkco3194: crown mesh over a trunk mesh). Every clump is a 1.12 m
+-- cube at scale 1; the scatter scales them.
+local SCRUB_COLOR = Color3.fromRGB(112, 120, 82)
+local function clump(name: string, meshId: number): Prop
+	return {
+		name = name,
+		creator = "Storshad7100 / Wikkfli4871 foliage sets",
+		notes = "Mesh " .. meshId .. ", untextured, coloured.",
+		pieces = { { meshId = meshId, textureId = 0, sizeM = Vector3.new(1.12, 1.12, 1.12), offsetM = Vector3.new(0, 0.5, 0), color = SCRUB_COLOR, material = Enum.Material.Grass } },
+	}
+end
+local GRASS_A = clump("Grass clump, tall", 760766662)
+local GRASS_B = clump("Grass clump, tufts", 516875678)
+local GRASS_C = clump("Shrub, broad leaf", 529532384)
+local GRASS_D = clump("Grass clump, wide", 430877178)
+local GRASS_E = clump("Shrub, low", 438253448)
+local DESERT_TREE: Prop = {
+	name = "Desert tree, acacia style",
+	creator = "Dekkco3194 (store 81027325503795)",
+	notes = "Crown 3413128768/3413130419 over trunk 3413122876/3413140995. 4.5 m tall at scale 1.",
+	pieces = {
+		{ meshId = 3413122876, textureId = 3413140995, sizeM = Vector3.new(3.3, 3.22, 3.12), offsetM = Vector3.new(-0.24, 1.61, -0.13) },
+		{ meshId = 3413128768, textureId = 3413130419, sizeM = Vector3.new(4.8, 3.84, 4.79), offsetM = Vector3.new(0, 2.57, 0) },
+	},
+}
+
 -- Rock outcrops for the dune field, from "Desert Mountain" by falterize
 -- (store 12809476227, free, script-free): red sandstone pieces with their
 -- own colour maps, which go on as TextureID so nothing but the mesh and
@@ -257,7 +318,42 @@ AssetRegistry.props = {
 	outcropPeak = OUTCROP_PEAK,
 	outcropMesa = OUTCROP_MESA,
 	outcropRidge = OUTCROP_RIDGE,
+	officeTowerA = OFFICE_TOWER_A,
+	officeSlab = OFFICE_SLAB,
+	officeMidA = OFFICE_MID_A,
+	officeMidB = OFFICE_MID_B,
+	blockYellow = BLOCK_YELLOW,
+	blockCream = BLOCK_CREAM,
+	blockTan = BLOCK_TAN,
+	blockGrey = BLOCK_GREY,
+	grassA = GRASS_A,
+	grassB = GRASS_B,
+	grassC = GRASS_C,
+	grassD = GRASS_D,
+	grassE = GRASS_E,
+	desertTree = DESERT_TREE,
 } :: { [string]: Prop }
+
+-- The mesh buildings the city draws from: towers for the tower parcels,
+-- blocks for the shop rows. Weights bias the ones that read most Riyadh.
+AssetRegistry.cityTowers = { "officeTowerA", "officeTowerA", "officeSlab", "officeMidA" }
+AssetRegistry.cityBlocks = { "officeMidA", "officeMidB", "officeMidB", "blockYellow", "blockYellow", "blockTan", "blockGrey", "blockCream" }
+-- Desert scrub, drawn at random by the scatter and the city.
+AssetRegistry.scrubs = { "grassA", "grassB", "grassB", "grassC", "grassD", "grassE", "scrub" }
+
+-- Footprint helper for the city: the prop's size at scale 1, metres.
+function AssetRegistry.sizeM(key: string): Vector3
+	local prop = AssetRegistry.props[key]
+	if not prop then
+		return Vector3.zero
+	end
+	local minV, maxV = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+	for _, piece in prop.pieces do
+		minV = minV:Min(piece.offsetM - piece.sizeM / 2)
+		maxV = maxV:Max(piece.offsetM + piece.sizeM / 2)
+	end
+	return maxV - minV
+end
 
 -- The outcrop keys, in the order the dune field cycles through them. The
 -- peak is registered but not used: at field scale it reads as a dark shard.
@@ -345,6 +441,11 @@ AssetRegistry.rejected = {
 	"4896956679, 5060124620: the only smooth store 'sand dune' shapes are Unions, which cannot be rebuilt from an id at runtime",
 	"11061004551, 106033234039801: 'dune' meshes are flat sand tiles under two metres high",
 	"74792817716663, 73103955467301: AI-generated dunes came out as a blob and a cone; the field is ellipsoids instead",
+	"105658832956428, 135190175623292, 14024070793, 8359165862: 'mesh' buildings that are hundreds of plain parts or unions",
+	"130019681816281, 72694777627643: titled buildings, the mesh is a 1.7 m prop",
+	"5181212298, 7069549302, 7069554549, 7069557032, 7069482828: brick manor, dachas and a hangar in the facade pack; wrong country",
+	"98152942261386, 106594301458373, 117905541096350, 123039669118642, 75756292308983, 98530965163423: every store highway sign is plain parts and decals (US exit signs); the gantries are built here instead",
+	"3348839362, 89376354196391, 87426520007685: 'desert bush' is a green box, four parts, or a 30 cm pot plant",
 }
 
 -- Cache of loaded template MeshParts per mesh id. CreateMeshPartAsync yields
@@ -409,7 +510,7 @@ end
 -- Builds the prop at a base CFrame (its feet), scaled, with every piece an
 -- inert scenery part. Returns nil if any piece failed to load, so the caller
 -- can fall back to its primitive.
-function AssetRegistry.place(key: string, base: CFrame, scale: number, mps: number, parent: Instance, castShadow: boolean): Model?
+function AssetRegistry.place(key: string, base: CFrame, scale: number, mps: number, parent: Instance, castShadow: boolean, collide: boolean?): Model?
 	local prop = AssetRegistry.props[key]
 	if not prop or not AssetRegistry.hasProp(key) then
 		return nil
@@ -421,8 +522,10 @@ function AssetRegistry.place(key: string, base: CFrame, scale: number, mps: numb
 		local m = t:Clone()
 		m.Name = key
 		m.Anchored = true
-		m.CanCollide = false
-		m.CanQuery = false
+		-- Scenery is inert; a building the car can hit opts in (box
+		-- collision, from the template).
+		m.CanCollide = collide == true
+		m.CanQuery = collide == true
 		m.CanTouch = false
 		m.CastShadow = castShadow
 		m.Size = piece.sizeM * scale / mps
