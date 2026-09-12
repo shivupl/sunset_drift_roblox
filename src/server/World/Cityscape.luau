@@ -21,6 +21,9 @@ local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local CityConfig = require(script.Parent.City.CityConfig)
+local AssetRegistry = require(script.Parent.AssetRegistry)
+
+local SIDE_FACES = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -53,7 +56,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 	local up = Vector3.new(0, height / 2, 0)
 	local cf = CFrame.lookAt(site.base + up, site.base + up + site.facing) * CFrame.Angles(0, yaw, 0)
 
-	Build.part({
+	local body = Build.part({
 		name = if site.tower then "Tower" else "Block",
 		size = Vector3.new(width, height, depth),
 		cframe = cf,
@@ -62,6 +65,8 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 		parent = parent,
 		castShadow = cfg.shadows.cityscape,
 	})
+	-- Tiled facade, three storeys a tile, tinted toward the body colour.
+	AssetRegistry.facade(body, if site.tower then "glass" else "midRise", rng, SIDE_FACES, ctx.s(11), bodyColor:Lerp(Color3.new(1, 1, 1), 0.4), 0.1)
 
 	-- A narrower tier on top of some, which breaks the box outline.
 	local topY = height / 2
@@ -80,9 +85,9 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 		topY = height / 2 + th
 	end
 
-	-- Window bands on the road-facing face, each split into segments of
-	-- different brightness.
-	local bands = if site.tower then rng:NextInteger(c.towerBandsMin, c.towerBandsMax) else rng:NextInteger(c.blockBandsMin, c.blockBandsMax)
+	-- Lit window bands on the road-facing face, fewer now that the facade
+	-- texture carries the grid; these are the floors that glow at dusk.
+	local bands = if site.tower then rng:NextInteger(2, 4) else rng:NextInteger(0, 2)
 	local windowColor = if rng:NextNumber() < c.coolFraction then c.windowColorCool else c.windowColorWarm
 	local inset = ctx.s(c.windowInsetM)
 	for i = 1, bands do

@@ -151,6 +151,19 @@ stays, driven by empty lists) and the old 30 degree curve at the end of
 the straight went with them. Nothing hand-placed: `CityConfig.luau` and a
 seeded random.
 
+**Spawn.** The parking bay and the player spawn are on the transition
+pad's right-hand wing (900 to 1,300 m down the road, off to the side of
+the traffic) whenever the preset has a pad; a 40 m marked slab a
+centimetre proud of the wing so the two never fight, ten slots across it.
+Without a pad they fall back to behind the start line.
+
+**Skyline.** Two things on the horizon. The downtown cluster with the two
+landmarks stands beyond the city grid, dead ahead. A separate far ring of
+tall blocks and towers, 2.7 to 3.6 km out from the middle of the road,
+is the skyline you see from a distance in every other direction, the way
+the first pass had it; it is towers only, so it never reads as scattered
+small buildings, and it skips the city grid.
+
 **Streets** (`Streets.luau`). A 3 x 2 grid of blocks 420 m across.
 Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a
 3 m parking lane each way. Every boulevard crossing is a roundabout with a
@@ -212,16 +225,30 @@ shop fronts; bus shelters on the boulevards; zebra crossings across every
 side-street mouth; bollards and planters round the plaza. Nothing here
 collides.
 
-**Counts.** City streets 691, street detail 1,660, buildings 9,046,
-furniture 5,605; skyline 940 (downtown and landmarks only). Whole world
-20,791 parts. The city is streamed; the highway road, its palms and the
-skyline stay Persistent.
+**Counts.** City streets 691, street detail 1,660, buildings 6,013
+(1,588 facade textures), furniture 5,605; skyline 1,145 parts (696
+textures). Whole world 17,963 parts. The city is streamed; the highway
+road, its palms and the skyline stay Persistent.
 
 **Verified.** A raycast sweep every 2 m down the highway's right
 carriageway into the gateway and on down the central boulevard (500
 samples), and earlier along a boulevard through three roundabouts, a side
 street and the plaza: no gaps, the surface within 5 cm everywhere except
 the roundabout islands.
+
+**Facade textures.** Every building body in the city and the skyline
+carries a tiled window-grid texture on its four sides, three storeys a
+tile, tinted toward the wall colour, with a random tile offset per
+building so neighbours never line up: five mid-rise grids and five glass
+grids from the Creator Store, all put on boards in the viewport and
+looked at (no brands, no text). A decal id from the store does not load in
+a Texture; the image behind it does, and the only way to get that id was
+`InsertService:LoadAsset` on the decal inside Studio and reading
+`Decal.Texture` (the public asset-delivery endpoint wants a login). The
+textures replaced the window-band and mullion parts: city buildings went
+from 9,046 parts to 6,013, and the skyline lost its per-floor bands too.
+Only the lit windows on the first two floors above the shops are still
+parts, for the glow at dusk.
 
 **Assets vetted and rejected.** In `AssetRegistry.luau`. The traffic light
 and satellite dish listings were plain-part builds with scripts and are

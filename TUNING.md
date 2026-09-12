@@ -174,7 +174,7 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | dashLengthM / dashGapM / dashWidthM | Centreline dashes. |
 | curveRadiusM / curveSweepDeg / curveSegments | The gentle left curve at the end. |
 | padStartM / padLengthM / padWidthM | Transition pad: a wider stretch of the straight (default 900 to 1300 m, 160 m wide) for left-right swings. Edge lines mark its start and end. |
-| bayLengthM | Parking bay behind the start line. |
+| bayLengthM | Parking bay depth. The bay and the player spawn sit on the transition pad's right-hand wing when the preset has a pad, behind the start line otherwise. |
 | groundTileM | Sand ground tile size; the plane covers the straight, the curve and 500 m of run-off. |
 
 ## spawn
@@ -373,7 +373,7 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | seed | Fixed, so every server draws the same city. |
-| rings | Empty. Rings of low blocks round the desert read as random clusters of tiny buildings; the list is kept so one can be added back ({ distanceM, depthM, count, size and height ranges, towerChance }). |
+| rings | One far ring of tall blocks and towers at 2.7 km, the separate skyline seen from a distance. Each entry is { distanceM, depthM, count, size and height ranges, towerChance }; keep the minimum height up or a ring reads as scattered small buildings, which is why the old near ring of low blocks is gone. Anything inside the city grid is skipped. |
 | downtown | A dense cluster of slim towers in a sector sectorOffsetDeg round from the road's direction of travel (0 = straight ahead, behind the city grid): half-angle, distance range, count, size and height ranges, plus one wide dim Neon slab along its base (the sodium haze). Anything that would land inside the city grid is skipped. |
 | landmarks | Kingdom-Centre style (slab, two pillars, sky bridge: the arch) and Faisaliah style (four corner wedges as a pyramid, a globe near the tip), both in the downtown sector. Height, footprint, angle offset and distance each. |
 | tierChance / crownChance / antennaChance / antennaHeightM | A narrower tier on top of a share of buildings, a lit band at the top of towers, and an antenna on some. |

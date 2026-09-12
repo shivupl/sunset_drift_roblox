@@ -41,6 +41,15 @@ local function wallColour(c: CCfg, rng: Random): Color3
 end
 
 local WALL_MATERIALS = { Enum.Material.Concrete, Enum.Material.Sandstone, Enum.Material.SmoothPlastic, Enum.Material.Limestone }
+local SIDE_FACES = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
+
+-- A tiled window grid on the body, three storeys per tile, tinted toward
+-- the wall colour so the palette stays sand and cream. This replaced most
+-- of the window-band parts: one texture per face instead of a part per
+-- floor.
+local function facade(ctx: Context, c: CCfg, rng: Random, part: BasePart, kind: string, tint: Color3)
+	AssetRegistry.facade(part, kind, rng, SIDE_FACES, ctx.s(c.buildings.storeyM * 3), tint, 0.08)
+end
 
 -- Axis-aligned box in world metres. cy is the centre height above the
 -- surface.
@@ -97,17 +106,17 @@ local function windows(ctx: Context, c: CCfg, rng: Random, parent: Instance, f: 
 	local usable = f.width * 0.82
 	local segs = b.windowSegmentsPerFace
 	local segW = usable / segs
+	-- With the facade texture carrying the window grid, only the lit
+	-- windows are parts now: a few glowing segments on the first two
+	-- floors above the shop, which is what a driver sees at dusk.
 	local first = if groundFloorShop then 2 else 1
-	for st = first, storeys do
+	for st = first, math.min(storeys, first + 1) do
 		local y = (st - 0.5) * b.storeyM + 0.2
-		if st <= 3 then
-			for i = 1, segs do
+		for i = 1, segs do
+			if rng:NextNumber() < b.litChance then
 				local along = -usable / 2 + segW * (i - 0.5)
-				local lit = rng:NextNumber() < b.litChance
-				onFace(ctx, parent, "Window", f, along, y, segW * 0.78, b.windowBandHeightM, b.windowInsetM, if lit then b.windowLit else b.windowDark, if lit then Enum.Material.Neon else Enum.Material.Glass, if lit then rng:NextNumber(0.2, 0.5) else 0.1)
+				onFace(ctx, parent, "Window", f, along, y, segW * 0.7, b.windowBandHeightM * 0.8, b.windowInsetM, b.windowLit, Enum.Material.Neon, rng:NextNumber(0.25, 0.5))
 			end
-		else
-			onFace(ctx, parent, "Window", f, 0, y, usable, b.windowBandHeightM * 0.9, b.windowInsetM, b.windowDark, Enum.Material.Glass, 0.1)
 		end
 	end
 end
@@ -150,7 +159,8 @@ local function shop(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: nu
 	local model = Instance.new("Model")
 	model.Name = "Shop"
 	model.Parent = parent
-	box(ctx, model, "Wall", cx, h / 2, cz, sx, h, sz, colour, material, true, c.shadows.buildings)
+	local wall = box(ctx, model, "Wall", cx, h / 2, cz, sx, h, sz, colour, material, true, c.shadows.buildings)
+	facade(ctx, c, rng, wall, "midRise", colour:Lerp(Color3.new(1, 1, 1), 0.35))
 	local main = faceOf(mainDir, cx, cz, sx, sz)
 	-- Pilasters on some, which breaks the box outline at street level.
 	if rng:NextNumber() < 0.4 then
@@ -460,7 +470,8 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 	local podium = rng:NextNumber(tw.podiumMinM, tw.podiumMaxM)
 	local ph = tw.podiumStoreys * b.storeyM
 	local podiumColour = wallColour(c, rng)
-	box(ctx, model, "Podium", cx, ph / 2, cz, podium, ph, podium, podiumColour, Enum.Material.Concrete, true, c.shadows.buildings)
+	local podiumPart = box(ctx, model, "Podium", cx, ph / 2, cz, podium, ph, podium, podiumColour, Enum.Material.Concrete, true, c.shadows.buildings)
+	facade(ctx, c, rng, podiumPart, "midRise", podiumColour:Lerp(Color3.new(1, 1, 1), 0.35))
 	-- Shop level on every face of the podium: a driver sees the podium,
 	-- not the tower. Glazed front, a stone band above it, windows up.
 	for _, dir in { "N", "S", "E", "W" } do
@@ -478,22 +489,16 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 	local glass = tinted(tw.glassColor, rng, 0.12)
 	local tx = cx + rng:NextNumber(-(podium - w) / 2 + 2, (podium - w) / 2 - 2)
 	local tz = cz + rng:NextNumber(-(podium - d) / 2 + 2, (podium - d) / 2 - 2)
-	box(ctx, model, "Shaft", tx, ph + h / 2, tz, w, h, d, glass, Enum.Material.Glass, true, c.shadows.buildings)
-	-- Mullion strips up the street faces, floor bands every three storeys.
-	for _, dir in { faceDir, if faceDir == "N" or faceDir == "S" then "E" else "N" } do
-		local f = faceOf(dir, tx, tz, w, d)
-		for i = 1, 3 do
-			local along = -f.width / 2 + f.width * i / 4
-			onFace(ctx, model, "Mullion", f, along, ph + h / 2, 0.5, h * 0.98, 0.15, tw.frameColor, Enum.Material.Metal)
-		end
-		for st = 3, storeys - 1, 3 do
-			onFace(ctx, model, "Band", f, 0, ph + st * b.storeyM, f.width * 0.96, 0.35, 0.12, tw.frameColor, Enum.Material.Metal)
-		end
-	end
+	local shaft = box(ctx, model, "Shaft", tx, ph + h / 2, tz, w, h, d, glass, Enum.Material.Glass, true, c.shadows.buildings)
+	-- The curtain wall is a texture; the mullion and band parts it
+	-- replaced were forty parts a tower.
+	AssetRegistry.facade(shaft, "glass", rng, SIDE_FACES, ctx.s(b.storeyM * 3), glass:Lerp(Color3.new(1, 1, 1), 0.45), 0.05)
+	local _ = faceDir
 	local topY = ph + h
 	if rng:NextNumber() < tw.setbackChance then
 		local sw, sd, sh = w * 0.6, d * 0.6, b.storeyM * rng:NextInteger(3, 6)
-		box(ctx, model, "Setback", tx, topY + sh / 2, tz, sw, sh, sd, glass, Enum.Material.Glass, false, c.shadows.buildings)
+		local setback = box(ctx, model, "Setback", tx, topY + sh / 2, tz, sw, sh, sd, glass, Enum.Material.Glass, false, c.shadows.buildings)
+		AssetRegistry.facade(setback, "glass", rng, SIDE_FACES, ctx.s(b.storeyM * 3), glass:Lerp(Color3.new(1, 1, 1), 0.45), 0.05)
 		topY += sh
 	end
 	box(ctx, model, "Crown", tx, topY - 0.5, tz, w * 1.02, 1.0, d * 1.02, tw.crownColor, Enum.Material.Neon, false, false).Transparency = 0.4

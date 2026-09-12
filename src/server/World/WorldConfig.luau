@@ -239,13 +239,15 @@ local config = {
 		-- the road (the direction the player spends the session looking),
 		-- with two landmark towers in it. Rebuilt on request: the first pass
 		-- was ninety boxes in one ring and read as a bar chart.
-		-- No rings. They scattered low blocks all round the desert and the
-		-- owner read them as random clusters of tiny buildings; the city is
-		-- one place now, ahead of the highway, so the backdrop is only the
-		-- downtown cluster behind the grid. An entry here is
-		-- { distanceM, depthM, count, min/maxWidthM, min/maxHeightM,
-		-- towerChance, towerMin/MaxHeightM } if a ring is ever wanted back.
-		rings = {} :: { { distanceM: number, depthM: number, count: number, minWidthM: number, maxWidthM: number, minHeightM: number, maxHeightM: number, towerChance: number, towerMinHeightM: number, towerMaxHeightM: number } },
+		-- One far ring: the separate skyline on the horizon that was there
+		-- from the first pass, which the owner wants visible from a distance.
+		-- Tall blocks and towers only, far out, so from the road it reads as
+		-- a skyline and never as scattered small buildings (the near ring of
+		-- low blocks that did read that way is gone). Anything that would
+		-- land in the city grid is skipped.
+		rings = {
+			{ distanceM = 2700, depthM = 900, count = 110, minWidthM = 45, maxWidthM = 160, minHeightM = 45, maxHeightM = 120, towerChance = 0.3, towerMinHeightM = 130, towerMaxHeightM = 270 },
+		},
 		-- Downtown: a KAFD-style cluster in a sector centred on the road's
 		-- direction of travel. Dense, tall, slim.
 		downtown = {

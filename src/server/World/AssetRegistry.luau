@@ -196,6 +196,59 @@ AssetRegistry.props = {
 	wheel = WHEEL,
 } :: { [string]: Prop }
 
+-- Facade textures: tiled window grids for building walls. Every id here is
+-- the IMAGE behind a Creator Store decal, not the decal itself: a decal id
+-- in a Texture does not load, and the image id is only reachable from
+-- inside Studio (InsertService:LoadAsset on the decal, then read
+-- Decal.Texture). All twelve candidates were put on boards in the viewport
+-- and looked at; no brands, no text. Tiles cover about three storeys.
+AssetRegistry.facades = {
+	-- Mid-rise: concrete and render with window rows. Store decal id in
+	-- the note, image id in the table.
+	midRise = {
+		34658495, -- "Building Texture 52" by soraroxas2346, decal 34658496: light concrete
+		33968018, -- "Building Texture 42" by soraroxas2346, decal 33968019: grey grid
+		6019587856, -- "0034-old-building-texture-seamless" by Dragonfirebro059, decal 6019587863: beige, dark windows
+		1020167159, -- "TexturesCom_HighRiseResidential0011_1" by SkyNymph, decal 1020167162
+		36805732, -- "Building Texture 75" by soraroxas2346, decal 36805733: warm grey rows
+	},
+	-- Glass: tower curtain walls.
+	glass = {
+		15883053882, -- "BUILDING WINDOW" by Daniel_1234567888, decal 15883053903: blue panels
+		10607676333, -- "Skyscraper1" by StarDucks Cafe, decal 10607676364: blue-violet grid
+		13654404035, -- "tower windows texture" by Redagb, decal 13654404066: teal grid
+		1020167485, -- "TexturesCom_HighRiseGlass0104_3" by SkyNymph, decal 1020167489: pale glass
+		166325357, -- "Building Texture" by burkerdnff, decal 166325358: dark grid
+	},
+}
+
+-- Puts a tiled facade on the given faces of a part. tileStuds is the
+-- height of one tile; the U scale follows the same figure so the grid
+-- stays square. A random offset breaks the repetition between neighbours.
+function AssetRegistry.facade(part: BasePart, kind: string, rng: Random, faces: { Enum.NormalId }, tileStuds: number, tint: Color3?, transparency: number?)
+	local list = AssetRegistry.facades[kind]
+	if not list or #list == 0 then
+		return
+	end
+	local id = list[rng:NextInteger(1, #list)]
+	local offU, offV = rng:NextNumber(0, tileStuds), rng:NextNumber(0, tileStuds)
+	for _, face in faces do
+		local t = Instance.new("Texture")
+		t.Name = "Facade"
+		t.Texture = `rbxassetid://{id}`
+		t.Face = face
+		t.StudsPerTileU = tileStuds
+		t.StudsPerTileV = tileStuds
+		t.OffsetStudsU = offU
+		t.OffsetStudsV = offV
+		if tint then
+			t.Color3 = tint
+		end
+		t.Transparency = transparency or 0
+		t.Parent = part
+	end
+end
+
 -- Skyboxes. A Sky is six textures and nothing else, so there is nothing to
 -- sandbox; the check is brand and content. Ids live in WorldConfig with the
 -- time of day that uses them; this is the provenance.

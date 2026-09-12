@@ -719,14 +719,31 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 	buildMarkings(ctx, path, markingFolder, r.asphaltColor, lay)
 	detail.Parent = workspace
 
-	-- Parking bay behind the start line, and the player spawn beside it.
+	-- Parking bay and the player spawn. On the transition pad's right-hand
+	-- wing when the preset has one (the owner wanted to start in the wide
+	-- section, off to the side of the traffic), behind the start line
+	-- otherwise. The bay is a marked slab a centimetre proud of the wing so
+	-- the two never z-fight; the car settles onto it on spawn.
 	local bayLen = s(preset.bayLengthM)
 	local start = path[1]
-	local bayPos = start.position - start.cframe.LookVector * (bayLen / 2) - Vector3.new(0, s(r.thicknessM) / 2, 0)
+	local bayCf: CFrame
+	local bayW: number
+	if pad and pad.widthM > lay.totalM + 40 then
+		local at = RoadNetwork.sample(path, pad.startM + pad.lengthM / 2)
+		local wing = (pad.widthM - lay.totalM) / 2
+		local lateral = at.halfWidth + s(wing / 2)
+		bayW = s(math.min(wing - 8, 44))
+		local pos = at.position + at.cframe.RightVector * lateral + Vector3.new(0, s(0.01) - s(r.thicknessM) / 2, 0)
+		bayCf = CFrame.lookAt(pos, pos + at.cframe.LookVector)
+	else
+		bayW = start.halfWidth * 2
+		local bayPos = start.position - start.cframe.LookVector * (bayLen / 2) - Vector3.new(0, s(r.thicknessM) / 2, 0)
+		bayCf = CFrame.lookAt(bayPos, bayPos + start.cframe.LookVector)
+	end
 	local bay = Build.part({
 		name = "Bay",
-		size = Vector3.new(start.halfWidth * 2, s(r.thicknessM), bayLen),
-		cframe = CFrame.lookAt(bayPos, bayPos + start.cframe.LookVector),
+		size = Vector3.new(bayW, s(r.thicknessM), bayLen),
+		cframe = bayCf,
 		color = r.bayColor,
 		material = Enum.Material.Concrete,
 		parent = road,

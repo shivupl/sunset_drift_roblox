@@ -550,7 +550,7 @@ local config = {
 
 	spawn = {
 		spawnHeightM = 0.45, -- above rest height; the car drops and settles on spawn
-		slotStartM = -20, -- first bay slot, lateral
+		slotStartM = -18, -- first bay slot, lateral; ten slots at the spacing must fit the bay width
 		slotSpacingM = 4,
 		settleSpeedMps = 0.5, -- a driverless car below this speed...
 		settleSeconds = 1, -- ...for this long gets anchored
