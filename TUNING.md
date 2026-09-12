@@ -334,7 +334,23 @@ to the sun's elevation, so check that line after changing heights.
 | medianColor / medianMaterial / medianDropM | The strip between carriageways. It is ground, so it collides. |
 | kerbWidthM / kerbHeightM | A visual lip only; collision is off. |
 
-There are no barriers. Running wide costs speed and dignity, not the run.
+There are no barriers at the road. Running wide costs speed and dignity, not
+the run; the edge of the world is the berm, 170 m out on the right and 200 m
+on the sunset side.
+
+## berm
+The drivable sand hill either side of the highway, with an invisible wall on
+its crest. `sun` and `other` are the two profiles, picked by which side
+Lighting's sun is on at build time.
+
+| Field | What it does |
+|---|---|
+| endM | Where the berm stops along the road; the start-line end is open. |
+| runCapM | Length of each profile piece along the road; keep under 573 m. |
+| wallHeightM | The invisible wall on the crest. A car launched off the lip at 200 km/h carries 150 m of climb, so keep it tall. |
+| sun.* / other.* | Per-side profile: footM (centreline to the foot), slopeDeg / slopeWidthM (the drivable part), lipDeg / lipWidthM (the steep bit at the top), backDeg (cosmetic back slope), crestMoundMinM / MaxM (hilltops above the crest). Lower and farther on the sun side keeps the sunset and the far dunes in view. |
+| moundSpacingM / moundJitterM / moundMin*M / moundMax*M / moundBackFrac | The rounded hilltops along the crest, cosmetic, sitting behind the lip so nothing hangs over the slope. |
+| color / crestColor / colorVariation | Sand tones; the crest is a touch lighter. |
 
 ## lamps
 | Field | What it does |

@@ -83,6 +83,16 @@ function Build.cornerWedge(o: Opts): CornerWedgePart
 	return p
 end
 
+-- A smooth ellipsoid: a Part with a sphere SpecialMesh, which renders at
+-- any aspect where a Ball part would render a sphere. Dune and hill forms.
+function Build.ellipsoid(o: Opts): Part
+	local p = Build.part(o)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
 function Build.folder(name: string, parent: Instance): Folder
 	local f = Instance.new("Folder")
 	f.Name = name

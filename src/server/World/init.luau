@@ -15,6 +15,7 @@ local AssetRegistry = require(script.AssetRegistry)
 local WorldLighting = require(script.Lighting)
 local Cityscape = require(script.Cityscape)
 local Dunes = require(script.Dunes)
+local Berm = require(script.Berm)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
 local City = require(script.City)
@@ -94,6 +95,11 @@ function World.build(): Result
 	if cfg.duneField.enabled then
 		local model = Dunes.build(cfg, ctx, path, world)
 		tally("dunes", model)
+	end
+
+	if cfg.berm.enabled then
+		local model = Berm.build(cfg, ctx, path, world)
+		tally("berm", model)
 	end
 
 	if cfg.signage.enabled then

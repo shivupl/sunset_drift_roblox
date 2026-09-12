@@ -150,7 +150,7 @@ local config = {
 			seed = 3311,
 			spacingM = 110, -- along the road
 			jitterM = 50,
-			minEdgeM = 140,
+			minEdgeM = 330, -- beyond the berm's back slope
 			maxEdgeM = 1400,
 			minLengthM = 60,
 			maxLengthM = 220,
@@ -281,8 +281,57 @@ local config = {
 		skylineMarginM = 400,
 	},
 
-	-- No barriers. There is nothing between the road and the sand; running
-	-- wide costs speed, not the run. The module was removed rather than
+	-- The berm: the playable area's edge on both sides of the highway, a
+	-- long sand hill the car can drive up. A gentle collidable slope rises
+	-- from the foot to a short steep lip, an invisible wall stands on the
+	-- crest so nothing gets over, and a cosmetic rounded crest and back
+	-- slope make it read as a dune line rather than a ramp. The sun side is
+	-- farther out and lower so the sunset and the far field stay in view.
+	-- Distances in metres from the road centreline.
+	berm = {
+		enabled = true,
+		seed = 6121,
+		endM = 1940, -- stops short of the city gateway; the start line end is open
+		runCapM = 480, -- profile pieces along the road; under the 573 m part cap
+		wallHeightM = 150, -- invisible; a car launched off the lip at 200 km/h still meets it
+		sun = {
+			footM = 200,
+			slopeDeg = 6,
+			slopeWidthM = 60,
+			lipDeg = 32,
+			lipWidthM = 4,
+			backDeg = 18,
+			crestMoundMinM = 1.5, -- above the lip's crest
+			crestMoundMaxM = 4,
+		},
+		other = {
+			footM = 170,
+			slopeDeg = 9,
+			slopeWidthM = 60,
+			lipDeg = 35,
+			lipWidthM = 5,
+			backDeg = 22,
+			crestMoundMinM = 3,
+			crestMoundMaxM = 8,
+		},
+		-- Rounded hilltops along the crest, cosmetic, sitting behind the
+		-- lip so nothing hangs over the drivable slope. Width is across the
+		-- berm, length along it.
+		moundSpacingM = 70,
+		moundJitterM = 25,
+		moundMinWidthM = 50,
+		moundMaxWidthM = 110,
+		moundMinLengthM = 90,
+		moundMaxLengthM = 220,
+		moundBackFrac = 0.4, -- of width: how far behind the crest the mound centre sits
+		color = Color3.fromRGB(134, 114, 84),
+		crestColor = Color3.fromRGB(146, 124, 90),
+		colorVariation = 0.06,
+	},
+
+	-- No barriers at the road. There is nothing between the road and the
+	-- sand; running wide costs speed, not the run. The edge of the world is
+	-- the berm above. The old barrier module was removed rather than
 	-- disabled so nothing can bring it back by accident.
 
 	lamps = {

@@ -15,7 +15,8 @@ only in the place file. Change a number in the config and restart the server.
 | `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
 | `Cityscape.luau` | The skyline: two rings, a downtown cluster ahead of the road, two landmarks. |
 | `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
-| `Dunes.luau` | The dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
+| `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
+| `Berm.luau` | The playable edge: a drivable sand hill either side of the highway with an invisible wall on its crest. Persistent. |
 | `AssetRegistry.luau` | Mesh props by id, the loader, and the provenance of everything vetted. |
 
 There is no barrier module any more. Nothing stands between the road and the
@@ -112,6 +113,24 @@ both numbers, and the skyline ring drops any site that would stand behind the
 field so that side is dunes against sky. A field this far out is soft in the
 golden-hour haze by design; the knob for that is the preset's atmosphere
 density. Nothing in the field collides, and the whole model is Persistent.
+
+**The berm is the one piece of scenery that collides.** Either side of the
+highway, a sand hill marks the edge of the playable area: a gentle collidable
+slope (9 degrees on the right, 6 on the sunset side, where it also starts
+farther out and lower so the sunset and the far field stay in view), a short
+steep lip at the angle of repose, and an invisible 150 m wall standing on the
+crest. Rounded hilltops sit behind the lip and a back slope drops to the
+plane, so from the road it reads as a dune line and from the far side it has
+a back. Measured from the driver's seat: the car climbs the right slope,
+meets the crest at 41 km/h from a 110 km/h approach and settles on the slope
+at 9 m; on the sunset side it climbs from 200 m out and is turned back at
+262 m. Two things were learned the hard way: a colliding part with CanQuery
+off is not honoured reliably, so the wall is queryable (the suspension rays
+point down and the camera does not raycast, so nothing else sees it); and
+boxes in a ribbon run frame have Size.X lateral and Size.Z along the road,
+unlike the yawed wedges, which put the first wall across the road as a 1 m
+sliver the car drove straight past. The start-line end is open; the berm
+stops short of the city gateway.
 
 **The skyline is a ring, not a band.** Two bands parallel to the road are
 invisible *from* the road: looking down the straight you see the gap between
@@ -337,6 +356,7 @@ Whole world, `testRoad` preset, six lanes each way in a 64 m corridor with an
 | signage | 40 | 0 |
 | scatter (palms, scrub, rocks, dunes, camps, camels) | 629 | ~520 |
 | dune field (sheets, ridges, seifs, crescents, mounds, outcrops, scrub; Persistent) | 1,011 | ~90 |
+| berm (slope, lip, wall, back, hilltops, both sides; Persistent, slope and lip collide) | 107 | 0 |
 | **total** | **5,620** | **~520** |
 
 The skyline is the biggest change from the first pass, which was ninety
