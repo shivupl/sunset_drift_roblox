@@ -11,9 +11,9 @@ only in the place file. Change a number in the config and restart the server.
 | `init.luau` | Entry point. Builds once, in order, and prints a part and triangle report. |
 | `WorldConfig.luau` | Every tunable, in metres and degrees, grouped by system. |
 | `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, ground, bay, spawn; and the markings and wear, which it puts in a separate streamed `RoadDetail` model. |
-| `Lighting.luau` | Lamp posts on both shoulders and down the median, sky, atmosphere, every Lighting setting. |
+| `Lighting.luau` | Lamp posts on both shoulders and down the median (one store mesh each), sky, atmosphere, every Lighting setting. |
 | `Signage.luau` | Overhead gantries with a panel over each carriageway, roadside signs. |
-| `Cityscape.luau` | The skyline: two rings, a downtown cluster ahead of the road, two landmarks. |
+| `Cityscape.luau` | The backdrop skyline: a band along the right of the road, a downtown cluster near the start, two landmarks. |
 | `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
 | `Relief.luau` | The near desert and the edge of the world as one terrain surface: floor, berm, crest, back slope, plus the invisible stop. |
@@ -71,8 +71,20 @@ curve the faces meet at an angle, resolve cleanly, and the overlap closes the
 wedge gap on the outside edge.
 
 **Boxes, not cylinders.** A Roblox cylinder is roughly 100 triangles and a box
-is 12. Lamp poles are 26 cm square boxes. Nobody can tell at that section, and
-across 200 lamps it is the difference between 3,600 and 30,000 triangles.
+is 12. Gantry posts and beams are boxes. Nobody can tell at that section.
+
+**The lamp post is one mesh.** A box pole with a box arm and a box head never
+read as a lamp, from any distance: the owner called them out. The post is now
+a single textured store mesh (BryanROBLOXgamer10's "Street Lamp Light",
+`AssetRegistry.highwayLamp`: concrete pedestal, tapering pole, the curved
+cobra arm and the head in one piece), cloned from one template at 1.15 for a
+12.2 m highway post with the head 5.1 m out, and the pole a hand past the
+kerb so the head hangs over the outer lane. The lens under the head is a
+separate thin part, because the mesh has none: warm-white Neon at an hour
+whose lamps are lit, pale glass otherwise, and it carries the light manager's
+tag. A median post is two of the mesh back to back, the second 12 cm along
+the road so the poles never share a surface and shimmer. The box build
+survives only as the stand-in for when the mesh cannot load.
 
 **Windows are parts, not a texture.** A texture would be one draw per building
 instead of three or four, but it needs an asset to vet and upload, it is a
@@ -194,31 +206,31 @@ floating on the horizon with nothing behind them. At golden hour they are
 glass instead. The city's own shopfronts are left lit: they only read as bars
 from an altitude no player reaches.
 
-**The backdrop skyline is one lit city, on the side away from the sun.** It
-used to be a ring all round the road, which was right before the berms
-existed: a ring puts skyline in every viewing direction. Now that the edge of
-the playable area is a 13 m dune either side, a ring hides most of its
-buildings behind that dune and scatters the few that clear it, so it is a
-single city in one direction instead. The sun and the far dune field are both
-on the left and the detailed city is straight ahead, which leaves the right.
-Both the surrounding blocks and the dense downtown core sit in that quarter
-at 1.7 to 2.5 km (it was 2.7 to 3.4, and from the road it only ever showed
-as a ghost: golden-hour haze takes almost everything past 2.5 km), with the two landmarks among them, so they read as one city
-with a downtown in it rather than two separate skylines. The sunset keeps the
-left to itself and the highway keeps the view straight ahead.
-
-With the berm off nothing hides its base, so the blocks run from 90 m and
-the towers from 240 to 400. A ring entry with a `sectorDeg` is a cluster
-rather than a circle, and the sector is measured round from the road's
-direction of travel, so it follows the road rather than the world axes.
+**The backdrop skyline is a band along the right of the road.** It used to
+be a ring all round the road, then one cluster off the middle of it; both put
+the city where the driver was not looking for most of the drive, and the
+cluster was invisible from the start. Now it is a band on the side away from
+the sun, from 1.1 km behind the start line to the city gateway, in two rows:
+a low front row at 1.3 to 1.6 km so the towers behind have a foot, and the
+tall row at 1.6 to 2.4 km. Density follows a curve along the band, full at
+350 m from the start and easing to a third at the ends, and the dense
+downtown cluster with the two landmarks sits at that peak, so from the start
+line and from the spawn bay the city is square on the right, and it is still
+there, thinner, at the far end. It stays inside 2.5 km because golden-hour
+haze takes nearly everything past that; and the golden-hour atmosphere
+density came down from 0.26 to 0.2 for the same reason, at which the city
+reads as a lit city and the sunset side keeps its warm band.
 
 **And it is lit at every time of day.** A dark silhouette out there is worth
 nothing, and away from the sun the city has the sky to itself. Warm and cool
-window bands, a lit crown on three quarters of the towers, a lit roofline on
-some of the blocks, red beacons, and vertical LED strips up the corners of
-half the towers, which are what actually read as a modern Gulf skyline at
-this distance: the verticals still catch the eye long after the window grid
-has become a smear. A wide, low, faint slab of sodium haze washes the base of
+window bands, a lit crown on most of the towers, a lit roofline on more than
+half the blocks, red beacons, vertical LED strips up the corners of seven in
+ten towers, lit rings round half of them at random floors, and a lit needle
+spire on a fifth; the strips, rings and spires draw from one weighted
+palette, mostly gold and cool white with the odd magenta, cyan and green,
+the way Riyadh's towers actually light up. The verticals are what read as a
+modern Gulf skyline at this distance: they still catch the eye long after
+the window grid has become a smear. A wide, low, faint slab of sodium haze washes the base of
 the cluster; narrower or more solid and it stops being haze and becomes an
 orange slab standing in the desert. The one care needed is that haze swallows
 a building body long before it swallows an emissive part, so in daylight
@@ -248,10 +260,13 @@ photographed sunset skybox (six textures, no scripts, nothing branded; the
 provenance is in `AssetRegistry.skyboxes`). Dusk and night keep the procedural
 dome, which is correct for them because they want it dark.
 
-**Lamps are off at golden hour.** A lit head is a Neon slab, and in daylight a
-Neon slab reads as a yellow sticker; a dark housing reads as a lamp. Dusk and
-night light them, through the same twelve-light manager, with the head going
-Neon only in a preset where the lights are actually on.
+**Lamps are on at golden hour, gently.** With the box heads a lit Neon slab
+in daylight read as a yellow sticker; under the mesh head a warm-white lens
+reads as a highway coming on at sunset, which is the hour this is. The
+twelve pooled lights are SpotLights now, hung under the lens and shining
+straight down in a 120 degree cone, so the light lands on the road as a pool
+rather than glowing the air above the head; brightness and range still come
+from the time of day, so night is brighter and longer than golden hour.
 
 ### Two settings a script cannot touch
 
@@ -284,15 +299,21 @@ seeded random.
 **Spawn.** The parking bay and the player spawn are on the transition
 pad's right-hand wing (900 to 1,300 m down the road, off to the side of
 the traffic) whenever the preset has a pad; a 40 m marked slab a
-centimetre proud of the wing so the two never fight, ten slots across it.
-Without a pad they fall back to behind the start line.
+centimetre proud of the wing so the two never fight, ten slots across it,
+with a painted line each side of every slot. Without a pad they fall back
+to behind the start line. The spawn pad itself is invisible; it used to be
+a white block on the wing.
 
-**Skyline.** Two things on the horizon. The downtown cluster with the two
-landmarks stands beyond the city grid, dead ahead. A separate far ring of
-tall blocks and towers, 2.7 to 3.6 km out from the middle of the road,
-is the skyline you see from a distance in every other direction, the way
-the first pass had it; it is towers only, so it never reads as scattered
-small buildings, and it skips the city grid.
+**The pad is part of the road.** Each wing now widens in over a 60 m flat
+asphalt triangle (a WedgePart on its side) at both ends instead of starting
+with a square corner, a painted edge line runs round the wing and along the
+diagonals, and the outer shoulder and kerb follow the wing's outer edge
+rather than cutting straight across the pad, which used to split the wing
+from the carriageway with a kerb line.
+
+**Skyline.** The backdrop band along the right of the road, densest near
+the start with the downtown cluster and the two landmarks there; see the
+skyline notes above. It skips the city grid.
 
 **Streets** (`Streets.luau`). A 3 x 2 grid of blocks 420 m across.
 Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a

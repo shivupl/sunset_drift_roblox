@@ -177,7 +177,7 @@ local config = {
 			glassColor = Color3.fromRGB(96, 120, 140),
 			frameColor = Color3.fromRGB(210, 206, 196),
 			setbackChance = 0.5,
-			crownColor = Color3.fromRGB(255, 200, 140),
+			crownColor = Color3.fromRGB(255, 186, 120),
 		},
 		plaza = {
 			bayLengthM = 5,

@@ -1,22 +1,23 @@
 --!strict
 -- Lamp posts and every Lighting service setting.
 --
--- The lamps themselves carry no Light instance. The server builds pole, arm
--- and a Neon head, then tags the head so the client light manager can put one
--- of its twelve pooled PointLights on the nearest ones. That is the whole
+-- The lamps themselves carry no Light instance. The server builds the post
+-- and a lens under the head, then tags the lens so the client light manager
+-- can hang one of its twelve pooled SpotLights from the nearest ones. That is the whole
 -- reason the world can have two hundred lamps and still run: Roblox degrades
 -- badly past a handful of live lights, and an unlit Neon head still reads as
 -- a lamp from a distance.
 --
--- Poles are boxes, not cylinders. A Roblox cylinder is roughly a hundred
--- triangles and a box is twelve; at a 26 cm section nobody can tell, and at
--- two hundred lamps that is the difference between 3,600 and 30,000
--- triangles of lamp post.
+-- The post itself is one store mesh (AssetRegistry.highwayLamp): a concrete
+-- pedestal, a tapering pole and the curved cobra arm in a single textured
+-- piece, cloned from one template. The box pole and box arm that used to be
+-- built here are kept as the stand-in for when that mesh cannot load.
 local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
+local AssetRegistry = require(script.Parent.AssetRegistry)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -136,17 +137,46 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 	local lit = WorldLighting.timeOfDay(cfg).lamps.enabled
 	local headColor = if lit then l.bulbColor else l.headOffColor
 	local headMaterial = if lit then Enum.Material.Neon else Enum.Material.Metal
-	-- One post. side is which way the arm reaches (toward the road for an
-	-- outer post); arms lists the directions for a median post.
-	local function post(base: Vector3, p: RoadNetwork.PathPoint, arms: { number })
-		local lamp = Build.folder("Lamp", folder)
-		local yaw = rng:NextNumber(-l.yawJitterDeg, l.yawJitterDeg)
-		local heightScale = 1 + rng:NextNumber(-l.heightJitter, l.heightJitter)
+	-- The real post is a store mesh (AssetRegistry.highwayLamp); the box
+	-- build below is only the stand-in for when that mesh fails to load.
+	local useMesh = l.useMesh and AssetRegistry.hasProp("highwayLamp")
+	local lensOffset = AssetRegistry.highwayLampLensOffsetM
+	local lensSize = Vector3.new(ctx.s(l.lensSizeM.X), ctx.s(l.lensSizeM.Y), ctx.s(l.lensSizeM.Z))
+
+	-- One mesh post: foot on the ground at `foot`, arm reaching along
+	-- `armDir`. The lens is a separate thin part under the head, Neon when
+	-- the hour lights the lamps and dark glass otherwise, and it carries the
+	-- tag the client light manager looks for. Its bottom face points down,
+	-- which is where the pooled SpotLight shines from.
+	local function meshPost(lamp: Folder, foot: Vector3, armDir: Vector3, scale: number)
+		-- lookAt puts -Z on the target; a quarter turn about Y then puts
+		-- the mesh's +X (the arm) along armDir.
+		local cf = CFrame.lookAt(foot, foot + armDir) * CFrame.Angles(0, math.pi / 2, 0)
+		local model = AssetRegistry.place("highwayLamp", cf, scale, ctx.mps, lamp, castShadow)
+		if not model then
+			return false
+		end
+		model.Name = "Post"
+		local lens = Build.part({
+			name = "Head",
+			size = lensSize * scale,
+			cframe = cf * CFrame.new(lensOffset * scale / ctx.mps),
+			color = if lit then l.lensLitColor else l.lensOffColor,
+			material = if lit then Enum.Material.Neon else Enum.Material.Glass,
+			parent = lamp,
+			transparency = if lit then l.lensLitTransparency else l.lensOffTransparency,
+		})
+		CollectionService:AddTag(lens, WorldLighting.LAMP_TAG)
+		return true
+	end
+
+	-- The stand-in: pole, arm and head from boxes.
+	local function boxPost(lamp: Folder, base: Vector3, p: RoadNetwork.PathPoint, arms: { number }, yaw: number, heightScale: number)
 		local thisPoleH = poleH * heightScale
 		Build.part({
 			name = "Pole",
 			size = Vector3.new(poleW, thisPoleH, poleW),
-			cframe = CFrame.new(base + Vector3.new(0, thisPoleH / 2, 0)) * CFrame.Angles(0, math.rad(yaw), 0),
+			cframe = CFrame.new(base + Vector3.new(0, thisPoleH / 2, 0)) * CFrame.Angles(0, yaw, 0),
 			color = l.poleColor:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.12)),
 			material = Enum.Material.Metal,
 			parent = lamp,
@@ -173,10 +203,33 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 				parent = lamp,
 				castShadow = castShadow,
 			})
-			-- The client light manager finds lamps by this tag and never
-			-- creates more than maxLiveLights PointLights in total.
 			CollectionService:AddTag(head, WorldLighting.LAMP_TAG)
 		end
+	end
+
+	-- One post. arms lists the directions the arms reach, in units of the
+	-- road's RightVector: { -1 } for an outer post on the right shoulder,
+	-- { -1, 1 } for a median post. A median post is two mesh posts back to
+	-- back, the second a hand's width along the road so the two poles read
+	-- as one thick pole rather than two coincident surfaces shimmering.
+	local function post(base: Vector3, p: RoadNetwork.PathPoint, arms: { number })
+		local lamp = Build.folder("Lamp", folder)
+		local yaw = math.rad(rng:NextNumber(-l.yawJitterDeg, l.yawJitterDeg))
+		local heightScale = 1 + rng:NextNumber(-l.heightJitter, l.heightJitter)
+		if useMesh then
+			local yawed = CFrame.Angles(0, yaw, 0)
+			local ok = true
+			for i, dir in arms do
+				local foot = base + p.cframe.LookVector * ((i - 1) * ctx.s(l.pairGapM))
+				local armDir = yawed:VectorToWorldSpace(p.cframe.RightVector * dir)
+				ok = meshPost(lamp, foot, armDir, l.meshScale * heightScale) and ok
+			end
+			if ok then
+				return
+			end
+			lamp:ClearAllChildren()
+		end
+		boxPost(lamp, base, p, arms, yaw, heightScale)
 	end
 
 	local index = 0

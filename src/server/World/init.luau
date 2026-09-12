@@ -171,6 +171,7 @@ function World.build(): Result
 	settings:SetAttribute("LightColor", cfg.lamps.lightColor)
 	settings:SetAttribute("LightBrightness", tod.lamps.brightness)
 	settings:SetAttribute("LightRangeStuds", ctx.s(tod.lamps.rangeM))
+	settings:SetAttribute("LightAngleDeg", cfg.lamps.lightAngleDeg)
 	settings.Parent = ReplicatedStorage
 
 	return { road = road, path = path, parts = totalParts, triangles = totalTris }

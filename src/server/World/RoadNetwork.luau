@@ -23,6 +23,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Units = require(Shared.Units)
+local CarConfig = require(Shared.CarConfig)
 local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 
@@ -602,16 +603,30 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 		})
 	end
 
+	-- The transition pad, if the preset has one, decides where the outer
+	-- shoulder runs: along the road everywhere except the pad and the
+	-- tapers leading into it, and along the pad's own outer edge there.
+	-- A kerb crossing the wing used to split the pad from the carriageway
+	-- in a line; now the wing is one surface with the road.
+	local pad = preset.pad
+	local wing = if pad and pad.widthM > 0 then (pad.widthM - lay.totalM) / 2 else 0
+	local taperM = if wing > 0 then r.padTaperM else 0
+	local padFrom = if pad then pad.startM else 0
+	local padTo = if pad then pad.startM + pad.lengthM else 0
+	local outerRanges: { { number } } = if wing > 0
+		then { { 0, padFrom - taperM }, { padTo + taperM, totalM } }
+		else { { 0, totalM } }
+
 	-- Outer shoulders and kerbs. Shoulders are ground; kerbs are a lip.
 	local shoulderFolder = Build.folder("Shoulders", road)
-	for _, side in { -1, 1 } do
+	local function shoulderAndKerb(side: number, extraM: number, fromM: number, toM: number)
 		RoadNetwork.ribbon({
 			name = "Shoulder",
 			runCapM = r.longRunM,
 			parent = shoulderFolder,
 			path = path,
 			ctx = ctx,
-			offsetM = side * (r.shoulderWidthM / 2),
+			offsetM = side * (extraM + r.shoulderWidthM / 2),
 			edgeRelative = true,
 			widthM = r.shoulderWidthM,
 			heightM = r.thicknessM,
@@ -619,6 +634,8 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 			color = r.shoulderColor,
 			material = Enum.Material.Concrete,
 			collide = true,
+			fromM = fromM,
+			toM = toM,
 		})
 		RoadNetwork.ribbon({
 			name = "Kerb",
@@ -626,14 +643,24 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 			parent = shoulderFolder,
 			path = path,
 			ctx = ctx,
-			offsetM = side * (r.shoulderWidthM + r.kerbWidthM / 2),
+			offsetM = side * (extraM + r.shoulderWidthM + r.kerbWidthM / 2),
 			edgeRelative = true,
 			widthM = r.kerbWidthM,
 			heightM = r.kerbHeightM,
 			yM = r.kerbHeightM / 2 - 0.01,
 			color = r.kerbColor,
 			material = Enum.Material.Concrete,
+			fromM = fromM,
+			toM = toM,
 		})
+	end
+	for _, side in { -1, 1 } do
+		for _, range in outerRanges do
+			shoulderAndKerb(side, 0, range[1], range[2])
+		end
+		if wing > 0 then
+			shoulderAndKerb(side, wing, padFrom, padTo)
+		end
 	end
 
 	-- Two carriageways. Every slab a slightly different shade: asphalt is
@@ -672,12 +699,68 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 		})
 	end
 
-	-- Transition pad: flush wings outside each carriageway.
-	local pad = preset.pad
+	-- Transition pad: flush wings outside each carriageway, with a taper
+	-- leading into each end so the widening is a diagonal and not a step,
+	-- and a painted edge line round the lot so the wing reads as part of
+	-- the highway rather than a slab laid beside it.
 	if pad and pad.widthM > 0 then
 		local padFolder = Build.folder("TransitionPad", road)
-		local wing = (pad.widthM - lay.totalM) / 2
 		if wing > 0 then
+			-- A flat triangle: a WedgePart on its side. Its tall face is at
+			-- local +Z, so with local Z along the road and local Y lateral
+			-- the full width sits at the pad end and it comes to a point
+			-- taperM back along the road edge.
+			local function taper(side: number, nearM: number, farM: number)
+				local near = RoadNetwork.sample(path, nearM) -- the pad end
+				local far = RoadNetwork.sample(path, farM) -- the point
+				local v = near.cframe.RightVector * side
+				local u = (near.position - far.position).Unit -- from the point to the pad end
+				local tip = far.position + far.cframe.RightVector * (side * far.halfWidth)
+				local length = (near.position - far.position).Magnitude
+				local width = s(wing)
+				local centre = tip + u * (length / 2) + v * (width / 2) - Vector3.new(0, s(r.thicknessM) / 2, 0)
+				Build.wedge({
+					name = "PadTaper",
+					size = Vector3.new(s(r.thicknessM), width, length),
+					cframe = CFrame.fromMatrix(centre, v:Cross(u), v, u),
+					color = r.padColor,
+					material = Enum.Material.Asphalt,
+					parent = padFolder,
+					collide = true,
+				})
+				-- The edge line along the diagonal.
+				local inset = s(r.edgeLineWidthM / 2 + 0.3)
+				local a = tip + Vector3.new(0, s(r.markingEpsilonM), 0)
+				local b = tip + u * length + v * (width - inset * 2) + Vector3.new(0, s(r.markingEpsilonM), 0)
+				local mid = (a + b) / 2
+				Build.part({
+					name = "PadEdgeLine",
+					size = Vector3.new(s(r.edgeLineWidthM), s(r.markingThicknessM), (b - a).Magnitude),
+					cframe = CFrame.lookAt(mid, b),
+					color = r.paintColor,
+					material = Enum.Material.Concrete,
+					parent = padFolder,
+				})
+			end
+			for _, side in { -1, 1 } do
+				taper(side, pad.startM, pad.startM - taperM)
+				taper(side, pad.startM + pad.lengthM, pad.startM + pad.lengthM + taperM)
+				RoadNetwork.ribbon({
+					name = "PadEdgeLine",
+					parent = padFolder,
+					path = path,
+					ctx = ctx,
+					offsetM = side * (wing - r.edgeLineWidthM / 2 - 0.3),
+					edgeRelative = true,
+					widthM = r.edgeLineWidthM,
+					heightM = r.markingThicknessM,
+					yM = r.markingEpsilonM,
+					color = r.paintColor,
+					material = Enum.Material.Concrete,
+					fromM = pad.startM,
+					toM = pad.startM + pad.lengthM,
+				})
+			end
 			for _, side in { -1, 1 } do
 				RoadNetwork.ribbon({
 					name = "PadWing",
@@ -745,6 +828,27 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 		collide = true,
 	})
 
+	-- Slot lines across the bay, one each side of every CarSpawner slot,
+	-- so the parked cars sit in marked bays rather than on a blank slab.
+	if r.baySlotLines then
+		-- CarConfig.spawn is the source of truth for the slot pitch. The
+		-- fallback only ever fires in an Edit-mode preview, where Studio's
+		-- require cache can hand back a CarConfig from before spawn existed.
+		local spawnCfg = (CarConfig :: any).spawn or { slotStartM = -18, slotSpacingM = 4 }
+		local slotStart, slotSpacing = s(spawnCfg.slotStartM), s(spawnCfg.slotSpacingM)
+		for i = 0, 10 do
+			local x = slotStart - slotSpacing / 2 + i * slotSpacing
+			Build.part({
+				name = "SlotLine",
+				size = Vector3.new(s(0.12), s(r.markingThicknessM), bayLen * 0.8),
+				cframe = bayCf * CFrame.new(x, s(r.thicknessM) / 2 + s(r.markingEpsilonM), 0),
+				color = r.paintColor,
+				material = Enum.Material.Concrete,
+				parent = road,
+			})
+		end
+	end
+
 	local existingSpawn = workspace:FindFirstChild("SpawnLocation")
 	if existingSpawn then
 		existingSpawn:Destroy()
@@ -760,6 +864,7 @@ function RoadNetwork.build(cfg: Config, world: Folder): (Model, Path, Context)
 	spawn.CFrame = bay.CFrame * CFrame.new(0, s(r.thicknessM) / 2 + 0.5, bayLen / 2 + s(6))
 	spawn.Neutral = true
 	spawn.CastShadow = false
+	spawn.Transparency = 1 -- it was a white block on the pad
 	spawn.Parent = road
 
 	-- Contract with the vehicle code. These names and meanings are read by

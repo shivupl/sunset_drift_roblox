@@ -2,8 +2,10 @@
 -- The twelve lights.
 --
 -- Roblox degrades badly past a handful of dynamic lights, so the world has
--- two hundred lamp posts and a fixed pool of PointLights that is never larger
--- than WorldSettings.MaxLiveLights. On a throttled interval the pool moves to
+-- two hundred lamp posts and a fixed pool of SpotLights that is never larger
+-- than WorldSettings.MaxLiveLights. A SpotLight, not a PointLight: it hangs
+-- under the lens and shines down in a wide cone, so the light lands on the
+-- road as a pool instead of glowing the sky above the head. On a throttled interval the pool moves to
 -- whichever tagged lamp heads are nearest the camera. Every other lamp is
 -- unlit Neon geometry, which still reads as a lamp at distance.
 --
@@ -18,8 +20,8 @@ local WorldLights = {}
 
 local LAMP_TAG = "HajwalaLamp"
 
-local pool: { PointLight } = {}
-local assigned: { [PointLight]: BasePart? } = {}
+local pool: { SpotLight } = {}
+local assigned: { [SpotLight]: BasePart? } = {}
 local running = false
 
 local function settings(): Folder?
@@ -40,6 +42,7 @@ local function buildPool(f: Folder?)
 	local color = (if f then f:GetAttribute("LightColor") else nil) :: Color3?
 	local brightness = num(f, "LightBrightness", 2.5)
 	local range = num(f, "LightRangeStuds", 80)
+	local angle = num(f, "LightAngleDeg", 120)
 	while #pool > want do
 		local light = table.remove(pool)
 		if light then
@@ -48,11 +51,13 @@ local function buildPool(f: Folder?)
 		end
 	end
 	while #pool < want do
-		local light = Instance.new("PointLight")
+		local light = Instance.new("SpotLight")
 		light.Name = "LampLight"
 		light.Color = color or Color3.fromRGB(255, 170, 74)
 		light.Brightness = brightness
 		light.Range = range
+		light.Angle = angle
+		light.Face = Enum.NormalId.Bottom -- the lens part is level, so Bottom is straight down
 		light.Shadows = false -- shadows from a street lamp cost more than they show at night
 		light.Enabled = false
 		table.insert(pool, light)
@@ -91,7 +96,7 @@ local function update()
 
 	-- Keep lights that are still in range where they are, so nothing flickers
 	-- just because the ordering shuffled.
-	local free: { PointLight } = {}
+	local free: { SpotLight } = {}
 	for _, light in pool do
 		local host = assigned[light]
 		if host and host.Parent and target[host] then

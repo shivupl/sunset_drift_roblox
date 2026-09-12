@@ -119,6 +119,27 @@ local STREET_LAMP: Prop = {
 	},
 }
 
+-- Highway lamp: "Street Lamp Light" by BryanROBLOXgamer10 (store 15472204631,
+-- free, script-free). One textured mesh carries the whole post: a concrete
+-- pedestal, a tapering pole, the curved cobra arm and the head, which is
+-- what a box pole and a box arm never managed. Mesh 498788302 with its own
+-- colour map 498788336. The mesh is 20.7 x 38 x 3.5 studs; the pole axis is
+-- at local x -8.8, z +0.1 and the arm reaches along local +X, with the head
+-- centred 15.9 studs from the pole at 37 studs up. Sizes here are metres
+-- at scale 1 (10.6 m tall) and offsets are from the FOOT of the pole, so
+-- the caller puts the foot on the ground and points +X across the road.
+-- The lit lens is not part of the mesh; the lamp builder adds it.
+local HIGHWAY_LAMP: Prop = {
+	name = "Highway lamp, cobra head",
+	creator = "BryanROBLOXgamer10 (store 15472204631)",
+	notes = "Mesh 498788302, colour map 498788336. Foot at local (-8.8, -19, 0.1) studs; head centre at (7.1, 18, 0).",
+	pieces = { { meshId = 498788302, textureId = 498788336, sizeM = Vector3.new(5.804, 10.64, 0.967), offsetM = Vector3.new(2.464, 5.32, -0.028) } },
+}
+-- Where the lens sits relative to the foot, metres at scale 1, for the
+-- lamp builder. Head centre local (7.13, 18.03, 0) studs from the mesh
+-- centre, so from the foot: (15.93, 37.03, -0.1) studs.
+AssetRegistry.highwayLampLensOffsetM = Vector3.new(4.46, 10.37, -0.03)
+
 -- Park bench (store 111011567981764, H0ll0wa1Spark1): seat and frame
 -- meshes, untextured, coloured here. Three scripts in the source model.
 local BENCH: Prop = {
@@ -224,6 +245,7 @@ AssetRegistry.props = {
 	rockA = ROCK_A,
 	rockB = ROCK_B,
 	streetLamp = STREET_LAMP,
+	highwayLamp = HIGHWAY_LAMP,
 	bench = BENCH,
 	bin = BIN,
 	acUnit = AC_UNIT,

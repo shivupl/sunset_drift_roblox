@@ -2,12 +2,10 @@
 -- The distant Riyadh skyline, from a seeded random so every server draws the
 -- same city.
 --
--- Three layers. Two rings of ordinary city around the middle of the road (a
--- ring, not two bands beside the road: bands parallel to the road are
--- invisible from the road), a dense downtown cluster in a sector centred on
--- the road's direction of travel, which is where the player looks all
--- session, and two landmark towers in that cluster so it reads as Riyadh and
--- not as generic city.
+-- One band of city along the right of the road, from behind the start line
+-- to the city gateway, in two rows (low blocks in front, towers behind) with
+-- a dense downtown cluster near the start and two landmark towers in it so
+-- it reads as Riyadh and not as generic city. The sunset side stays empty.
 --
 -- Buildings are boxes with a few emissive bands, not textures. A texture
 -- would be one draw per building, but it needs an asset to vet and upload
@@ -59,6 +57,22 @@ end
 
 local MATERIALS = { Enum.Material.Concrete, Enum.Material.SmoothPlastic, Enum.Material.Metal, Enum.Material.Slate }
 
+-- A colour from the weighted LED palette.
+local function pickLed(L: typeof(WorldConfig.cityscape.lights), rng: Random): Color3
+	local total = 0
+	for _, e in L.ledPalette do
+		total += e.weight
+	end
+	local r = rng:NextNumber(0, total)
+	for _, e in L.ledPalette do
+		r -= e.weight
+		if r <= 0 then
+			return e.color
+		end
+	end
+	return L.ledPalette[1].color
+end
+
 local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance, site: Site)
 	local c = cfg.cityscape
 	local width, depth, height = ctx.s(site.widthM), ctx.s(site.depthM), ctx.s(site.heightM)
@@ -99,7 +113,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 
 	-- Lit window bands on the road-facing face, fewer now that the facade
 	-- texture carries the grid; these are the floors that glow at dusk.
-	local bands = if site.tower then rng:NextInteger(2, 4) else rng:NextInteger(0, 2)
+	local bands = if site.tower then rng:NextInteger(c.towerBandsMin, c.towerBandsMax) else rng:NextInteger(c.blockBandsMin - 1, c.blockBandsMax)
 	local windowColor = if rng:NextNumber() < c.coolFraction then c.windowColorCool else c.windowColorWarm
 	local inset = ctx.s(c.windowInsetM)
 	for i = 1, bands do
@@ -117,7 +131,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				color = if litWindows then windowColor else bodyColor:Lerp(Color3.fromRGB(46, 54, 70), 0.55),
 				material = if litWindows then Enum.Material.Neon else Enum.Material.Glass,
 				parent = parent,
-				transparency = math.min(0.95, rng:NextNumber(0.25, 0.8) + dayDim),
+				transparency = math.min(0.95, rng:NextNumber(0.1, 0.6) + dayDim),
 			})
 		end
 	end
@@ -126,16 +140,36 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 	-- distance the verticals are what read as a modern Gulf skyline; the
 	-- window grid is already a smear by the time it gets to the road.
 	local L = c.lights
+	local ledColor = pickLed(L, rng)
 	if site.tower and litWindows and rng:NextNumber() < L.ledStripChance then
 		local sw = ctx.s(L.ledStripWidthM)
 		local y0 = -height / 2 + height * L.ledStripFromFrac
 		local sh = height * (L.ledStripToFrac - L.ledStripFromFrac)
-		local ledColor = if rng:NextNumber() < L.ledCoolFraction then L.ledCool else L.ledWarm
 		for _, sx in { -1, 1 } do
 			Build.part({
 				name = "LedStrip",
 				size = Vector3.new(sw, sh, sw),
 				cframe = cf * CFrame.new(sx * (width / 2 - sw / 2), y0 + sh / 2, -depth / 2 + sw / 2),
+				color = ledColor,
+				material = Enum.Material.Neon,
+				parent = parent,
+				transparency = math.min(0.9, L.ledTransparency + dayDim),
+			})
+		end
+	end
+
+	-- Lit rings round a share of the towers at random floors: one box a
+	-- hair wider than the body each, so all four faces glow.
+	if site.tower and litWindows and rng:NextNumber() < L.ringChance then
+		local n = rng:NextInteger(L.ringsMin, L.ringsMax)
+		local rh = ctx.s(L.ringHeightM)
+		for i = 1, n do
+			local frac = (i - rng:NextNumber(0, 0.6)) / n
+			local y = -height / 2 + height * math.clamp(frac, 0.1, 0.95)
+			Build.part({
+				name = "LedRing",
+				size = Vector3.new(width * 1.03, rh, depth * 1.03),
+				cframe = cf * CFrame.new(0, y, 0),
 				color = ledColor,
 				material = Enum.Material.Neon,
 				parent = parent,
@@ -154,7 +188,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 			color = L.roofEdgeColor,
 			material = Enum.Material.Neon,
 			parent = parent,
-			transparency = math.min(0.92, 0.42 + dayDim),
+			transparency = math.min(0.92, 0.25 + dayDim),
 		})
 	end
 
@@ -167,10 +201,24 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				color = if litWindows then c.crownColor else bodyColor,
 				material = if litWindows then Enum.Material.Neon else Enum.Material.Metal,
 				parent = parent,
-				transparency = math.min(0.9, 0.35 + dayDim),
+				transparency = math.min(0.9, 0.15 + dayDim),
 			})
 		end
-		if rng:NextNumber() < c.antennaChance then
+		-- A lit needle on some towers, in the tower's LED colour.
+		if litWindows and rng:NextNumber() < L.spireChance then
+			local sh = ctx.s(L.spireHeightM)
+			local sw = ctx.s(L.spireWidthM)
+			Build.part({
+				name = "Spire",
+				size = Vector3.new(sw, sh, sw),
+				cframe = cf * CFrame.new(0, topY + sh / 2, 0),
+				color = ledColor,
+				material = Enum.Material.Neon,
+				parent = parent,
+				transparency = math.min(0.9, L.ledTransparency + dayDim),
+			})
+			topY += sh
+		elseif rng:NextNumber() < c.antennaChance then
 			local ah = ctx.s(c.antennaHeightM)
 			Build.part({
 				name = "Antenna",
@@ -268,12 +316,20 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	litWindows = c.lights.alwaysOn or lampsLit
 	dayDim = if lampsLit then 0 else c.lights.dayExtraTransparency
 	local rng = Build.rng(c.seed)
-	local mid = path[math.max(1, math.floor(#path / 2))]
-	local centre = mid.position
-	-- The road's direction of travel, for the downtown sector.
-	local travel = path[#path].position - path[1].position
-	travel = Vector3.new(travel.X, 0, travel.Z)
-	local forwardAngle = if travel.Magnitude > 1 then math.atan2(travel.Z, travel.X) else -math.pi / 2
+	local totalM = RoadNetwork.lengthM(path)
+
+	-- The road frame at a distance along it, extrapolated straight past
+	-- either end so the band can start behind the start line.
+	local function frameAt(alongM: number): CFrame
+		if alongM < 0 then
+			local p = path[1]
+			return p.cframe + p.cframe.LookVector * ctx.s(alongM)
+		elseif alongM > totalM then
+			local p = path[#path]
+			return p.cframe + p.cframe.LookVector * ctx.s(alongM - totalM)
+		end
+		return RoadNetwork.sample(path, alongM).cframe
+	end
 
 	-- Nothing from the backdrop may land in the city grid's streets.
 	local keep = {
@@ -285,10 +341,12 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	local function inGrid(pos: Vector3): boolean
 		return CityConfig.enabled and pos.X > keep.minX and pos.X < keep.maxX and pos.Z > keep.minZ and pos.Z < keep.maxZ
 	end
-	local function siteAt(angle: number, radiusM: number, widthM: number, depthM: number, heightM: number, tower: boolean): Site
-		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	local band = c.band
+	local function siteAt(alongM: number, lateralM: number, widthM: number, depthM: number, heightM: number, tower: boolean): Site
+		local f = frameAt(alongM)
+		local outward = f.RightVector * band.side
 		return {
-			base = centre + outward * ctx.s(radiusM),
+			base = f.Position + outward * ctx.s(lateralM),
 			facing = -outward,
 			widthM = widthM,
 			depthM = depthM,
@@ -296,53 +354,57 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 			tower = tower,
 		}
 	end
+	-- Density along the band: 1 at densestAlongM, thinFraction at the ends.
+	local function density(alongM: number): number
+		local reach = math.max(band.densestAlongM - band.fromAlongM, band.toAlongM - band.densestAlongM)
+		local t = math.clamp(math.abs(alongM - band.densestAlongM) / reach, 0, 1)
+		local ease = t * t * (3 - 2 * t)
+		return 1 - ease * (1 - band.thinFraction)
+	end
 
-	-- The backdrop skyline, stratified by angle so there are no bald
-	-- patches. A ring entry with a sectorDeg is a cluster in one direction
-	-- instead of a full circle: the span is centred sectorOffsetDeg round
-	-- from the road's direction of travel, so it follows the road rather
-	-- than the world axes.
-	for _, ring in c.rings do
-		local span = if ring.sectorDeg then math.rad(ring.sectorDeg) * 2 else math.pi * 2
-		local base = if ring.sectorDeg then forwardAngle + math.rad(ring.sectorOffsetDeg or 0) - span / 2 else 0
-		local slice = span / ring.count
-		for i = 1, ring.count do
-			local angle = base + (i - 1) * slice + rng:NextNumber(0, slice)
-			local radius = ring.distanceM + rng:NextNumber() * ring.depthM
-			local tower = rng:NextNumber() < ring.towerChance
-			local width = rng:NextNumber(ring.minWidthM, ring.maxWidthM)
-			local depth = rng:NextNumber(ring.minWidthM, ring.maxWidthM)
-			local height = if tower then rng:NextNumber(ring.towerMinHeightM, ring.towerMaxHeightM) else rng:NextNumber(ring.minHeightM, ring.maxHeightM)
-			if tower then
-				width *= rng:NextNumber(0.35, 0.6)
-				depth *= rng:NextNumber(0.35, 0.6)
-			end
-			local site = siteAt(angle, radius, width, depth, height, tower)
-			if not inGrid(site.base) and not Dunes.behind(cfg, ctx, path, site.base) then
-				building(cfg, ctx, rng, model, site)
+	-- The band, row by row, stratified along its length so there are no
+	-- bald patches, and thinned by the density curve so it has a middle.
+	for _, row in band.rows do
+		local slot = (band.toAlongM - band.fromAlongM) / row.count
+		for i = 1, row.count do
+			local alongM = band.fromAlongM + (i - 1) * slot + rng:NextNumber(0, slot)
+			if rng:NextNumber() <= density(alongM) then
+				local lateral = rng:NextNumber(row.nearM, row.farM)
+				local tower = rng:NextNumber() < row.towerChance
+				local width = rng:NextNumber(row.minWidthM, row.maxWidthM)
+				local depth = rng:NextNumber(row.minWidthM, row.maxWidthM)
+				local height = if tower then rng:NextNumber(row.towerMinHeightM, row.towerMaxHeightM) else rng:NextNumber(row.minHeightM, row.maxHeightM)
+				if tower then
+					width *= rng:NextNumber(0.35, 0.6)
+					depth *= rng:NextNumber(0.35, 0.6)
+				end
+				local site = siteAt(alongM, lateral, width, depth, height, tower)
+				if not inGrid(site.base) and not Dunes.behind(cfg, ctx, path, site.base) then
+					building(cfg, ctx, rng, model, site)
+				end
 			end
 		end
 	end
 
-	-- Downtown.
+	-- Downtown: the tall slim cluster, bunched toward its centre.
 	local dt = c.downtown
 	if dt.enabled then
-		local halfSector = math.rad(dt.sectorDeg)
-		local centreAngle = forwardAngle + math.rad(dt.sectorOffsetDeg)
 		for _ = 1, dt.count do
-			local angle = centreAngle + rng:NextNumber(-halfSector, halfSector)
-			local radius = rng:NextNumber(dt.minDistanceM, dt.maxDistanceM)
+			-- Two draws averaged: a tent over the centre, not a flat spread.
+			local alongM = dt.alongM + (rng:NextNumber(-1, 1) + rng:NextNumber(-1, 1)) / 2 * dt.spreadM
+			local lateral = rng:NextNumber(dt.nearM, dt.farM)
 			local width = rng:NextNumber(dt.minWidthM, dt.maxWidthM)
 			local depth = rng:NextNumber(dt.minWidthM, dt.maxWidthM)
 			local height = rng:NextNumber(dt.minHeightM, dt.maxHeightM)
-			local site = siteAt(angle, radius, width, depth, height, true)
+			local site = siteAt(alongM, lateral, width, depth, height, true)
 			if not inGrid(site.base) then
 				building(cfg, ctx, rng, model, site)
 			end
 		end
 		if dt.glowEnabled then
-			local outward = Vector3.new(math.cos(centreAngle), 0, math.sin(centreAngle))
-			local base = centre + outward * ctx.s((dt.minDistanceM + dt.maxDistanceM) / 2)
+			local f = frameAt(dt.alongM)
+			local outward = f.RightVector * band.side
+			local base = f.Position + outward * ctx.s((dt.nearM + dt.farM) / 2)
 			local gh = ctx.s(dt.glowHeightM)
 			Build.part({
 				name = "CityGlow",
@@ -359,14 +421,14 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	-- Landmarks.
 	local lm = c.landmarks
 	if lm.enabled then
-		local function place(offsetDeg: number, distanceM: number): (Vector3, Vector3)
-			local angle = forwardAngle + math.rad(offsetDeg)
-			local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			return centre + outward * ctx.s(distanceM), -outward
+		local function place(alongM: number, lateralM: number): (Vector3, Vector3)
+			local f = frameAt(alongM)
+			local outward = f.RightVector * band.side
+			return f.Position + outward * ctx.s(lateralM), -outward
 		end
-		local kb, kf = place(lm.kingdom.offsetDeg, lm.kingdom.distanceM)
+		local kb, kf = place(lm.kingdom.alongM, lm.kingdom.lateralM)
 		kingdom(cfg, ctx, rng, model, kb, kf)
-		local fb, ff = place(lm.faisaliah.offsetDeg, lm.faisaliah.distanceM)
+		local fb, ff = place(lm.faisaliah.alongM, lm.faisaliah.lateralM)
 		faisaliah(cfg, ctx, rng, model, fb, ff)
 	end
 

@@ -501,7 +501,13 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 		AssetRegistry.facade(setback, "glass", rng, SIDE_FACES, ctx.s(b.storeyM * 3), glass:Lerp(Color3.new(1, 1, 1), 0.45), 0.05)
 		topY += sh
 	end
-	box(ctx, model, "Crown", tx, topY - 0.5, tz, w * 1.02, 1.0, d * 1.02, tw.crownColor, Enum.Material.Neon, false, false).Transparency = 0.4
+	-- A lit rim round the roof edge: four thin strips, not a slab. A
+	-- Neon box the size of the roof was a lime lid on every tower from
+	-- the gateway, because Neon blooms and a metre of it reads as three.
+	local rim = 0.35
+	for _, e in { { tx, tz + d / 2, w + rim, rim }, { tx, tz - d / 2, w + rim, rim }, { tx + w / 2, tz, rim, d + rim }, { tx - w / 2, tz, rim, d + rim } } do
+		box(ctx, model, "Crown", e[1], topY - 0.25, e[2], e[3], 0.5, e[4], tw.crownColor, Enum.Material.Neon, false, false).Transparency = 0.5
+	end
 	box(ctx, model, "Plant", tx, topY + 1.5, tz, w * 0.3, 3, d * 0.3, Color3.fromRGB(120, 120, 116), Enum.Material.Metal, false, false)
 end
 

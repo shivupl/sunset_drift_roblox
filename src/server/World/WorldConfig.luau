@@ -101,6 +101,14 @@ local config = {
 		-- ground, and a 12 cm collidable step at 200 km/h is a launch ramp.
 		kerbWidthM = 0.4,
 		kerbHeightM = 0.07,
+		-- The transition pad's wings widen in over this length at each end
+		-- (a flat triangle of asphalt) instead of starting with a square
+		-- corner, and the outer shoulder and kerb follow the wing's edge
+		-- rather than cutting across it.
+		padTaperM = 60,
+		-- Painted slot lines across the parking bay, one each side of every
+		-- CarSpawner slot.
+		baySlotLines = true,
 		asphaltColor = Color3.fromRGB(52, 50, 54),
 		padColor = Color3.fromRGB(48, 48, 53),
 		shoulderColor = Color3.fromRGB(70, 66, 60),
@@ -417,28 +425,49 @@ local config = {
 		-- spacing too, offset by half a spacing so the three rows interleave.
 		medianLamps = true,
 		medianSpacingM = 22, -- twice the density of the outer rows, on request
-		setbackM = 1.2, -- from the kerb to the pole
+		-- The post is one store mesh (AssetRegistry.highwayLamp): concrete
+		-- pedestal, tapering pole, curved cobra arm and head in one textured
+		-- piece. Off, or if the mesh fails to load, the box stand-in below
+		-- is built instead.
+		useMesh = true,
+		-- The mesh is 10.6 m tall at scale 1 with the head 4.5 m out from
+		-- the pole. 1.15 makes a 12.2 m highway post reaching 5.1 m, which
+		-- with the pole a hand past the kerb puts the head over the outer
+		-- lane. Real Saudi highway posts are 12 m.
+		meshScale = 1.15,
+		-- A median post is two mesh posts back to back; the second stands
+		-- this far along the road so the two poles read as one thick pole
+		-- and never share a surface.
+		pairGapM = 0.12,
+		setbackM = 0.4, -- from the kerb to the pole
+		-- The lens: a thin slab under the head, Neon when the hour lights
+		-- the lamps, dark glass otherwise. Metres at scale 1; the light
+		-- manager hangs its SpotLight from it, shining down.
+		lensSizeM = Vector3.new(1.05, 0.08, 0.6),
+		lensLitColor = Color3.fromRGB(255, 236, 200), -- warm-white LED
+		lensLitTransparency = 0.1, -- a hair of transparency takes the bloom off a solid Neon slab
+		lensOffColor = Color3.fromRGB(190, 196, 204),
+		lensOffTransparency = 0.25,
 		-- Perfect repetition is what makes a row of lamps read as generated.
 		jitterSeed = 4417,
 		yawJitterDeg = 2.5,
 		heightJitter = 0.035, -- fraction of pole height
 		bothSides = true, -- false alternates sides, which halves the part count
+		-- The box stand-in. Only built when the mesh is off or missing.
 		poleHeightM = 10,
-		poleWidthM = 0.26, -- square section: a box is 12 triangles, a cylinder is ~100
-		-- The boom has to clear the shoulder, the kerb and the barrier before
-		-- it is over any asphalt, which is about 6 m from the pole. At 2.6 m
-		-- every pool of light landed on the shoulder and the road stayed
-		-- black. Real highway booms are this long for the same reason.
+		poleWidthM = 0.26,
 		armLengthM = 8,
 		headSizeM = 0.75,
 		poleColor = Color3.fromRGB(74, 76, 80),
-		-- The emitter part is Neon so an unlit lamp still reads as a lamp.
 		bulbColor = Color3.fromRGB(255, 186, 92),
 		headOffColor = Color3.fromRGB(58, 58, 62), -- unlit housing in daylight
-		-- Live PointLight settings. Only maxLiveLights of these exist at once.
-		lightColor = Color3.fromRGB(255, 170, 74),
+		-- Live SpotLight settings. Only maxLiveLights of these exist at once.
+		-- Warm white to match the lens; the cone is wide so a 12 m post
+		-- lights a pool the width of a carriageway.
+		lightColor = Color3.fromRGB(255, 220, 170),
 		lightBrightness = 3.2,
 		lightRangeM = 34,
+		lightAngleDeg = 120,
 		-- Hard cap on Light instances in the whole client. Roblox degrades
 		-- badly past a handful of dynamic lights.
 		maxLiveLights = 12,
@@ -477,122 +506,142 @@ local config = {
 	cityscape = {
 		enabled = true,
 		seed = 20260911,
-		-- THE BACKDROP SKYLINE is a separate city on the horizon, and it now
-		-- sits in one place rather than in a ring all round the road.
+		-- THE BACKDROP SKYLINE is a separate city on the horizon, and it is
+		-- a band along the RIGHT of the road: the side away from the sun,
+		-- which keeps the sunset clean on the left and leaves the view
+		-- straight ahead to the detailed city.
 		--
-		-- The ring came from a time before the berms. Now that the edge of
-		-- the playable area is a 13 m dune either side, a ring puts most of
-		-- its buildings behind that dune where nobody sees them, and the
-		-- few that clear it are scattered thinly in every direction. So it
-		-- is one cluster instead, in the one direction that is free: the sun
-		-- and the far dune field are both on the left, and the detailed city
-		-- is straight ahead, which leaves the right-hand side.
+		-- A band, not a sector round the middle of the road, so that it is
+		-- there for the whole drive: it runs from behind the start line to
+		-- the city gateway, densest and tallest near the start, thinning
+		-- toward the far end. Two rows give it depth: a front row of low
+		-- blocks close in, so the towers behind have a foot, and a back row
+		-- of the tall stuff. Distances are from the road centreline; along
+		-- distances are from the start line, negative behind it.
 		--
-		-- It has to clear the berm to be worth building. The driving-side
-		-- crest hides anything under about 2.8 degrees from the driver's
-		-- eye, which at 3.3 km is 160 m, so nothing here is shorter than
-		-- that and the towers go to 450.
-		rings = {
-			{
-				sectorOffsetDeg = 90, -- +90 is the road's right; the free quarter
-				sectorDeg = 26, -- half-angle, so a 52 degree spread of city
-				-- 1.7 to 2.5 km. It was 2.7 to 3.4 and the owner could not find
-				-- it from the road: golden-hour haze takes almost everything past
-				-- 2.5 km, and it only ever showed as a ghost. This is the range
-				-- at which the far dune field read clearly, so the city does too.
-				distanceM = 1700,
-				depthM = 800,
-				count = 90,
-				minWidthM = 50,
-				maxWidthM = 160,
-				minHeightM = 90,
-				maxHeightM = 240,
-				towerChance = 0.5, -- half towers: the verticals are what carry a silhouette
-				towerMinHeightM = 240,
-				towerMaxHeightM = 400,
+		-- It sits inside 2.5 km because golden-hour haze takes nearly
+		-- everything past that; at 1.3 to 2.4 km it reads as a city.
+		band = {
+			side = 1, -- +1 is the road's right; -1 its left
+			fromAlongM = -1100,
+			toAlongM = 1900,
+			-- Density along the band: full at densestAlongM, easing off to
+			-- thinFraction of it at both ends, so the city has a middle.
+			densestAlongM = 350,
+			thinFraction = 0.3,
+			rows = {
+				{
+					nearM = 1300,
+					farM = 1600,
+					count = 150, -- slots along the band; the density curve thins them
+					minWidthM = 40,
+					maxWidthM = 110,
+					minHeightM = 30,
+					maxHeightM = 100,
+					towerChance = 0.12,
+					towerMinHeightM = 120,
+					towerMaxHeightM = 200,
+				},
+				{
+					nearM = 1600,
+					farM = 2400,
+					count = 210,
+					minWidthM = 50,
+					maxWidthM = 150,
+					minHeightM = 90,
+					maxHeightM = 220,
+					towerChance = 0.5, -- half towers: the verticals are what carry a silhouette
+					towerMinHeightM = 220,
+					towerMaxHeightM = 380,
+				},
 			},
 		},
-		-- Downtown: a KAFD-style cluster in a sector centred on the road's
-		-- direction of travel. Dense, tall, slim.
+		-- Downtown: a KAFD-style cluster of tall slim towers on the band,
+		-- centred near the start line so it is square on the right from
+		-- the start and the spawn bay. Dense, tall, slim.
 		downtown = {
 			enabled = true,
-			-- The dense core of the backdrop city. It sits in the same
-			-- direction as the ring cluster above, so the two read as one
-			-- city with a downtown in the middle of it rather than two
-			-- separate skylines. +90 is the road's right, which is the side
-			-- away from the sun; the sunset stays clean on the left and the
-			-- detailed city keeps the view straight ahead to itself.
-			sectorOffsetDeg = 90,
-			sectorDeg = 22, -- half-angle of the sector
-			minDistanceM = 1900,
-			maxDistanceM = 2500,
-			count = 64,
+			alongM = 350, -- centre, from the start line
+			spreadM = 600, -- half-length along the road
+			nearM = 1500,
+			farM = 2250,
+			count = 80,
 			minWidthM = 28,
 			maxWidthM = 64,
-			minHeightM = 150,
-			maxHeightM = 360,
+			minHeightM = 160,
+			maxHeightM = 400,
 			-- Sodium haze along the base of the cluster: one wide dim Neon
 			-- slab, the cheapest "there are a million lights over there".
+			-- Wide, low and faint: any narrower or more solid and it stops
+			-- being haze and starts being an orange slab in the desert.
 			glowEnabled = true,
-			-- Wide, low and faint: a wash along the base of the cluster. Any
-			-- narrower or more solid and it stops being sodium haze and
-			-- starts being a visible orange slab standing in the desert.
-			glowWidthM = 2800,
+			glowWidthM = 3400,
 			glowHeightM = 70,
 			glowColor = Color3.fromRGB(255, 176, 96),
 			glowTransparency = 0.74,
 		},
-		-- Landmarks, both in the downtown sector: a Kingdom-Centre style
-		-- tower (two pillars over a slab with a sky bridge, the arch at the
-		-- top) and a Faisaliah-style pyramid with the globe near its tip.
+		-- Landmarks, both in the downtown: a Kingdom-Centre style tower
+		-- (two pillars over a slab with a sky bridge, the arch at the top)
+		-- and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 2050 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 2150 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, alongM = 200, lateralM = 1950 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, alongM = 560, lateralM = 2050 },
 		},
-		-- Building detail. Tiers: a second, narrower box on top of a share
-		-- of the blocks and towers. Crowns: a dim lit band at the top of a
-		-- tower. Antennas on some towers. Windows are emissive bands split
-		-- into segments of different brightness so floors read as lit and
-		-- unlit rather than one bar.
 		-- LIGHTS. The backdrop city is lit at every time of day, because a
 		-- dark silhouette on the horizon is not what anyone wants to look
 		-- at. Away from the sun it has the sky to itself, so this is where
-		-- the map gets its glamour.
+		-- the map gets its glamour: LED verticals up the tower corners,
+		-- lit rings round them at intervals, a lit roof edge on the blocks,
+		-- a needle spire on some towers, and the window bands.
 		--
-		-- The one care needed: haze swallows a building body long before it
-		-- swallows an emissive part, so in daylight the lights are pulled
-		-- back with dayExtraTransparency or they float free of the towers.
+		-- Neon at this distance is what survives the haze, so everything
+		-- here is solid Neon (transparency 0) unless dayExtraTransparency
+		-- pulls it back; at 0 the lights are what you see first.
 		lights = {
 			alwaysOn = true,
-			-- 0.08, not more: at 2.7 km the golden-hour haze is already
-			-- taking most of this, and the point is that the city glows.
-			dayExtraTransparency = 0.08,
+			dayExtraTransparency = 0,
 			-- Vertical LED strips up the corners of a share of the towers,
-			-- which is what actually reads as a modern Gulf skyline at this
-			-- distance: the verticals catch the eye, not the window grid.
-			ledStripChance = 0.55,
-			ledStripWidthM = 1.1,
-			ledStripFromFrac = 0.08, -- up the tower from the base
-			ledStripToFrac = 0.96,
-			ledWarm = Color3.fromRGB(255, 196, 120),
-			ledCool = Color3.fromRGB(150, 214, 255),
-			ledCoolFraction = 0.45,
-			ledTransparency = 0.1,
+			-- which is what reads as a modern Gulf skyline at this range.
+			ledStripChance = 0.7,
+			ledStripWidthM = 1.5,
+			ledStripFromFrac = 0.06, -- up the tower from the base
+			ledStripToFrac = 0.97,
+			ledTransparency = 0,
+			-- What colour a strip, ring or spire comes in. Weights, not
+			-- fractions. Mostly gold and cool white, with the odd magenta,
+			-- cyan and green the way Riyadh's towers actually light up.
+			ledPalette = {
+				{ color = Color3.fromRGB(255, 200, 120), weight = 4 },
+				{ color = Color3.fromRGB(170, 220, 255), weight = 3 },
+				{ color = Color3.fromRGB(255, 90, 200), weight = 1.2 },
+				{ color = Color3.fromRGB(90, 230, 255), weight = 1 },
+				{ color = Color3.fromRGB(110, 255, 150), weight = 0.6 },
+			},
+			-- Horizontal lit rings round a share of the towers, at random
+			-- floors: a box a hair wider than the body, one part each.
+			ringChance = 0.55,
+			ringsMin = 2,
+			ringsMax = 5,
+			ringHeightM = 1.3,
 			-- A lit line along the roof edge of a share of the blocks, so
 			-- the flat tops are not dead.
-			roofEdgeChance = 0.45,
+			roofEdgeChance = 0.6,
 			roofEdgeColor = Color3.fromRGB(255, 206, 150),
+			-- A lit needle on some towers, in the strip's colour.
+			spireChance = 0.22,
+			spireHeightM = 45,
+			spireWidthM = 2.2,
 		},
-		tierChance = 0.35,
-		crownChance = 0.75,
-		antennaChance = 0.4,
+		tierChance = 0.4,
+		crownChance = 0.8,
+		antennaChance = 0.35,
 		antennaHeightM = 22,
 		windowSegments = 2, -- per band
 		blockBandsMin = 1,
 		blockBandsMax = 3,
-		towerBandsMin = 4,
-		towerBandsMax = 7,
+		towerBandsMin = 3,
+		towerBandsMax = 6,
 		windowHeightM = 2.6,
 		windowInsetM = 0.4,
 		windowColorWarm = Color3.fromRGB(255, 214, 150),
@@ -605,7 +654,7 @@ local config = {
 		-- Darker than the first pass: the haze adds sky colour to everything
 		-- at this range, so a mid tone came out as pale slabs.
 		color = Color3.fromRGB(86, 76, 70),
-		towerColor = Color3.fromRGB(58, 68, 90),
+		towerColor = Color3.fromRGB(52, 62, 86),
 		colorVariation = 0.3,
 		-- Fraction of tall buildings that get a red aircraft warning light.
 		beaconChance = 0.7,
@@ -794,7 +843,11 @@ local config = {
 			colorShiftBottom = Color3.fromRGB(92, 82, 88),
 			globalShadows = true,
 			atmosphere = {
-				density = 0.26,
+				-- 0.2, down from 0.26: at 0.26 the backdrop skyline at 1.3
+				-- to 2.4 km was a grey ghost and its lights were lost; at
+				-- 0.2 it reads as a lit city and the sunset side still has
+				-- its warm band. Below 0.18 the horizon goes hard.
+				density = 0.2,
 				offset = 0.12,
 				color = Color3.fromRGB(244, 176, 118),
 				decay = Color3.fromRGB(80, 78, 120),
@@ -814,10 +867,11 @@ local config = {
 				useSkyObject = true,
 				skybox = { bk = 5133008838, dn = 5132998156, ft = 5132998362, lf = 5132998795, rt = 5132998563, up = 5132999149 },
 			},
-			-- Lamps off. Lit heads are Neon slabs, and in daylight a Neon slab
-			-- reads as a yellow sticker; a dark housing reads as a lamp. The
-			-- dusk and night presets light them.
-			lamps = { enabled = false, brightness = 1.1, rangeM = 22 },
+			-- Lamps on, gently. With the box heads a lit Neon slab in daylight
+			-- read as a yellow sticker; under the mesh head a warm-white lens
+			-- reads as a highway coming on at sunset, which is exactly the
+			-- hour this is. The pools on the road are faint at this exposure.
+			lamps = { enabled = true, brightness = 1.4, rangeM = 28 },
 		},
 		blueHour = {
 			clockTime = 18.6,

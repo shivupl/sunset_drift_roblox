@@ -285,7 +285,9 @@ car stay the same size.
 | dashLengthM / dashGapM / dashWidthM | Lane divider dashes. |
 | edgeLineWidthM | Solid line at each road edge. |
 | laneCount | Lanes per carriageway (6 now, on request; 4.7 m each in a 64 m corridor). Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
-| shoulderWidthM / kerbWidthM / kerbHeightM | The strip outside the paint, and the lip beyond it. |
+| shoulderWidthM / kerbWidthM / kerbHeightM | The strip outside the paint, and the lip beyond it. Along the transition pad they follow the wing's outer edge instead of cutting across it. |
+| padTaperM | Length of the flat asphalt triangle that leads into each end of the pad's wings (60 m), so the widening is a diagonal and not a step. Longer is gentler; it also sets how far before the pad the ordinary shoulder stops. |
+| baySlotLines | Painted lines across the parking bay, one each side of every CarSpawner slot (pitch from CarConfig.spawn). |
 | asphaltColor / padColor / shoulderColor / kerbColor / paintColor / bayColor | Surface tones. |
 
 ### road.wear
@@ -383,12 +385,14 @@ The hill the car drives up, out of the same height function as the floor.
 | spacingM | Distance between lamps. Drives both the rhythm of light and the part count. |
 | bothSides | False alternates the outer sides and halves that part count. |
 | medianLamps / medianSpacingM | Double-arm posts down the reservation at their own spacing (22 m, twice the outer density), offset half a spacing so the rows interleave. |
-| setbackM | From the kerb to the pole. Nothing here collides, so this is purely where it looks right. |
-| poleHeightM / poleWidthM | Pole size. Square section on purpose: a box is 12 triangles, a cylinder ~100. |
-| armLengthM | Boom reach. It has to clear the shoulder and kerb before it is over any asphalt; shorter and every pool of light lands on the shoulder. |
-| headSizeM / poleColor / bulbColor / headOffColor | Housing size and colours. `headOffColor` is used at hours where lamps are not lit, so a bulb never glows in daylight. |
+| useMesh | The post is one store mesh (AssetRegistry.highwayLamp: BryanROBLOXgamer10's "Street Lamp Light", pedestal, tapering pole, cobra arm and head in a single textured piece). Off, or if the mesh fails to load, the box stand-in below is built. |
+| meshScale | The mesh is 10.6 m tall with the head 4.5 m out at scale 1; 1.15 makes a 12.2 m highway post reaching 5.1 m. Raise for a taller road, and the head moves out with it. |
+| pairGapM | A median post is two mesh posts back to back; the second stands this far along the road (12 cm) so the two poles read as one thick pole and never share a surface. |
+| setbackM | From the kerb to the pole (0.4 m now: the arm is shorter than the old boom, so the pole stands at the kerb to put the head over the outer lane). Nothing here collides. |
+| lensSizeM / lensLitColor / lensLitTransparency / lensOffColor / lensOffTransparency | The lit panel under the head: a thin slab, warm-white Neon at an hour whose lamps are lit, pale glass otherwise. The light manager hangs its SpotLight from it. |
+| poleHeightM / poleWidthM / armLengthM / headSizeM / poleColor / bulbColor / headOffColor | The box stand-in only. |
 | jitterSeed / yawJitterDeg / heightJitter | Per-lamp variation. Zero makes a row read as a copied object. |
-| lightColor | Colour of the pooled PointLights. |
+| lightColor / lightAngleDeg | Colour and cone of the pooled SpotLights (120 degrees, shining straight down from the lens: a pool on the road rather than a glow in the air). Brightness and range come from the time of day. |
 | maxLiveLights | **Hard cap on Light instances in the whole client.** The pool is this size, so the cap cannot be violated. Raising it past about 16 is where Roblox starts to hurt. |
 | lightUpdateInterval | How often the client re-picks which lamps are lit. Lower = tighter following, more CPU. Never per frame. |
 
@@ -403,7 +407,7 @@ The hill the car drives up, out of the same height function as the floor.
 | exposureCompensation | Overall exposure. |
 | colorShiftTop / colorShiftBottom | Tint on lit and unlit faces. What stops asphalt reading as grey plastic. |
 | globalShadows | Master shadow switch for the hour. |
-| atmosphere.density | Distance fade. The biggest "sells distance" knob, and the biggest risk: too high and the road edge vanishes, which is worse than the mood is good. |
+| atmosphere.density | Distance fade. The biggest "sells distance" knob, and the biggest risk: too high and the road edge vanishes, which is worse than the mood is good. Golden hour is 0.2: at 0.26 the backdrop skyline at 1.3 to 2.4 km was a grey ghost; below 0.18 the horizon goes hard. |
 | atmosphere.offset | How far up the haze starts. |
 | atmosphere.color | Horizon glow colour. |
 | atmosphere.decay | Colour the sky falls to away from the sun. |
@@ -435,9 +439,10 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | seed | Fixed, so every server draws the same city. |
-| rings | One far ring of tall blocks and towers at 2.7 km, the separate skyline seen from a distance. Each entry is { distanceM, depthM, count, size and height ranges, towerChance }; keep the minimum height up or a ring reads as scattered small buildings, which is why the old near ring of low blocks is gone. Anything inside the city grid is skipped. |
-| downtown | A dense cluster of slim towers in a sector sectorOffsetDeg round from the road's direction of travel (0 = straight ahead, behind the city grid): half-angle, distance range, count, size and height ranges, plus one wide dim Neon slab along its base (the sodium haze). Anything that would land inside the city grid is skipped. |
-| landmarks | Kingdom-Centre style (slab, two pillars, sky bridge: the arch) and Faisaliah style (four corner wedges as a pyramid, a globe near the tip), both in the downtown sector. Height, footprint, angle offset and distance each. |
+| band | The backdrop skyline: a band along one side of the road (side +1 is the right, away from the sun) from fromAlongM to toAlongM (metres from the start line; negative is behind it), full density at densestAlongM easing to thinFraction at the ends. Each row is { nearM, farM (from the centreline), count (slots along the band), size and height ranges, towerChance }: a low front row at 1.3 to 1.6 km so the towers behind have a foot, and the tall back row at 1.6 to 2.4 km. Widen it with fromAlongM/toAlongM; move it with densestAlongM; bring it in with nearM, but past 2.5 km the haze takes it. |
+| downtown | The tall slim cluster: centred alongM from the start line, bunched within spreadM, between nearM and farM, plus one wide dim Neon slab along its base (the sodium haze). Anything that would land inside the city grid is skipped. |
+| landmarks | Kingdom-Centre style (slab, two pillars, sky bridge: the arch) and Faisaliah style (four corner wedges as a pyramid, a globe near the tip), each placed by alongM and lateralM. |
+| lights | alwaysOn keeps the city lit at every hour; dayExtraTransparency pulls every light back in daylight (0 now: solid Neon is what survives the haze). ledStrip* are the vertical LED strips up tower corners, ledPalette the weighted colours they and the rings and spires come in (gold and cool white mostly, some magenta, cyan, green), ring* the lit rings round towers at random floors, roofEdge* the lit line along block roofs, spire* the lit needle on some towers. |
 | tierChance / crownChance / antennaChance / antennaHeightM | A narrower tier on top of a share of buildings, a lit band at the top of towers, and an antenna on some. |
 | windowSegments / blockBands* / towerBands* / windowHeightM / windowInsetM / windowColorWarm / windowColorCool / coolFraction | Emissive floor bands, split into segments of different brightness so floors read as lit and unlit, warm or cool per building. Cheaper than a texture and needing no asset. |
 | color / towerColor / colorVariation | Blocks warm, towers bluer (glass). Darker than the first pass: the haze adds sky colour at this range and a mid tone came out pale. |
