@@ -186,19 +186,36 @@ floating on the horizon with nothing behind them. At golden hour they are
 glass instead. The city's own shopfronts are left lit: they only read as bars
 from an altitude no player reaches.
 
-**The backdrop skyline is one cluster, on the side that is free.** It used
-to be a ring all round the road, which was right before the berms existed: a
-ring puts skyline in every viewing direction. Now that the edge of the
-playable area is a 13 m dune either side, a ring hides most of its buildings
-behind that dune and scatters the few that clear it. So it is a single city
-in one direction instead. The sun and the far dune field are both on the
-left and the detailed city is straight ahead, which leaves the right-hand
-side; the cluster sits in a 52 degree spread there at 2.7 to 3.4 km. The
-driving-side crest hides anything under about 2.8 degrees from the driver's
-eye, which at 2.7 km is 132 m, so nothing in it is shorter than 180 m and
-the towers run to 460. A ring entry with a `sectorDeg` is a cluster rather
-than a circle, and the sector is measured round from the road's direction of
-travel, so it follows the road rather than the world axes.
+**The backdrop skyline is one lit city, on the side away from the sun.** It
+used to be a ring all round the road, which was right before the berms
+existed: a ring puts skyline in every viewing direction. Now that the edge of
+the playable area is a 13 m dune either side, a ring hides most of its
+buildings behind that dune and scatters the few that clear it, so it is a
+single city in one direction instead. The sun and the far dune field are both
+on the left and the detailed city is straight ahead, which leaves the right.
+Both the surrounding blocks and the dense downtown core sit in that quarter
+at 2.2 to 3.4 km, with the two landmarks among them, so they read as one city
+with a downtown in it rather than two separate skylines. The sunset keeps the
+left to itself and the highway keeps the view straight ahead.
+
+Nothing in it is shorter than 180 m, because the driving-side crest hides
+anything under about 2.8 degrees from the driver's eye, which at 2.7 km is
+132 m; the towers run to 460. A ring entry with a `sectorDeg` is a cluster
+rather than a circle, and the sector is measured round from the road's
+direction of travel, so it follows the road rather than the world axes.
+
+**And it is lit at every time of day.** A dark silhouette out there is worth
+nothing, and away from the sun the city has the sky to itself. Warm and cool
+window bands, a lit crown on three quarters of the towers, a lit roofline on
+some of the blocks, red beacons, and vertical LED strips up the corners of
+half the towers, which are what actually read as a modern Gulf skyline at
+this distance: the verticals still catch the eye long after the window grid
+has become a smear. A wide, low, faint slab of sodium haze washes the base of
+the cluster; narrower or more solid and it stops being haze and becomes an
+orange slab standing in the desert. The one care needed is that haze swallows
+a building body long before it swallows an emissive part, so in daylight
+every light here is pulled back by `lights.dayExtraTransparency`, or the
+windows and strips float free of the towers they belong to.
 
 ## Lighting and the time of day
 
