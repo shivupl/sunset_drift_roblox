@@ -25,13 +25,15 @@ local AssetRegistry = require(script.Parent.AssetRegistry)
 local Dunes = require(script.Parent.Dunes)
 local WorldLighting = require(script.Parent.Lighting)
 
--- Whether the skyline's windows are lit, decided once per build from the
--- time of day. This is the same rule the street lamps follow, and for the
--- same reason: a Neon slab in daylight is not a lit window, it is a sticker.
--- Seen through golden-hour haze, which swallows the building bodies long
--- before it swallows an emissive part, unlit-time Neon bands read as orange
--- bars floating on the horizon with nothing behind them.
+-- The backdrop city is lit at every time of day: it sits away from the sun
+-- with the sky to itself, and a dark silhouette there is worth nothing.
+--
+-- The one care needed is that haze swallows a building body long before it
+-- swallows an emissive part, so in daylight every light here is pulled back
+-- by dayDim or the windows and strips float free of the towers they belong
+-- to. Both are decided once per build.
 local litWindows = true
+local dayDim = 0
 
 local SIDE_FACES = { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right }
 
@@ -115,9 +117,45 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				color = if litWindows then windowColor else bodyColor:Lerp(Color3.fromRGB(46, 54, 70), 0.55),
 				material = if litWindows then Enum.Material.Neon else Enum.Material.Glass,
 				parent = parent,
-				transparency = rng:NextNumber(0.25, 0.8),
+				transparency = math.min(0.95, rng:NextNumber(0.25, 0.8) + dayDim),
 			})
 		end
+	end
+
+	-- Vertical LED strips up the corners of a share of the towers. At this
+	-- distance the verticals are what read as a modern Gulf skyline; the
+	-- window grid is already a smear by the time it gets to the road.
+	local L = c.lights
+	if site.tower and litWindows and rng:NextNumber() < L.ledStripChance then
+		local sw = ctx.s(L.ledStripWidthM)
+		local y0 = -height / 2 + height * L.ledStripFromFrac
+		local sh = height * (L.ledStripToFrac - L.ledStripFromFrac)
+		local ledColor = if rng:NextNumber() < L.ledCoolFraction then L.ledCool else L.ledWarm
+		for _, sx in { -1, 1 } do
+			Build.part({
+				name = "LedStrip",
+				size = Vector3.new(sw, sh, sw),
+				cframe = cf * CFrame.new(sx * (width / 2 - sw / 2), y0 + sh / 2, -depth / 2 + sw / 2),
+				color = ledColor,
+				material = Enum.Material.Neon,
+				parent = parent,
+				transparency = math.min(0.9, L.ledTransparency + dayDim),
+			})
+		end
+	end
+
+	-- A lit line along the roof of a share of the blocks, so the flat tops
+	-- are not dead space between the towers.
+	if not site.tower and litWindows and rng:NextNumber() < L.roofEdgeChance then
+		Build.part({
+			name = "RoofEdge",
+			size = Vector3.new(width * 1.02, ctx.s(0.9), depth * 1.02),
+			cframe = cf * CFrame.new(0, height / 2 - ctx.s(0.45), 0),
+			color = L.roofEdgeColor,
+			material = Enum.Material.Neon,
+			parent = parent,
+			transparency = math.min(0.92, 0.42 + dayDim),
+		})
 	end
 
 	if site.tower then
@@ -129,7 +167,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				color = if litWindows then c.crownColor else bodyColor,
 				material = if litWindows then Enum.Material.Neon else Enum.Material.Metal,
 				parent = parent,
-				transparency = 0.35,
+				transparency = math.min(0.9, 0.35 + dayDim),
 			})
 		end
 		if rng:NextNumber() < c.antennaChance then
@@ -226,7 +264,9 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 	model.Name = "Skyline"
 	model.Parent = folder
 
-	litWindows = WorldLighting.timeOfDay(cfg).lamps.enabled
+	local lampsLit = WorldLighting.timeOfDay(cfg).lamps.enabled
+	litWindows = c.lights.alwaysOn or lampsLit
+	dayDim = if lampsLit then 0 else c.lights.dayExtraTransparency
 	local rng = Build.rng(c.seed)
 	local mid = path[math.max(1, math.floor(#path / 2))]
 	local centre = mid.position

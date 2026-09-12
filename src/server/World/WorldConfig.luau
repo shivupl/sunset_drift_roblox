@@ -509,10 +509,13 @@ local config = {
 		-- direction of travel. Dense, tall, slim.
 		downtown = {
 			enabled = true,
-			-- The cluster sits in a sector this far round from the road's
-			-- direction of travel (+90 is the right-hand side, which is where
-			-- the city grid is) so the grid's boulevards run into it.
-			sectorOffsetDeg = 0, -- straight ahead: the towers rise at the end of the highway, behind the grid
+			-- The dense core of the backdrop city. It sits in the same
+			-- direction as the ring cluster above, so the two read as one
+			-- city with a downtown in the middle of it rather than two
+			-- separate skylines. +90 is the road's right, which is the side
+			-- away from the sun; the sunset stays clean on the left and the
+			-- detailed city keeps the view straight ahead to itself.
+			sectorOffsetDeg = 90,
 			sectorDeg = 22, -- half-angle of the sector
 			minDistanceM = 2250,
 			maxDistanceM = 3000,
@@ -524,26 +527,58 @@ local config = {
 			-- Sodium haze along the base of the cluster: one wide dim Neon
 			-- slab, the cheapest "there are a million lights over there".
 			glowEnabled = true,
-			glowWidthM = 1800,
-			glowHeightM = 60,
+			-- Wide, low and faint: a wash along the base of the cluster. Any
+			-- narrower or more solid and it stops being sodium haze and
+			-- starts being a visible orange slab standing in the desert.
+			glowWidthM = 2800,
+			glowHeightM = 70,
 			glowColor = Color3.fromRGB(255, 176, 96),
-			glowTransparency = 0.72,
+			glowTransparency = 0.74,
 		},
 		-- Landmarks, both in the downtown sector: a Kingdom-Centre style
 		-- tower (two pillars over a slab with a sky bridge, the arch at the
 		-- top) and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = -5, distanceM = 2400 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 6, distanceM = 2500 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 2400 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 2500 },
 		},
 		-- Building detail. Tiers: a second, narrower box on top of a share
 		-- of the blocks and towers. Crowns: a dim lit band at the top of a
 		-- tower. Antennas on some towers. Windows are emissive bands split
 		-- into segments of different brightness so floors read as lit and
 		-- unlit rather than one bar.
+		-- LIGHTS. The backdrop city is lit at every time of day, because a
+		-- dark silhouette on the horizon is not what anyone wants to look
+		-- at. Away from the sun it has the sky to itself, so this is where
+		-- the map gets its glamour.
+		--
+		-- The one care needed: haze swallows a building body long before it
+		-- swallows an emissive part, so in daylight the lights are pulled
+		-- back with dayExtraTransparency or they float free of the towers.
+		lights = {
+			alwaysOn = true,
+			-- 0.08, not more: at 2.7 km the golden-hour haze is already
+			-- taking most of this, and the point is that the city glows.
+			dayExtraTransparency = 0.08,
+			-- Vertical LED strips up the corners of a share of the towers,
+			-- which is what actually reads as a modern Gulf skyline at this
+			-- distance: the verticals catch the eye, not the window grid.
+			ledStripChance = 0.55,
+			ledStripWidthM = 1.1,
+			ledStripFromFrac = 0.08, -- up the tower from the base
+			ledStripToFrac = 0.96,
+			ledWarm = Color3.fromRGB(255, 196, 120),
+			ledCool = Color3.fromRGB(150, 214, 255),
+			ledCoolFraction = 0.45,
+			ledTransparency = 0.1,
+			-- A lit line along the roof edge of a share of the blocks, so
+			-- the flat tops are not dead.
+			roofEdgeChance = 0.45,
+			roofEdgeColor = Color3.fromRGB(255, 206, 150),
+		},
 		tierChance = 0.35,
-		crownChance = 0.6,
+		crownChance = 0.75,
 		antennaChance = 0.4,
 		antennaHeightM = 22,
 		windowSegments = 2, -- per band
@@ -566,7 +601,7 @@ local config = {
 		towerColor = Color3.fromRGB(58, 68, 90),
 		colorVariation = 0.3,
 		-- Fraction of tall buildings that get a red aircraft warning light.
-		beaconChance = 0.5,
+		beaconChance = 0.7,
 		beaconColor = Color3.fromRGB(255, 70, 60),
 	},
 
