@@ -4,22 +4,25 @@
 -- the grid, the parcels, the buildings and the furniture all come from this
 -- file and a seeded random.
 --
--- Placement. The highway runs from the start line along -Z. Saudi drives on
--- the right, so the carriageway that travels toward -Z is the +X one, and a
--- right-hand exit from it lands on the +X side: the city sits there, its
--- first roundabout 200 m east of the highway centreline, 650 m down the
--- road. The off-ramp leaves the outer lane at 380 m and the on-ramp rejoins
--- at 1,800 m, both in the direction of travel.
+-- Placement. The highway runs from the start line along -Z for 2 km and
+-- ends in the city: its centreline is the grid's central boulevard, and
+-- the first roundabout is a wider gateway square that the full 64 m of
+-- highway lands on. The grid grows either side of that axis and south of
+-- it, and the skyline's downtown stands beyond the grid's far edge, so the
+-- towers rise dead ahead down the highway.
 local config = {
 	enabled = true,
 	seed = 774411,
 
 	-- The north-west roundabout (nearest the highway) in world metres, then
 	-- the grid grows east (+X) and south (-Z).
-	originM = { x = 200, z = -650 },
-	blocksX = 3,
+	originM = { x = -840, z = -2022 },
+	blocksX = 4,
 	blocksZ = 2,
 	blockM = 420, -- boulevard centre to boulevard centre
+	-- The node the highway feeds: boulevard index along X (0-based) on the
+	-- first row, and the square's width so a 64 m road lands on asphalt.
+	gateway = { i = 2, widthM = 72 },
 
 	boulevard = {
 		widthM = 44, -- kerb to kerb, both carriageways, median, parking lanes
@@ -45,10 +48,12 @@ local config = {
 	-- Each point is { x, z, width }. The highway's outer kerb is at 35.4 m
 	-- from its centreline; the ramp starts just outside it as a narrow
 	-- taper the first version hid under the shoulder, and widens to a lane.
+	-- No ramps now that the highway ends in the grid; the lists are kept
+	-- for a preset that wants a side entry again.
 	ramp = {
 		widthM = 12,
-		offRamp = { { 40, -300, 5 }, { 42, -400, 9 }, { 50, -480, 12 }, { 75, -560, 12 }, { 120, -620, 12 }, { 165, -645, 12 }, { 200, -650, 12 } },
-		onRamp = { { 200, -1490, 12 }, { 165, -1495, 12 }, { 120, -1520, 12 }, { 75, -1580, 12 }, { 50, -1660, 12 }, { 42, -1740, 9 }, { 40, -1840, 5 } },
+		offRamp = {} :: { { number } },
+		onRamp = {} :: { { number } },
 	},
 
 	surface = {
@@ -83,8 +88,8 @@ local config = {
 	-- The owner cut the villa blocks: this is one dense core that runs into
 	-- the skyline, so every block is commercial, towers or the plaza.
 	districts = {
-		{ "commercial", "towers", "commercial" },
-		{ "towers", "plaza", "commercial" },
+		{ "commercial", "towers", "towers", "commercial" },
+		{ "commercial", "plaza", "commercial", "commercial" },
 	},
 
 	buildings = {
@@ -213,12 +218,12 @@ local config = {
 		poleWidthM = 0.22,
 		poleColor = Color3.fromRGB(70, 72, 76),
 		headSizeM = 0.6,
-		parkedCarChance = 0.18, -- per parking slot along a boulevard kerb; a car is five parts
+		parkedCarChance = 0.13, -- per parking slot along a boulevard kerb; a car is six parts
 		parkedCarSlotM = 7,
 		binSpacingM = 40,
 		benchSpacingM = 60,
 		busStopSpacingM = 170, -- shelters on the boulevard pavements
-		pavementPalmSpacingM = 34, -- fan palms along the shop fronts
+		pavementPalmSpacingM = 42, -- fan palms along the shop fronts
 		hedgeLengthM = 10, -- a clipped hedge between median palms
 		crosswalkStripes = 6,
 		plazaLampSpacingM = 40,

@@ -282,22 +282,30 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 	local function bz(j: number): number
 		return c.originM.z - j * c.blockM
 	end
+	-- The gateway square is wider than the others so the whole highway
+	-- lands on it; everything that touches that node backs off to its edge.
+	local function nodeHalf(i: number, j: number): number
+		if j == 0 and i == c.gateway.i then
+			return c.gateway.widthM / 2
+		end
+		return half
+	end
 
 	-- Boulevard crossings: roundabouts.
 	for i = 0, c.blocksX do
 		for j = 0, c.blocksZ do
-			table.insert(nodes, { x = bx(i), z = bz(j), widthM = b.widthM, roundabout = true })
+			table.insert(nodes, { x = bx(i), z = bz(j), widthM = nodeHalf(i, j) * 2, roundabout = true })
 		end
 	end
 	-- Boulevard segments between crossings.
 	for i = 0, c.blocksX do
 		for j = 0, c.blocksZ - 1 do
-			table.insert(segments, { ax = bx(i), az = bz(j) - half, bx = bx(i), bz = bz(j + 1) + half, widthM = b.widthM, boulevard = true })
+			table.insert(segments, { ax = bx(i), az = bz(j) - nodeHalf(i, j), bx = bx(i), bz = bz(j + 1) + nodeHalf(i, j + 1), widthM = b.widthM, boulevard = true })
 		end
 	end
 	for j = 0, c.blocksZ do
 		for i = 0, c.blocksX - 1 do
-			table.insert(segments, { ax = bx(i) + half, az = bz(j), bx = bx(i + 1) - half, bz = bz(j), widthM = b.widthM, boulevard = true })
+			table.insert(segments, { ax = bx(i) + nodeHalf(i, j), az = bz(j), bx = bx(i + 1) - nodeHalf(i + 1, j), bz = bz(j), widthM = b.widthM, boulevard = true })
 		end
 	end
 	-- Side streets: one each way through the middle of every block, meeting
@@ -325,11 +333,14 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 					west = west,
 				})
 			end
-			-- north is +Z here (toward the highway start), south is -Z.
-			parcel(bx(i) + half + pw, mx - sHalf - pw, mz + sHalf + pw, bz(j) - half - pw, "boulevard", "side", "side", "boulevard")
-			parcel(mx + sHalf + pw, bx(i + 1) - half - pw, mz + sHalf + pw, bz(j) - half - pw, "boulevard", "side", "boulevard", "side")
-			parcel(bx(i) + half + pw, mx - sHalf - pw, bz(j + 1) + half + pw, mz - sHalf - pw, "side", "boulevard", "side", "boulevard")
-			parcel(mx + sHalf + pw, bx(i + 1) - half - pw, bz(j + 1) + half + pw, mz - sHalf - pw, "side", "boulevard", "boulevard", "side")
+			-- north is +Z here (toward the highway start), south is -Z. A
+			-- parcel whose corner touches the gateway node backs off to that
+			-- node's larger square on both of its boulevard sides.
+			local nwH, neH, swH, seH = nodeHalf(i, j), nodeHalf(i + 1, j), nodeHalf(i, j + 1), nodeHalf(i + 1, j + 1)
+			parcel(bx(i) + nwH + pw, mx - sHalf - pw, mz + sHalf + pw, bz(j) - nwH - pw, "boulevard", "side", "side", "boulevard")
+			parcel(mx + sHalf + pw, bx(i + 1) - neH - pw, mz + sHalf + pw, bz(j) - neH - pw, "boulevard", "side", "boulevard", "side")
+			parcel(bx(i) + swH + pw, mx - sHalf - pw, bz(j + 1) + swH + pw, mz - sHalf - pw, "side", "boulevard", "side", "boulevard")
+			parcel(mx + sHalf + pw, bx(i + 1) - seH - pw, bz(j + 1) + seH + pw, mz - sHalf - pw, "side", "boulevard", "boulevard", "side")
 		end
 	end
 
@@ -382,9 +393,14 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 		parcelRing(ctx, c, rng, rings, p.rect)
 	end
 
-	-- Ramps.
+	-- Ramps, if the preset has any.
 	local ramps = Build.folder("Ramps", folder)
-	local rampPaths = { ramp(ctx, c, rng, ramps, detail, c.ramp.offRamp), ramp(ctx, c, rng, ramps, detail, c.ramp.onRamp) }
+	local rampPaths: { RoadNetwork.Path } = {}
+	for _, pts in { c.ramp.offRamp, c.ramp.onRamp } do
+		if #pts >= 2 then
+			table.insert(rampPaths, ramp(ctx, c, rng, ramps, detail, pts))
+		end
+	end
 
 	return { nodes = nodes, segments = segments, parcels = parcels, blocks = blocks, rampPaths = rampPaths }, folder, detail
 end

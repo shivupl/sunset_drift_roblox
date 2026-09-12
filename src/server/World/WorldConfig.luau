@@ -239,15 +239,13 @@ local config = {
 		-- the road (the direction the player spends the session looking),
 		-- with two landmark towers in it. Rebuilt on request: the first pass
 		-- was ninety boxes in one ring and read as a bar chart.
-		rings = {
-			-- Near ring: low and mid blocks, big footprints, so the city has
-			-- a base and not just a row of spikes.
-			-- Distances were 1900 and 2500 in the first pass; at that range
-			-- the dusk haze flattened every tower into the same grey slab.
-			{ distanceM = 1350, depthM = 450, count = 110, minWidthM = 45, maxWidthM = 150, minHeightM = 18, maxHeightM = 60, towerChance = 0.05, towerMinHeightM = 90, towerMaxHeightM = 160 },
-			-- Far ring: taller, sparser, hazier.
-			{ distanceM = 1900, depthM = 1000, count = 130, minWidthM = 40, maxWidthM = 140, minHeightM = 30, maxHeightM = 120, towerChance = 0.22, towerMinHeightM = 130, towerMaxHeightM = 280 },
-		},
+		-- No rings. They scattered low blocks all round the desert and the
+		-- owner read them as random clusters of tiny buildings; the city is
+		-- one place now, ahead of the highway, so the backdrop is only the
+		-- downtown cluster behind the grid. An entry here is
+		-- { distanceM, depthM, count, min/maxWidthM, min/maxHeightM,
+		-- towerChance, towerMin/MaxHeightM } if a ring is ever wanted back.
+		rings = {} :: { { distanceM: number, depthM: number, count: number, minWidthM: number, maxWidthM: number, minHeightM: number, maxHeightM: number, towerChance: number, towerMinHeightM: number, towerMaxHeightM: number } },
 		-- Downtown: a KAFD-style cluster in a sector centred on the road's
 		-- direction of travel. Dense, tall, slim.
 		downtown = {
@@ -255,11 +253,11 @@ local config = {
 			-- The cluster sits in a sector this far round from the road's
 			-- direction of travel (+90 is the right-hand side, which is where
 			-- the city grid is) so the grid's boulevards run into it.
-			sectorOffsetDeg = 90,
-			sectorDeg = 30, -- half-angle of the sector
-			minDistanceM = 1600,
-			maxDistanceM = 2300,
-			count = 56,
+			sectorOffsetDeg = 0, -- straight ahead: the towers rise at the end of the highway, behind the grid
+			sectorDeg = 22, -- half-angle of the sector
+			minDistanceM = 2250,
+			maxDistanceM = 3000,
+			count = 64,
 			minWidthM = 28,
 			maxWidthM = 64,
 			minHeightM = 150,
@@ -277,8 +275,8 @@ local config = {
 		-- top) and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = 84, distanceM = 1700 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 97, distanceM = 1780 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, offsetDeg = -5, distanceM = 2400 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, offsetDeg = 6, distanceM = 2500 },
 		},
 		-- Building detail. Tiers: a second, narrower box on top of a share
 		-- of the blocks and towers. Crowns: a dim lit band at the top of a
@@ -618,9 +616,11 @@ local config = {
 			bayLengthM = 40,
 			pad = { startM = 900, lengthM = 400, widthM = 160 },
 			-- 64 m: an 8 m median and two 28 m carriageways of six 4.7 m lanes.
+			-- The straight ends in the city's gateway roundabout; the old
+			-- 30 degree curve at the end went when the city moved to where
+			-- the highway points (it survives in ringRoad).
 			segments = {
 				{ kind = "straight", lengthM = 2000, widthM = 64 } :: Segment,
-				{ kind = "curve", radiusM = 400, sweepDeg = 30, direction = -1, widthM = 64 },
 			},
 		},
 		-- A longer ring-road loop for driving rather than measuring.

@@ -138,17 +138,25 @@ this hour is built around do not render, and the scene falls flat.
 
 ## The city section (`src/server/World/City/`)
 
-A Riyadh-style edge of town on the +X side of the highway, attached by an
-off-ramp at 300 m and an on-ramp back at 1,840 m, both leaving and rejoining
-the carriageway that drives toward -Z (Saudi drives on the right, so both
-are right-hand ramps). Nothing hand-placed: `CityConfig.luau` and a seeded
-random.
+A Riyadh-style city where the highway is going. The 2 km straight ends in
+the city's gateway roundabout, a 72 m square the full 64 m of highway
+lands on; the highway centreline is the grid's central boulevard, the grid
+grows two blocks either side of it and two blocks south, and the skyline's
+downtown cluster with its two landmarks stands beyond the grid's far edge,
+so the towers rise dead ahead down the highway. The first build sat the
+city off to one side with ramps and ringed the whole desert with low
+blocks; the owner read the rings as random clusters of tiny buildings and
+wanted the city ahead, so the rings and the ramps went (the ramp code
+stays, driven by empty lists) and the old 30 degree curve at the end of
+the straight went with them. Nothing hand-placed: `CityConfig.luau` and a
+seeded random.
 
 **Streets** (`Streets.luau`). A 3 x 2 grid of blocks 420 m across.
 Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a
 3 m parking lane each way. Every boulevard crossing is a roundabout with a
 15 m island (kerb ring, ground fill, five palms), sized so it is a drift
-spot. Each block has one 16 m side street each way through its middle,
+spot; the gateway one is a 72 m square and the two parcels that touch it
+back off to its edge. Each block has one 16 m side street each way through its middle,
 meeting at a plain crossing and ending at the boulevard kerbs, which cuts
 the block into four parcels. Streets are slabs at the highway surface
 height with the sand 5 cm below, so a slab that has not streamed in is a
@@ -157,16 +165,15 @@ between them so nothing coplanar overlaps. Kerbs and pavements are drawn
 per parcel (which is what leaves the kerb gap where a side street enters)
 and do not collide. Boulevard markings are in a streamed `StreetDetail`
 folder: worn dashes, parking-lane and median lines, tyre tracks in the
-inner two lanes. The ramps are waypoint paths through the same
-`RoadNetwork.ribbon` the highway uses, starting as a 5 m taper just outside
-the highway kerb.
+inner two lanes. Ramps, when a preset lists any, are waypoint paths
+through the same `RoadNetwork.ribbon` the highway uses.
 
 **Buildings** (`Buildings.luau`). Each parcel is filled by its block's
-district. The owner cut the villa blocks after the first build, so the six
-blocks are commercial, towers, commercial / towers, plaza, commercial: one
-dense core whose east boulevards run straight into the skyline's downtown
-cluster, which was swung round to stand behind the grid's east edge (with
-a keep-out so no backdrop building lands in a street). *Commercial*: rows of shops along both boulevard frontages and one
+district. The owner cut the villa blocks after the first build, so the eight
+blocks are commercial, towers, towers, commercial / commercial, plaza,
+commercial, commercial: one dense core with the tower blocks either side
+of the highway's arrival, and the skyline's downtown behind its far edge
+(with a keep-out so no backdrop building lands in a street). *Commercial*: rows of shops along both boulevard frontages and one
 side street, 18 to 36 m wide, 3 to 7 storeys, gaps between some; each has a
 glazed shopfront, a coloured fascia, an awning on most, a lit sign on some,
 a ground-floor colonnade on a third, balconies on the second and third
@@ -205,16 +212,15 @@ shop fronts; bus shelters on the boulevards; zebra crossings across every
 side-street mouth; bollards and planters round the plaza. Nothing here
 collides.
 
-**Counts.** City streets 544, street detail 1,325, buildings 6,184 (465
-shadow casters), furniture 4,996 (562 casters, the median and island
-palms). Whole world 18,979 parts. The city is streamed (buildings,
-streets, furniture all default streaming mode); the highway road, its
-palms and the skyline stay Persistent as before. Build time about a
-second.
+**Counts.** City streets 691, street detail 1,660, buildings 9,046,
+furniture 5,605; skyline 940 (downtown and landmarks only). Whole world
+20,791 parts. The city is streamed; the highway road, its palms and the
+skyline stay Persistent.
 
-**Verified.** A raycast sweep every 2 m along both ramps, a boulevard
-through three roundabouts, a side street through its crossing and the
-plaza: 1,800 samples, no gaps, the surface within 5 cm everywhere except
+**Verified.** A raycast sweep every 2 m down the highway's right
+carriageway into the gateway and on down the central boulevard (500
+samples), and earlier along a boulevard through three roundabouts, a side
+street and the plaza: no gaps, the surface within 5 cm everywhere except
 the roundabout islands.
 
 **Assets vetted and rejected.** In `AssetRegistry.luau`. The traffic light

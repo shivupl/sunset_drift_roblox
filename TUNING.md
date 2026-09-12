@@ -373,8 +373,8 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | seed | Fixed, so every server draws the same city. |
-| rings | Two rings of ordinary city around the middle of the road (rings, not bands: bands parallel to the road are invisible from the road). Each has a near-edge distance, a depth, a count, block and tower size ranges and a tower chance. 1,350 m and 1,900 m now; at 1,900 and 2,500 the dusk haze flattened every tower into the same grey slab. |
-| downtown | A dense cluster of slim towers in a sector centred on the road's direction of travel, which is where the player looks all session: half-angle, distance range, count, size and height ranges, plus one wide dim Neon slab along its base (the sodium haze). |
+| rings | Empty. Rings of low blocks round the desert read as random clusters of tiny buildings; the list is kept so one can be added back ({ distanceM, depthM, count, size and height ranges, towerChance }). |
+| downtown | A dense cluster of slim towers in a sector sectorOffsetDeg round from the road's direction of travel (0 = straight ahead, behind the city grid): half-angle, distance range, count, size and height ranges, plus one wide dim Neon slab along its base (the sodium haze). Anything that would land inside the city grid is skipped. |
 | landmarks | Kingdom-Centre style (slab, two pillars, sky bridge: the arch) and Faisaliah style (four corner wedges as a pyramid, a globe near the tip), both in the downtown sector. Height, footprint, angle offset and distance each. |
 | tierChance / crownChance / antennaChance / antennaHeightM | A narrower tier on top of a share of buildings, a lit band at the top of towers, and an antenna on some. |
 | windowSegments / blockBands* / towerBands* / windowHeightM / windowInsetM / windowColorWarm / windowColorCool / coolFraction | Emissive floor bands, split into segments of different brightness so floors read as lit and unlit, warm or cool per building. Cheaper than a texture and needing no asset. |
@@ -419,11 +419,12 @@ Not live-reloadable either; restart the server.
 
 | Field | What it does |
 |---|---|
-| originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many 420 m blocks the grid grows east and south. |
+| originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many 420 m blocks the grid grows east and south. With the highway on x = 0 ending at 2,000 m, origin (-840, -2022) and four blocks wide puts the central boulevard on the highway axis. |
+| gateway.i / gateway.widthM | Which first-row boulevard the highway feeds and the width of that square, so the whole road lands on asphalt. |
 | boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 44 m kerb to kerb, an 8 m palm median, three lanes and a parking lane each way. |
 | sideStreet.widthM | 16 m, one lane each way plus parking. |
 | roundabout.islandRadiusM / islandHeightM / palmsOnIsland | Every boulevard crossing. The island is the one raised thing in the city that collides. |
-| ramp.offRamp / onRamp / widthM | Waypoint lists { x, z, width } in world metres. Start them just outside the highway kerb (35.4 m from the centreline) as a narrow taper. |
+| ramp.offRamp / onRamp / widthM | Waypoint lists { x, z, width } in world metres; empty now that the highway ends in the grid. For a side entry, start them just outside the highway kerb (35.4 m from the centreline) as a narrow taper. |
 | surface.* | Slab thickness, run cap (streaming), colours, tone jitter, kerb dust, marking sizes, tyre tracks, pavement width. |
 | districts | One row per block row, one entry per block: commercial, towers, plaza, residential, lot. |
 | buildings.palette / accentPalette / accentChance / tone | Sand, cream and warm grey, the odd colour, per-part jitter. |
