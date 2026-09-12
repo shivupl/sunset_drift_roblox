@@ -17,6 +17,8 @@ only in the place file. Change a number in the config and restart the server.
 | `Scatter.luau` | Palms, scrub, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
 | `Berm.luau` | The playable edge: a drivable sand hill either side of the highway with an invisible wall on its crest. Persistent. |
+| `Relief.luau` | The near desert floor: a strip of smooth terrain from the verge to the berm foot, with noise undulation, hummocks, nabkha scrub and gravel patches. |
+| `Sand.luau` | One sand MaterialVariant from a CC0 PBR set, stamped on every Sand part after the build. |
 | `AssetRegistry.luau` | Mesh props by id, the loader, and the provenance of everything vetted. |
 
 There is no barrier module any more. Nothing stands between the road and the
@@ -107,17 +109,43 @@ slip face and sunk so the foot is buried. Five kinds layer up: broad flat
 sheets so the floor rolls, long ridges parallel to the road, sharp-crested
 seifs (two wedges at 33 and 17 degrees, a mound over each cut end), crescents
 with horns toward the road, and low mounds that fade the field in from its
-inner edge. Sandstone outcrops are store meshes. The tallest crest is 70 m at
-1.3 km, a 3.1 degree silhouette under a sun at 5.4 degrees; the build prints
+inner edge. Sandstone outcrops are store meshes. The tallest crest is 42 m at
+1.3 km, a 1.8 degree silhouette under a sun at 5.4 degrees, which keeps the
+crests in the sun disc's lower rim rather than across it; the build prints
 both numbers, and the skyline ring drops any site that would stand behind the
 field so that side is dunes against sky. A field this far out is soft in the
 golden-hour haze by design; the knob for that is the preset's atmosphere
 density. Nothing in the field collides, and the whole model is Persistent.
 
+**The sand is a material variant, a terrain strip, and a lot of small
+things.** The plane used to be Roblox's stock sand in two flat olive tones.
+Now every Sand part in the world carries one MaterialVariant from a CC0 PBR set (3Dtextures "Sand 005", colour and normal maps; the
+set's roughness map is left out because Roblox reads it as glossy, and it
+gave the desert a wet sheen and specular glints on every dune crest toward
+the sun). A MaterialVariant's maps cannot be written by a game script (plugin
+capability), so the variant is a place asset declared in
+`default.project.json` under MaterialService; the runtime only looks it up,
+and warns and falls back to Roblox's sand if it is missing. The plane is
+tinted warm, blends from near to far tone over 120 to
+900 m, and is cut into sub-tiles near the road with a slow noise tint so it
+reads as patches of ground. Between 40 m past the asphalt and the berm's foot
+the floor is smooth terrain, written as a heightfield in 4-stud voxels in
+under a second: two octaves of noise for swells and ripples, a few hundred
+hummocks with a scrub tuft on many (a nabkha), and gravel patches as a second
+terrain material. Terrain is used here and nowhere else because it only
+reaches the client inside the streaming radius, and this strip is the one
+piece of sand the car is always near; it collides at real slopes of a few
+degrees, so running wide feels like sand. The terrain's own textures are
+lighter than the part maps, so its tints sit darker to come out the same.
+Scatter sits its props on the terrain with a raycast, which only works a
+frame after the voxels are written, so the relief yields once. Sand drifts
+bank against the outer kerb every forty metres or so, thin wedges the car
+passes through.
+
 **The berm is the one piece of scenery that collides.** Either side of the
 highway, a sand hill marks the edge of the playable area: a gentle collidable
-slope (9 degrees on the right, 6 on the sunset side, where it also starts
-farther out and lower so the sunset and the far field stay in view), a short
+slope (9 degrees on the right, 4 on the sunset side, where it also starts
+farther out and tops out at 6 m so the sunset and the far field stay in view), a short
 steep lip at the angle of repose, and an invisible 150 m wall standing on the
 crest. Rounded hilltops sit behind the lip and a back slope drops to the
 plane, so from the road it reads as a dune line and from the far side it has
@@ -357,6 +385,7 @@ Whole world, `testRoad` preset, six lanes each way in a 64 m corridor with an
 | scatter (palms, scrub, rocks, dunes, camps, camels) | 629 | ~520 |
 | dune field (sheets, ridges, seifs, crescents, mounds, outcrops, scrub; Persistent) | 1,011 | ~90 |
 | berm (slope, lip, wall, back, hilltops, both sides; Persistent, slope and lip collide) | 107 | 0 |
+| relief (terrain strip; not parts) | 476 voxel chunks, 1.4 M cells | 0 |
 | **total** | **5,620** | **~520** |
 
 The skyline is the biggest change from the first pass, which was ninety

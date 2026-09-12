@@ -3,14 +3,32 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "Server": { "$path": "src/server" }
+      "Server": {
+        "$path": "src/server"
+      }
     },
     "ReplicatedStorage": {
-      "Shared": { "$path": "src/shared" }
+      "Shared": {
+        "$path": "src/shared"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Client": { "$path": "src/client" }
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "MaterialService": {
+      "$className": "MaterialService",
+      "HajwalaSand": {
+        "$className": "MaterialVariant",
+        "$properties": {
+          "BaseMaterial": "Sand",
+          "ColorMap": "rbxassetid://8282523778",
+          "NormalMap": "rbxassetid://8282524789",
+          "StudsPerTile": 18
+        }
       }
     }
   }

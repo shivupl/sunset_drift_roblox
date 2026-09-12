@@ -16,6 +16,7 @@ local WorldConfig = require(script.Parent.WorldConfig)
 local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.AssetRegistry)
+local Relief = require(script.Parent.Relief)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -185,10 +186,16 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 		return true
 	end
 
-	-- Position on the ground at (distance along, lateral metres from the centreline).
+	-- Position on the ground at (distance along, lateral metres from the
+	-- centreline), sat on the terrain relief where there is any.
 	local function ground(d: number, lateralM: number): (Vector3, RoadNetwork.PathPoint)
 		local p = RoadNetwork.sample(path, math.clamp(d, 0, totalM))
-		return p.position + p.cframe.RightVector * ctx.s(lateralM), p
+		local pos = p.position + p.cframe.RightVector * ctx.s(lateralM)
+		local y = Relief.surfaceY(pos)
+		if y then
+			pos = Vector3.new(pos.X, y, pos.Z)
+		end
+		return pos, p
 	end
 
 	local p = sc.palm
@@ -420,6 +427,38 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 				end
 			end
 			sd += af.strayCamelSpacingM
+		end
+	end
+
+	-- Sand drifts on the shoulder, banked against the outer kerb: the
+	-- wedge's tall face sits at the kerb and its thin edge feathers toward
+	-- the road. A WedgePart's slope runs down to its -Z, so the yaw puts -Z
+	-- toward the road.
+	local dr = sc.drift
+	if dr.enabled then
+		local drifts = Build.folder("Drifts", folder)
+		local drng = Build.rng(sc.seed + 41)
+		local d = dr.spacingM * 0.5
+		while d < totalM do
+			local along = d + drng:NextNumber(-dr.jitterM, dr.jitterM)
+			if drng:NextNumber() < dr.chance then
+				local side = if drng:NextNumber() < 0.5 then -1 else 1
+				local width = drng:NextNumber(dr.minWidthM, dr.maxWidthM)
+				local height = drng:NextNumber(dr.minHeightM, dr.maxHeightM)
+				local length = drng:NextNumber(dr.minLengthM, dr.maxLengthM)
+				local kerbM = lay.totalM / 2 + cfg.road.shoulderWidthM
+				local pos, pt = ground(along, side * (kerbM - width / 2))
+				local yaw = side * math.pi / 2
+				Build.wedge({
+					name = "Drift",
+					size = Vector3.new(ctx.s(length), ctx.s(height), ctx.s(width)),
+					cframe = CFrame.new(pos + Vector3.new(0, ctx.s(height) / 2 - ctx.s(0.02), 0)) * pt.cframe.Rotation * CFrame.Angles(0, yaw, 0),
+					color = dr.color,
+					material = Enum.Material.Sand,
+					parent = drifts,
+				})
+			end
+			d += dr.spacingM
 		end
 	end
 

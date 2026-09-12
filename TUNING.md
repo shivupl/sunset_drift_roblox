@@ -304,7 +304,9 @@ Surface realism. None of it is geometry the car can feel.
 | tileM / marginM | Sand tile size and how far the desert reaches past the road. **tileM must stay under 573 m**: a Part axis caps at 2,048 studs and a bigger tile silently shrinks and leaves holes. |
 | dunes.* | Low wedge ridges beyond the shoulder band: spacing, edge distances, size range. Non-collidable. |
 | thicknessM / dropM | Slab thickness and how far the sand sits below the road. |
-| nearColor / farColor / farStartM | Two tones split by distance from the road, so the desert is not one colour sheet. |
+| nearColor / farColor / nearStartM / farStartM | Warm tints that blend by distance from the road. They multiply the sand maps, so keep them light. |
+| splitDistanceM / splitN / tintNoiseScaleM / tintVariation | Near tiles are cut splitN by splitN and each piece gets a slow noise tint. |
+| sand.* | The MaterialVariant: colour, normal and roughness image ids and studsPerTile. roughnessMap 0 leaves it out (the set's map reads glossy). enabled false falls back to Roblox's sand. |
 
 ## duneField
 The border on the sunset side. Every distance is metres from the road
@@ -337,6 +339,20 @@ to the sun's elevation, so check that line after changing heights.
 There are no barriers at the road. Running wide costs speed and dignity, not
 the run; the edge of the world is the berm, 170 m out on the right and 200 m
 on the sunset side.
+
+## relief
+The terrain strip beside the road, from innerGapM past the asphalt to the
+berm foot. Everything in metres.
+
+| Field | What it does |
+|---|---|
+| innerGapM / outerMarginM / featherM | Where the strip starts and stops, and how far its edges blend down to the plane. |
+| liftM / depthM | How far the surface sits above the plane (so the plane never shows through) and how deep the voxels go. |
+| swellWavelengthM / swellAmplitudeM / rippleWavelengthM / rippleAmplitudeM | Two octaves of undulation. math.noise spans about -0.5..0.5, so amplitude is twice the swing. |
+| hummocks.* | Small mounds per km per side, radius and height range, and the chance of a scrub tuft on top. |
+| gravel.* | A second terrain material where a slow noise is above threshold. |
+| sandColor / gravelColor | Terrain tints; darker than the part tints because terrain textures are lighter. |
+| chunkStuds | Voxel write chunk. 128 is 32 columns; bigger chunks mean fewer, larger writes. |
 
 ## berm
 The drivable sand hill either side of the highway, with an invisible wall on
@@ -438,6 +454,7 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | palm.trunkHeightM / trunkWidthM / frondCount / frondLengthM / frondWidthM | The primitive stand-in's proportions, used until a mesh is approved. |
 | palm.leanMaxRad | Palms lean. A vertical pole reads as a lamp post. |
 | rock.* / debris.* | Same spacing, jitter and edge-distance rules at lower density. |
+| drift.* | Sand banked against the outer kerb: spacing, chance, and the length, width and height of each wedge. Cosmetic. |
 
 ## streaming
 | Field | What it does |

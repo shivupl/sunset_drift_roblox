@@ -16,6 +16,8 @@ local WorldLighting = require(script.Lighting)
 local Cityscape = require(script.Cityscape)
 local Dunes = require(script.Dunes)
 local Berm = require(script.Berm)
+local Sand = require(script.Sand)
+local Relief = require(script.Relief)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
 local City = require(script.City)
@@ -38,6 +40,8 @@ local function clearOld()
 			existing:Destroy()
 		end
 	end
+	-- The relief strip is the only terrain; it is regenerated every build.
+	workspace.Terrain:Clear()
 end
 
 -- Streaming is a place setting, not a runtime one. Workspace.StreamingEnabled
@@ -68,6 +72,7 @@ function World.build(): Result
 	world.Name = "World"
 	world.Parent = workspace
 
+	Sand.setup(cfg)
 	local road, path, ctx = RoadNetwork.build(cfg, world)
 	local detail = workspace:FindFirstChild("RoadDetail")
 	type Tally = { label: string, parts: number, tris: number }
@@ -107,6 +112,16 @@ function World.build(): Result
 		tally("signage", folder)
 	end
 
+	-- The terrain strip beside the road: after the lighting (it needs the
+	-- sun side for the berm foot) and before anything is scattered on it.
+	if cfg.relief.enabled then
+		local t0 = os.clock()
+		local chunks, tufts = Relief.build(cfg, ctx, path, world)
+		if cfg.debug.report then
+			print(string.format("[World] relief: %d terrain chunks, %d nabkha tufts, %.1f s", chunks, tufts, os.clock() - t0))
+		end
+	end
+
 	if cfg.scatter.enabled then
 		-- Meshes load over the network once each, up front, so the scatter
 		-- loop never yields part way through a clump.
@@ -122,6 +137,12 @@ function World.build(): Result
 	-- only through ctx (units, surface height).
 	for _, row in City.build(ctx, world) do
 		table.insert(counts, row)
+	end
+
+	-- One material for every grain of sand in the world.
+	local sanded = Sand.apply(cfg, road) + Sand.apply(cfg, world) + (if detail then Sand.apply(cfg, detail) else 0)
+	if cfg.debug.report then
+		print(`[World] sand variant on {sanded} parts`)
 	end
 
 	local totalParts = Build.countParts(road) + Build.countParts(world) + (if detail then Build.countParts(detail) else 0)

@@ -136,12 +136,38 @@ local config = {
 		marginM = 4000,
 		thicknessM = 1,
 		dropM = 0.05, -- sand sits this far below the asphalt; small so running wide is a bump, not a drop
-		-- Two tones dithered by distance from the road so the desert is not
-		-- one flat colour sheet. No texture: a texture on a plane this size
-		-- is a large-surface draw we have not measured.
-		nearColor = Color3.fromRGB(138, 118, 86),
-		farColor = Color3.fromRGB(112, 95, 70),
-		farStartM = 300, -- distance from the road centre where far colour takes over
+		-- Tone by distance from the road: a smooth blend from nearColor at
+		-- nearStartM to farColor at farStartM, on sub-tiles near the road so
+		-- the blend and the tint noise have something to work with. The
+		-- colours tint the sand maps below, so they stay close to white-warm.
+		nearColor = Color3.fromRGB(206, 180, 140),
+		farColor = Color3.fromRGB(178, 154, 118),
+		nearStartM = 120,
+		farStartM = 900,
+		-- Tiles within splitDistanceM of the road are cut splitN by splitN
+		-- and each piece gets a slow noise tint, so the plane reads as
+		-- patches of sand rather than one sheet. 4x4 on the near tiles is
+		-- about six hundred more parts.
+		splitDistanceM = 800,
+		splitN = 4,
+		tintNoiseScaleM = 260,
+		tintVariation = 0.07,
+		-- The sand itself: a MaterialVariant on the Sand material built at
+		-- server start from a CC0 PBR set (3Dtextures "Sand 005" via
+		-- PixelHix, store decals 8282523787 / 8282524799 / 8282525263; the
+		-- ids here are the images behind them). Applied to every Sand part
+		-- in the world after the build, so ground, dunes, berm and drifts
+		-- all match. Off falls back to Roblox's own sand.
+		sand = {
+			enabled = true,
+			colorMap = 8282523778,
+			normalMap = 8282524789,
+			-- The set's roughness map (image 8282525243) reads as glossy in
+			-- Roblox and gave the desert a wet sheen and specular glints on
+			-- every dune crest toward the sun. 0 leaves it out: matte sand.
+			roughnessMap = 0,
+			studsPerTile = 18, -- about 5 m; smaller shows more grain close to the car but repeats sooner
+		},
 		-- Undulation, cheaply: low ridges built from two wedges back to back,
 		-- scattered beyond the shoulder band and sunk into the plane. Sixteen
 		-- triangles each. Never collidable and never near the road.
@@ -180,10 +206,10 @@ local config = {
 		endM = 3300, -- past the city
 		-- Crest height envelope: small at the inner edge, full height by
 		-- fullDepthM into the field, so the border rises away from the road.
-		-- 70 m at 1,300 m out is a 3.1 degree silhouette against a sun at
-		-- 5.4 degrees; the build prints both.
-		edgeHeightM = 12,
-		fullHeightM = 70,
+		-- Kept under the sun: 42 m at 1.3 km is 1.9 degrees against a sun at
+		-- 5.4, so the crests sit in the disc's lower rim, not across it.
+		edgeHeightM = 8,
+		fullHeightM = 42,
 		fullDepthM = 550,
 		-- Patchiness. Positions where this noise is under the threshold get
 		-- nothing, so the field has bays and gaps instead of a wall.
@@ -281,6 +307,43 @@ local config = {
 		skylineMarginM = 400,
 	},
 
+	-- The near desert floor: a strip of smooth terrain either side of the
+	-- road, from innerGapM past the asphalt edge to the berm's foot, with
+	-- gentle noise undulation, small hummocks and gravel patches. Terrain is
+	-- used here and nowhere else because it only streams within the radius,
+	-- and this strip is always near the car. It collides at real slopes.
+	relief = {
+		enabled = true,
+		seed = 8083,
+		innerGapM = 40, -- from the asphalt edge to the strip
+		outerMarginM = 6, -- the strip ends this far before the berm foot
+		outerM = 170, -- used only if the berm is off
+		featherM = 26, -- edges blend down to the plane over this distance
+		liftM = 0.15, -- strip surface above the sand plane, so the plane never shows through
+		depthM = 3, -- solid below the plane
+		-- math.noise spans about -0.5..0.5, so these are twice the swing.
+		swellWavelengthM = 70,
+		swellAmplitudeM = 2.4,
+		rippleWavelengthM = 22,
+		rippleAmplitudeM = 0.8,
+		hummocks = {
+			perKm = 110, -- per side
+			minRadiusM = 3,
+			maxRadiusM = 9,
+			minHeightM = 0.5,
+			maxHeightM = 1.6,
+			scrubChance = 0.4, -- a nabkha: a bush with its own mound
+		},
+		-- Patches of a darker, coarser material where a slow noise is high:
+		-- gravel flats between the sand.
+		gravel = { threshold = 0.36, scaleM = 60, material = Enum.Material.Ground },
+		-- Terrain textures are lighter than the part sand maps, so these
+		-- tints sit darker than ground.nearColor to come out the same.
+		sandColor = Color3.fromRGB(178, 152, 114),
+		gravelColor = Color3.fromRGB(112, 96, 76),
+		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
+	},
+
 	-- The berm: the playable area's edge on both sides of the highway, a
 	-- long sand hill the car can drive up. A gentle collidable slope rises
 	-- from the foot to a short steep lip, an invisible wall stands on the
@@ -296,13 +359,13 @@ local config = {
 		wallHeightM = 150, -- invisible; a car launched off the lip at 200 km/h still meets it
 		sun = {
 			footM = 200,
-			slopeDeg = 6,
+			slopeDeg = 4,
 			slopeWidthM = 60,
-			lipDeg = 32,
-			lipWidthM = 4,
-			backDeg = 18,
-			crestMoundMinM = 1.5, -- above the lip's crest
-			crestMoundMaxM = 4,
+			lipDeg = 30,
+			lipWidthM = 3,
+			backDeg = 16,
+			crestMoundMinM = 0.5, -- above the lip's crest
+			crestMoundMaxM = 1.5,
 		},
 		other = {
 			footM = 170,
@@ -556,6 +619,22 @@ local config = {
 			minSizeM = 0.3,
 			maxSizeM = 0.9,
 			color = Color3.fromRGB(100, 94, 82),
+		},
+		-- Sand blown onto the shoulder, banked against the outer kerb: a
+		-- thin wedge every so often, the hajwala highway's signature.
+		-- Cosmetic; a car running wide passes through 20 cm of it.
+		drift = {
+			enabled = true,
+			spacingM = 38,
+			jitterM = 16,
+			chance = 0.55,
+			minLengthM = 6,
+			maxLengthM = 24,
+			minWidthM = 1.2,
+			maxWidthM = 2.8,
+			minHeightM = 0.1,
+			maxHeightM = 0.28,
+			color = Color3.fromRGB(214, 190, 150),
 		},
 		-- Density falls off with distance from the road so the near shoulder
 		-- reads as maintained and the far desert as empty.
