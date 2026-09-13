@@ -35,7 +35,7 @@ export type Segment = {
 	widthM: number,
 	boulevard: boolean,
 }
-export type Node = { x: number, z: number, widthM: number, roundabout: boolean }
+export type Node = { x: number, z: number, widthM: number, roundabout: boolean, gateway: boolean }
 -- What each side of a parcel faces: "boulevard" or "side".
 export type Parcel = {
 	rect: Rect,
@@ -53,6 +53,10 @@ export type Plan = {
 	blocks: { Rect },
 	rampPaths: { RoadNetwork.Path },
 }
+
+local function kerbColourFor(): Color3
+	return CityConfig.surface.kerbColor:Lerp(WorldConfig.ground.color, CityConfig.surface.kerbDust)
+end
 
 local function tinted(colour: Color3, rng: Random, tone: number): Color3
 	local t = rng:NextNumber(-tone, tone)
@@ -201,27 +205,6 @@ local function parcelRing(ctx: Context, c: CCfg, rng: Random, parent: Instance, 
 	slab(ctx, parent, "Kerb", rect.maxX + pw + k / 2, cz, k, h + 2 * pw, kh, kh + 0.05, tinted(kerb, rng, 0.06), Enum.Material.Concrete, false)
 end
 
-local function roundabout(ctx: Context, c: CCfg, rng: Random, parent: Instance, node: Node)
-	local r = c.roundabout
-	local function disc(name: string, radiusM: number, heightM: number, color: Color3, material: Enum.Material)
-		local p = Build.part({
-			name = name,
-			size = Vector3.new(ctx.s(heightM), ctx.s(radiusM * 2), ctx.s(radiusM * 2)),
-			cframe = CFrame.new(ctx.s(node.x), ctx.surfaceY + ctx.s(heightM / 2), ctx.s(node.z)) * CFrame.Angles(0, 0, math.pi / 2),
-			color = color,
-			material = material,
-			parent = parent,
-			collide = true,
-			query = true,
-		})
-		p.Shape = Enum.PartType.Cylinder
-		return p
-	end
-	local kerb = c.surface.kerbColor:Lerp(WorldConfig.ground.color, c.surface.kerbDust)
-	disc("IslandKerb", r.islandRadiusM, r.islandHeightM, tinted(kerb, rng, 0.05), Enum.Material.Concrete)
-	disc("Island", r.islandRadiusM - 0.8, r.islandHeightM + 0.12, c.surface.medianColor, Enum.Material.Ground)
-end
-
 local function ramp(ctx: Context, c: CCfg, rng: Random, parent: Instance, detail: Instance, points: { { number } }): RoadNetwork.Path
 	local waypoints: { WorldConfig.Waypoint } = {}
 	for _, pt in points do
@@ -270,6 +253,9 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 	local half = b.widthM / 2
 	local sHalf = ss.widthM / 2
 	local pw = s.pavementWidthM + b.kerbWidthM
+	-- Boulevard centreline to the parcels' kerb: the carriageway, then the
+	-- landscaped verge.
+	local sb = half + b.vergeM
 
 	local nodes: { Node } = {}
 	local segments: { Segment } = {}
@@ -294,7 +280,7 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 	-- Boulevard crossings: roundabouts.
 	for i = 0, c.blocksX do
 		for j = 0, c.blocksZ do
-			table.insert(nodes, { x = bx(i), z = bz(j), widthM = nodeHalf(i, j) * 2, roundabout = true })
+			table.insert(nodes, { x = bx(i), z = bz(j), widthM = nodeHalf(i, j) * 2, roundabout = true, gateway = j == 0 and i == c.gateway.i })
 		end
 	end
 	-- Boulevard segments between crossings.
@@ -313,7 +299,7 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 	for i = 0, c.blocksX - 1 do
 		for j = 0, c.blocksZ - 1 do
 			local mx, mz = bx(i) + c.blockM / 2, bz(j) - c.blockM / 2
-			table.insert(nodes, { x = mx, z = mz, widthM = ss.widthM, roundabout = false })
+			table.insert(nodes, { x = mx, z = mz, widthM = ss.widthM, roundabout = false, gateway = false })
 			table.insert(segments, { ax = mx, az = bz(j) - half, bx = mx, bz = mz + sHalf, widthM = ss.widthM, boulevard = false })
 			table.insert(segments, { ax = mx, az = mz - sHalf, bx = mx, bz = bz(j + 1) + half, widthM = ss.widthM, boulevard = false })
 			table.insert(segments, { ax = bx(i) + half, az = mz, bx = mx - sHalf, bz = mz, widthM = ss.widthM, boulevard = false })
@@ -333,23 +319,23 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 					west = west,
 				})
 			end
-			-- north is +Z here (toward the highway start), south is -Z. A
-			-- parcel whose corner touches the gateway node backs off to that
-			-- node's larger square on both of its boulevard sides.
-			local nwH, neH, swH, seH = nodeHalf(i, j), nodeHalf(i + 1, j), nodeHalf(i, j + 1), nodeHalf(i + 1, j + 1)
-			parcel(bx(i) + nwH + pw, mx - sHalf - pw, mz + sHalf + pw, bz(j) - nwH - pw, "boulevard", "side", "side", "boulevard")
-			parcel(mx + sHalf + pw, bx(i + 1) - neH - pw, mz + sHalf + pw, bz(j) - neH - pw, "boulevard", "side", "boulevard", "side")
-			parcel(bx(i) + swH + pw, mx - sHalf - pw, bz(j + 1) + swH + pw, mz - sHalf - pw, "side", "boulevard", "side", "boulevard")
-			parcel(mx + sHalf + pw, bx(i + 1) - seH - pw, bz(j + 1) + seH + pw, mz - sHalf - pw, "side", "boulevard", "boulevard", "side")
+			-- north is +Z here (toward the highway start), south is -Z. Every
+			-- boulevard side stands back behind the verge, which is what
+			-- leaves room at the corners for a roundabout ring.
+			parcel(bx(i) + sb + pw, mx - sHalf - pw, mz + sHalf + pw, bz(j) - sb - pw, "boulevard", "side", "side", "boulevard")
+			parcel(mx + sHalf + pw, bx(i + 1) - sb - pw, mz + sHalf + pw, bz(j) - sb - pw, "boulevard", "side", "boulevard", "side")
+			parcel(bx(i) + sb + pw, mx - sHalf - pw, bz(j + 1) + sb + pw, mz - sHalf - pw, "side", "boulevard", "side", "boulevard")
+			parcel(mx + sHalf + pw, bx(i + 1) - sb - pw, bz(j + 1) + sb + pw, mz - sHalf - pw, "side", "boulevard", "boulevard", "side")
 		end
 	end
 
 	-- Emit. Nodes first (their own slab), then segments, then rings.
 	local asphalt = Build.folder("Asphalt", folder)
 	for _, n in nodes do
-		slab(ctx, asphalt, if n.roundabout then "Roundabout" else "Crossing", n.x, n.z, n.widthM, n.widthM, 0, s.thicknessM, tinted(s.asphaltColor, rng, s.slabTone), Enum.Material.Asphalt, true)
-		if n.roundabout then
-			roundabout(ctx, c, rng, asphalt, n)
+		-- Roundabout crossings get their ring from Roundabouts.luau once
+		-- everything else is built; only side-street crossings are slabs.
+		if not n.roundabout then
+			slab(ctx, asphalt, "Crossing", n.x, n.z, n.widthM, n.widthM, 0, s.thicknessM, tinted(s.asphaltColor, rng, s.slabTone), Enum.Material.Asphalt, true)
 		end
 	end
 	local medians = Build.folder("Medians", folder)
@@ -372,15 +358,22 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 			local kerb = s.kerbColor:Lerp(WorldConfig.ground.color, s.kerbDust)
 			local len = if alongX then math.abs(seg.bx - seg.ax) else math.abs(seg.bz - seg.az)
 			local cx, cz = (seg.ax + seg.bx) / 2, (seg.az + seg.bz) / 2
+			local led = c.lights.medianLed
 			if alongX then
 				slab(ctx, medians, "Median", cx, cz, len, b.medianWidthM - 2 * mk, mkh + 0.02, mkh + 0.2, s.medianColor, Enum.Material.Ground, true)
 				for _, side in { -1, 1 } do
 					slab(ctx, medians, "MedianKerb", cx, cz + side * (b.medianWidthM / 2 - mk / 2), len, mk, mkh, mkh + 0.1, tinted(kerb, rng, 0.05), Enum.Material.Concrete, false)
+					if led then
+						slab(ctx, medians, "MedianLed", cx, cz + side * (b.medianWidthM / 2 - mk / 2), len, 0.08, mkh + 0.025, 0.03, c.lights.coolLed, Enum.Material.Neon, false)
+					end
 				end
 			else
 				slab(ctx, medians, "Median", cx, cz, b.medianWidthM - 2 * mk, len, mkh + 0.02, mkh + 0.2, s.medianColor, Enum.Material.Ground, true)
 				for _, side in { -1, 1 } do
 					slab(ctx, medians, "MedianKerb", cx + side * (b.medianWidthM / 2 - mk / 2), cz, mk, len, mkh, mkh + 0.1, tinted(kerb, rng, 0.05), Enum.Material.Concrete, false)
+					if led then
+						slab(ctx, medians, "MedianLed", cx + side * (b.medianWidthM / 2 - mk / 2), cz, 0.08, len, mkh + 0.025, 0.03, c.lights.coolLed, Enum.Material.Neon, false)
+					end
 				end
 			end
 			boulevardMarkings(ctx, c, rng, detail, seg)
@@ -391,6 +384,85 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 	local rings = Build.folder("Pavements", folder)
 	for _, p in parcels do
 		parcelRing(ctx, c, rng, rings, p.rect)
+	end
+
+	-- Verges: a kerbed lawn between each boulevard and the parcels behind
+	-- it, broken where a side street crosses. The X-running verges carry
+	-- on across the node squares so the corners outside a roundabout ring
+	-- are lawn too; the Z-running ones stop at the corner squares. Pieces
+	-- are chopped at maxRunM for streaming.
+	local verges = Build.folder("Verges", folder)
+	local kw = b.kerbWidthM
+	local vergeTop = s.pavementHeightM
+	local function box(name: string, x0: number, x1: number, z0: number, z1: number, top: number, thick: number, colour: Color3, material: Enum.Material)
+		local lx, lz = x1 - x0, z1 - z0
+		if lx <= 0.05 or lz <= 0.05 then
+			return
+		end
+		local alongX = lx >= lz
+		local long = if alongX then lx else lz
+		local n = math.max(1, math.ceil(long / s.maxRunM))
+		for k = 0, n - 1 do
+			if alongX then
+				local a0 = x0 + lx * k / n
+				slab(ctx, verges, name, a0 + lx / n / 2, (z0 + z1) / 2, lx / n, lz, top, thick, tinted(colour, rng, 0.04), material, false)
+			else
+				local a0 = z0 + lz * k / n
+				slab(ctx, verges, name, (x0 + x1) / 2, a0 + lz / n / 2, lx, lz / n, top, thick, tinted(colour, rng, 0.04), material, false)
+			end
+		end
+	end
+	local function vergeBand(alongX: boolean, lineAt: number, side: number, from: number, to: number, gapAt: number?)
+		-- lateral bands measured from the boulevard centreline
+		local kerbA, kerbB = half, half + kw
+		local lawnA, lawnB = half + kw, sb
+		local ranges: { { number } } = if gapAt then { { from, gapAt - sHalf }, { gapAt + sHalf, to } } else { { from, to } }
+		for _, rg in ranges do
+			type Band = { a: number, b: number, name: string, top: number, colour: Color3, material: Enum.Material }
+			local bands: { Band } = {
+				{ a = kerbA, b = kerbB, name = "VergeKerb", top = b.kerbHeightM, colour = kerbColourFor(), material = Enum.Material.Concrete },
+				{ a = lawnA, b = lawnB, name = "Verge", top = vergeTop, colour = c.lights.vergeLawnColor, material = Enum.Material.Grass },
+			}
+			for _, band in bands do
+				local l0, l1 = lineAt + side * band.a, lineAt + side * band.b
+				local lo, hi = math.min(l0, l1), math.max(l0, l1)
+				if alongX then
+					box(band.name, rg[1], rg[2], lo, hi, band.top, band.top + 0.1, band.colour, band.material)
+				else
+					box(band.name, lo, hi, rg[1], rg[2], band.top, band.top + 0.1, band.colour, band.material)
+				end
+			end
+		end
+		-- Kerb returns along the side-street gap.
+		if gapAt then
+			for _, g in { gapAt - sHalf - kw / 2, gapAt + sHalf + kw / 2 } do
+				local l0, l1 = lineAt + side * half, lineAt + side * sb
+				local lo, hi = math.min(l0, l1), math.max(l0, l1)
+				if alongX then
+					box("VergeKerb", g - kw / 2, g + kw / 2, lo, hi, b.kerbHeightM, b.kerbHeightM + 0.1, kerbColourFor(), Enum.Material.Concrete)
+				else
+					box("VergeKerb", lo, hi, g - kw / 2, g + kw / 2, b.kerbHeightM, b.kerbHeightM + 0.1, kerbColourFor(), Enum.Material.Concrete)
+				end
+			end
+		end
+	end
+	for j = 0, c.blocksZ do
+		for i = 0, c.blocksX - 1 do
+			local x0 = bx(i) - (if i == 0 then sb else 0)
+			local x1 = bx(i + 1) + (if i + 1 == c.blocksX then sb else 0)
+			local mx = bx(i) + c.blockM / 2
+			-- +Z side has a block above it unless this is the first row.
+			vergeBand(true, bz(j), 1, x0, x1, if j > 0 then mx else nil)
+			vergeBand(true, bz(j), -1, x0, x1, if j < c.blocksZ then mx else nil)
+		end
+	end
+	for i = 0, c.blocksX do
+		for j = 0, c.blocksZ - 1 do
+			local z0, z1 = bz(j + 1) + sb, bz(j) - sb
+			local mz = bz(j) - c.blockM / 2
+			vergeBand(false, bx(i), 1, z0, z1, if i < c.blocksX then mz else nil)
+			vergeBand(false, bx(i), -1, z0, z1, if i > 0 then mz else nil)
+		end
 	end
 
 	-- Ramps, if the preset has any.

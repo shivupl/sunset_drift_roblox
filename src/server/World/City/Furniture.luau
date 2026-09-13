@@ -266,15 +266,27 @@ function Furniture.build(ctx: Context, c: CCfg, plan: Streets.Plan, parent: Inst
 		end
 	end
 
-	-- Roundabout islands.
-	for _, n in plan.nodes do
-		if n.roundabout then
-			local r = c.roundabout.islandRadiusM - 4
-			for i = 1, c.roundabout.palmsOnIsland do
-				local a = (i / c.roundabout.palmsOnIsland) * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
-				local rr = rng:NextNumber(r * 0.3, r)
-				palm(ctx, c, rng, palms, n.x + math.cos(a) * rr, n.z + math.sin(a) * rr, c.roundabout.islandHeightM + 0.12)
+	-- Verges: date palms down each one with a warm uplight at the foot,
+	-- skipping the side-street gaps. The roundabout rings carve away any
+	-- that would stand in a ring.
+	local L = c.lights
+	for _, seg in plan.segments do
+		if seg.boulevard then
+			local alongX, len = segAxis(seg)
+			local lateralM = half + b.kerbWidthM + (b.vergeM - b.kerbWidthM) * L.vergePalmOffsetFrac
+			local d = L.vergePalmSpacingM / 2
+			while d < len do
+				if math.abs(d - len / 2) > c.sideStreet.widthM / 2 + 4 then
+					for _, side in { -1, 1 } do
+						local x, z = along(seg, d + rng:NextNumber(-1.5, 1.5), side * lateralM)
+						palm(ctx, c, rng, palms, x, z, pavementTop)
+						local ux, uz = along(seg, d, side * (lateralM - 1.3))
+						Build.part({ name = "Uplight", size = Vector3.new(ctx.s(0.45), ctx.s(0.1), ctx.s(0.45)), cframe = CFrame.new(at(ctx, ux, uz, pavementTop + 0.05)), color = L.warmLed, material = Enum.Material.Neon, parent = street })
+					end
+				end
+				d += L.vergePalmSpacingM
 			end
+			local _ = alongX
 		end
 	end
 

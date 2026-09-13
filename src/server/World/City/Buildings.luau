@@ -18,6 +18,7 @@
 -- tank, which is what a Gulf skyline is made of from a car window.
 --
 -- Walls collide. Nothing else here does.
+local WorldConfig = require(script.Parent.Parent.WorldConfig)
 local Build = require(script.Parent.Parent.Build)
 local RoadNetwork = require(script.Parent.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.Parent.AssetRegistry)
@@ -215,6 +216,86 @@ local function crenellations(ctx: Context, c: CCfg, parent: Instance, f: Face, t
 	end
 end
 
+-- A mashrabiya: a timber lattice screen over an upper window, the carved
+-- screen of old Riyadh and Jeddah houses that every new Gulf facade quotes.
+-- A frame and a grid of slats proud of the wall.
+local function mashrabiya(ctx: Context, parent: Instance, f: Face, along: number, y: number, widthM: number, heightM: number)
+	local wood = Color3.fromRGB(96, 66, 40)
+	local frameDepth = 0.35
+	-- Frame: top, bottom, sides.
+	onFace(ctx, parent, "Mashrabiya", f, along, y + heightM / 2, widthM + 0.2, 0.18, frameDepth, wood, Enum.Material.Wood)
+	onFace(ctx, parent, "Mashrabiya", f, along, y - heightM / 2, widthM + 0.4, 0.3, frameDepth + 0.15, wood, Enum.Material.Wood)
+	for _, sx in { -1, 1 } do
+		onFace(ctx, parent, "Mashrabiya", f, along + sx * widthM / 2, y, 0.16, heightM, frameDepth, wood, Enum.Material.Wood)
+	end
+	-- Lattice: a dark backing, then slats both ways.
+	onFace(ctx, parent, "MashrabiyaBack", f, along, y, widthM, heightM, 0.05, Color3.fromRGB(34, 28, 24), Enum.Material.SmoothPlastic)
+	for i = 1, 5 do
+		onFace(ctx, parent, "MashrabiyaSlat", f, along - widthM / 2 + widthM * i / 6, y, 0.07, heightM, 0.22, wood:Lerp(Color3.new(1, 1, 1), 0.08), Enum.Material.Wood)
+	end
+	for i = 1, 6 do
+		onFace(ctx, parent, "MashrabiyaSlat", f, along, y - heightM / 2 + heightM * i / 7, widthM, 0.07, 0.24, wood:Lerp(Color3.new(1, 1, 1), 0.08), Enum.Material.Wood)
+	end
+end
+
+-- The row of small triangular vents Najdi mud-brick walls have under the
+-- parapet: dark diamonds, a box turned 45 degrees about the face normal.
+local function najdiVents(ctx: Context, parent: Instance, f: Face, y: number, colour: Color3)
+	local step = 1.5
+	local n = math.max(3, math.floor(f.width * 0.8 / step))
+	local dark = colour:Lerp(Color3.fromRGB(40, 30, 22), 0.75)
+	for i = 0, n - 1 do
+		local along = -((n - 1) * step) / 2 + i * step
+		local p = onFace(ctx, parent, "NajdiVent", f, along, y, 0.5, 0.5, 0.06, dark, Enum.Material.SmoothPlastic)
+		local turn = if f.dir == "N" or f.dir == "S" then CFrame.Angles(0, 0, math.pi / 4) else CFrame.Angles(math.pi / 4, 0, 0)
+		p.CFrame = p.CFrame * turn
+	end
+end
+
+-- LED picked from the skyline's weighted palette, so the city and the
+-- horizon speak the same light.
+local function ledColour(rng: Random): Color3
+	local palette = WorldConfig.cityscape.lights.ledPalette
+	local total = 0
+	for _, e in palette do
+		total += e.weight
+	end
+	local roll = rng:NextNumber(0, total)
+	for _, e in palette do
+		roll -= e.weight
+		if roll <= 0 then
+			return e.color
+		end
+	end
+	return palette[1].color
+end
+
+-- Vertical LED strips up the four corners of a footprint and lit rings
+-- round it at random floors. Footprint in world metres: centre, width
+-- along X, depth along Z, from baseY to topY above the surface.
+local function towerLeds(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: number, cz: number, w: number, d: number, baseY: number, topY: number)
+	local L = c.lights
+	local colour = ledColour(rng)
+	local sw = L.stripWidthM
+	local h = topY - baseY
+	if rng:NextNumber() < L.towerStripChance then
+		for _, sx in { -1, 1 } do
+			for _, sz in { -1, 1 } do
+				box(ctx, parent, "LedStrip", cx + sx * (w / 2 + sw / 2 - 0.05), baseY + h / 2, cz + sz * (d / 2 + sw / 2 - 0.05), sw, h, sw, colour, Enum.Material.Neon, false, false)
+			end
+		end
+	end
+	if rng:NextNumber() < L.towerRingChance then
+		local rings = rng:NextInteger(L.towerRingsMin, L.towerRingsMax)
+		for i = 1, rings do
+			local y = baseY + h * (i - rng:NextNumber(0.1, 0.5)) / rings
+			for _, e in { { cx, cz + d / 2 + 0.1, w + 0.4, 0.2 }, { cx, cz - d / 2 - 0.1, w + 0.4, 0.2 }, { cx + w / 2 + 0.1, cz, 0.2, d + 0.4 }, { cx - w / 2 - 0.1, cz, 0.2, d + 0.4 } } do
+				box(ctx, parent, "LedRing", e[1], y, e[2], e[3], 0.45, e[4], colour, Enum.Material.Neon, false, false)
+			end
+		end
+	end
+end
+
 -- A mesh building in a shop slot: one of AssetRegistry.cityBlocks scaled
 -- so its long side fills the slot's frontage, its front on the same
 -- setback line the box shops use, long axis along the street. Returns
@@ -373,6 +454,17 @@ local function shop(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: nu
 	parapet(ctx, c, model, cx, cz, sx, sz, h, colour:Lerp(Color3.new(1, 1, 1), 0.08), c.shadows.buildings)
 	if rng:NextNumber() < cm.crenellationChance then
 		crenellations(ctx, c, model, main, h, colour:Lerp(Color3.new(1, 1, 1), 0.08))
+	end
+	if storeys >= 3 and rng:NextNumber() < cm.mashrabiyaChance then
+		local count = if main.width > 24 then 2 else 1
+		for i = 1, count do
+			local along = if count == 1 then rng:NextNumber(-main.width * 0.2, main.width * 0.2) else (i - 1.5) * main.width * 0.45
+			-- Third storey, clear of the shop sign on the fascia below.
+			mashrabiya(ctx, model, main, along, b.storeyM * 2.5 + 0.2, 3.2, 2.6)
+		end
+	end
+	if rng:NextNumber() < cm.najdiVentChance then
+		najdiVents(ctx, model, main, h - 0.7, colour)
 	end
 	roofClutter(ctx, c, rng, model, cx, cz, sx, sz, h)
 end
@@ -622,6 +714,11 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 			if AssetRegistry.place(key, base, scale, ctx.mps, model, c.shadows.buildings, true) then
 				local topY = size.Y * scale
 				box(ctx, model, "Beacon", cx, topY + 0.8, cz, 0.8, 0.8, 0.8, Color3.fromRGB(255, 70, 60), Enum.Material.Neon, false, false)
+				-- The footprint swaps axes on a quarter turn.
+				local quarter = math.floor(yaw / (math.pi / 2) + 0.5) % 2 == 1
+				-- No LED strips on a mesh tower: its bounding box is not its
+				-- walls, so strips at the box corners floated off the facade.
+				local _ = quarter
 				return
 			end
 		end
@@ -668,6 +765,7 @@ local function tower(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: n
 		box(ctx, model, "Crown", e[1], topY - 0.25, e[2], e[3], 0.5, e[4], tw.crownColor, Enum.Material.Neon, false, false).Transparency = 0.5
 	end
 	box(ctx, model, "Plant", tx, topY + 1.5, tz, w * 0.3, 3, d * 0.3, Color3.fromRGB(120, 120, 116), Enum.Material.Metal, false, false)
+	towerLeds(ctx, c, rng, model, tx, tz, w, d, ph, ph + h)
 end
 
 local function towers(ctx: Context, c: CCfg, rng: Random, parent: Instance, p: Parcel)

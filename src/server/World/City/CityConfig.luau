@@ -33,16 +33,55 @@ local config = {
 		kerbWidthM = 0.4,
 		kerbHeightM = 0.12,
 		medianKerbHeightM = 0.15,
+		-- A kerbed lawn between the carriageway and the parcels on both
+		-- sides, the wide planted verge Riyadh's boulevards have. It is also
+		-- what gives a roundabout ring room at the corners.
+		vergeM = 18,
 	},
 	sideStreet = {
 		widthM = 16,
 		laneCount = 1, -- per direction
 	},
+	-- Every boulevard crossing is a real roundabout (Roundabouts.luau): a
+	-- circular carriageway carved out of the crossing, a raised island
+	-- with a monument, splitter noses and give-way markings. They are the
+	-- drift spots, so the ring is wide.
 	roundabout = {
-		islandRadiusM = 15,
+		radiusM = 48, -- outer edge of the carriageway
+		gatewayRadiusM = 55, -- the highway's 71 m corridor has to fit into this one
+		islandRadiusM = 22,
+		gatewayIslandRadiusM = 27,
 		islandHeightM = 0.35,
-		-- Every boulevard crossing is a roundabout: they are the drift spots.
-		palmsOnIsland = 5,
+		laneWidthM = 6.5, -- ring lanes are marked at about this width
+		splitterNoseRadiusM = 4, -- half the boulevard median
+		kerbSegmentM = 3, -- the curved kerb is straight pieces this long
+		lampSetbackM = 4, -- lamp posts this far outside the ring
+		lampSpacingDeg = 24,
+		palmsOnIsland = 8,
+		lawnColor = Color3.fromRGB(74, 112, 58),
+		shrubColor = Color3.fromRGB(88, 118, 66),
+		-- The centrepieces, in turn round the grid. The gateway always
+		-- gets the lit Riyadh arch and name wall.
+		monuments = { "dallah", "obelisk", "fountain" },
+		monumentScale = 1.5,
+	},
+
+	-- The city's futuristic layer: the same LED language as the backdrop
+	-- skyline, close up. Strips up tower corners and rings round them, LED
+	-- lines on the median kerbs, uplit palms along the verges, lit
+	-- bollards and monuments on the roundabouts.
+	lights = {
+		coolLed = Color3.fromRGB(150, 214, 255),
+		warmLed = Color3.fromRGB(255, 206, 150),
+		medianLed = true,
+		towerStripChance = 0.85,
+		towerRingChance = 0.6,
+		towerRingsMin = 3,
+		towerRingsMax = 6,
+		stripWidthM = 0.6,
+		vergeLawnColor = Color3.fromRGB(96, 122, 70),
+		vergePalmSpacingM = 26,
+		vergePalmOffsetFrac = 0.62, -- across the verge from the carriageway kerb
 	},
 	-- Ramps are waypoint lists, relative to nothing: world metres. Width is
 	-- one generous lane plus shoulders.
@@ -179,6 +218,11 @@ local config = {
 			-- A Najdi parapet on a share of the shops: the row of square
 			-- crenellations along the roof edge that says Riyadh from a car.
 			crenellationChance = 0.4,
+			-- A mashrabiya (a carved timber lattice screen) over an upper
+			-- window on this share of shops, and a row of the triangular
+			-- Najdi vents under the parapet on this share.
+			mashrabiyaChance = 0.5,
+			najdiVentChance = 0.55,
 		},
 		residential = {
 			lotWidthM = 28,

@@ -493,14 +493,24 @@ Not live-reloadable either; restart the server.
 | originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many blocks the grid grows east and south. Now 2 x 2 at 360 m: origin (-360, -2022) puts the central boulevard on the highway axis (x = 0). To grow it, keep originM.x = -blockM * gateway.i so the highway still lands on a boulevard. |
 | gateway.i / gateway.widthM | Which first-row boulevard the highway feeds (1 now) and the width of that square, so the whole road lands on asphalt. |
 | boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 44 m kerb to kerb, an 8 m palm median, three lanes and a parking lane each way. |
+| boulevard.vergeM | The kerbed lawn between carriageway and parcels, both sides (18 m). It is also the room a roundabout ring has at the corners: keep radiusM under about vergeM + half the boulevard + 8, or the ring reaches the parcels. |
 | sideStreet.widthM | 16 m, one lane each way plus parking. |
-| roundabout.islandRadiusM / islandHeightM / palmsOnIsland | Every boulevard crossing. The island is the one raised thing in the city that collides. |
+| roundabout.radiusM / gatewayRadiusM | Outer edge of the ring carriageway (48 m, 55 m at the gateway, where the highway's 71 m corridor runs in). Bigger is a better drift circle and eats more verge. |
+| roundabout.islandRadiusM / gatewayIslandRadiusM / islandHeightM | The raised island; its kerb is the one raised thing in the city that collides. |
+| roundabout.laneWidthM / splitterNoseRadiusM / kerbSegmentM | Ring lane marking width, the rounded median nose at each entry (half the median), and the length of the straight pieces the curved kerb is made of. |
+| roundabout.lampSetbackM / lampSpacingDeg | Mesh lamp posts round the ring: how far outside it and how far apart. |
+| roundabout.palmsOnIsland / lawnColor / shrubColor | Island planting. |
+| roundabout.monuments / monumentScale | The centrepieces, in turn round the grid: "dallah", "obelisk", "fountain". The gateway always gets the Riyadh arch. |
+| lights.coolLed / warmLed | The city's two LED colours: cool for rings, strips and edges, warm for uplights and plinth lines. |
+| lights.medianLed | An LED line along both median kerbs of every boulevard. |
+| lights.towerStripChance / towerRingChance / towerRingsMin / towerRingsMax / stripWidthM | LED strips up box-tower corners and lit rings round them, in the skyline's palette. |
+| lights.vergeLawnColor / vergePalmSpacingM / vergePalmOffsetFrac | The verge lawn, and date palms with uplights down it. |
 | ramp.offRamp / onRamp / widthM | Waypoint lists { x, z, width } in world metres; empty now that the highway ends in the grid. For a side entry, start them just outside the highway kerb (35.4 m from the centreline) as a narrow taper. |
 | surface.* | Slab thickness, run cap (streaming), colours, tone jitter, kerb dust, marking sizes, tyre tracks, pavement width. |
 | districts | One row per block row, one entry per block: commercial, towers, plaza, residential, lot. |
 | buildings.palette / accentPalette / accentChance / tone | Sand, cream and warm grey, the odd colour, per-part jitter. |
 | buildings.meshChance / meshMinScale / meshMaxScale | Share of shop slots that take a textured mesh building (AssetRegistry.cityBlocks) instead of a box shop, and how far a mesh may be scaled to fill its frontage. 0 gives the all-box city back. |
-| buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. shopNames is the { arabic, english } list the shop signs and blade signs draw from; crenellationChance is the share of shops with a Najdi crenellated parapet. |
+| buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. shopNames is the { arabic, english } list the shop signs and blade signs draw from; crenellationChance is the share of shops with a Najdi crenellated parapet; mashrabiyaChance the share with a timber lattice screen on the third storey; najdiVentChance the share with a row of diamond vents under the parapet. |
 | buildings.litChance | Fraction of first-floor window segments that glow. 0: a lit strip on a textured wall read as a blank panel at golden hour. |
 | buildings.residential.* | Lot size, wall height, gate, villa size and storeys, tier and dish chance. |
 | buildings.towers.* | Podium size and storeys, tower storeys and width, glass and frame colours, setback chance, crown colour. meshChance is the share of tower spots that take a mesh tower (AssetRegistry.cityTowers), meshScales the scale range per mesh; a mesh tower is never wider than podiumMaxM. |

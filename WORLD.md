@@ -330,10 +330,11 @@ skyline notes above. It skips the city grid.
 770 m on a side. It was 4 x 2 at 420 m (1.7 km wide); the owner asked for
 smaller and more refined, so the detail goes into each frontage instead.
 Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a
-3 m parking lane each way. Every boulevard crossing is a roundabout with a
-15 m island (kerb ring, ground fill, five palms), sized so it is a drift
-spot; the gateway one is a 72 m square and the two parcels that touch it
-back off to its edge. Each block has one 16 m side street each way through its middle,
+3 m parking lane each way, with an LED line along both median kerbs, and
+an 18 m kerbed lawn verge either side between the carriageway and the
+parcels, planted with date palms on warm uplights: the wide green verge of
+a Riyadh boulevard, and the room a roundabout ring needs at the corners.
+Every parcel stands back behind its verge. Each block has one 16 m side street each way through its middle,
 meeting at a plain crossing and ending at the boulevard kerbs, which cuts
 the block into four parcels. Streets are slabs at the highway surface
 height with the sand 5 cm below, so a slab that has not streamed in is a
@@ -379,6 +380,42 @@ them.
 
 Walls collide (compound walls, houses, shops, podiums, shafts, gates);
 nothing else in the buildings does.
+
+**Roundabouts** (`Roundabouts.luau`). Every boulevard crossing is a real
+roundabout, built last. It carves a circle out of everything already laid
+there, city and highway both: wide slabs (carriageways, verges) by
+GeometryService subtraction, thin strips (markings, kerbs, LED lines, tyre
+tracks) and the medians by clipping them arithmetically along their long
+axis, props inside the ring removed whole. Medians are clipped rather than
+carved because a carved union keeps its entire box as collision, and that
+left an invisible 17 cm median lip across the ring. Then it lays a 48 m
+ring (55 m at the gateway, which the highway's 71 m corridor runs into):
+one Asphalt cylinder for the carriageway, a curved kerb of 3 m segments
+left open at every approach (a thin carved CSG ring rendered as filled
+pale wedges, so it is segments), an edge line inside the kerb, dashed lane
+lines, an island edge line, give-way teeth across every entering
+carriageway, and a kerbed splitter nose with a lit keep-right bollard where
+each median meets the ring. The island (22 m, 27 m at the gateway) has a
+collidable kerb, an LED ring on it, lawn, a stone planter, a ring of date
+palms each on an uplight, and scrub. The centrepiece turns round the grid:
+a gold dallah, the Arabic coffee pot on a stepped plinth with LED lines on
+each step, the way Gulf cities mark a roundabout; a KAFD-style obelisk of
+four leaning glass pillars with LED edges, LED frames every 5 m and a lit
+crystal; a lit fountain with a stone tier and a ring of jets. The gateway
+gets two crossing parabolic steel ribbons with LED undersides over the
+island and a stone name wall facing the highway, الرياض over RIYADH in
+gold. Mesh lamp posts stand round every ring, arms over the carriageway.
+Measured: the carve and build take 4.6 s of the world build; 1,944 sample
+points across the nine rings are all level at 0.00 m.
+
+**Saudi and futuristic detail on the buildings.** Shops carry a mashrabiya
+(a timber lattice screen: frame, dark backing, slats both ways) over a
+third-storey window on half of them, a row of Najdi diamond vents under
+the parapet on just over half, on top of the crenellations, Arabic signs
+and blade signs. Box towers get the skyline's LED language up close: a
+strip up each corner and lit rings at random floors, in the skyline's
+weighted palette. Mesh towers do not: their bounding box is not their
+walls, and strips at its corners floated off the facade.
 
 **Furniture** (`Furniture.luau`). Palms down every boulevard median (two
 meshes, date and fan) and on the islands; street lamps on both pavements
