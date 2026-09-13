@@ -94,7 +94,8 @@ local config = {
 		dashGapM = 14, -- long gaps are what a real highway has; five lanes each way makes every dash count
 		dashWidthM = 0.3,
 		edgeLineWidthM = 0.25,
-		-- Six per carriageway on request: 28 m each way in 4.7 m lanes.
+		-- Six per carriageway on request: 32 m each way in 5.3 m lanes
+		-- (widened from 4.7 m on request; the preset width sets it).
 		laneCount = 6, -- per carriageway
 		shoulderWidthM = 3,
 		-- Kerbs are a visual lip only. Nothing on the map collides except the
@@ -109,23 +110,28 @@ local config = {
 		-- Painted slot lines across the parking bay, one each side of every
 		-- CarSpawner slot.
 		baySlotLines = true,
-		asphaltColor = Color3.fromRGB(52, 50, 54),
-		padColor = Color3.fromRGB(48, 48, 53),
-		shoulderColor = Color3.fromRGB(70, 66, 60),
-		kerbColor = Color3.fromRGB(120, 118, 112),
+		-- The asphalt colours tint the variant's colour map below, so they
+		-- sit near white: the map carries the actual grey. A dark tint on it
+		-- (these were 52, 50, 54) is the near-black road the owner asked to
+		-- lose; the old map could not go grey even at a white tint.
+		asphaltColor = Color3.fromRGB(206, 206, 210),
+		padColor = Color3.fromRGB(206, 206, 212),
+		-- Concrete is stock material, so these are the rendered colour.
+		shoulderColor = Color3.fromRGB(112, 108, 102),
+		kerbColor = Color3.fromRGB(158, 156, 150),
 		paintColor = Color3.fromRGB(232, 226, 205),
-		bayColor = Color3.fromRGB(58, 58, 62),
+		bayColor = Color3.fromRGB(104, 104, 108),
 		-- The asphalt itself: a MaterialVariant on Roblox's Asphalt, built
-		-- from a CC0 road surface (ambientCG Road007 colour via Euvanoa,
-		-- Poly Haven asphalt_01 normal via dorndaft; the ids are the images
-		-- behind those store decals). Only the carriageways, pad and bay are
-		-- Asphalt; kerbs, shoulders and every marking are Concrete, so the
-		-- paint stays crisp over a grainy surface. Same declare-in-the-place
-		-- rule as the sand variant.
+		-- from ambientCG Asphalt031 (CC0), a plain mid-grey road surface,
+		-- colour and OpenGL normal uploaded as images. It replaced Road007,
+		-- which is dark asphalt. Only the carriageways, pad and city streets
+		-- are Asphalt; kerbs, shoulders, the bay and every marking are
+		-- Concrete, so the paint stays crisp over a grainy surface. Same
+		-- declare-in-the-place rule as the sand variant.
 		asphalt = {
 			enabled = true,
-			colorMap = 106466177146374,
-			normalMap = 11226165423,
+			colorMap = 129207220183204,
+			normalMap = 79343445077860,
 			studsPerTile = 26, -- about 7 m: grain without a visible repeat at speed
 		},
 
@@ -140,7 +146,7 @@ local config = {
 			tyreTracksEnabled = true,
 			tyreTrackWidthM = 0.85,
 			tyreTrackGapM = 1.65, -- between the two tracks of one lane
-			tyreTrackDarken = 0.16,
+			tyreTrackDarken = 0.07, -- 0.16 on the dark road; on grey it read as painted stripes
 			-- A darker line across the road at every slab joint.
 			seamsEnabled = true,
 			seamWidthM = 0.14,
@@ -1035,13 +1041,16 @@ local config = {
 		-- at 900 m, then a 400 m radius 30 degree curve.
 		testRoad = {
 			bayLengthM = 40,
-			pad = { startM = 900, lengthM = 400, widthM = 160 },
-			-- 64 m: an 8 m median and two 28 m carriageways of six 4.7 m lanes.
+			-- The pad grows with the road so its wings, and the bay on the
+			-- right-hand one, stay 48 m wide.
+			pad = { startM = 900, lengthM = 400, widthM = 168 },
+			-- 72 m: an 8 m median and two 32 m carriageways of six 5.3 m lanes
+			-- (64 m and 4.7 m lanes until the owner asked for wider).
 			-- The straight ends in the city's gateway roundabout; the old
 			-- 30 degree curve at the end went when the city moved to where
 			-- the highway points (it survives in ringRoad).
 			segments = {
-				{ kind = "straight", lengthM = 2000, widthM = 64 } :: Segment,
+				{ kind = "straight", lengthM = 2000, widthM = 72 } :: Segment,
 			},
 		},
 		-- A longer ring-road loop for driving rather than measuring.

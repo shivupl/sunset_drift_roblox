@@ -543,7 +543,7 @@ still running is the light manager, on a timed loop with an exit flag.
 ## Measured
 
 Whole world, `testRoad` preset, six lanes each way in a 64 m corridor with an
-8 m median:
+8 m median (measured before the corridor went to 72 m):
 
 | system | parts | of which meshes |
 |---|---|---|

@@ -6,7 +6,7 @@
 --
 -- Placement. The highway runs from the start line along -Z for 2 km and
 -- ends in the city: its centreline is the grid's central boulevard, and
--- the first roundabout is a wider gateway square that the full 64 m of
+-- the first roundabout is a wider gateway square that the full 72 m of
 -- highway lands on. The grid is four 360 m blocks, two either side of
 -- that axis and two deep: small on purpose. The owner asked for smaller
 -- and more refined, modelled on Riyadh, so the money goes into each
@@ -22,11 +22,11 @@ local config = {
 	blocksZ = 2,
 	blockM = 360, -- boulevard centre to boulevard centre
 	-- The node the highway feeds: boulevard index along X (0-based) on the
-	-- first row, and the square's width so a 64 m road lands on asphalt.
-	gateway = { i = 1, widthM = 72 },
+	-- first row, and the square's width so a 72 m road lands on asphalt.
+	gateway = { i = 1, widthM = 80 },
 
 	boulevard = {
-		widthM = 44, -- kerb to kerb, both carriageways, median, parking lanes
+		widthM = 48, -- kerb to kerb, both carriageways, median, parking lanes (44 until lanes went from 5 m to 5.7 m)
 		medianWidthM = 8,
 		laneCount = 3, -- per carriageway
 		parkingLaneM = 3, -- along each kerb
@@ -48,7 +48,7 @@ local config = {
 	-- drift spots, so the ring is wide.
 	roundabout = {
 		radiusM = 48, -- outer edge of the carriageway
-		gatewayRadiusM = 55, -- the highway's 71 m corridor has to fit into this one
+		gatewayRadiusM = 55, -- the highway's 79 m corridor has to fit into this one
 		islandRadiusM = 22,
 		gatewayIslandRadiusM = 27,
 		islandHeightM = 0.35,
@@ -85,7 +85,7 @@ local config = {
 	},
 	-- Ramps are waypoint lists, relative to nothing: world metres. Width is
 	-- one generous lane plus shoulders.
-	-- Each point is { x, z, width }. The highway's outer kerb is at 35.4 m
+	-- Each point is { x, z, width }. The highway's outer kerb is at 39.4 m
 	-- from its centreline; the ramp starts just outside it as a narrow
 	-- taper the first version hid under the shoulder, and widens to a lane.
 	-- No ramps now that the highway ends in the grid; the lists are kept
@@ -99,8 +99,10 @@ local config = {
 	surface = {
 		thicknessM = 0.3,
 		maxRunM = 80, -- slab length cap, for streaming
-		asphaltColor = Color3.fromRGB(56, 54, 57),
-		sideStreetColor = Color3.fromRGB(62, 60, 62),
+		-- Tints on the asphalt variant's colour map (WorldConfig.road), so
+		-- near white; see the highway's asphaltColor.
+		asphaltColor = Color3.fromRGB(202, 202, 206),
+		sideStreetColor = Color3.fromRGB(212, 210, 212),
 		slabTone = 0.06, -- per-slab colour jitter
 		kerbColor = Color3.fromRGB(166, 158, 142),
 		kerbDust = 0.18, -- fraction of the kerb pulled toward the sand colour
@@ -115,7 +117,11 @@ local config = {
 		tyreTracksEnabled = true,
 		tyreTrackWidthM = 0.8,
 		tyreTrackGapM = 1.6,
-		tyreTrackDarken = 0.15,
+		-- The tracks are SmoothPlastic, not the asphalt variant, so this is
+		-- the rendered colour: a shade under what the grey asphalt renders as.
+		-- (They were the asphalt tint darkened, which only worked while that
+		-- tint was the road's actual dark colour.)
+		tyreTrackColor = Color3.fromRGB(80, 80, 84),
 		-- Pavement (sidewalk) between the kerb and the parcels.
 		pavementWidthM = 4,
 		pavementColor = Color3.fromRGB(176, 166, 146),

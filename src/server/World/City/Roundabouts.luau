@@ -537,7 +537,7 @@ end
 local function highwayHalfM(): number
 	local presets = WorldConfig.presets :: any
 	local preset = presets[WorldConfig.preset] or presets.testRoad
-	local width = 64
+	local width = 72
 	if preset.segments and preset.segments[1] then
 		width = preset.segments[1].widthM
 	end

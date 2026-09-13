@@ -34,8 +34,8 @@
         "$className": "MaterialVariant",
         "$properties": {
           "BaseMaterial": "Asphalt",
-          "ColorMap": "rbxassetid://106466177146374",
-          "NormalMap": "rbxassetid://11226165423",
+          "ColorMap": "rbxassetid://129207220183204",
+          "NormalMap": "rbxassetid://79343445077860",
           "StudsPerTile": 26
         }
       }

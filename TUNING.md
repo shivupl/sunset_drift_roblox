@@ -297,18 +297,19 @@ car stay the same size.
 | markingEpsilonM / markingThicknessM | How far paint and wear sit above the asphalt, and how thick. Raise epsilon if markings z-fight, lower it if the car feels a step. |
 | dashLengthM / dashGapM / dashWidthM | Lane divider dashes. |
 | edgeLineWidthM | Solid line at each road edge. |
-| laneCount | Lanes per carriageway (6 now, on request; 4.7 m each in a 64 m corridor). Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
+| laneCount | Lanes per carriageway (6 now, on request; 5.3 m each in a 72 m corridor). Lane width is not a field: it is (preset widthM - medianWidthM) / 2 / laneCount, so widen lanes with the preset's widthM and grow pad.widthM and CityConfig gateway.widthM by the same amount. Dividers are laneCount-1, and tyre tracks are two per lane, so this drives part count as well as looks. |
 | shoulderWidthM / kerbWidthM / kerbHeightM | The strip outside the paint, and the lip beyond it. Along the transition pad they follow the wing's outer edge instead of cutting across it. |
 | padTaperM | Length of the flat asphalt triangle that leads into each end of the pad's wings (60 m), so the widening is a diagonal and not a step. Longer is gentler; it also sets how far before the pad the ordinary shoulder stops. |
 | baySlotLines | Painted lines across the parking bay, one each side of every CarSpawner slot (pitch from CarConfig.spawn). |
-| asphaltColor / padColor / shoulderColor / kerbColor / paintColor / bayColor | Surface tones. |
+| asphaltColor / padColor / shoulderColor / kerbColor / paintColor / bayColor | Surface tones. asphaltColor and padColor **tint the asphalt texture** (they multiply its colour map), so they sit near white and the map sets the grey; lower them to darken the road. Shoulder, kerb and bay are Concrete, so theirs is the colour you see. |
+| asphalt.colorMap / normalMap / studsPerTile | The road texture: ambientCG Asphalt031, a plain mid-grey asphalt. Must match the HajwalaAsphalt ids in default.project.json. |
 
 ### road.wear
 Surface realism. None of it is geometry the car can feel.
 | Field | What it does |
 |---|---|
 | slabTone | Per-slab colour jitter. 0 gives one flat colour over 2 km, which is the thing that reads as a prop. |
-| tyreTracksEnabled / tyreTrackWidthM / tyreTrackGapM / tyreTrackDarken | Polished strips where wheels actually run, two per lane. Darken too far and they read as paint. |
+| tyreTracksEnabled / tyreTrackWidthM / tyreTrackGapM / tyreTrackDarken | Polished strips where wheels actually run, two per lane. Darken too far and they read as paint (0.07 now; 0.16 was fine on the old near-black road and striped the grey one). |
 | seamsEnabled / seamWidthM / seamDarken | A darker line across the road at each slab joint. |
 | patchesEnabled / patchSpacingM / patchChance / patchMinLengthM / patchMaxLengthM / patchTone | Repair patches in a different shade. |
 | markingWear | How far each dash's colour is pulled toward the road. 0 is crisp white, which no real road has. |
@@ -505,10 +506,11 @@ Not live-reloadable either; restart the server.
 |---|---|
 | originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many blocks the grid grows east and south. Now 2 x 2 at 360 m: origin (-360, -2022) puts the central boulevard on the highway axis (x = 0). To grow it, keep originM.x = -blockM * gateway.i so the highway still lands on a boulevard. |
 | gateway.i / gateway.widthM | Which first-row boulevard the highway feeds (1 now) and the width of that square, so the whole road lands on asphalt. |
-| boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 44 m kerb to kerb, an 8 m palm median, three lanes and a parking lane each way. |
+| boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 48 m kerb to kerb, an 8 m palm median, three 5.7 m lanes and a parking lane each way. |
+| surface.asphaltColor / sideStreetColor / tyreTrackColor | The first two tint the asphalt texture like the highway's (near white). Tyre tracks are SmoothPlastic, so tyreTrackColor is the rendered colour: keep it a shade under the grey road. |
 | boulevard.vergeM | The kerbed lawn between carriageway and parcels, both sides (18 m). It is also the room a roundabout ring has at the corners: keep radiusM under about vergeM + half the boulevard + 8, or the ring reaches the parcels. |
 | sideStreet.widthM | 16 m, one lane each way plus parking. |
-| roundabout.radiusM / gatewayRadiusM | Outer edge of the ring carriageway (48 m, 55 m at the gateway, where the highway's 71 m corridor runs in). Bigger is a better drift circle and eats more verge. |
+| roundabout.radiusM / gatewayRadiusM | Outer edge of the ring carriageway (48 m, 55 m at the gateway, where the highway's 79 m corridor runs in). Bigger is a better drift circle and eats more verge. |
 | roundabout.islandRadiusM / gatewayIslandRadiusM / islandHeightM | The raised island; its kerb is the one raised thing in the city that collides. |
 | roundabout.laneWidthM / splitterNoseRadiusM / kerbSegmentM | Ring lane marking width, the rounded median nose at each entry (half the median), and the length of the straight pieces the curved kerb is made of. |
 | roundabout.lampSetbackM / lampSpacingDeg | Mesh lamp posts round the ring: how far outside it and how far apart. |

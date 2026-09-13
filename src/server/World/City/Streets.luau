@@ -169,7 +169,7 @@ local function boulevardMarkings(ctx: Context, c: CCfg, rng: Random, detail: Ins
 		strip(side * (innerM + 0.3), 0, len, s.edgeLineWidthM, worn, "Line", 0.15)
 		-- Tyre tracks: the inner two lanes, where the traffic actually runs.
 		if s.tyreTracksEnabled then
-			local dark = c.surface.asphaltColor:Lerp(Color3.new(0, 0, 0), s.tyreTrackDarken)
+			local dark = s.tyreTrackColor
 			for lane = 1, math.min(2, b.laneCount) do
 				local centre = side * (innerM + laneW * (lane - 0.5))
 				for _, t in { -1, 1 } do
