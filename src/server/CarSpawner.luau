@@ -114,7 +114,9 @@ local function onOccupantChanged(entry: Entry)
 		entry.prompt.Enabled = false
 		entry.chassis.Anchored = false
 		entry.chassis:SetNetworkOwner(player)
-		remotes.DriveStart:FireClient(player, entry.model)
+		-- The name too: a car spawned a moment ago may not have reached the
+		-- client yet, and an instance that has not arrives as nil.
+		remotes.DriveStart:FireClient(player, entry.model, entry.model.Name)
 		if CarSpawner.driverChanged then
 			CarSpawner.driverChanged(player, entry.model)
 		end

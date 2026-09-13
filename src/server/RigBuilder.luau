@@ -43,6 +43,10 @@ function RigBuilder.build(cfg: Config, entry: VehicleRig.CarEntry, name: string)
 
 	local model = Instance.new("Model")
 	model.Name = name
+	-- A car streams to every client whole and always: a freshly spawned car
+	-- is driven the moment its player is seated, and a client handed a car
+	-- whose chassis has not arrived yet cannot drive it.
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 	local rig = Instance.new("Model")
 	rig.Name = VehicleRig.RIG
 	rig.Parent = model

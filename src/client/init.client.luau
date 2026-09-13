@@ -43,7 +43,19 @@ VehicleController.onReload = function()
 	VehicleController.setConfig(cfg)
 	reloadRemote:FireServer()
 end
-driveStart.OnClientEvent:Connect(function(car: Model)
+driveStart.OnClientEvent:Connect(function(carArg: Model?, carName: string?)
+	-- A car the server built a moment ago can arrive after this event, in
+	-- which case the instance comes through as nil: wait for it by name.
+	local car = carArg
+	if not car and type(carName) == "string" then
+		local folder = workspace:WaitForChild("Cars", 10)
+		local found = folder and folder:WaitForChild(carName, 10)
+		car = if found and found:IsA("Model") then found else nil
+	end
+	if not car then
+		warn("[Hajwala] DriveStart for a car that never arrived")
+		return
+	end
 	VehicleController.start(car, remotes)
 	local id = car:GetAttribute("CarId")
 	SpawnMenu.setCurrent(if type(id) == "string" then id else nil)

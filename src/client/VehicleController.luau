@@ -75,8 +75,32 @@ local function resetCar(model: Model)
 	chassis.AssemblyAngularVelocity = Vector3.zero
 end
 
+-- The server seats a player in a car it built a moment ago, so the whole
+-- rig may still be replicating when DriveStart arrives. Wait for it.
+local function waitForRig(model: Model, timeout: number): boolean
+	local deadline = os.clock() + timeout
+	while os.clock() < deadline do
+		if model and model.Parent and pcall(VehicleRig.handles, model) then
+			return true
+		end
+		task.wait(0.05)
+	end
+	return false
+end
+
+local starting = 0 -- bumped on every start and stop, so a stale wait gives up
+
 function VehicleController.start(model: Model, remotes: Folder)
 	VehicleController.stop()
+	starting += 1
+	local token = starting
+	if not waitForRig(model, 10) then
+		warn(`[Hajwala] {model:GetFullName()} never finished arriving; not driving it`)
+		return
+	end
+	if token ~= starting then
+		return -- stopped, or another car started, while this one was arriving
+	end
 	car = model
 	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
 	carId = if type(id) == "string" then id else nil
@@ -127,6 +151,7 @@ function VehicleController.setConfig(_config: ConfigLoader.Config)
 end
 
 function VehicleController.stop()
+	starting += 1
 	if conn then
 		conn:Disconnect()
 		conn = nil

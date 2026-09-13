@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 export type RemoteTable = {
-	DriveStart: RemoteEvent, -- server -> client (carModel)
+	DriveStart: RemoteEvent, -- server -> client (carModel or nil if not replicated yet, carName)
 	DriveStop: RemoteEvent, -- server -> client
 	ExitCar: RemoteEvent, -- client -> server
 	SpawnCar: RemoteEvent, -- client -> server (catalog car id): spawn it and seat me in it
