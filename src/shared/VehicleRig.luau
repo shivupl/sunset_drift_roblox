@@ -101,6 +101,11 @@ export type BodySpec = {
 
 export type CarEntry = {
 	displayName: string,
+	-- Optional uniform size multiplier, default 1. The rig and body numbers
+	-- stay as measured off the meshes; the builders and configFor multiply
+	-- them, and configFor rescales the handling terms that only depend on
+	-- size (see sizeCompensation) so a bigger car drives like the original.
+	scale: number?,
 	rig: RigGeometry,
 	body: BodySpec,
 	-- Optional partial CarConfig: any handling field this car tunes
@@ -133,27 +138,81 @@ local function deepMerge(into: { [string]: any }, from: { [string]: any })
 	end
 end
 
--- The body geometry fields the sim reads, filled from the rig. Returned as
--- a fresh table; neither argument is modified.
+-- The two-wheel controller's torques and torque gains, which all balance
+-- against gravity's roll torque.
+local TWO_WHEEL_TORQUES = { "liftTorque", "leanTorque", "instability", "balanceSpring", "rollDamping", "leanInTorque", "leanOutTorque", "landingDamping" }
+
+function VehicleRig.scaleOf(entry: CarEntry): number
+	local k = entry.scale
+	return if type(k) == "number" and k > 0 then k else 1
+end
+
+-- Scaling a car by k changes more than its looks: a wheel k times bigger
+-- turns k times less force out of the same torque and needs k^2 the
+-- inertia to spin up the same, and a box k times bigger spins k^2 slower
+-- for the same mass. These are the terms that depend on size alone, set
+-- so the car behaves the same per metre of road:
+--   drivetrain.finalDrive       x k    same force at the tyre, same rpm at any speed
+--   slipModel.wheelInertia      x k^2  same wheel spin-up
+--   slipModel.handbrakeTorque   x k    same locking force at the tyre
+--   body.shellMassFraction      / k^2  same yaw, roll and pitch inertia
+--   twoWheel torques and gains  x k    gravity's torque about the grounded
+--                                      wheels is m g (halfTrack, comHeight),
+--                                      both k times longer
+-- Nothing else is touched: grip, springs, aero, steering and the throw
+-- controller stay the shared tuning. Measured on the sedan at 1.2 they
+-- drive the same without help (see RIG_SPEC.md).
+function VehicleRig.sizeCompensation(cfg: any, k: number)
+	if k == 1 then
+		return
+	end
+	cfg.drivetrain.finalDrive *= k
+	local sm = cfg.tires.slipModel
+	if sm then
+		sm.wheelInertia *= k * k
+		sm.handbrakeTorque *= k
+	end
+	cfg.body.shellMassFraction /= k * k
+	local tw = cfg.twoWheel
+	if tw then
+		for _, field in TWO_WHEEL_TORQUES do
+			if type(tw[field]) == "number" then
+				tw[field] *= k
+			end
+		end
+	end
+end
+
+-- The body geometry fields the sim reads, filled from the rig (times the
+-- car's scale). Returned as a fresh table; neither argument is modified.
 function VehicleRig.configFor(base: CarConfig.Config, entry: CarEntry): CarConfig.Config
 	local cfg = deepCopy(base) :: any
 	if entry.tuning then
 		deepMerge(cfg, entry.tuning)
 	end
 	local r = entry.rig
+	local k = VehicleRig.scaleOf(entry)
 	local b = cfg.body
 	b.massKg = r.massKg
 	-- The sim's legacy order is length, height, width.
-	b.bodySize = { r.collisionSizeM[3], r.collisionSizeM[2], r.collisionSizeM[1] }
+	b.bodySize = { r.collisionSizeM[3] * k, r.collisionSizeM[2] * k, r.collisionSizeM[1] * k }
 	-- The sim's legacy centre of mass is {lateral, up, forward}; car space
 	-- forward is -Z.
-	b.centerOfMassOffset = { r.centerOfMassM[1], r.centerOfMassM[2], -r.centerOfMassM[3] }
+	b.centerOfMassOffset = { r.centerOfMassM[1] * k, r.centerOfMassM[2] * k, -r.centerOfMassM[3] * k }
 	b.shellMassFraction = r.shellMassFraction
-	b.wheelbase = r.wheelbaseM
-	b.trackWidth = r.trackWidthM
-	b.wheelRadius = r.wheelRadiusM
-	b.wheelWidth = r.wheelWidthM
+	b.wheelbase = r.wheelbaseM * k
+	b.trackWidth = r.trackWidthM * k
+	b.wheelRadius = r.wheelRadiusM * k
+	b.wheelWidth = r.wheelWidthM * k
+	VehicleRig.sizeCompensation(cfg, k)
 	return cfg :: CarConfig.Config
+end
+
+-- The seat, chassis-local metres.
+function VehicleRig.seatM(entry: CarEntry): Vector3
+	local s = entry.rig.seatM
+	local k = VehicleRig.scaleOf(entry)
+	return Vector3.new(s[1], s[2], s[3]) * k
 end
 
 --------------------------------------------------------------------------
@@ -194,11 +253,12 @@ function VehicleRig.hubM(cfg: CarConfig.Config, wheel: WheelDef, dropM: number):
 	return VehicleRig.rayOriginM(cfg, wheel) - Vector3.new(0, dropM, 0)
 end
 
--- CFrame of a piece relative to its mount, in studs.
-function VehicleRig.pieceCFrame(piece: BodyPiece, mps: number, mirrored: boolean): CFrame
+-- CFrame of a piece relative to its mount, in studs, for a car of scale k.
+function VehicleRig.pieceCFrame(piece: BodyPiece, mps: number, mirrored: boolean, k: number?): CFrame
 	local o = piece.offsetM
+	local f = (k or 1) / mps
 	local rot = piece.rotationDeg or { 0, 0, 0 }
-	local cf = CFrame.new(o[1] / mps, o[2] / mps, o[3] / mps)
+	local cf = CFrame.new(o[1] * f, o[2] * f, o[3] * f)
 		* CFrame.fromEulerAnglesYXZ(math.rad(rot[1]), math.rad(rot[2]), math.rad(rot[3]))
 	if mirrored then
 		cf = CFrame.Angles(0, math.pi, 0) * cf
@@ -262,6 +322,9 @@ function VehicleRig.validate(id: string, entry: any): { string }
 	end
 	if type(entry.displayName) ~= "string" then
 		table.insert(problems, `{id}: displayName is missing`)
+	end
+	if entry.scale ~= nil and (type(entry.scale) ~= "number" or entry.scale < 0.5 or entry.scale > 2) then
+		table.insert(problems, `{id}: scale must be a number from 0.5 to 2`)
 	end
 	local r = entry.rig
 	if type(r) ~= "table" then

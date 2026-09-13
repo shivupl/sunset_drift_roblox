@@ -41,6 +41,11 @@ local cars: { [string]: CarEntry } = {
 	-- 1.55 m track (0.181 m per pack stud along and up, 0.193 across).
 	sedan = {
 		displayName = "Sedan",
+		-- 1.2: at the pack's real-world 4.9 m it read small next to the wide
+		-- lanes and put a seated avatar's head (1.2 m above the seat, hair
+		-- included) through the 1.37 m roof. Now 5.9 m with a 1.65 m roof.
+		-- The numbers below stay as measured; the scale multiplies them.
+		scale = 1.2,
 		rig = {
 			massKg = 1600,
 			collisionSizeM = { 1.8, 1.3, 4.9 },
@@ -50,8 +55,9 @@ local cars: { [string]: CarEntry } = {
 			trackWidthM = 1.55,
 			wheelRadiusM = 0.33,
 			wheelWidthM = 0.22,
-			-- Low in the box, so the seated driver's head stays under the roof.
-			seatM = { -0.4, -0.45, -0.2 },
+			-- Low in the box: 0.35 m off the ground at scale 1.2, so the seated
+			-- driver's head (1.2 m above the seat) stays under the roof.
+			seatM = { -0.4, -0.6, -0.2 },
 		},
 		body = {
 			paint = Color3.fromRGB(236, 236, 232),
@@ -73,6 +79,7 @@ local cars: { [string]: CarEntry } = {
 	-- mesh. Lighter, shorter, wider.
 	hatch = {
 		displayName = "Hatch",
+		scale = 1.2, -- the same world size as the sedan
 		rig = {
 			massKg = 1250,
 			collisionSizeM = { 1.95, 0.85, 4.25 },
@@ -82,7 +89,9 @@ local cars: { [string]: CarEntry } = {
 			trackWidthM = 1.639,
 			wheelRadiusM = 0.32,
 			wheelWidthM = 0.22,
-			seatM = { -0.4, -0.25, 0.05 },
+			-- As low as the box allows. It is a low car: a seated avatar's head
+			-- still shows over its roof.
+			seatM = { -0.4, -0.3, 0.05 },
 		},
 		body = {
 			paint = Color3.fromRGB(214, 96, 36),

@@ -132,7 +132,7 @@ Y. Never model separate right wheels.
 | `rig.massKg` | Total mass (the assembly mass equals it exactly; the seated driver adds about 12 kg on top). |
 | `rig.shellMassFraction` | Share of the mass in the collision box, between 0 and 1. The rest goes into the ballast. |
 | `rig.centerOfMassM` | Centre of mass from the box centre, **car space** (so forward is −Z). The ballast is placed to put it there. |
-| `rig.seatM` | Seat centre from the box centre, car space. Put it low enough that a seated R15 head (about 0.85 m above the seat) stays under the roof. |
+| `rig.seatM` | Seat centre from the box centre, car space. A seated Roblox avatar's head, hair included, is 1.2 m above the seat centre (measured), so seat height + 1.2 m must stay under the roof. |
 
 ## 7. The body
 
@@ -185,6 +185,35 @@ and rolling losses, plus zero placeholders for the geometry.
 reload (L key). Handling changes apply to a car you are driving. Changes to
 a rig's geometry or the body show on the next car built: get out, or change
 car.
+
+## 8b. Scale
+
+`entry.scale` (optional, 0.5 to 2, default 1) makes a car bigger or smaller
+without re-measuring it. The rig and body numbers in the entry stay as
+measured off the meshes. The builders multiply every length by `scale`:
+the box, centre of mass, wheelbase, track, wheel radius and width, seat,
+and every piece's size and offset. Mass does not change.
+
+A bigger car would drive differently for size alone, so `configFor` also
+rescales the terms that depend on size and nothing else
+(`VehicleRig.sizeCompensation`):
+
+| Term | Factor | Keeps |
+|---|---|---|
+| `drivetrain.finalDrive` | × k | force at the tyre, and rpm at a given speed |
+| `tires.slipModel.wheelInertia` | × k² | wheel spin-up |
+| `tires.slipModel.handbrakeTorque` | × k | locking force at the tyre |
+| `body.shellMassFraction` | ÷ k² | yaw, roll and pitch inertia |
+| `twoWheel` lift, lean and balance torques, spring, instability, roll and landing damping | × k | natl against gravity's k-times-longer lever |
+
+Grip, springs, aero, steering and the throw controller are not touched.
+Measured at 1.2 they need no help (§11).
+
+The two current cars are at 1.2. At the pack's real 4.9 m the sedan read
+small next to the wide lanes, and a seated Roblox avatar, whose head
+(hair included) is 1.2 m above the seat centre, came through its 1.37 m
+roof. At 1.2 the sedan is 5.9 m with a 1.65 m roof, and the seat sits
+0.35 m off the ground.
 
 ## 9. Choosing a car
 
@@ -239,7 +268,8 @@ Checklist:
    documents how the two current cars were measured off their pack.
 3. **Rig numbers.** Mass. A box that sits just inside the body. A centre of
    mass low and slightly forward. A seat that keeps the driver's head under
-   the roof.
+   the roof. If the car is the right shape but the wrong size against the
+   world, set `scale` rather than re-measuring (§8b).
 4. **Tuning.** Only what differs from the shared handling. A much lighter
    or heavier car wants springs scaled with its mass, so it sits at the same
    sag.
@@ -263,8 +293,31 @@ Checklist:
 
 The sedan's natl on a lean tap at 105 km/h lifts to 43° and is back on four
 wheels at 2.7 s; Phase 0 was 41° and 2.5 s. The hatch was added with a
-catalog entry only:
+catalog entry only. Before `scale`:
 - **Launch:** 0–100 in 3.15–3.18 s.
 - **Natl:** a tap lifts it to 49° and it is down at 2.9 s.
 - **Lever throw:** from 110 km/h it completes a 360 at 2.5 s.
 - **Rest:** 0.632 m, which is exactly the `BodyMount` prediction.
+
+**At scale 1.2** (Sep 2026). The same protocol with Studio focused,
+compared with the unscaled sedan above:
+
+| | Scale 1 | Scale 1.2 |
+|---|---|---|
+| Length / roof | 4.9 m / 1.37 m | 5.9 m / 1.65 m |
+| Box centre above the road at rest | 0.867 m | 1.063 m |
+| Seated head top vs roof | 0.25 m through it | 0.16 m under it |
+| 0–30 / 0–100 km/h | 1.03 / 3.65–3.68 s | 1.10 / 3.66–3.67 s |
+| Planted corner at 94 km/h | 14.8 °/s, 2.8° drift, 3.2° roll | 14.9 °/s, 2.8°, 2.8° |
+| Flick from 100, two runs | 1 spin, 55/56 km/h after | 1 spin, 54/55 km/h after |
+| Lever from 110 | 360 at 2.55 s, 61 km/h at 4 s | 360 at 2.57/2.58 s, 60 km/h |
+| Natl tap at 105 | 43°, down at 2.7 s | 42°, down at 2.7 s |
+
+Before the two-wheel torques joined the compensation, the scaled natl only
+reached 35° and was down at 2.5 s: the other size terms alone left it weak.
+The hatch at 1.2 against its unscaled numbers:
+- **Launch:** 0–100 in 3.20 s against 3.15–3.18 s.
+- **Natl:** 48° and down at 2.9 s, against 49° and 2.9 s.
+- **Lever 360:** 2.53 s against 2.52 s.
+
+The hatch is a low car, so a seated avatar's head still shows over its roof.

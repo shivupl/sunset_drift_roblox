@@ -30,7 +30,7 @@ local function inert(p: BasePart)
 	p.CastShadow = false
 end
 
--- entry.rig for the seat, cfg (already merged) for everything else.
+-- The entry for the seat and the name, cfg (already merged and scaled) for everything else.
 function RigBuilder.build(cfg: Config, entry: VehicleRig.CarEntry, name: string): Model
 	local mps = cfg.units.metersPerStud
 	local function s(m: number): number
@@ -127,7 +127,7 @@ function RigBuilder.build(cfg: Config, entry: VehicleRig.CarEntry, name: string)
 	end
 
 	-- Seat (inside the body; entered via ProximityPrompt, not by touching)
-	local seatM = entry.rig.seatM
+	local seatM = VehicleRig.seatM(entry)
 	local seat = Instance.new("VehicleSeat")
 	seat.Name = VehicleRig.SEAT
 	seat.Size = Vector3.new(2, 1, 2)
@@ -142,7 +142,7 @@ function RigBuilder.build(cfg: Config, entry: VehicleRig.CarEntry, name: string)
 	seat.Torque = 0
 	seat.TurnSpeed = 0
 	seat.HeadsUpDisplay = false
-	seat.CFrame = chassis.CFrame * CFrame.new(s(seatM[1]), s(seatM[2]), s(seatM[3]))
+	seat.CFrame = chassis.CFrame * CFrame.new(seatM / mps)
 	seat.Parent = rig
 	local seatWeld = Instance.new("WeldConstraint")
 	seatWeld.Part0 = chassis

@@ -29,6 +29,7 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 | Field | What it does |
 |---|---|
 | defaultCarId | The car anyone gets who has not chosen one. |
+| cars.&lt;id&gt;.scale | Uniform size, default 1 (both cars are 1.2). Multiplies every length of rig and body and rescales the size-only handling terms so the car drives the same (RIG_SPEC.md §8b). Up = bigger car. |
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
 | cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. |
 | cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg. |

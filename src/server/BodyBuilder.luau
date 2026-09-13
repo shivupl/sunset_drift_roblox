@@ -59,7 +59,7 @@ function BodyBuilder.preload(entry: VehicleRig.CarEntry): number
 	return n
 end
 
-local function makePiece(piece: BodyPiece, paint: Color3, mps: number, name: string): BasePart
+local function makePiece(piece: BodyPiece, paint: Color3, mps: number, k: number, name: string): BasePart
 	local t = template(piece.meshId)
 	local part: BasePart
 	if t then
@@ -71,7 +71,7 @@ local function makePiece(piece: BodyPiece, paint: Color3, mps: number, name: str
 		part = Instance.new("Part")
 	end
 	part.Name = name
-	part.Size = Vector3.new(piece.sizeM[1], piece.sizeM[2], piece.sizeM[3]) / mps
+	part.Size = Vector3.new(piece.sizeM[1], piece.sizeM[2], piece.sizeM[3]) * (k / mps)
 	part.Color = if piece.paint then paint else (piece.color or Color3.fromRGB(160, 160, 160))
 	part.Material = piece.material or Enum.Material.SmoothPlastic
 	part.Transparency = piece.transparency or 0
@@ -100,19 +100,20 @@ end
 function BodyBuilder.mount(model: Model, cfg: Config, entry: VehicleRig.CarEntry): Folder
 	local handles = VehicleRig.handles(model)
 	local mps = cfg.units.metersPerStud
+	local k = VehicleRig.scaleOf(entry)
 	local folder = Instance.new("Folder")
 	folder.Name = VehicleRig.BODY
 	folder.Parent = model
 
 	for _, piece in entry.body.pieces do
-		local part = makePiece(piece, entry.body.paint, mps, piece.name)
-		mount(part, handles.bodyMount, VehicleRig.pieceCFrame(piece, mps, false), folder)
+		local part = makePiece(piece, entry.body.paint, mps, k, piece.name)
+		mount(part, handles.bodyMount, VehicleRig.pieceCFrame(piece, mps, false, k), folder)
 	end
 	for _, w in VehicleRig.WHEELS do
 		local hub = handles.hubs[w.name]
 		for _, piece in entry.body.wheelPieces do
-			local part = makePiece(piece, entry.body.paint, mps, `{piece.name}_{w.name}`)
-			mount(part, hub.mount, VehicleRig.pieceCFrame(piece, mps, not w.left), folder)
+			local part = makePiece(piece, entry.body.paint, mps, k, `{piece.name}_{w.name}`)
+			mount(part, hub.mount, VehicleRig.pieceCFrame(piece, mps, not w.left, k), folder)
 		end
 	end
 	return folder
