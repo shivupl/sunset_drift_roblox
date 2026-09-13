@@ -40,7 +40,9 @@ local Roundabouts = {}
 
 -- An approach into a ring: outward unit direction from the centre, half
 -- width of the corridor, and half width of its median.
-type Mouth = { dir: Vector3, halfM: number, medianHalfM: number }
+-- kerbLateralM is how far the approach's own kerb centreline sits from
+-- the mouth's axis: the ring kerb stops exactly there so the two meet.
+type Mouth = { dir: Vector3, halfM: number, medianHalfM: number, kerbLateralM: number }
 
 local function tinted(colour: Color3, rng: Random, tone: number): Color3
 	local t = rng:NextNumber(-tone, tone)
@@ -108,16 +110,30 @@ local function cutter(ctx: Context, centre: Vector3, radius: number): Part
 	return p
 end
 
+-- A cylinder cutter is a polygon to the CSG kernel, so one cut leaves the
+-- edge up to a quarter of a metre inside the circle on a ring this size, far
+-- enough to poke out from under the kerb. The same cylinder turned through a
+-- fraction of a facet, four times over, puts the edge within a few
+-- centimetres of the true circle.
+local CUTTER_TURNS_DEG = { 0, 2.5, 5, 7.5 }
+
 local function subtract(ctx: Context, p: BasePart, centre: Vector3, radius: number): boolean
-	local cut = cutter(ctx, centre, radius)
+	local cuts: { BasePart } = {}
+	for _, turn in CUTTER_TURNS_DEG do
+		local cut = cutter(ctx, centre, radius)
+		cut.CFrame = CFrame.new(centre) * CFrame.Angles(0, math.rad(turn), 0) * CFrame.Angles(0, 0, math.pi / 2)
+		table.insert(cuts, cut)
+	end
 	local ok, result = pcall(function()
-		return GeometryService:SubtractAsync(p, { cut }, {
+		return GeometryService:SubtractAsync(p, cuts, {
 			CollisionFidelity = Enum.CollisionFidelity.Box,
 			RenderFidelity = Enum.RenderFidelity.Precise,
 			SplitApart = false,
 		})
 	end)
-	cut:Destroy()
+	for _, cut in cuts do
+		cut:Destroy()
+	end
 	if not ok or type(result) ~= "table" or #result == 0 then
 		warn(`[City] could not carve {p:GetFullName()} for a roundabout: {tostring(result)}`)
 		return false
@@ -202,7 +218,16 @@ local function carve(ctx: Context, c: CCfg, roots: { Instance }, centre: Vector3
 		rootSet[root] = true
 	end
 	local road = ctx.s(radiusM)
-	local raised = ctx.s(radiusM + c.boulevard.kerbWidthM)
+	local k = c.boulevard.kerbWidthM
+	-- Raised surfaces (verge lawn, pavement) stop under the ring kerb, not
+	-- at its outer face. Their tops were level with the kerb's and the CSG
+	-- cut is a polygon, so along the whole ring the lawn and the kerb
+	-- z-fought, and at every facet the lawn's cut edge poked out. Now the
+	-- cut edge sits under the kerb, which stands a little proud of the lawn.
+	-- Thin raised strips (the boulevard kerbs) are clipped to the kerb's
+	-- centreline instead, so they end exactly where the ring kerb picks up.
+	local raised = ctx.s(radiusM + k * 0.75)
+	local raisedClip = ctx.s(radiusM + k / 2)
 	local median = ctx.s(radiusM + r.splitterNoseRadiusM)
 	local reach = median + ctx.s(2)
 	local carved, removed = 0, 0
@@ -236,7 +261,7 @@ local function carve(ctx: Context, c: CCfg, roots: { Instance }, centre: Vector3
 					-- 17 cm median lip across the ring. Clipping an 8 m strip by
 					-- its centreline is 15 cm out at the edges, under the nose.
 					if isMedian(p) or math.min(p.Size.X, p.Size.Z) < ctx.s(1.5) then
-						table.insert(toClip, { part = p, radius = radius })
+						table.insert(toClip, { part = p, radius = if radius == raised then raisedClip else radius })
 					else
 						table.insert(toCarve, { part = p, radius = radius })
 					end
@@ -554,7 +579,8 @@ local function mouthsFor(c: CCfg, plan: Plan, node: Node): { Mouth }
 				if (math.abs(dx) < 0.5 and math.abs(math.abs(dz) - node.widthM / 2) < reach) or (math.abs(dz) < 0.5 and math.abs(math.abs(dx) - node.widthM / 2) < reach) then
 					local d = Vector3.new(dx, 0, dz)
 					if d.Magnitude > 1 and d.Magnitude < node.widthM then
-						table.insert(mouths, { dir = d.Unit, halfM = c.boulevard.widthM / 2, medianHalfM = c.boulevard.medianWidthM / 2 })
+						local half = c.boulevard.widthM / 2
+						table.insert(mouths, { dir = d.Unit, halfM = half, medianHalfM = c.boulevard.medianWidthM / 2, kerbLateralM = half + c.boulevard.kerbWidthM / 2 })
 					end
 				end
 			end
@@ -562,7 +588,8 @@ local function mouthsFor(c: CCfg, plan: Plan, node: Node): { Mouth }
 	end
 	if node.gateway then
 		-- The highway comes in from +Z, the direction of the start line.
-		table.insert(mouths, { dir = Vector3.new(0, 0, 1), halfM = highwayHalfM(), medianHalfM = WorldConfig.road.medianWidthM / 2 })
+		local half = highwayHalfM()
+		table.insert(mouths, { dir = Vector3.new(0, 0, 1), halfM = half, medianHalfM = WorldConfig.road.medianWidthM / 2, kerbLateralM = half - WorldConfig.road.kerbWidthM / 2 })
 	end
 	return mouths
 end
@@ -594,18 +621,63 @@ function Roundabouts.build(ctx: Context, c: CCfg, plan: Plan, parent: Instance, 
 		local ring = Build.folder(if node.gateway then "GatewayRoundabout" else "Roundabout", folder)
 
 		-- The carriageway.
-		disc(ctx, ring, "RingAsphalt", centre, R, 0, s.thicknessM, tinted(s.asphaltColor, rng, s.slabTone), Enum.Material.Asphalt, true)
+		local ringTone = tinted(s.asphaltColor, rng, s.slabTone)
+		disc(ctx, ring, "RingAsphalt", centre, R, 0, s.thicknessM, ringTone, Enum.Material.Asphalt, true)
 
-		-- Outer kerb: short straight pieces round the circle, left out
-		-- across every approach. A kerb carved as one thin CSG ring rendered
-		-- as filled pale wedges, so it is built from segments instead.
+		-- Outer kerb: short straight pieces round each arc between two
+		-- approaches. A kerb carved as one thin CSG ring rendered as filled
+		-- pale wedges, so it is built from segments instead. Each arc ends
+		-- exactly on the centreline of the approach's own kerb, with a
+		-- round post over the joint: the pieces used to be dropped whole at
+		-- the mouths, leaving a notch of lawn on one side of each corner and
+		-- the approach kerb poking into the ring on the other.
 		local k = c.boulevard.kerbWidthM
-		local kerbSeg = r.kerbSegmentM
-		local kerbCount = math.ceil(2 * math.pi * (R + k / 2) / kerbSeg)
-		for i = 0, kerbCount - 1 do
-			local a = (i + 0.5) / kerbCount * math.pi * 2
-			if not inMouth(mouths, a, R + k / 2, 0) then
-				onArc(ctx, ring, "RingKerb", centre, R + k / 2, a, 2 * math.pi * (R + k / 2) / kerbCount + 0.08, k, c.boulevard.kerbHeightM, c.boulevard.kerbHeightM + 0.1, tinted(kerbColour, rng, 0.04), Enum.Material.Concrete)
+		local kerbR = R + k / 2
+		-- A band of asphalt all the way round, from inside the ring's edge
+		-- to under the kerb. A cylinder this big renders as a polygon, and
+		-- between its corners the sand showed through at the kerb and across
+		-- the mouths, where the streets are carved to the true circle. Half a
+		-- centimetre proud of the carriageway so the two tops never z-fight.
+		local rimCount = math.ceil(2 * math.pi * R / r.kerbSegmentM)
+		for i = 0, rimCount - 1 do
+			local a = (i + 0.5) / rimCount * math.pi * 2
+			local rim = onArc(ctx, ring, "RingRim", centre, R - r.rimWidthM / 2 + k / 2, a, 2 * math.pi * R / rimCount + 0.08, r.rimWidthM + k, 0.005, s.thicknessM, ringTone, Enum.Material.Asphalt)
+			rim.CanCollide = true
+			rim.CanQuery = true
+		end
+		local kerbTop = c.boulevard.kerbHeightM + r.kerbProudM
+		local gaps: { { number } } = {}
+		for _, m in mouths do
+			local centreA = math.atan2(m.dir.Z, m.dir.X)
+			local halfA = math.asin(math.clamp(m.kerbLateralM / kerbR, 0, 1))
+			table.insert(gaps, { centreA - halfA, centreA + halfA })
+		end
+		table.sort(gaps, function(g1, g2)
+			return g1[1] < g2[1]
+		end)
+		local arcs: { { number } } = {}
+		if #gaps == 0 then
+			table.insert(arcs, { 0, math.pi * 2, 0 })
+		else
+			for gi, g in gaps do
+				local nextStart = if gi < #gaps then gaps[gi + 1][1] else gaps[1][1] + math.pi * 2
+				if nextStart > g[2] then
+					table.insert(arcs, { g[2], nextStart, 1 })
+				end
+			end
+		end
+		for _, arc in arcs do
+			local span = arc[2] - arc[1]
+			local n = math.max(1, math.ceil(span * kerbR / r.kerbSegmentM))
+			for i = 0, n - 1 do
+				local a = arc[1] + (i + 0.5) / n * span
+				onArc(ctx, ring, "RingKerb", centre, kerbR, a, span * kerbR / n + 0.08, k, kerbTop, kerbTop + 0.1, tinted(kerbColour, rng, 0.04), Enum.Material.Concrete)
+			end
+			if arc[3] == 1 then
+				for _, a in { arc[1], arc[2] } do
+					local post = centre + Vector3.new(math.cos(a) * ctx.s(kerbR), 0, math.sin(a) * ctx.s(kerbR))
+					disc(ctx, ring, "RingKerbJoint", post, k * 0.55, kerbTop + 0.005, kerbTop + 0.105, kerbColour, Enum.Material.Concrete, false)
+				end
 			end
 		end
 

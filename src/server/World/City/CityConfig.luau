@@ -55,6 +55,12 @@ local config = {
 		laneWidthM = 6.5, -- ring lanes are marked at about this width
 		splitterNoseRadiusM = 4, -- half the boulevard median
 		kerbSegmentM = 3, -- the curved kerb is straight pieces this long
+		-- The ring kerb stands this far above the boulevard kerb and the verge
+		-- lawn, whose cut edge hides under it. Level with the lawn, they z-fought.
+		kerbProudM = 0.03,
+		-- Asphalt band this wide inside the ring kerb, covering the ring disc's
+		-- polygon edge and any gap to the carved streets.
+		rimWidthM = 1.5,
 		lampSetbackM = 4, -- lamp posts this far outside the ring
 		lampSpacingDeg = 24,
 		palmsOnIsland = 8,

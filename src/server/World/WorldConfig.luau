@@ -486,7 +486,11 @@ local config = {
 		gantrySpacingM = 600,
 		gantryFirstM = 300,
 		setbackM = 1.5, -- from the kerb to the post
-		gantryHeightM = 7.6,
+		-- Top of the truss. The boards hang under it, so their bottom edge is
+		-- this minus trussDepthM, panelHeightM and 0.3 m of bracket: 6 m of
+		-- clearance at 11. At 7.6 the boards came down to 2.6 m, head height
+		-- on a car roof, and read as a sign on the road rather than over it.
+		gantryHeightM = 11,
 		-- The gantry is a lattice portal frame, the kind that spans every
 		-- Saudi motorway: each leg two columns with ties, the beam a truss
 		-- of two chords with verticals and diagonals every bayM.

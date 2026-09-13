@@ -444,7 +444,7 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | Field | What it does |
 |---|---|
 | gantrySpacingM / gantryFirstM | How often an overhead gantry appears. |
-| gantryHeightM / legColumnM / legSpreadM | Portal frame height; each leg is two columns this thick, this far apart, with ties and diagonals between. |
+| gantryHeightM / legColumnM / legSpreadM | Portal frame height (11 m, which leaves 6 m under the boards: they hang trussDepthM + panelHeightM + 0.3 m below it); each leg is two columns this thick, this far apart, with ties and diagonals between. |
 | trussDepthM / chordM / bayM / braceM | The beam truss: depth, chord section, bay length (a vertical and a diagonal per bay), brace section. |
 | panelWidthM / panelHeightM / panelColor / panelBlueColor / borderWidthM / borderColor / postColor / textColor | Boards: green direction, blue distance, the white border strip round each, galvanised steel, text. |
 | gantryTexts / roadsideTexts | `{ arabic, english, shield }` rows. **Placeholders** — replace with real Riyadh route names. |
@@ -513,6 +513,7 @@ Not live-reloadable either; restart the server.
 | roundabout.radiusM / gatewayRadiusM | Outer edge of the ring carriageway (48 m, 55 m at the gateway, where the highway's 79 m corridor runs in). Bigger is a better drift circle and eats more verge. |
 | roundabout.islandRadiusM / gatewayIslandRadiusM / islandHeightM | The raised island; its kerb is the one raised thing in the city that collides. |
 | roundabout.laneWidthM / splitterNoseRadiusM / kerbSegmentM | Ring lane marking width, the rounded median nose at each entry (half the median), and the length of the straight pieces the curved kerb is made of. |
+| roundabout.kerbProudM / rimWidthM | How far the ring kerb stands above the lawn (0.03 m; at 0 they z-fight), and the asphalt band under and inside the kerb (1.5 m) that covers the ring disc's polygon edge. |
 | roundabout.lampSetbackM / lampSpacingDeg | Mesh lamp posts round the ring: how far outside it and how far apart. |
 | roundabout.palmsOnIsland / lawnColor / shrubColor | Island planting. |
 | roundabout.monuments / monumentScale | The centrepieces, in turn round the grid: "dallah", "obelisk", "fountain". The gateway always gets the Riyadh arch. |

@@ -389,10 +389,20 @@ tracks) and the medians by clipping them arithmetically along their long
 axis, props inside the ring removed whole. Medians are clipped rather than
 carved because a carved union keeps its entire box as collision, and that
 left an invisible 17 cm median lip across the ring. Then it lays a 48 m
-ring (55 m at the gateway, which the highway's 71 m corridor runs into):
-one Asphalt cylinder for the carriageway, a curved kerb of 3 m segments
-left open at every approach (a thin carved CSG ring rendered as filled
-pale wedges, so it is segments), an edge line inside the kerb, dashed lane
+ring (55 m at the gateway, which the highway's 79 m corridor runs into):
+one Asphalt cylinder for the carriageway, a 1.5 m asphalt rim of 3 m
+segments all the way round under the kerb, and a curved kerb of 3 m
+segments between the approaches (a thin carved CSG ring rendered as filled
+pale wedges, so it is segments). Each kerb arc ends exactly on the
+centreline of the approach's own kerb, which is clipped to that same
+circle, with a round post over the joint. The kerb stands 3 cm proud of the
+lawn, and verges are carved to three quarters of the way under it with four
+slightly turned cutters: a cylinder is a polygon both to the CSG kernel and
+to the renderer, and with one cutter, a lawn level with the kerb and no rim,
+the lawn z-fought the kerb, its cut edge poked out between facets and the
+sand showed between the cylinder's corners and the kerb. The first row's
+north verge also stops at the highway's outer kerb, so the highway kerb
+runs on to the gateway ring. Then an edge line inside the kerb, dashed lane
 lines, an island edge line, give-way teeth across every entering
 carriageway, and a kerbed splitter nose with a lit keep-right bollard where
 each median meets the ring. The island (22 m, 27 m at the gateway) has a

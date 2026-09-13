@@ -412,11 +412,38 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 			end
 		end
 	end
-	local function vergeBand(alongX: boolean, lineAt: number, side: number, from: number, to: number, gapAt: number?)
+	-- The highway lands on the gateway from +Z, straight across the first
+	-- row's north verge. Its own shoulder and kerb run on to the ring, so the
+	-- lawn stops at its outer kerb rather than lying over the end of the
+	-- shoulder with a bare, kerbless edge beside the ring.
+	local highwayCut: { number }? = nil
+	do
+		local presets = WorldConfig.presets :: any
+		local preset = presets[WorldConfig.preset] or presets.testRoad
+		if preset.segments and preset.segments[1] then
+			local hh = preset.segments[1].widthM / 2 + WorldConfig.road.shoulderWidthM + WorldConfig.road.kerbWidthM
+			local gx = bx(c.gateway.i)
+			highwayCut = { gx - hh, gx + hh }
+		end
+	end
+	local function vergeBand(alongX: boolean, lineAt: number, side: number, from: number, to: number, gapAt: number?, cut: { number }?)
 		-- lateral bands measured from the boulevard centreline
 		local kerbA, kerbB = half, half + kw
 		local lawnA, lawnB = half + kw, sb
-		local ranges: { { number } } = if gapAt then { { from, gapAt - sHalf }, { gapAt + sHalf, to } } else { { from, to } }
+		local uncut: { { number } } = if gapAt then { { from, gapAt - sHalf }, { gapAt + sHalf, to } } else { { from, to } }
+		local ranges: { { number } } = {}
+		for _, rg in uncut do
+			if cut and cut[1] < rg[2] and cut[2] > rg[1] then
+				if cut[1] > rg[1] then
+					table.insert(ranges, { rg[1], cut[1] })
+				end
+				if cut[2] < rg[2] then
+					table.insert(ranges, { cut[2], rg[2] })
+				end
+			else
+				table.insert(ranges, rg)
+			end
+		end
 		for _, rg in ranges do
 			type Band = { a: number, b: number, name: string, top: number, colour: Color3, material: Enum.Material }
 			local bands: { Band } = {
@@ -452,7 +479,7 @@ function Streets.build(ctx: Context, c: CCfg, parent: Instance): (Plan, Folder, 
 			local x1 = bx(i + 1) + (if i + 1 == c.blocksX then sb else 0)
 			local mx = bx(i) + c.blockM / 2
 			-- +Z side has a block above it unless this is the first row.
-			vergeBand(true, bz(j), 1, x0, x1, if j > 0 then mx else nil)
+			vergeBand(true, bz(j), 1, x0, x1, if j > 0 then mx else nil, if j == 0 then highwayCut else nil)
 			vergeBand(true, bz(j), -1, x0, x1, if j < c.blocksZ then mx else nil)
 		end
 	end
