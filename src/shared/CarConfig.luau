@@ -110,7 +110,11 @@ local config = {
 			-- 1.55 with the TC floor at 0.7: 0-70 in 2.65 s and 0-100 in 3.9
 			-- (1.4 / 0.6 was 3.0 and 4.35). Power-over at 40-60 km/h under
 			-- full lock still peaks at 1-3 degrees, so the drift is untouched.
-			longitudinalGrip = 1.55,
+			-- 1.9 with the slip model's launch control: the owner found the
+			-- launch still flat. 0-30 1.07 -> 1.0 s, 0-100 4.1 -> 3.6 s. It
+			-- also pushes harder on the gas in a slide (a spinning rear's
+			-- force is drive grip), so slipModel.slideRelief came down to match.
+			longitudinalGrip = 1.9,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
 		-- Slide momentum (Tire.scrubRelief): while the car is sideways, this
@@ -165,12 +169,21 @@ local config = {
 			-- degrees against the legacy car's 72-74; 0.5 gave 82-84 and
 			-- 0.7 gives 76-79.
 			flickRearGripMultiplier = 0.7,
+			-- Launch control: under tractionControlBelowKmh, pointing straight,
+			-- the throttle is capped at this fraction of the drive the rear
+			-- tyres can put down at their peak slip, so a launch grips at the
+			-- limit instead of spinning onto the sliding floor. Measured
+			-- without it (the spin-and-cut loop only): 0-30 in 1.20 s and 7
+			-- m/s^2 for the first second. Above 1 lets the rears spin up.
+			launchGripUse = 1.0,
 			-- Slide momentum for this model (see slideMomentum above). Pure
 			-- physics scrubs almost as hard as the legacy tyre did (held slide
 			-- 97 to 70, chain 96 to 76, lever 360 exit 70 with both at 0),
-			-- so the relief stays. At 0.4 / 0.7: held slide loses 5 km/h in
-			-- 4 s, the chain 4, the lever 360 exits at 85.
-			slideRelief = 0.4,
+			-- so the relief stays. With the rear's drive grip at 1.9 a spinning
+			-- rear pushes harder on the gas, so less is needed: at 0.25 / 0.7
+			-- the held slide loses 6-7 km/h in 4 s, the chain 5, the lever 360
+			-- exits at 83. The held slide is sensitive here: 0.2 lost 13, 0.3 lost 4.
+			slideRelief = 0.25,
 			leverRelief = 0.7,
 		},
 	},
@@ -198,7 +211,7 @@ local config = {
 		redlineRpm = 6800,
 		upshiftRpm = 6400,
 		downshiftRpm = 3000,
-		shiftTime = 0.15,
+		shiftTime = 0.08, -- torque is cut for this long; 0.15 left a quarter-second flat spot at the 1-2
 		spinRpmRate = 6000, -- rpm/s the engine climbs while the rear spins
 		-- Lift-off is how a transition swings: engine braking loads the nose
 		-- and lightens the rear for the flick. 40 was too little to feel.

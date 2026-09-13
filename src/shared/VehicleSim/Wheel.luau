@@ -45,6 +45,7 @@ export type SlipConfig = {
 	handbrakeTorque: number, -- Nm per rear wheel at full lever
 	handbrakeGripCut: number, -- extra rear grip multiplier under the lever (1 = none, all physics)
 	flickRearGripMultiplier: number, -- the flick's rear grip cut in this model
+	launchGripUse: number, -- launch control caps drive at this fraction of what the rears can put down
 	slideRelief: number, -- slide momentum for this model (see Tire.scrubRelief)
 	leverRelief: number,
 }

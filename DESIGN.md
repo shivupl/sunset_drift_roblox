@@ -113,9 +113,47 @@ slip model on its committed values:
 | Two-wheel lean held 5 s | 54°, no topple | 54°, no topple |
 | Full brake | 33 km/h per s | 33 km/h per s |
 
-One thing seen and not explained: twice in about 30 flicks on the slip
-model, the first flick of a harness run rotated only 4 degrees. It did not
-come back in 15 further tries, including straight after a config reload.
+**Launch control.** With real wheels the old traction control fought the
+tyres. It waits for a spin and winds the throttle back, but never below
+0.7, and full launch torque is about twice what the rears can take; on the
+old tyre a spin cost a little grip, on the slip model it drops the tyre to
+its sliding floor. Measured: wheelspin from the first frame, 7 m/s² for the
+first second, 0-30 in 1.20 s. So under 120 km/h, pointing straight, the
+throttle is now capped at the torque the rear tyres can put down right now
+(their load, grip, load sensitivity and drive grip at the peak slip,
+through the gear) plus the torque it takes to spin the wheels and the
+engine up with the car. Leaving that inertia out capped the launch 18%
+short: no spin at all and 0-100 slower than before. The owner still found
+the launch flat, and at that point it was at the rear tyres' limit, so the
+rear's drive grip went from 1.55 to 1.9 and the shift from 0.15 to 0.08 s
+(it left a quarter-second flat spot at the 1-2). The first half second is
+still the softest part of a launch: the rears only carry their static load
+until the car squats onto them.
+
+**Two bugs found on the way.** A flick counted its window from the moment
+the wheel first went hard over, and only reset on a change of direction,
+so after any hard steer one way (a lane change, a 360) a later flick
+starting the same way found a stale window and never tripped: it rotated
+4 degrees instead of 76. This was in the old model too. The window now
+runs from the last moment the wheel was hard over. And a reset (the R key,
+the bay respawn) zeroes the car's velocity but left the slip model's wheels
+spinning, so they drove the car off the spot at up to 11 km/h; a position
+jump far bigger than the car could have travelled now stops them.
+
+Measured after both, same harness:
+
+| Test | Before launch control | Now |
+|---|---|---|
+| 0-10 / 0-30 / 0-50 / 0-70 / 0-100 | 0.46 / 1.20 / 1.83 / 2.75 / 4.1 s | 0.43 / 1.02 / 1.52 / 2.28 / 3.64 s |
+| Speed 0.5 s after launch | 11 km/h | 12 km/h |
+| Rear wheelspin during a launch | most of the first second | none |
+| 41° slide held on the gas, 4 s | loses 6 | loses 6-7 |
+| Chain from 96 | loses 5 | loses 5 |
+| Flick after a right-hand 360 | 4° (the bug) | 71-76° |
+| Lever 360 from 110, exit | 85 | 83 |
+| Lever 720 from 110, exit | 62 | 57 |
+| Power-over at 50 km/h, full lock | not measured | 0.8° |
+| Two-wheel tap / 5 s hold | 42°, down 2.4 s / 54° | 41°, down 2.5 s / 53° |
 
 **Slide momentum.** A slip-angle model turns every degree of slide into
 drag: a tyre sideways to its travel pushes almost straight back against the

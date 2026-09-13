@@ -11,7 +11,7 @@ return function(t: T)
 	}
 	local cfg = {
 		enabled = true, peakSlipRatio = 0.1, lowSpeedMps = 3, loadSensitivity = 0.1, loadFactorMin = 0.5, loadFactorMax = 1.5,
-		wheelInertia = 1.2, engineInertia = 0, substepSeconds = 0.002, handbrakeTorque = 0, handbrakeGripCut = 1, flickRearGripMultiplier = 1,
+		wheelInertia = 1.2, engineInertia = 0, substepSeconds = 0.002, handbrakeTorque = 0, handbrakeGripCut = 1, flickRearGripMultiplier = 1, launchGripUse = 1,
 		slideRelief = 0, leverRelief = 0,
 	}
 	local r = 0.33

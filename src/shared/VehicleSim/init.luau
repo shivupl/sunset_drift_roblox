@@ -9,6 +9,7 @@
 local Shared = script.Parent
 local Types = require(Shared.Types)
 local Units = require(Shared.Units)
+local Curve = require(Shared.Curve)
 local CarConfig = require(Shared.CarConfig)
 local Steering = require(script.Steering)
 local Suspension = require(script.Suspension)
@@ -72,6 +73,7 @@ export type Sim = typeof(setmetatable(
 		flickAge: number, -- seconds since that input
 		flickTimer: number, -- seconds of rear grip cut left after a flick
 		lastFlatVel: Vector3, -- last step's horizontal velocity, for the path's turn rate
+		lastPosition: Vector3?, -- chassis position last step, studs, to spot a reset
 		pathRateDeg: number, -- filtered rate the velocity direction is turning, deg/s, + = right
 		throw: Throw.State,
 		throttleHoldStraight: number, -- seconds the drift has been under the throttle-hold gate
@@ -186,6 +188,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		flickAge = 0,
 		flickTimer = 0,
 		lastFlatVel = Vector3.zero,
+		lastPosition = nil,
 		pathRateDeg = 0,
 		throw = Throw.new(),
 		throttleHoldStraight = 0,
@@ -220,6 +223,23 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local mass = chassis.AssemblyMass -- kg by convention (plus the seated character)
 	local g = cfg.units.gravity
 	local speed = vel.Magnitude
+
+	-- A reset (the R key, the bay respawn, a fall catch) moves the car and
+	-- zeroes its velocity, but the slip model's wheels would keep spinning
+	-- at their old speed and drive the car off the spot. A jump far bigger
+	-- than the car could have travelled this step is a reset: stop them.
+	local position = chassis.Position
+	local lastPosition = self.lastPosition
+	self.lastPosition = position
+	if lastPosition and dt > 0 then
+		local moved = (position - lastPosition).Magnitude
+		local couldMove = (chassis.AssemblyLinearVelocity.Magnitude + 60) * dt * 3 + 5
+		if moved > couldMove then
+			for _, w in self.wheels do
+				w.omega = 0
+			end
+		end
+	end
 
 	local totalForce = Vector3.zero -- N, world
 	local totalTorque = Vector3.zero -- Nm, world, about the centre of mass
@@ -320,10 +340,14 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			-- this is the weight transfer a real pendulum turn gets for free.
 			self.flickTimer = fl.flickGripSeconds
 		end
-		if sign ~= self.flickSign then
-			self.flickSign = sign
-			self.flickAge = 0
-		end
+		-- The age counts from the last moment the wheel was hard over in
+		-- that direction, not from when it first went there. It used to
+		-- reset only on a change of direction, so after any hard right (a
+		-- lane change, a 360) a later right-left flick found a stale age and
+		-- never tripped: measured as a flick that rotated 4 degrees instead
+		-- of 76 whenever the previous hard steer had been the same way.
+		self.flickSign = sign
+		self.flickAge = 0
 	end
 	if throwNow > 0 then
 		self.throwTail = 1
@@ -435,21 +459,55 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local rearWheelSpeed = (contacts[3].vLong + contacts[4].vLong) / 2
 	local rearSpinning = self.wheels[3].state.saturated or self.wheels[4].state.saturated
 	local rearSpinSpeed: number? = if slipModel then (self.wheels[3].omega + self.wheels[4].omega) / 2 * cfg.body.wheelRadius else nil
+	-- Traction control only while the car is pointing where it is going,
+	-- and never on two wheels: the airborne rear reads as spinning, and
+	-- cutting the throttle there takes away the yaw that holds a natl up.
+	local tractionAllowed = math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
+		and self.handbrakeLevel <= 0
+		and not twoWheelActive
+	-- Launch control, slip model only. The wheels are real now, so rather
+	-- than wait for a spin and cut the throttle back (the loop never goes
+	-- under its 0.7 floor, and full launch torque is about twice what the
+	-- rears can take), the throttle is capped at the torque the rear tyres
+	-- can put down right now: their load, grip, load sensitivity and drive
+	-- grip at the peak slip, through this gear. The wheels sit just under
+	-- the peak instead of spinning past it onto the sliding floor.
+	local throttle = input.throttle
+	if slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
+		local sc = slipCfg :: Wheel.SlipConfig
+		local rearAxle = cfg.tires.rear
+		local staticLoad = mass * g / 4
+		local wheelCap = math.huge
+		for i = 3, 4 do
+			local load = contacts[i].susp.force
+			wheelCap = math.min(wheelCap, load * rearAxle.grip * Wheel.loadFactor(sc, load, staticLoad) * (rearAxle.longitudinalGrip or 1))
+		end
+		local overall = cfg.drivetrain.gearRatios[self.drivetrain.gear] * cfg.drivetrain.finalDrive
+		local r = cfg.body.wheelRadius
+		-- The drive also has to spin the wheels and the engine up with the
+		-- car. In first gear the crank's inertia through the gearing is ten
+		-- times a wheel's, and leaving it out capped the launch 18% short:
+		-- no wheelspin, and 0-100 slower than the spin-and-cut loop.
+		local tyreForce = wheelCap * sc.launchGripUse
+		local wheelInertia = sc.wheelInertia + 0.5 * sc.engineInertia * overall * overall
+		local carAccel = 2 * tyreForce / mass
+		local wheelTorque = tyreForce * r + wheelInertia * carAccel / r
+		local crankCap = wheelTorque * 2 / (overall * cfg.drivetrain.drivelineEfficiency)
+		local curveTorque = Curve.lookup(cfg.drivetrain.torqueCurve, self.drivetrain.rpm)
+		if curveTorque > 0 then
+			throttle = math.min(throttle, crankCap / curveTorque)
+		end
+	end
 	local drive = Drivetrain.step(
 		self.drivetrain,
 		cfg.drivetrain,
 		cfg.body.wheelRadius,
 		dt,
-		input.throttle,
+		throttle,
 		input.brake,
 		rearWheelSpeed,
 		rearSpinning,
-		-- Traction control only while the car is pointing where it is going,
-		-- and never on two wheels: the airborne rear reads as spinning, and
-		-- cutting the throttle there takes away the yaw that holds a natl up.
-		math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
-			and self.handbrakeLevel <= 0
-			and not twoWheelActive,
+		tractionAllowed,
 		rearSpinSpeed
 	)
 
