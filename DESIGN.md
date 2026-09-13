@@ -56,6 +56,40 @@ Tire forces act at ground level and spring forces at the hardpoints, so the
 lateral force times the centre-of-mass height is a real roll moment that
 loads the outside springs in a slide.
 
+**Slide momentum.** A slip-angle model turns every degree of slide into
+drag: a tyre sideways to its travel pushes almost straight back against the
+car. A real hajwala sedan sideways at 100 km/h carries its speed for
+hundreds of metres, because the rears are spinning (their friction runs
+mostly along the rolling direction) and sliding rubber grips less than
+gripping rubber. The owner asked for exactly that: Tanteel chains and Sefty
+360s that do not scrub the car to a halt, without ice.
+
+So each step the sim splits the tyres' lateral forces into the part along
+the car's velocity (the drag) and the part across it (what bends the path),
+and hands back a fraction of the drag as a force at the centre of mass. The
+across part and every yaw moment are untouched, which is why steering,
+throws, holds and catches measure the same as before. The fraction
+(`Tire.scrubRelief`) is zero below 10 degrees of drift, so cornering and the
+grip limit are unchanged; zero below 30 km/h, so a slow slide still stops;
+never all of the scrub; higher with the lever in, because a lever 360 sits
+on locked rears; and the sim never lets it make the tyres push the car on,
+so a slide can hold its speed on the gas but cannot gain it.
+
+Measured on the highway, same inputs, before and after (slide 0.38, lever
+0.6):
+
+| Trick | Before | After |
+|---|---|---|
+| 43° slide held on the gas, 4 s from 98 km/h | 73 km/h | 97 km/h |
+| Throw and four transitions on the gas from 96 km/h | 69 km/h | 87 km/h |
+| Lever 360 from 110 km/h, exit | 69 km/h in 2.57 s | 85 km/h in 2.57 s |
+| Lever 720 from 110 km/h, exit | 40 km/h | 63 km/h |
+
+Drift angles through the chain (29 to 37 degrees) and the spin time did not
+change. Lifting still scrubs: the held slide falls from 97 to 89 km/h in two
+seconds hands off and straightens by itself, and a full brake takes 58 to
+20 km/h in 1.2 s.
+
 ## Drivetrain
 Torque curve by rpm, automatic gearbox, a differential that blends between
 open and welded. Wheel spin is not integrated; the tire reports when demand

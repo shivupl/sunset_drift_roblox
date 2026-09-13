@@ -89,4 +89,18 @@ return function(t: T)
 	local air = Tire.compute(20, 20, 0, axle, 1, 500, 1)
 	t.eq(air.fx, 0, "airborne fx")
 	t.eq(air.fy, 0, "airborne fy")
+
+	-- Slide momentum relief: nothing while gripping or slow, full once
+	-- properly sideways at speed, more with the lever in.
+	local m = { slideRelief = 0.3, leverRelief = 0.6, fromDeg = 10, fullDeg = 30, minSpeedKmh = 30, fullSpeedKmh = 60 }
+	t.near(Tire.scrubRelief(m, 5, 100, 1), 0, 1e-9, "no relief under fromDeg: cornering and a straight-line lever pull are untouched")
+	t.near(Tire.scrubRelief(m, 40, 20, 0), 0, 1e-9, "no relief under minSpeedKmh: a slow slide still stops")
+	t.near(Tire.scrubRelief(m, 40, 100, 0), 0.3, 1e-9, "slide relief sideways at speed")
+	t.near(Tire.scrubRelief(m, 40, 100, 1), 0.6, 1e-9, "lever relief with the handbrake held")
+	t.near(Tire.scrubRelief(m, 40, 100, 0.5), 0.45, 1e-9, "blends with the lever's release")
+	t.near(Tire.scrubRelief(m, 20, 100, 0), 0.15, 1e-9, "halfway up the angle ramp is half")
+	t.near(Tire.scrubRelief(m, 40, 45, 0), 0.15, 1e-9, "halfway up the speed ramp is half")
+	t.near(Tire.scrubRelief(m, -40, 100, 0), 0.3, 1e-9, "symmetric in drift direction")
+	t.near(Tire.scrubRelief(m, 170, 100, 1), 0.6, 1e-9, "a spin going backwards is still sideways")
+	t.ok(Tire.scrubRelief({ slideRelief = 2, leverRelief = 2, fromDeg = 0, fullDeg = 1, minSpeedKmh = 0, fullSpeedKmh = 1 }, 45, 100, 1) < 1, "never cancels all of the scrub")
 end

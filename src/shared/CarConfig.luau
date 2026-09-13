@@ -113,6 +113,21 @@ local config = {
 			longitudinalGrip = 1.55,
 		},
 		speedFadeMps = 1.0, -- lateral force fades to zero below this speed
+		-- Slide momentum (Tire.scrubRelief): while the car is sideways, this
+		-- fraction of the drag the tyres' lateral forces put against the
+		-- velocity is handed back at the centre of mass. The force that bends
+		-- the path and every yaw moment are untouched, so steering, throws and
+		-- catches feel the same; a Tanteel chain or a Sefty 360 just stops
+		-- scrubbing the car to a halt. Never below fromDeg of drift or
+		-- minSpeedKmh, and never enough to push the car on.
+		slideMomentum = {
+			slideRelief = 0.38,
+			leverRelief = 0.6,
+			fromDeg = 10,
+			fullDeg = 25,
+			minSpeedKmh = 30,
+			fullSpeedKmh = 60,
+		},
 	},
 
 	drivetrain = {

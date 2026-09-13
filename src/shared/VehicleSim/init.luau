@@ -457,6 +457,11 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	end
 
 	-- 5. Tire forces at the contact patches, suspension forces at the hardpoints.
+	-- Along the way, how hard the tyres' lateral forces drag against the
+	-- velocity (scrub) and what all tyre forces do along it (net), for the
+	-- slide momentum relief after the loop.
+	local vHat = if speed > 1 then vel.Unit else Vector3.zero
+	local scrubAlong, tireAlong = 0, 0
 	for _, c in contacts do
 		local w = c.wheel
 		local brakeFade = math.clamp(math.abs(c.vLong) / cfg.drivetrain.brakeFadeMps, 0, 1)
@@ -486,7 +491,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 
 		-- Tire force acts at ground level: lateral force x CoM height is the
 		-- roll moment that loads the outside springs in a slide.
-		applyAt(c.heading * out.fx + c.right * out.fy, c.contactM)
+		local tireForce = c.heading * out.fx + c.right * out.fy
+		applyAt(tireForce, c.contactM)
+		scrubAlong += math.min(0, (c.right * out.fy):Dot(vHat))
+		tireAlong += tireForce:Dot(vHat)
 		-- Spring force acts along body up at the hardpoint.
 		applyAt(up * c.susp.force, c.hpM)
 
@@ -524,6 +532,18 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		w.weld.C0 = CFrame.new(w.attachment.Position - Vector3.new(0, dropM / mps, 0))
 			* CFrame.Angles(0, -math.rad(c.steerDeg), 0)
 			* CFrame.Angles(w.spinAngle, 0, 0)
+	end
+
+	-- 5b. Slide momentum: hand back part of the scrub while sideways, at the
+	-- centre of mass so no yaw moment changes. Capped so the tyres alone
+	-- never push the car along faster: a slide can hold its speed on the
+	-- gas, it cannot gain it. See Tire.scrubRelief.
+	if speed > 1 and scrubAlong < 0 and not twoWheelActive then
+		local relief = Tire.scrubRelief(cfg.tires.slideMomentum, driftAngleDeg, Units.mpsToKmh(speed), hbLevel)
+		local give = math.min(-scrubAlong * relief, math.max(0, -tireAlong))
+		if give > 0 then
+			totalForce += vHat * give
+		end
 	end
 
 	-- 6. Aero drag and rolling resistance at the centre of mass.

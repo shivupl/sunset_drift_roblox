@@ -118,4 +118,46 @@ function Tire.compute(
 	return { fx = fx, fy = fy * fade, slipAngleDeg = slip, saturated = saturated }
 end
 
+-- SLIDE MOMENTUM. A hajwala car sideways at 100 km/h carries its speed for
+-- hundreds of metres: the rears are spinning, so their friction is mostly
+-- along their rolling direction, and a sliding tyre's friction is lower than
+-- a gripping one's. A slip-angle model gets neither, so every degree of
+-- slide turns lateral grip straight into drag and the car scrubs to a stop.
+--
+-- This is the fraction of that scrub to hand back. The caller splits each
+-- tyre's lateral force into the part along the car's velocity (the drag) and
+-- the part across it (what bends the path), and cancels this fraction of the
+-- drag with a force at the centre of mass. The across part, every yaw
+-- moment and so the whole steering, throw and catch feel are untouched;
+-- the car just stops bleeding speed as hard while it is sideways.
+--
+-- Not ice: nothing below fromDeg of drift (cornering and the grip limit are
+-- as before), nothing below minSpeedKmh (a slow slide still stops), never
+-- all of the scrub, and the caller never lets it make the tyres push the
+-- car forward on their own.
+--
+-- Two levels. slideRelief is any slide, gas or lift: lifting still costs
+-- speed because the drive goes and the engine brakes. leverRelief applies
+-- while the handbrake is in, blending with its level: a lever 360 spends
+-- two and a half seconds fully sideways on locked rears and was losing 40
+-- of its 110 km/h.
+export type MomentumConfig = {
+	slideRelief: number, -- fraction of scrub cancelled in a slide
+	leverRelief: number, -- ...and with the handbrake held
+	fromDeg: number, -- drift angle where it starts
+	fullDeg: number, -- and is full
+	minSpeedKmh: number, -- speed where it starts
+	fullSpeedKmh: number, -- and is full
+}
+
+function Tire.scrubRelief(cfg: MomentumConfig, driftAngleDeg: number, speedKmh: number, leverLevel: number): number
+	-- Past 90 the car is going tail first through a spin, which is still
+	-- fully sideways as far as the scrub goes.
+	local a = math.min(math.abs(driftAngleDeg), 90)
+	local angle = math.clamp((a - cfg.fromDeg) / math.max(cfg.fullDeg - cfg.fromDeg, 1e-3), 0, 1)
+	local speed = math.clamp((speedKmh - cfg.minSpeedKmh) / math.max(cfg.fullSpeedKmh - cfg.minSpeedKmh, 1e-3), 0, 1)
+	local base = cfg.slideRelief + (cfg.leverRelief - cfg.slideRelief) * math.clamp(leverLevel, 0, 1)
+	return math.clamp(base, 0, 0.95) * angle * speed
+end
+
 return Tire
