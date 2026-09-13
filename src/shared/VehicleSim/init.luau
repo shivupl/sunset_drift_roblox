@@ -1,8 +1,12 @@
 --!strict
 -- Glue between Roblox and the pure physics modules. One instance per car.
 -- step() raycasts each corner, computes every force in SI about the centre
--- of mass, writes one VectorForce and one Torque on the chassis, repositions
--- the visual wheels, and returns a VehicleState for the debug panel.
+-- of mass, writes one VectorForce and one Torque on the chassis, moves the
+-- wheel hubs (which carry the body's wheel meshes), and returns a
+-- VehicleState for the debug panel.
+--
+-- It only ever touches the Rig, found through VehicleRig.handles(); the
+-- Body is visual and rides along on the hubs and the chassis.
 --
 -- Runs on whoever owns the assembly: the driving client, or the server for a
 -- parked car (zero input) so it keeps sitting on its springs.
@@ -11,6 +15,7 @@ local Types = require(Shared.Types)
 local Units = require(Shared.Units)
 local Curve = require(Shared.Curve)
 local CarConfig = require(Shared.CarConfig)
+local VehicleRig = require(Shared.VehicleRig)
 local Steering = require(script.Steering)
 local Suspension = require(script.Suspension)
 local Tire = require(script.Tire)
@@ -28,8 +33,8 @@ type Wheel = {
 	name: string,
 	front: boolean,
 	left: boolean,
-	attachment: Attachment,
-	part: BasePart,
+	attachment: Attachment, -- the ray origin
+	part: BasePart, -- the hub
 	weld: Weld,
 	compression: number,
 	spinAngle: number,
@@ -87,12 +92,7 @@ export type Sim = typeof(setmetatable(
 	VehicleSim
 ))
 
-local WHEEL_DEFS = {
-	{ name = "FL", front = true, left = true },
-	{ name = "FR", front = true, left = false },
-	{ name = "RL", front = false, left = true },
-	{ name = "RR", front = false, left = false },
-}
+local WHEEL_DEFS = VehicleRig.WHEELS
 
 local function newWheelState(name: string): WheelState
 	return {
@@ -145,19 +145,18 @@ local function isFinite(v: Vector3): boolean
 end
 
 function VehicleSim.new(model: Model, config: Config): Sim
-	local chassis = model.PrimaryPart :: BasePart
+	local rig = VehicleRig.handles(model)
+	local chassis = rig.chassis
 	local wheels: { Wheel } = {}
 	for _, def in WHEEL_DEFS do
-		local part = model:FindFirstChild("Wheel_" .. def.name) :: BasePart
-		local weld = part:FindFirstChild("WheelWeld") :: Weld
-		local attachment = chassis:FindFirstChild("Hardpoint_" .. def.name) :: Attachment
+		local hub = rig.hubs[def.name]
 		table.insert(wheels, {
 			name = def.name,
 			front = def.front,
 			left = def.left,
-			attachment = attachment,
-			part = part,
-			weld = weld,
+			attachment = rig.rayOrigins[def.name],
+			part = hub.part,
+			weld = hub.weld,
 			compression = 0,
 			spinAngle = 0,
 			omega = 0,
@@ -174,8 +173,8 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		config = config,
 		model = model,
 		chassis = chassis,
-		vectorForce = chassis:FindFirstChild("SimForce") :: VectorForce,
-		torque = chassis:FindFirstChild("SimTorque") :: Torque,
+		vectorForce = rig.force,
+		torque = rig.torque,
 		rayParams = rayParams,
 		wheels = wheels,
 		drivetrain = Drivetrain.new(config.drivetrain),
@@ -620,7 +619,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		ws.fx = out.fx
 		ws.fy = out.fy
 
-		-- Visual wheel: sit at the ray hit (or full droop), steer, and roll.
+		-- Hub: sit at the ray hit (or full droop), steer, and roll. The body's
+		-- wheel meshes are welded to it.
 		-- Forward rolling is a negative rotation about the lateral (+X) axis.
 		-- A driven wheel that has broken loose winds up toward the speed the
 		-- engine is turning it; a locked wheel stops. The physics does not

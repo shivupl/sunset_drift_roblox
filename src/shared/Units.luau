@@ -1,6 +1,6 @@
 --!strict
 -- Conversions between SI (config, sim math) and Roblox units.
--- Convention: 1 Roblox mass unit == 1 kg (CarBuilder sets densities so the
+-- Convention: 1 Roblox mass unit == 1 kg (RigBuilder sets densities so the
 -- assembly mass equals CarConfig.body.massKg). Lengths: metersPerStud.
 local Units = {}
 

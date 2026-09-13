@@ -12,17 +12,28 @@ For the opposite effect move the other way. Press L in play to reload.
 | gravity | Effective gravity on the car. Lower = lighter car, less load, less grip everywhere, slower weight transfer. 54.9 disables the correction. | — | — | ↑ |
 
 ## body
-| Field | What it does | OS | INIT | 2W |
+Per-car geometry and mass are not in CarConfig any more: they are each car's `rig` in `CarCatalog.luau` (see RIG_SPEC.md), and `VehicleRig.configFor` writes them into `body` for that car. The direction columns still hold for those fields.
+| Field (catalog rig field) | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
-| massKg | Total mass. More mass = more momentum in a slide, slower transitions. | — | ↓ | — |
-| bodySize | Box dimensions. Height changes roll inertia. | — | — | — |
-| centerOfMassOffset | Lower CoM = less roll, higher tip angle. Forward CoM = more front load = more rear slide, and more natural yaw toward the grounded side on two wheels. | forward ↑ | forward ↑ | lower (more negative Y) ↑ |
-| wheelbase | Longer = more stable, slower rotation. | ↓ | ↓ | — |
-| trackWidth | Wider = higher two-wheel tip angle, less roll. | — | — | ↑ |
-| wheelRadius | Bigger = taller gearing, less drive force. | — | ↓ | — |
-| shellMassFraction | Share of mass in the shell vs ballast. Only affects where the ballast sits. | — | — | — |
-| dragCoefficient / frontalArea / airDensity | Top speed and how fast a slide bleeds speed. | — | — | — |
-| rollingResistance | Coast-down drag. | — | — | — |
+| massKg (`rig.massKg`) | Total mass. More mass = more momentum in a slide, slower transitions. | — | ↓ | — |
+| bodySize (`rig.collisionSizeM`, width/height/length) | Box dimensions. Height changes roll inertia and ground clearance. | — | — | — |
+| centerOfMassOffset (`rig.centerOfMassM`, car space, forward is −Z) | Lower CoM = less roll, higher tip angle. Forward CoM = more front load = more rear slide, and more natural yaw toward the grounded side on two wheels. | forward ↑ | forward ↑ | lower (more negative Y) ↑ |
+| wheelbase (`rig.wheelbaseM`) | Longer = more stable, slower rotation. | ↓ | ↓ | — |
+| trackWidth (`rig.trackWidthM`) | Wider = higher two-wheel tip angle, less roll. | — | — | ↑ |
+| wheelRadius (`rig.wheelRadiusM`) | Bigger = taller gearing, less drive force. The tyre mesh must be this radius. | — | ↓ | — |
+| shellMassFraction (`rig.shellMassFraction`) | Share of mass in the shell vs ballast. Only affects where the ballast sits. | — | — | — |
+| dragCoefficient / frontalArea / airDensity | Shared in CarConfig. Top speed and how fast a slide bleeds speed. | — | — | — |
+| rollingResistance | Shared in CarConfig. Coast-down drag. | — | — | — |
+
+## CarCatalog
+| Field | What it does |
+|---|---|
+| defaultCarId | The car anyone gets who has not chosen one. |
+| cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
+| cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. |
+| cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg. |
+| spawn.carId (CarConfig) | Overrides the default for everyone without a `CarId` attribute. |
+| spawn.showRig (CarConfig) | Draws the collision box, hubs and seat translucent over the body, for fitting a new car. |
 
 ## suspension
 | Field | What it does | OS | INIT | 2W |

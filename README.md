@@ -133,7 +133,7 @@ itself back to straight, the short way, in a second or two, never ending up back
 the lever swings it through to the other side in about a second, and centring holds it there.
 
 ## Tuning
-All numbers live in `src/shared/CarConfig.luau`; `TUNING.md` explains every field and which
+Shared handling lives in `src/shared/CarConfig.luau` and per-car geometry in `src/shared/CarCatalog.luau`; `TUNING.md` explains every field and which
 way to move it. Press L in play to reload without rejoining. Verified: a Source change on the
 server replicates to the client at runtime and L re-requires on both sides. Editing the module
 inside Studio's script editor during play works with the reload key. Whether the Rojo plugin
@@ -145,11 +145,15 @@ during play, or stop and replay after saving the file.
 - `src/shared/VehicleSim/` — the physics: Suspension, Tire, Drivetrain, TwoWheel, Throw (the
   360 / held-slide / catch controller), all pure, and `init.luau` (Roblox glue). `DESIGN.md`
   explains the choices.
-- `src/server/` — road, car builder, spawner (seat, ownership, self-healing), remotes.
+- `src/shared/CarCatalog.luau` — every car: its rig numbers, its body meshes, its tuning overrides.
+  Adding a car is an entry here plus meshes; `RIG_SPEC.md` is the contract.
+- `src/shared/VehicleRig.luau` — the rig/body contract in code: names, geometry, validation.
+- `src/server/` — road, RigBuilder (physics parts), BodyBuilder (visual meshes), spawner (car
+  choice, seat, ownership, self-healing), remotes.
 - `src/server/World/` — the highway environment; `World/City/` the city section off the
   off-ramp. `WORLD.md` explains both.
 - `src/client/` — input (keyboard, gamepad, touch HUD), vehicle controller, camera, driver HUD, debug panel.
-- `src/shared/Tests/` — spec runner (252 assertions). Run it from `scripts/studio_tests.luau`,
+- `src/shared/Tests/` — spec runner (347 assertions). Run it from `scripts/studio_tests.luau`,
   which clones the Shared folder first; requiring `Shared.Tests` directly can re-run stale code
   because Studio caches modules per instance and editing Source does not always invalidate it.
 

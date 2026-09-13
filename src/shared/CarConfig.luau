@@ -1,5 +1,6 @@
 --!strict
--- Every tunable for the Phase 0 car. SI units unless the name says otherwise.
+-- Handling shared by every car. SI units unless the name says otherwise. Per-car geometry,
+-- mass and meshes are in CarCatalog; a car's entry can override anything here.
 -- See TUNING.md for what each field does and which way to move it.
 -- Reloadable in play with the L key (ConfigLoader clones and re-requires this module).
 
@@ -13,15 +14,21 @@ local config = {
 	},
 
 	body = {
-		massKg = 1600,
-		bodySize = { 4.9, 1.3, 1.8 }, -- length (Z), height (Y), width (X), metres
-		-- From the box centre: {lateral, up, forward}. Low and slightly forward.
-		centerOfMassOffset = { 0, -0.35, 0.2 },
-		wheelbase = 2.8,
-		trackWidth = 1.55,
-		wheelRadius = 0.33,
-		wheelWidth = 0.22,
-		shellMassFraction = 0.35, -- rest of the mass goes into the hidden ballast
+		-- A car's geometry and mass are not here: each car's rig in
+		-- CarCatalog supplies them, and VehicleRig.configFor writes them into
+		-- a per-car copy of this config. These placeholders only give the
+		-- fields their types; anything that reads them straight from CarConfig
+		-- instead of the car's config gets zeros.
+		massKg = 0,
+		bodySize = { 0, 0, 0 }, -- length (Z), height (Y), width (X), metres
+		centerOfMassOffset = { 0, 0, 0 }, -- from the box centre: {lateral, up, forward}
+		wheelbase = 0,
+		trackWidth = 0,
+		wheelRadius = 0,
+		wheelWidth = 0,
+		shellMassFraction = 0,
+		-- Aero and rolling losses are shared by every car unless an entry's
+		-- tuning overrides them.
 		dragCoefficient = 0.32,
 		frontalArea = 2.2,
 		airDensity = 1.2,
@@ -627,6 +634,12 @@ local config = {
 	},
 
 	spawn = {
+		-- Which CarCatalog car a player gets unless their "CarId" attribute
+		-- names another. nil means the catalog's own default.
+		carId = nil :: string?,
+		-- Show the rig's collision box, ray origins and hubs as translucent
+		-- parts over the body. For checking a new car's fit.
+		showRig = false,
 		spawnHeightM = 0.45, -- above rest height; the car drops and settles on spawn
 		slotStartM = -18, -- first bay slot, lateral; ten slots at the spacing must fit the bay width
 		slotSpacingM = 4,

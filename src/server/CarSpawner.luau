@@ -1,7 +1,12 @@
 --!strict
--- One parked car per player. Owns seating, network ownership handoff,
--- driverless simulation (plugged in by VehicleSim), anchoring of settled
--- cars, exit, and config reload.
+-- One parked car per player. Owns choosing the car, building it (RigBuilder
+-- then BodyBuilder), seating, network ownership handoff, driverless
+-- simulation (plugged in by VehicleSim), anchoring of settled cars, exit, and
+-- config reload.
+--
+-- Which car: the player's "CarId" attribute if the catalog has it, else
+-- CarConfig.spawn.carId, else the catalog default. Changing the attribute
+-- swaps the car (at once if parked, on getting out if driving).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,7 +14,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CarConfig = require(Shared.CarConfig)
 local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
-local CarBuilder = require(script.Parent.CarBuilder)
+local VehicleRig = require(Shared.VehicleRig)
+local RigBuilder = require(script.Parent.RigBuilder)
+local BodyBuilder = require(script.Parent.BodyBuilder)
 local Remotes = require(script.Parent.Remotes)
 
 type Config = CarConfig.Config
@@ -23,6 +30,8 @@ export type SimFactory = (model: Model, config: Config) -> Sim
 
 type Entry = {
 	model: Model,
+	carId: string,
+	config: Config, -- this car's handling: shared CarConfig + its rig + its tuning
 	chassis: BasePart,
 	seat: VehicleSeat,
 	prompt: ProximityPrompt,
@@ -54,6 +63,17 @@ local FALL_CHECK_SECONDS = 1
 
 local function s(m: number): number
 	return m / config.units.metersPerStud
+end
+
+-- Forward declared: getting out can swap the car, which respawns it.
+local spawnFor: (Player) -> ()
+local despawn: (Player) -> ()
+
+local function carIdFor(player: Player): string
+	local wanted = player:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+	local fromConfig = config.spawn.carId
+	local id = if type(wanted) == "string" and ConfigLoader.catalog().cars[wanted] then wanted else fromConfig
+	return ConfigLoader.resolveCarId(id)
 end
 
 local function unseat(entry: Entry)
@@ -93,6 +113,15 @@ local function onOccupantChanged(entry: Entry)
 			entry.chassis:SetNetworkOwner(nil)
 		end
 		if prev then
+			-- A car change asked for while driving happens now.
+			if carIdFor(entry.owner) ~= entry.carId then
+				task.delay(0.5, function()
+					if cars[entry.owner] == entry and entry.driver == nil then
+						despawn(entry.owner)
+						spawnFor(entry.owner)
+					end
+				end)
+			end
 			if CarSpawner.driverChanged then
 				CarSpawner.driverChanged(prev, nil)
 			end
@@ -107,9 +136,9 @@ local function onOccupantChanged(entry: Entry)
 	end
 end
 
-local function bayPose(slotX: number): CFrame
+local function bayPose(slotX: number, carConfig: Config): CFrame
 	local bay = road:GetAttribute("BayCFrame") :: CFrame
-	local restHeight = s(config.body.bodySize[2] / 2 + config.spawn.spawnHeightM) -- a little high, let it settle
+	local restHeight = s(carConfig.body.bodySize[2] / 2 + config.spawn.spawnHeightM) -- a little high, let it settle
 	return bay * CFrame.new(slotX, restHeight, 0)
 end
 
@@ -120,7 +149,7 @@ local function repark(entry: Entry)
 	if not entry.chassis.Anchored then
 		entry.chassis:SetNetworkOwner(nil)
 	end
-	entry.model:PivotTo(bayPose(entry.slotX))
+	entry.model:PivotTo(bayPose(entry.slotX, entry.config))
 	entry.chassis.AssemblyLinearVelocity = Vector3.zero
 	entry.chassis.AssemblyAngularVelocity = Vector3.zero
 	entry.stillTime = 0
@@ -140,30 +169,51 @@ local function carsFolder(): Folder
 	return folder
 end
 
-local spawnFor: (Player) -> ()
 spawnFor = function(player: Player)
 	if cars[player] then
 		return
 	end
-	local model = CarBuilder.build(config, "Car_" .. player.Name)
+	local carId = carIdFor(player)
+	local catalogEntry = ConfigLoader.entry(carId)
+	local problems = VehicleRig.validate(carId, catalogEntry)
+	if #problems > 0 then
+		warn(`[Hajwala] car "{carId}" breaks the rig contract:\n  {table.concat(problems, "\n  ")}`)
+		local fallback = ConfigLoader.resolveCarId(nil)
+		if fallback == carId then
+			return
+		end
+		carId = fallback
+		catalogEntry = ConfigLoader.entry(carId)
+	end
+	local carConfig = ConfigLoader.forCar(carId)
+	BodyBuilder.preload(catalogEntry)
+	if cars[player] or not player.Parent then
+		return -- the preload yielded and something else got there first
+	end
+	local model = RigBuilder.build(carConfig, catalogEntry, "Car_" .. player.Name)
+	BodyBuilder.mount(model, carConfig, catalogEntry)
 	model:SetAttribute("OwnerUserId", player.UserId)
-	local chassis = model.PrimaryPart :: BasePart
-	local seat = model:FindFirstChild("DriverSeat") :: VehicleSeat
-	local prompt = chassis:FindFirstChild("EnterPrompt") :: ProximityPrompt
+	model:SetAttribute(VehicleRig.CAR_ID_ATTRIBUTE, carId)
+	local handles = VehicleRig.handles(model)
+	local chassis = handles.chassis
+	local seat = handles.seat
+	local prompt = handles.prompt
 
 	local slotX = s(config.spawn.slotStartM) + (slotCounter % 10) * s(config.spawn.slotSpacingM)
 	slotCounter += 1
-	model:PivotTo(bayPose(slotX))
+	model:PivotTo(bayPose(slotX, carConfig))
 	model.Parent = carsFolder()
 
 	local entry: Entry = {
 		model = model,
+		carId = carId,
+		config = carConfig,
 		chassis = chassis,
 		seat = seat,
 		prompt = prompt,
 		owner = player,
 		driver = nil,
-		sim = if simFactory then simFactory(model, config) else nil,
+		sim = if simFactory then simFactory(model, carConfig) else nil,
 		stillTime = 0,
 		slotX = slotX,
 	}
@@ -201,7 +251,7 @@ spawnFor = function(player: Player)
 	end)
 end
 
-local function despawn(player: Player)
+despawn = function(player: Player)
 	local entry = cars[player]
 	if not entry then
 		return
@@ -248,11 +298,15 @@ function CarSpawner.setSimFactory(factory: SimFactory)
 	simFactory = factory
 end
 
+-- newConfig is the shared CarConfig; each car gets its own merged copy.
+-- Handling changes apply live. A change to a car's rig geometry or body
+-- only shows on a fresh car, because those are built into the model.
 function CarSpawner.setConfig(newConfig: Config)
 	config = newConfig
 	for _, entry in cars do
+		entry.config = ConfigLoader.forCar(entry.carId)
 		if entry.sim then
-			entry.sim:setConfig(newConfig)
+			entry.sim:setConfig(entry.config)
 		end
 	end
 	if CarSpawner.configChanged then
@@ -265,10 +319,29 @@ function CarSpawner.start(startConfig: Config, startRoad: Model, startRemotes: R
 	road = startRoad
 	remotes = startRemotes
 
-	Players.PlayerAdded:Connect(spawnFor)
+	-- Every catalog entry is checked once at start, so a broken new car is
+	-- reported in the output before anyone tries to drive it.
+	for id, carEntry in ConfigLoader.catalog().cars do
+		local problems = VehicleRig.validate(id, carEntry)
+		if #problems > 0 then
+			warn(`[Hajwala] car "{id}" breaks the rig contract:\n  {table.concat(problems, "\n  ")}`)
+		end
+	end
+
+	local function watch(player: Player)
+		player:GetAttributeChangedSignal(VehicleRig.CAR_ID_ATTRIBUTE):Connect(function()
+			local entry = cars[player]
+			if entry and entry.driver == nil and carIdFor(player) ~= entry.carId then
+				despawn(player)
+				spawnFor(player)
+			end
+		end)
+		spawnFor(player)
+	end
+	Players.PlayerAdded:Connect(watch)
 	Players.PlayerRemoving:Connect(despawn)
 	for _, p in Players:GetPlayers() do
-		spawnFor(p)
+		task.spawn(watch, p)
 	end
 
 	RunService.PreSimulation:Connect(stepDriverless)

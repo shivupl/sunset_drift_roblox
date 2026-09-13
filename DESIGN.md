@@ -1,8 +1,17 @@
 # DESIGN — why the car is built this way
 
+## Rig and body
+Phase 2 split every car into a rig and a body (RIG_SPEC.md). The rig is the
+physics below, built from numbers; the body is massless, non-colliding
+MeshParts welded to named attachments on it, built from meshes. The sim
+only ever reads and writes the rig, so a car's look can change without
+touching how it drives, and a new car is a catalog entry plus meshes. The
+body adds nothing to the assembly: its mass and centre of mass measured the
+same with and without it.
+
 ## One rigid body, raycast suspension
-The car is a single physics assembly: a box, a hidden ballast, four visual
-wheels and a seat. Each corner fires a ray straight down (in the body frame)
+The car is a single physics assembly: a box, a hidden ballast, four wheel
+hubs (which carry the body's wheel meshes) and a seat. Each corner fires a ray straight down (in the body frame)
 from a hardpoint. The distance to the ground gives that corner's spring
 compression, and the spring plus damper force is applied at the hardpoint.
 Weight transfer is not scripted: when the car pitches sideways the outside

@@ -176,12 +176,14 @@ local AC_UNIT: Prop = {
 local CAR_A: Prop = {
 	name = "Parked car, saloon",
 	creator = "Ninja131Venom",
-	notes = "Body 9339167457, 2.8 x 1.9 x 7.3 m in the pack; long axis Z.",
+	-- 9339166843 is the paint and 9339167457 the windows and trim; they were
+	-- the other way round here, which gave the parked saloons white windows.
+	notes = "Body 9339166843, 2.8 x 1.9 x 7.3 m in the pack; long axis Z.",
 	pieces = {
-		{ meshId = 9339167457, textureId = 0, sizeM = Vector3.new(1.85, 1.35, 4.8), offsetM = Vector3.new(0, 0.82, 0), color = Color3.fromRGB(220, 220, 220), material = Enum.Material.SmoothPlastic },
+		{ meshId = 9339166843, textureId = 0, sizeM = Vector3.new(1.85, 1.35, 4.8), offsetM = Vector3.new(0, 0.82, 0), color = Color3.fromRGB(220, 220, 220), material = Enum.Material.SmoothPlastic },
 		-- The pack splits each car into body and glass; without the glass
 		-- piece the car read as a bathtub.
-		{ meshId = 9339166843, textureId = 0, sizeM = Vector3.new(1.85, 1.35, 4.8), offsetM = Vector3.new(0, 0.82, 0), color = Color3.fromRGB(40, 48, 58), material = Enum.Material.Glass },
+		{ meshId = 9339167457, textureId = 0, sizeM = Vector3.new(1.85, 1.35, 4.8), offsetM = Vector3.new(0, 0.82, 0), color = Color3.fromRGB(40, 48, 58), material = Enum.Material.Glass },
 	},
 }
 local CAR_B: Prop = {

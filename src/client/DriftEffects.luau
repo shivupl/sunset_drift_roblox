@@ -5,12 +5,13 @@
 -- driving (other players' cars are a later phase).
 --
 -- Emitters and trail attachments hang off the chassis at each wheel's rest
--- contact point rather than off the wheel parts, because the wheel parts
--- spin and would carry a fixed attachment around with them.
+-- contact point rather than off the hubs, because the hubs spin and would
+-- carry a fixed attachment around with them.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
+local VehicleRig = require(Shared.VehicleRig)
 
 type VehicleState = Types.VehicleState
 type WheelState = Types.WheelState
@@ -29,13 +30,9 @@ local folder: Folder? = nil
 local screech: Sound? = nil
 local engine: Sound? = nil
 local screechLevel = 0
+local carId: string? = nil -- the car attached, so a car's tuning overrides apply here too
 
-local WHEEL_DEFS = {
-	{ name = "FL", front = true, x = -1, z = -1 },
-	{ name = "FR", front = true, x = 1, z = -1 },
-	{ name = "RL", front = false, x = -1, z = 1 },
-	{ name = "RR", front = false, x = 1, z = 1 },
-}
+local WHEEL_DEFS = VehicleRig.WHEELS
 
 local function makeSmoke(parent: Attachment, cfg: typeof(ConfigLoader.current().effects)): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
@@ -104,11 +101,14 @@ end
 
 function DriftEffects.attach(model: Model)
 	DriftEffects.detach()
-	local cfg = ConfigLoader.current()
+	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+	carId = if type(id) == "string" then id else nil
+	local cfg = ConfigLoader.forCar(carId)
 	if not cfg.effects.enabled then
 		return
 	end
-	local chassis = model.PrimaryPart :: BasePart
+	local rig = VehicleRig.handles(model)
+	local chassis = rig.chassis
 	screech = makeSound(chassis, "Screech", cfg.effects.screechSoundId, cfg.effects.screechMaxVolume)
 	engine = makeSound(chassis, "Engine", cfg.effects.engineSoundId, cfg.effects.engineMaxVolume)
 	if engine then
@@ -122,12 +122,12 @@ function DriftEffects.attach(model: Model)
 
 	-- Rest contact height below the hardpoint: droop minus static sag, plus
 	-- the wheel radius. Close enough to the road for smoke and marks.
-	local staticSag = cfg.body.massKg * cfg.units.gravity / 4 / cfg.suspension.stiffness
+	local staticSag = VehicleRig.staticSagM(cfg)
 	local contactDrop = (cfg.suspension.restLength - staticSag + cfg.body.wheelRadius) / mps
 	local halfWidth = cfg.body.wheelWidth / 2 / mps
 
 	for _, def in WHEEL_DEFS do
-		local hp = chassis:FindFirstChild("Hardpoint_" .. def.name) :: Attachment
+		local hp = rig.rayOrigins[def.name]
 		local base = hp.Position - Vector3.new(0, contactDrop - 0.05 / mps, 0)
 
 		local smokeAt = Instance.new("Attachment")
@@ -162,7 +162,8 @@ function DriftEffects.update(state: VehicleState)
 	if #wheels == 0 then
 		return
 	end
-	local cfg = ConfigLoader.current().effects
+	local carCfg = ConfigLoader.forCar(carId)
+	local cfg = carCfg.effects
 	if not cfg.enabled then
 		for _, w in wheels do
 			w.smoke.Rate = 0
@@ -207,7 +208,7 @@ function DriftEffects.update(state: VehicleState)
 		screech.PlaybackSpeed = 0.9 + 0.4 * screechLevel
 	end
 	if engine then
-		local redline = ConfigLoader.current().drivetrain.redlineRpm
+		local redline = carCfg.drivetrain.redlineRpm
 		local t = math.clamp(state.rpm / redline, 0, 1)
 		engine.PlaybackSpeed = cfg.engineMinPitch + (cfg.engineMaxPitch - cfg.engineMinPitch) * t
 		engine.Volume = cfg.engineMaxVolume * (0.4 + 0.6 * state.throttle)

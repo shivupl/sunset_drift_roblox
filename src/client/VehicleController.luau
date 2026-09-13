@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleSim = require(Shared.VehicleSim)
+local VehicleRig = require(Shared.VehicleRig)
 local Input = require(script.Parent.Input)
 local Keyboard = require(script.Parent.Input.Keyboard)
 local Gamepad = require(script.Parent.Input.Gamepad)
@@ -26,6 +27,7 @@ local sim: VehicleSim.Sim? = nil
 local car: Model? = nil
 local conn: RBXScriptConnection? = nil
 local exitRemote: RemoteEvent? = nil
+local carId: string? = nil
 
 local function setJumpEnabled(enabled: boolean)
 	local character = Players.LocalPlayer.Character
@@ -38,7 +40,7 @@ end
 -- Re-park upright at the nearest point on the road, zero velocity. The
 -- client owns the assembly while driving, so it can move it directly.
 local function resetCar(model: Model)
-	local cfg = ConfigLoader.current()
+	local cfg = ConfigLoader.forCar(carId)
 	local mps = cfg.units.metersPerStud
 	local road = workspace:FindFirstChild("Road")
 	local chassis = model.PrimaryPart :: BasePart
@@ -76,8 +78,10 @@ end
 function VehicleController.start(model: Model, remotes: Folder)
 	VehicleController.stop()
 	car = model
+	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+	carId = if type(id) == "string" then id else nil
 	exitRemote = remotes:FindFirstChild("ExitCar") :: RemoteEvent
-	local s = VehicleSim.new(model, ConfigLoader.current())
+	local s = VehicleSim.new(model, ConfigLoader.forCar(carId))
 	s:setCharacter(Players.LocalPlayer.Character)
 	sim = s
 	setJumpEnabled(false)
@@ -113,9 +117,11 @@ function VehicleController.start(model: Model, remotes: Folder)
 	end)
 end
 
-function VehicleController.setConfig(config: ConfigLoader.Config)
+-- Called after a reload. The sim drives on this car's merged config, not
+-- the shared one, so it is rebuilt here from the reloaded modules.
+function VehicleController.setConfig(_config: ConfigLoader.Config)
 	if sim then
-		sim:setConfig(config)
+		sim:setConfig(ConfigLoader.forCar(carId))
 	end
 	Touch.relayout()
 end
@@ -125,17 +131,11 @@ function VehicleController.stop()
 		conn:Disconnect()
 		conn = nil
 	end
-	if car then
-		local chassis = car.PrimaryPart
-		if chassis then
-			local vf = chassis:FindFirstChild("SimForce") :: VectorForce?
-			local tq = chassis:FindFirstChild("SimTorque") :: Torque?
-			if vf then
-				vf.Force = Vector3.zero
-			end
-			if tq then
-				tq.Torque = Vector3.zero
-			end
+	if car and car.Parent then
+		local ok, rig = pcall(VehicleRig.handles, car)
+		if ok then
+			rig.force.Force = Vector3.zero
+			rig.torque.Torque = Vector3.zero
 		end
 	end
 	Keyboard.unbind()
@@ -147,6 +147,7 @@ function VehicleController.stop()
 	UserInputService.ModalEnabled = false
 	sim = nil
 	car = nil
+	carId = nil
 	VehicleController.lastState = nil
 end
 
