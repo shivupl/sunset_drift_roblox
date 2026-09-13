@@ -634,6 +634,11 @@ local config = {
 	},
 
 	spawn = {
+		-- Players start on foot and pick a car from the spawn menu. true
+		-- parks their car in the bay at join instead, the Phase 0 way.
+		autoSpawnOnJoin = false,
+		-- Shortest gap between two spawn requests from one player.
+		spawnCooldownSeconds = 1.5,
 		-- Which CarCatalog car a player gets unless their "CarId" attribute
 		-- names another. nil means the catalog's own default.
 		carId = nil :: string?,

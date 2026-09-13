@@ -217,7 +217,18 @@ roof. At 1.2 the sedan is 5.9 m with a 1.65 m roof, and the seat sits
 
 ## 9. Choosing a car
 
-A player gets the first of these that names a catalog car:
+Players start on foot with the **spawn menu** open (`src/client/SpawnMenu.luau`).
+It has one card per catalog entry, sorted by `order` then `displayName`,
+showing the paint colour, `blurb`, length, mass and a SPAWN button. The
+button fires the `SpawnCar` remote. The server checks the id, a cooldown
+(`spawn.spawnCooldownSeconds`) and whether a spawn is already building. It
+then replaces the player's car with that one in their bay slot, sets their
+`CarId` attribute and seats them. M or the CARS button reopens the menu.
+`spawn.autoSpawnOnJoin = true` brings back a parked car at join instead.
+
+When a car is respawned any other way (the attribute changing, a car that
+fell out of the world), a player gets the first of these that names a
+catalog car:
 
 1. Their `CarId` player attribute (the future garage sets this).
 2. `CarConfig.spawn.carId`.
@@ -235,6 +246,8 @@ One entry in `CarCatalog.cars`:
 ```lua
 mycar = {
 	displayName = "My Car",
+	blurb = "One line for the spawn menu.",   -- optional
+	order = 3,                               -- optional: position in the menu
 	rig = {
 		massKg = 1450,
 		collisionSizeM = { 1.85, 1.2, 4.6 },   -- width, height, length

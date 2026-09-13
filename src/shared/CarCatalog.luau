@@ -41,6 +41,8 @@ local cars: { [string]: CarEntry } = {
 	-- 1.55 m track (0.181 m per pack stud along and up, 0.193 across).
 	sedan = {
 		displayName = "Sedan",
+		blurb = "The heavy saloon. Long, planted, carries a slide.",
+		order = 1,
 		-- 1.2: at the pack's real-world 4.9 m it read small next to the wide
 		-- lanes and put a seated avatar's head (1.2 m above the seat, hair
 		-- included) through the 1.37 m roof. Now 5.9 m with a 1.65 m roof.
@@ -79,6 +81,8 @@ local cars: { [string]: CarEntry } = {
 	-- mesh. Lighter, shorter, wider.
 	hatch = {
 		displayName = "Hatch",
+		blurb = "Light and quick off the line. Snaps round.",
+		order = 2,
 		scale = 1.2, -- the same world size as the sedan
 		rig = {
 			massKg = 1250,

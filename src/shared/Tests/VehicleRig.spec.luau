@@ -142,6 +142,11 @@ return function(t: T)
 	local piece2 = { name = "p", meshId = 1, sizeM = { 1, 1, 1 }, offsetM = { 0, 0.28, 0 } }
 	t.near(VehicleRig.pieceCFrame(piece2, mps, false, k).Position.Y, k, 1e-6, "body pieces move out with the scale")
 	t.ok(#problemsWith(function(e) e.scale = 5 end) > 0, "an absurd scale")
+	t.ok(#problemsWith(function(e) e.blurb = 12 end) > 0, "a menu blurb that is not text")
+	t.ok(#problemsWith(function(e) e.order = "first" end) > 0, "a menu order that is not a number")
+	for id, entry in CarCatalog.cars do
+		t.ok(type(entry.blurb) == "string" and #entry.blurb > 0, `{id} has a spawn menu blurb`)
+	end
 
 	-- The loader resolves unknown ids to the default car.
 	t.eq(ConfigLoader.resolveCarId("no-such-car"), CarCatalog.defaultCarId, "unknown car falls back to the default")

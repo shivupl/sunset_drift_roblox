@@ -101,6 +101,8 @@ export type BodySpec = {
 
 export type CarEntry = {
 	displayName: string,
+	blurb: string?, -- one line for the spawn menu
+	order: number?, -- position in the spawn menu, low first; then by name
 	-- Optional uniform size multiplier, default 1. The rig and body numbers
 	-- stay as measured off the meshes; the builders and configFor multiply
 	-- them, and configFor rescales the handling terms that only depend on
@@ -322,6 +324,12 @@ function VehicleRig.validate(id: string, entry: any): { string }
 	end
 	if type(entry.displayName) ~= "string" then
 		table.insert(problems, `{id}: displayName is missing`)
+	end
+	if entry.blurb ~= nil and type(entry.blurb) ~= "string" then
+		table.insert(problems, `{id}: blurb must be a string`)
+	end
+	if entry.order ~= nil and type(entry.order) ~= "number" then
+		table.insert(problems, `{id}: order must be a number`)
 	end
 	if entry.scale ~= nil and (type(entry.scale) ~= "number" or entry.scale < 0.5 or entry.scale > 2) then
 		table.insert(problems, `{id}: scale must be a number from 0.5 to 2`)

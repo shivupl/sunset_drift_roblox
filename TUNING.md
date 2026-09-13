@@ -33,6 +33,9 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
 | cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. |
 | cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg. |
+| cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). |
+| spawn.autoSpawnOnJoin (CarConfig) | false: players start on foot with the spawn menu open. true: a car is parked for them at join, the Phase 0 way. |
+| spawn.spawnCooldownSeconds (CarConfig) | Shortest gap the server allows between two spawn requests from one player (1.5 s). |
 | spawn.carId (CarConfig) | Overrides the default for everyone without a `CarId` attribute. |
 | spawn.showRig (CarConfig) | Draws the collision box, hubs and seat translucent over the body, for fitting a new car. |
 

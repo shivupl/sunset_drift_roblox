@@ -13,6 +13,7 @@ local Hud = require(script.Hud)
 local ScoreController = require(script.ScoreController)
 local Touch = require(script.Input.Touch)
 local WorldLights = require(script.WorldLights)
+local SpawnMenu = require(script.SpawnMenu)
 
 print("[Hajwala] client boot")
 -- Lamp lights follow the camera whether or not the player is driving.
@@ -44,6 +45,8 @@ VehicleController.onReload = function()
 end
 driveStart.OnClientEvent:Connect(function(car: Model)
 	VehicleController.start(car, remotes)
+	local id = car:GetAttribute("CarId")
+	SpawnMenu.setCurrent(if type(id) == "string" then id else nil)
 end)
 driveStop.OnClientEvent:Connect(function()
 	VehicleController.stop()
@@ -51,3 +54,6 @@ driveStop.OnClientEvent:Connect(function()
 	Hud.hide()
 	DebugPanel.hide()
 end)
+
+-- Players start on foot; the spawn menu opens and puts them in a car.
+SpawnMenu.start(remotes)

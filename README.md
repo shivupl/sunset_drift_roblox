@@ -12,10 +12,12 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 2. Studio: open any place (a baseplate is fine). Rojo toolbar → Connect (localhost:34872).
    The tree appears under ReplicatedStorage/Shared, ServerScriptService/Server and
    StarterPlayer/StarterPlayerScripts/Client.
-3. Press Play. The server builds the road, deletes the baseplate, and parks a white car
-   with a red hood stripe in the bay behind the start line. You spawn beside it.
-4. Walk up and press E (or tap the prompt on touch). The debug panel appears and the
-   chase camera takes over. E again gets out.
+3. Press Play. The server builds the world and you start on foot beside the parking bay,
+   with the spawn menu open.
+4. Pick a car and press SPAWN. It is built in your bay slot with you in the driver's seat,
+   and the chase camera takes over. M (or the CARS button at the bottom of the screen)
+   opens the menu again at any time; spawning while driving swaps the car you are in.
+   F gets out; walk up to a parked car and press E to get back in.
 
 ## Controls
 | Action | Keyboard | Gamepad | Touch |
@@ -35,6 +37,7 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 | Two-wheel / lean left | Q (tap) | LB (tap) | NATL (tap), then lean slider left |
 | Two-wheel / lean right | E (tap) | RB (tap) | NATL (tap), then lean slider right |
 | Exit car | F | Y | EXIT |
+| Spawn menu (choose / respawn a car) | M | — | CARS (bottom centre) |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | LOAD |
 | Toggle debug panel | — | — | DBG |

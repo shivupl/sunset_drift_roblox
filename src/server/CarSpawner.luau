@@ -1,12 +1,18 @@
 --!strict
--- One parked car per player. Owns choosing the car, building it (RigBuilder
--- then BodyBuilder), seating, network ownership handoff, driverless
--- simulation (plugged in by VehicleSim), anchoring of settled cars, exit, and
--- config reload.
+-- One car per player. Owns choosing the car, building it (RigBuilder then
+-- BodyBuilder), seating, network ownership handoff, driverless simulation
+-- (plugged in by VehicleSim), anchoring of settled cars, exit, and config
+-- reload.
 --
--- Which car: the player's "CarId" attribute if the catalog has it, else
--- CarConfig.spawn.carId, else the catalog default. Changing the attribute
--- swaps the car (at once if parked, on getting out if driving).
+-- Players start on foot. The spawn menu (client) fires SpawnCar with a
+-- catalog id; the server replaces the player's car with that one in their
+-- bay slot and seats them in it. spawn.autoSpawnOnJoin brings back the old
+-- parked-car-at-join behaviour.
+--
+-- Which car a respawn builds: the player's "CarId" attribute if the catalog
+-- has it, else CarConfig.spawn.carId, else the catalog default. Changing the
+-- attribute swaps an existing car (at once if parked, on getting out if
+-- driving).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -52,6 +58,9 @@ CarSpawner.driverChanged = nil :: ((player: Player, model: Model?) -> ())?
 CarSpawner.configChanged = nil :: ((config: Config) -> ())?
 
 local cars: { [Player]: Entry } = {}
+local slotOf: { [Player]: number } = {} -- each player keeps one bay slot for the session
+local lastSpawnRequest: { [Player]: number } = {}
+local spawning: { [Player]: boolean } = {}
 local config: Config = ConfigLoader.current()
 local simFactory: SimFactory? = nil
 local remotes: Remotes.RemoteTable
@@ -88,6 +97,11 @@ local function unseat(entry: Entry)
 end
 
 local function onOccupantChanged(entry: Entry)
+	-- A replaced or removed car can still report its driver leaving, after
+	-- the model is gone. Nothing to hand back then.
+	if cars[entry.owner] ~= entry then
+		return
+	end
 	local hum = entry.seat.Occupant
 	if hum then
 		local character = hum.Parent
@@ -199,8 +213,13 @@ spawnFor = function(player: Player)
 	local seat = handles.seat
 	local prompt = handles.prompt
 
-	local slotX = s(config.spawn.slotStartM) + (slotCounter % 10) * s(config.spawn.slotSpacingM)
-	slotCounter += 1
+	local slot = slotOf[player]
+	if not slot then
+		slot = slotCounter % 10
+		slotCounter += 1
+		slotOf[player] = slot
+	end
+	local slotX = s(config.spawn.slotStartM) + slot * s(config.spawn.slotSpacingM)
 	model:PivotTo(bayPose(slotX, carConfig))
 	model.Parent = carsFolder()
 
@@ -257,7 +276,79 @@ despawn = function(player: Player)
 		return
 	end
 	cars[player] = nil
+	-- Taking a car away from under its driver: tell the scoring and the
+	-- client the drive is over, the way getting out would.
+	local driver = entry.driver
+	entry.driver = nil
+	if driver then
+		if CarSpawner.driverChanged then
+			CarSpawner.driverChanged(driver, nil)
+		end
+		remotes.DriveStop:FireClient(driver)
+		local hum = entry.seat.Occupant
+		if hum then
+			hum.Sit = false
+		end
+	end
 	entry.model:Destroy()
+end
+
+-- Seats a player in their car, waiting briefly for a character that is still
+-- loading. Returns whether they ended up in the seat.
+local function seatIn(entry: Entry, player: Player): boolean
+	local character = player.Character
+	local deadline = os.clock() + 10
+	while not character and os.clock() < deadline and player.Parent do
+		task.wait(0.1)
+		character = player.Character
+	end
+	if not character then
+		return false
+	end
+	local hum = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5) :: Humanoid?
+	if not hum or not hum:IsA("Humanoid") or hum.Health <= 0 or cars[player] ~= entry then
+		return false
+	end
+	if hum.SeatPart then
+		hum.Sit = false
+		task.wait()
+	end
+	entry.chassis.Anchored = false
+	character:PivotTo(entry.seat.CFrame * CFrame.new(0, s(1.5), 0))
+	entry.seat:Sit(hum)
+	return true
+end
+
+-- The spawn menu's request: replace this player's car with catalog car
+-- carId and put them in it. Everything from the client is checked: an id
+-- the catalog does not have, a request while one is still building, or one
+-- inside the cooldown is ignored.
+function CarSpawner.requestSpawn(player: Player, carId: any)
+	if type(carId) ~= "string" or #carId > 64 or not ConfigLoader.catalog().cars[carId] then
+		return
+	end
+	local now = os.clock()
+	local last = lastSpawnRequest[player]
+	if spawning[player] or (last and now - last < config.spawn.spawnCooldownSeconds) then
+		return
+	end
+	lastSpawnRequest[player] = now
+	spawning[player] = true
+	-- Remove the old car before setting the attribute, so the attribute
+	-- watcher finds no car to swap and leaves this to us.
+	despawn(player)
+	player:SetAttribute(VehicleRig.CAR_ID_ATTRIBUTE, carId)
+	local ok, err = pcall(function()
+		spawnFor(player)
+	end)
+	if not ok then
+		warn(`[Hajwala] spawning "{carId}" for {player.Name} failed: {err}`)
+	end
+	local entry = cars[player]
+	if entry then
+		seatIn(entry, player)
+	end
+	spawning[player] = nil
 end
 
 local fallCheckTimer = 0
@@ -336,15 +427,26 @@ function CarSpawner.start(startConfig: Config, startRoad: Model, startRemotes: R
 				spawnFor(player)
 			end
 		end)
-		spawnFor(player)
+		if config.spawn.autoSpawnOnJoin then
+			spawnFor(player)
+		end
 	end
 	Players.PlayerAdded:Connect(watch)
-	Players.PlayerRemoving:Connect(despawn)
+	Players.PlayerRemoving:Connect(function(player: Player)
+		despawn(player)
+		slotOf[player] = nil
+		lastSpawnRequest[player] = nil
+		spawning[player] = nil
+	end)
 	for _, p in Players:GetPlayers() do
 		task.spawn(watch, p)
 	end
 
 	RunService.PreSimulation:Connect(stepDriverless)
+
+	remotes.SpawnCar.OnServerEvent:Connect(function(player: Player, carId: any)
+		CarSpawner.requestSpawn(player, carId)
+	end)
 
 	remotes.ExitCar.OnServerEvent:Connect(function(player: Player)
 		for _, entry in cars do
