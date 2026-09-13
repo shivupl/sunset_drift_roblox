@@ -20,6 +20,7 @@ local Relief = require(script.Relief)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
 local City = require(script.City)
+local Station = require(script.Station)
 
 type Config = WorldConfig.Config
 
@@ -104,6 +105,17 @@ function World.build(): Result
 	if cfg.signage.enabled then
 		local folder = Signage.build(cfg, ctx, path, world)
 		tally("signage", folder)
+	end
+
+	-- The petrol station beside the bay. After the road, whose pad edge
+	-- line it opens at its aprons.
+	if cfg.station.enabled then
+		local t0 = os.clock()
+		local folder = Station.build(cfg, ctx, path, world, road)
+		tally("station", folder)
+		if cfg.debug.report then
+			print(string.format("[World] station: %d parts, ~%d tris by estimate, %.2f s", Build.countParts(folder), Build.estimateTriangles(folder), os.clock() - t0))
+		end
 	end
 
 	-- The near desert and the berm, one terrain surface. After the lighting,

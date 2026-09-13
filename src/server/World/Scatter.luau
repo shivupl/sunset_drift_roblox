@@ -17,6 +17,7 @@ local Build = require(script.Parent.Build)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.AssetRegistry)
 local Relief = require(script.Parent.Relief)
+local Station = require(script.Parent.Station)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -180,7 +181,12 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 
 	-- Occupied spots, so two props never land on top of each other.
 	local taken: { Vector3 } = {}
+	-- Nothing lands on the petrol station's site.
+	local onStation = Station.keepOut(cfg, ctx, path)
 	local function free(pos: Vector3, radius: number): boolean
+		if onStation(pos) then
+			return false
+		end
 		for _, t in taken do
 			if (t - pos).Magnitude < radius then
 				return false
@@ -501,7 +507,9 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			for _, side in { -1, 1 } do
 				local edgeM = drng:NextNumber(dn.minEdgeM, dn.maxEdgeM)
 				local pos = ground(along, side * (lay.totalM / 2 + edgeM))
-				dune(cfg, ctx, pos, drng, dunes)
+				if not onStation(pos) then
+					dune(cfg, ctx, pos, drng, dunes)
+				end
 			end
 			d += dn.spacingM
 		end

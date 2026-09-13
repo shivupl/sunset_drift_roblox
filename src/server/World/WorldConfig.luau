@@ -481,6 +481,87 @@ local config = {
 		lightUpdateInterval = 0.25,
 	},
 
+	-- THE PETROL STATION. The first structure in the game: a ring-road
+	-- station beside the parking bay, set back from the transition pad's
+	-- right-hand wing with an entry apron before it and an exit apron after
+	-- it. Built from primitives by Station.luau, placed and sized entirely
+	-- from here. Local frame: u is across the road (+ away from it), v is
+	-- along it (+ the direction of travel), both in metres from the
+	-- station origin, and everything below is at scale 1.
+	--
+	-- Orientation is chosen for the golden-hour sun, which sits low over
+	-- the far side of the highway: it lights the road-facing fronts of the
+	-- canopy and the shop, and the canopy's shadow runs away from the road
+	-- and down the direction of travel, across the open forecourt and
+	-- clear of the shop, which stands upstream of it.
+	station = {
+		enabled = true,
+		alongM = 1100, -- distance along the road of the origin (the bay's centre)
+		lateralM = 122, -- from the road centreline to the origin, right-hand side
+		yawDeg = 0, -- extra turn about the origin; the aprons follow
+		scale = 1,
+		pumpCount = 6, -- 4 to 6; split across the two islands
+		seed = 3131,
+		-- Invented, no real brand: "Star of the Road".
+		nameArabic = "نجمة الدرب",
+		nameEnglish = "NAJMAT AL DARB",
+		shopArabic = "ميني ماركت",
+		shopEnglish = "MINI MARKET",
+		prices = { { "91", "2.18" }, { "95", "2.33" }, { "ديزل  DIESEL", "1.66" } },
+
+		-- Footprint (u from, u to, v from, v to) of the concrete forecourt.
+		-- Deep enough behind the canopy that its golden-hour shadow, about
+		-- 60 m long and thrown away from the road, lands on the concrete.
+		forecourt = { u0 = -26, u1 = 60, v0 = -66, v1 = 68 },
+		forecourtPanels = { across = 2, along = 2 }, -- concrete bays, each its own tone
+		apronWidthM = 14,
+		apronFlareM = 6,
+		entryV = -52, -- apron centres along v
+		exitV = 54,
+		keepOutMarginM = 8, -- scatter stays this far clear of the whole site
+
+		canopy = {
+			u = -6, v = 14, -- centre
+			acrossM = 22, alongM = 36,
+			clearanceM = 5.8, -- soffit height; a pickup is 2 m
+			fasciaM = 1.6, -- deep enough to carry the name at road distance
+			columnM = 0.45,
+			columnInsetV = 11.4, -- columns near the island ends, v = centre +- this, inside the bumpers
+		},
+		islands = { u = { -11, -1 }, lengthM = 26, widthM = 1.6, heightM = 0.18 },
+		shop = {
+			u = 48, v = -40, -- centre; back of the lot, clear of the canopy shadow
+			depthM = 11, lengthM = 26, heightM = 4.4, parapetM = 0.8,
+		},
+		-- The price totem at the pad edge 40 m before the entrance: 14 m, so it is
+		-- what a driver on the highway sees first of a site set back past the bay.
+		pylon = { u = -34, v = -110, heightM = 14, widthM = 3.2, yawTowardRoadDeg = 25 },
+		palms = { { -31, 66 }, { 64, -64 }, { 64, 2 } }, -- built from parts, 96 triangles each
+		parkedCars = 2,
+
+		colors = {
+			concrete = Color3.fromRGB(176, 170, 158),
+			concreteUnder = Color3.fromRGB(160, 156, 148), -- the bay under the canopy, oil-darkened
+			apron = Color3.fromRGB(206, 206, 212), -- asphalt tint, like the pad
+			fascia = Color3.fromRGB(238, 234, 224),
+			brand = Color3.fromRGB(0, 104, 78), -- deep green
+			brandGold = Color3.fromRGB(214, 170, 82),
+			soffit = Color3.fromRGB(226, 222, 212),
+			column = Color3.fromRGB(214, 212, 206),
+			sandstone = Color3.fromRGB(210, 182, 138),
+			sandstoneDark = Color3.fromRGB(176, 148, 108),
+			glass = Color3.fromRGB(120, 150, 156),
+			interior = Color3.fromRGB(255, 226, 180),
+			pumpBody = Color3.fromRGB(232, 230, 224),
+			kerb = Color3.fromRGB(196, 190, 176),
+			bumper = Color3.fromRGB(232, 184, 40),
+			paint = Color3.fromRGB(236, 232, 214),
+			metal = Color3.fromRGB(120, 124, 128),
+			stain = Color3.fromRGB(34, 32, 30),
+			light = Color3.fromRGB(255, 232, 196), -- warm strip lens
+		},
+	},
+
 	signage = {
 		enabled = true,
 		gantrySpacingM = 600,

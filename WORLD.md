@@ -13,6 +13,7 @@ only in the place file. Change a number in the config and restart the server.
 | `RoadNetwork.luau` | The path, both carriageways, the median, shoulders, kerbs, ground, bay, spawn; and the markings and wear, which it puts in a separate streamed `RoadDetail` model. |
 | `Lighting.luau` | Lamp posts on both shoulders and down the median (one store mesh each), sky, atmosphere, every Lighting setting. |
 | `Signage.luau` | Lattice gantries with a framed board over each carriageway, roadside boards on twin posts, speed-limit signs. |
+| `Station.luau` | The petrol station beside the parking bay: canopy, pump islands, shop, forecourt, aprons, price totem, parked cars, palms. Primitives only. |
 | `Cityscape.luau` | The backdrop skyline: a band along the right of the road, a downtown cluster near the start, two landmarks. |
 | `Scatter.luau` | Palms, scrub clusters, acacia trees, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
@@ -291,6 +292,69 @@ Both must be set by hand in Studio. A runtime script cannot write them, and
 
 `Workspace.StreamingEnabled` is already on. Under Voxel the raking shadows
 this hour is built around do not render, and the scene falls flat.
+
+## The petrol station (`Station.luau`)
+
+The first structure in the game: a ring-road station, named نجمة الدرب /
+NAJMAT AL DARB (invented, no real brand), set back beside the parking bay on
+the transition pad's right-hand wing. Everything comes from
+`WorldConfig.station` in a local frame (u across the road, v along it,
+metres): position, turn, scale and pump count (4 to 6). Nothing is placed by
+hand.
+
+**Built, not sourced.** The free store kits vetted in Sep 2026 were a branded
+US station, a Russian one, one made of 24 unions and a 268-part kit with 12
+meshes in a brand's red and yellow. Every one was over the triangle budget
+before any detail. A canopy is a slab, columns and a fascia, and a shop is
+walls and glass, so the station is boxes and wedges only: no meshes (the
+highway's date-palm mesh alone measured about 1,500 triangles), no unions, no
+cylinders, no scripts.
+
+**Detail as paint.** Lane arrows, drain grates, oil stains, tyre scuffs and
+bay lines are Frames on one transparent sheet over the forecourt. The brand
+stripe, name and gold star on the fascia, the pump screens, the bumper
+stripes, the prices and the shelf stock behind the glass are Frames and text
+on faces of parts that exist anyway. Those still render as quads, two
+triangles a frame or a glyph, so they count against the budget. That is why
+the price totem is printed on its road face only and the canopy's short ends
+carry the Arabic alone.
+
+**Layout.** The forecourt is 86 x 134 m of four concrete bays, each its own
+tone, 12 mm above the road. A 14 m asphalt apron with flared mouths joins it
+to the pad at each end: entry upstream, exit downstream. The pad's painted
+edge line is cut open where each one crosses. The canopy (22 x 36 m, 5.8 m
+clear, a 1.6 m fascia with a warm LED line) sits on the road side over two
+islands of three pumps. The sandstone shop, with glass front, lintel sign,
+awning, rooftop AC and a water tank, sits at the back of the lot beside two
+parked cars. The 14 m price totem stands 40 m before the entrance, turned
+toward oncoming traffic, and is what a driver sees first.
+
+**Placed for the sun.** At golden hour the sun is 5 degrees up over the far
+side of the highway. It lights the road-facing fronts, and the canopy throws
+a shadow about 60 m long away from the road and down the direction of
+travel. The forecourt runs back far enough for that shadow to land on the
+concrete, and the shop stands upstream, clear of it.
+
+**Collision.** Only the ground surfaces the car drives on, the four canopy
+columns (inside the islands) and the shop's walls, glass and door collide.
+Pumps, islands, bumpers, bins, bollards, the totem, cars and palms do not.
+Measured in Play: through the entry apron and straight across a pump island
+at 149 km/h with no speed lost, the same 120 m run down the middle lane as on
+a highway lane (5.6 s, 135 km/h exit, 4 runs), out through the exit apron at
+124 km/h, and a dead stop at a column and at the shop wall. The scatter keeps
+off the whole site (`Station.keepOut`).
+
+**Lights.** The six warm strips in the soffit are tagged lamp heads, so they
+draw from the client manager's pool of twelve. With the car parked under the
+canopy six of the twelve live lights are on the canopy. The station creates
+no Light instances of its own.
+
+**Cost.** 126 parts: 1,372 triangles of geometry plus 616 of painted quads,
+1,988 in all, counted exactly (a box is 12, a wedge 8, a frame or glyph 2).
+Roblox's `Stats.SceneTriangleCount` does not count plain parts at all
+(adding 100 boxes changed it by 0), so it cannot be used to check this. 56
+parts cast shadows: canopy, columns, shop shell, totem, palms. 60 fps with
+Studio focused, under the canopy and on the bay, vsync-capped either way.
 
 ## The city section (`src/server/World/City/`)
 

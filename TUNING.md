@@ -451,6 +451,23 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 | roadsideEnabled / roadsideSpacingM / roadsideWidthM / roadsideHeightM / roadsidePostHeightM | Boards on twin posts between gantries, alternating sides and colours. |
 | speedSigns.* | Red-ring speed signs on one post, both shoulders: spacing, first, the number, disc diameter, post height. |
 
+## station
+The petrol station (`Station.luau`). Metres in a local frame: u across the road (+ away from it), v along it (+ direction of travel), from the origin.
+| Field | What it does |
+|---|---|
+| enabled / alongM / lateralM / yawDeg / scale | Where the site is: distance along the road and from the centreline (1100 m, 122 m, beside the bay), an extra turn and an overall scale. Aprons, keep-out and the pad edge-line openings all follow. |
+| pumpCount | 4 to 6, split across the two islands. Six pumps are 216 triangles of pumps and hoses. |
+| nameArabic / nameEnglish / shopArabic / shopEnglish / prices | Invented station branding and the totem's price rows. Every glyph is two triangles. |
+| forecourt / forecourtPanels | The concrete lot's extent and how many bays it is split into (each bay its own tone). Keep u1 deep enough that the canopy's golden-hour shadow lands on concrete. |
+| apronWidthM / apronFlareM / entryV / exitV | The drive-in and drive-out aprons from the pad edge: width, the flared mouth, and where along the lot each sits. |
+| keepOutMarginM | How far the scatter stays off the whole site. |
+| canopy.* | Centre, footprint, clearance (5.8 m soffit), fascia depth, column section and where the columns stand on the islands. |
+| islands.* | The two islands' u positions, length, width and kerb height. |
+| shop.* | Centre, depth, length, height and parapet of the shop. |
+| pylon.* | The price totem: position, height, width and how far it turns toward oncoming traffic. |
+| palms / parkedCars | Palm positions (from parts, 96 triangles each) and how many parked cars (100 each). |
+| colors.* | Every station colour: concrete and apron tints, brand green and gold, sandstone, glass, the warm strip lenses. |
+
 ## cityscape
 | Field | What it does |
 |---|---|
