@@ -297,7 +297,7 @@ this hour is built around do not render, and the scene falls flat.
 A Riyadh-style city where the highway is going. The 2 km straight ends in
 the city's gateway roundabout, a 72 m square the full 64 m of highway
 lands on; the highway centreline is the grid's central boulevard, the grid
-grows two blocks either side of it and two blocks south, and the skyline's
+grows one block either side of it and two blocks south, and the skyline's
 downtown cluster with its two landmarks stands beyond the grid's far edge,
 so the towers rise dead ahead down the highway. The first build sat the
 city off to one side with ramps and ringed the whole desert with low
@@ -326,7 +326,9 @@ from the carriageway with a kerb line.
 the start with the downtown cluster and the two landmarks there; see the
 skyline notes above. It skips the city grid.
 
-**Streets** (`Streets.luau`). A 3 x 2 grid of blocks 420 m across.
+**Streets** (`Streets.luau`). A 2 x 2 grid of blocks 360 m across, about
+770 m on a side. It was 4 x 2 at 420 m (1.7 km wide); the owner asked for
+smaller and more refined, so the detail goes into each frontage instead.
 Boulevards are 44 m kerb to kerb: an 8 m palm median, three 5 m lanes and a
 3 m parking lane each way. Every boulevard crossing is a roundabout with a
 15 m island (kerb ring, ground fill, five palms), sized so it is a drift
@@ -344,19 +346,23 @@ inner two lanes. Ramps, when a preset lists any, are waypoint paths
 through the same `RoadNetwork.ribbon` the highway uses.
 
 **Buildings** (`Buildings.luau`). Each parcel is filled by its block's
-district. The owner cut the villa blocks after the first build, so the eight
-blocks are commercial, towers, towers, commercial / commercial, plaza,
-commercial, commercial: one dense core with the tower blocks either side
-of the highway's arrival, and the skyline's downtown behind its far edge
+district. The owner cut the villa blocks after the first build, and the
+grid later came down to four blocks: commercial and towers either side of
+the highway's arrival, then the plaza (mosque and meet spot) and commercial
+behind them, and the skyline's downtown beyond the far edge
 (with a keep-out so no backdrop building lands in a street). *Commercial*: rows of shops along both boulevard frontages and one
 side street, 18 to 36 m wide, 3 to 7 storeys, gaps between some; each has a
 glazed shopfront, a coloured fascia, an awning on most, a lit sign on some,
 a ground-floor colonnade on a third, balconies on the second and third
-floors of nearly half, AC units hung on the front (the mesh), a vertical
-lit sign box off the corner on some, a rooftop billboard on a fifth,
-pilasters on some, a stain band at the base, window strips on the lower
-three storeys split into lit and dark segments and one dark band per storey
-above, a parapet lip, AC units and a water tank on the roof. The interior
+floors of nearly half, AC units hung on the front (the mesh), a blue blade
+sign off the corner on some, a rooftop billboard on a tenth, pilasters on
+some, a stain band at the base, a parapet lip with a row of Najdi
+crenellations on two in five, AC units and a water tank on the roof. Most
+carry a shop sign with the name in Arabic over English (pharmacy, grocery,
+laundry, gold, perfumes and so on), an opaque box so the lettering reads;
+a half-transparent Neon box bloomed over its own text. The lit window
+strips are off: on a textured wall at golden hour they read as blank pale
+panels. The interior
 is a car park. *Residential*: walled villa compounds 28 x 30 m around all
 four edges, one in ten left empty; each a 2.4 m compound wall with a gate
 on the street side, a 2 or 3 storey house set back inside it, half with a
@@ -376,9 +382,11 @@ Walls collide (compound walls, houses, shops, podiums, shafts, gates);
 nothing else in the buildings does.
 
 **Furniture** (`Furniture.luau`). Palms down every boulevard median (two
-meshes, date and fan) and on the islands; street lamps (mesh, ItsLassie's
-pack, lamp 6 at 0.16) on both pavements every 60 m and one side of side
-streets every 75 m, heads tagged for the twelve-light manager; a traffic
+meshes, date and fan) and on the islands; street lamps on both pavements
+every 45 m and one side of side streets every 60 m, which are the
+highway's cobra-head mesh post at 0.85 (a 9 m boulevard post, arm over the
+road, warm-white lens tagged for the twelve-light manager; the owner found
+the old low-poly bracket lamp poor); a traffic
 signal (boxes) where each side street meets a boulevard; parked cars (two
 unbranded bodies from a low-poly pack plus its wheel mesh, five parts each)
 in the parking lanes at 18% of slots; bins and benches (meshes) along the
@@ -398,20 +406,26 @@ samples), and earlier along a boulevard through three roundabouts, a side
 street and the plaza: no gaps, the surface within 5 cm everywhere except
 the roundabout islands.
 
-**Mesh buildings.** Two thirds of the shop slots and half the tower spots
-take a textured store mesh instead of a box: three office buildings from
-one pack (a 71 m curtain-wall tower on a podium, a 37 m grey block, a 27 m
-cream block with green glass), a 38 m slab, and four mid-rise blocks from
-a facade pack (ochre, cream, tan with an arched ground floor, grey). Each
+**Mesh buildings.** Two in five shop slots and half the tower spots take a
+textured store mesh instead of a box: three office buildings from one pack
+(a 71 m curtain-wall tower on a podium, a 37 m grey block, a 27 m cream
+block with green glass), the plain modern offices a Riyadh business
+district is full of. Each
 is one MeshPart, cloned from a template loaded once by id, so nothing from
 the store model itself ships. A block is scaled so its long side fills the
 slot's frontage and its front sits on the shops' setback line, turned so
 its long axis runs along the street; a tower is scaled within a per-mesh
 range and never wider than a podium slot. This is where the real facades,
 recessed windows and plant rooms come from; the box buildings around them
-carry the tiled textures below. The same packs' brick manor, Russian
-dachas and hangar are rejected in the registry: none of them stands in
-Riyadh.
+carry the tiled textures below.
+
+**No Russian.** The owner saw Russian words in the city. They came from a
+second facade pack whose blocks are St Petersburg streets with the shop
+signs baked into the texture (СУПЕРМАРКЕТ, КАФЕ, ИГРОВОЙ). All of that pack
+is out, along with its Soviet five-storey block, the slab tower (loose
+wires and spikes round its base) and one classical European facade
+texture. A pass over every TextLabel in the built world finds no Cyrillic,
+and no rejected texture id is left on any part.
 
 **Facade textures.** Every building body in the city and the skyline
 carries a tiled window-grid texture on its four sides, three storeys a
@@ -424,17 +438,18 @@ a Texture; the image behind it does, and the only way to get that id was
 `Decal.Texture` (the public asset-delivery endpoint wants a login). The
 textures replaced the window-band and mullion parts: city buildings went
 from 9,046 parts to 6,013, and the skyline lost its per-floor bands too.
-Only the lit windows on the first two floors above the shops are still
-parts, for the glow at dusk.
+The lit window strip parts are now off in the city (litChance 0).
 
 **Assets vetted and rejected.** In `AssetRegistry.luau`. The traffic light
 and satellite dish listings were plain-part builds with scripts and are
 built from boxes instead; the car pack's Cybertruck and Rimac are brands
 and are not used; "Pacifico Parked Cars" are named after real models. Of
 twenty-five "mesh building", "highway sign" and "desert bush" listings put
-in the viewport for this pass, eight buildings, five plant clumps and one
+in the viewport for that pass, eight buildings, five plant clumps and one
 tree were real single meshes; the rest were hundreds of plain parts, a
-1.7 m prop titled as a building, or a green box. No paid kit was needed.
+1.7 m prop titled as a building, or a green box. Five of the eight
+buildings were later pulled for being European (see above). No paid kit
+was needed.
 
 **Scrub and trees.** The verge scrub draws from five desert grass and
 shrub clumps (two free foliage sets that share meshes) plus the old bush,

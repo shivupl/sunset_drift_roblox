@@ -490,8 +490,8 @@ Not live-reloadable either; restart the server.
 
 | Field | What it does |
 |---|---|
-| originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many 420 m blocks the grid grows east and south. With the highway on x = 0 ending at 2,000 m, origin (-840, -2022) and four blocks wide puts the central boulevard on the highway axis. |
-| gateway.i / gateway.widthM | Which first-row boulevard the highway feeds and the width of that square, so the whole road lands on asphalt. |
+| originM / blocksX / blocksZ / blockM | Where the north-west roundabout sits (world metres) and how many blocks the grid grows east and south. Now 2 x 2 at 360 m: origin (-360, -2022) puts the central boulevard on the highway axis (x = 0). To grow it, keep originM.x = -blockM * gateway.i so the highway still lands on a boulevard. |
+| gateway.i / gateway.widthM | Which first-row boulevard the highway feeds (1 now) and the width of that square, so the whole road lands on asphalt. |
 | boulevard.widthM / medianWidthM / laneCount / parkingLaneM | The cross-section: 44 m kerb to kerb, an 8 m palm median, three lanes and a parking lane each way. |
 | sideStreet.widthM | 16 m, one lane each way plus parking. |
 | roundabout.islandRadiusM / islandHeightM / palmsOnIsland | Every boulevard crossing. The island is the one raised thing in the city that collides. |
@@ -500,12 +500,12 @@ Not live-reloadable either; restart the server.
 | districts | One row per block row, one entry per block: commercial, towers, plaza, residential, lot. |
 | buildings.palette / accentPalette / accentChance / tone | Sand, cream and warm grey, the odd colour, per-part jitter. |
 | buildings.meshChance / meshMinScale / meshMaxScale | Share of shop slots that take a textured mesh building (AssetRegistry.cityBlocks) instead of a box shop, and how far a mesh may be scaled to fill its frontage. 0 gives the all-box city back. |
-| buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. |
-| buildings.litChance | Fraction of first-floor window segments that glow. Low (0.18) so the box shops sit quietly next to the unlit mesh buildings. |
+| buildings.commercial.* | Shop row sizes, storeys, gap chance, setback, awning, fascia colours, sign chance. shopNames is the { arabic, english } list the shop signs and blade signs draw from; crenellationChance is the share of shops with a Najdi crenellated parapet. |
+| buildings.litChance | Fraction of first-floor window segments that glow. 0: a lit strip on a textured wall read as a blank panel at golden hour. |
 | buildings.residential.* | Lot size, wall height, gate, villa size and storeys, tier and dish chance. |
 | buildings.towers.* | Podium size and storeys, tower storeys and width, glass and frame colours, setback chance, crown colour. meshChance is the share of tower spots that take a mesh tower (AssetRegistry.cityTowers), meshScales the scale range per mesh; a mesh tower is never wider than podiumMaxM. |
 | buildings.plaza.* | Bay geometry for the few painted rows. |
-| furniture.* | Palm, lamp, bin, bench, parked-car and signal densities. A parked car is five parts; parkedCarChance is the first thing to cut on a slow phone. |
+| furniture.* | Palm, lamp, bin, bench, parked-car and signal densities. A parked car is five parts; parkedCarChance is the first thing to cut on a slow phone. lampMeshScale is the scale of the highway's mesh post used for city lamps (0.85, a 9 m post); lampHeightM and the rest of the lamp fields only size the box stand-in. |
 | shadows.* | Which city things cast: buildings and palms yes, compound walls, lamps and furniture no. |
 
 ## technology / fogEnabled / debug

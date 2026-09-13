@@ -210,10 +210,8 @@ local WHEEL: Prop = {
 --
 -- Provenance: 6675851831/6675849341/6675924510 from "Mesh building ..."
 -- models 105938035335403, 116360956427807, 136401792754378 (three
--- uploads of the same office pack); 518xxx/555xxx from
--- "Mesh Buildings Facade Architecture Modern" 76260913000195
--- (Scytheh0HyperM172482); 8509990171 from "Building Mesh Modern City
--- Construction" 94380683717997 (b3ar_992003).
+-- uploads of the same office pack). Everything else from the second
+-- facade pack and the slab tower was rejected: see AssetRegistry.rejected.
 local function building(name: string, meshId: number, textureId: number, sx: number, sy: number, sz: number, notes: string): Prop
 	return {
 		name = name,
@@ -223,13 +221,8 @@ local function building(name: string, meshId: number, textureId: number, sx: num
 	}
 end
 local OFFICE_TOWER_A = building("Office tower, dark curtain wall on a concrete podium", 6675851831, 6675851918, 47.8, 70.8, 34.33, "20 storeys. Podium two floors, plant room on the roof.")
-local OFFICE_SLAB = building("Office slab, narrow, glass strip", 8509990171, 8509990452, 21.74, 38.04, 8.33, "Thin slab tower; reads well end-on from the boulevard.")
 local OFFICE_MID_A = building("Office block, grey, dark windows", 6675849341, 6675849437, 33.61, 36.99, 32.95, "10 storeys, ground floor shops.")
 local OFFICE_MID_B = building("Office block, cream, green glass", 6675924510, 6675924553, 20.3, 26.58, 41.23, "7 storeys, long axis Z.")
-local BLOCK_YELLOW = building("Apartment block, ochre render", 5181345097, 5181345194, 18.38, 21.93, 43.74, "6 storeys, long axis Z, blank gable ends.")
-local BLOCK_CREAM = building("Apartment block, cream, classical windows", 5181539643, 5181539759, 18.46, 18.6, 28.47, "5 storeys, long axis Z.")
-local BLOCK_TAN = building("Commercial block, tan, arched ground floor", 5182478735, 5182478811, 21.14, 20.56, 56.9, "5 storeys, long axis Z.")
-local BLOCK_GREY = building("Block, grey render", 5553816968, 5553817152, 19.58, 27.57, 32.36, "7 storeys, long axis Z.")
 
 -- DESERT PLANTS. Five untextured grass and shrub clumps from two free
 -- foliage sets (123524818424620 Storshad7100, 132269903897062
@@ -319,13 +312,8 @@ AssetRegistry.props = {
 	outcropMesa = OUTCROP_MESA,
 	outcropRidge = OUTCROP_RIDGE,
 	officeTowerA = OFFICE_TOWER_A,
-	officeSlab = OFFICE_SLAB,
 	officeMidA = OFFICE_MID_A,
 	officeMidB = OFFICE_MID_B,
-	blockYellow = BLOCK_YELLOW,
-	blockCream = BLOCK_CREAM,
-	blockTan = BLOCK_TAN,
-	blockGrey = BLOCK_GREY,
 	grassA = GRASS_A,
 	grassB = GRASS_B,
 	grassC = GRASS_C,
@@ -336,8 +324,8 @@ AssetRegistry.props = {
 
 -- The mesh buildings the city draws from: towers for the tower parcels,
 -- blocks for the shop rows. Weights bias the ones that read most Riyadh.
-AssetRegistry.cityTowers = { "officeTowerA", "officeTowerA", "officeSlab", "officeMidA" }
-AssetRegistry.cityBlocks = { "officeMidA", "officeMidB", "officeMidB", "blockYellow", "blockYellow", "blockTan", "blockGrey", "blockCream" }
+AssetRegistry.cityTowers = { "officeTowerA", "officeTowerA", "officeMidA" }
+AssetRegistry.cityBlocks = { "officeMidA", "officeMidB", "officeMidB" }
 -- Desert scrub, drawn at random by the scatter and the city.
 AssetRegistry.scrubs = { "grassA", "grassB", "grassB", "grassC", "grassD", "grassE", "scrub" }
 
@@ -371,7 +359,6 @@ AssetRegistry.facades = {
 	midRise = {
 		34658495, -- "Building Texture 52" by soraroxas2346, decal 34658496: light concrete
 		33968018, -- "Building Texture 42" by soraroxas2346, decal 33968019: grey grid
-		6019587856, -- "0034-old-building-texture-seamless" by Dragonfirebro059, decal 6019587863: beige, dark windows
 		1020167159, -- "TexturesCom_HighRiseResidential0011_1" by SkyNymph, decal 1020167162
 		36805732, -- "Building Texture 75" by soraroxas2346, decal 36805733: warm grey rows
 	},
@@ -444,6 +431,10 @@ AssetRegistry.rejected = {
 	"105658832956428, 135190175623292, 14024070793, 8359165862: 'mesh' buildings that are hundreds of plain parts or unions",
 	"130019681816281, 72694777627643: titled buildings, the mesh is a 1.7 m prop",
 	"5181212298, 7069549302, 7069554549, 7069557032, 7069482828: brick manor, dachas and a hangar in the facade pack; wrong country",
+	"5181345097, 5182478735: the facade pack's ochre and tan blocks are St Petersburg streets with Cyrillic shop signs (СУПЕРМАРКЕТ, КАФЕ) baked into the texture; 5181539643 is the same pack's ornate classical block. The owner saw the Russian from the road.",
+	"6019587856: facade texture 'old-building-texture-seamless' is a classical European street front; out with the European meshes",
+	"5553816968: the facade pack's grey block is a Soviet five-storey (net curtains, red balconies, yellow stair core); no text, but it reads Eastern Europe, not Riyadh",
+	"8509990171: the slab tower mesh carries loose wires, spikes and a signboard around its base",
 	"98152942261386, 106594301458373, 117905541096350, 123039669118642, 75756292308983, 98530965163423: every store highway sign is plain parts and decals (US exit signs); the gantries are built here instead",
 	"3348839362, 89376354196391, 87426520007685: 'desert bush' is a green box, four parts, or a 30 cm pot plant",
 }

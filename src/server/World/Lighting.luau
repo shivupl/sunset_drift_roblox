@@ -117,6 +117,41 @@ function WorldLighting.applyAtmosphere(cfg: Config)
 	end
 end
 
+-- One mesh lamp post: foot on the ground at `foot`, arm reaching along
+-- `armDir`, at `scale` of the 10.6 m mesh. The lens is a separate thin
+-- part under the head, Neon when the hour lights the lamps and dark glass
+-- otherwise, and it carries the tag the client light manager looks for;
+-- its bottom face points down, which is where the pooled SpotLight shines
+-- from. Used by the highway and by the city. Returns false if the mesh is
+-- not available, so the caller can build its box stand-in.
+function WorldLighting.meshLamp(cfg: Config, ctx: Context, parent: Instance, foot: Vector3, armDir: Vector3, scale: number, castShadow: boolean): boolean
+	local l = cfg.lamps
+	if not l.useMesh or not AssetRegistry.hasProp("highwayLamp") then
+		return false
+	end
+	local lit = WorldLighting.timeOfDay(cfg).lamps.enabled
+	-- lookAt puts -Z on the target; a quarter turn about Y then puts the
+	-- mesh's +X (the arm) along armDir.
+	local cf = CFrame.lookAt(foot, foot + armDir) * CFrame.Angles(0, math.pi / 2, 0)
+	local model = AssetRegistry.place("highwayLamp", cf, scale, ctx.mps, parent, castShadow)
+	if not model then
+		return false
+	end
+	model.Name = "Post"
+	local lensSize = Vector3.new(ctx.s(l.lensSizeM.X), ctx.s(l.lensSizeM.Y), ctx.s(l.lensSizeM.Z))
+	local lens = Build.part({
+		name = "Head",
+		size = lensSize * scale,
+		cframe = cf * CFrame.new(AssetRegistry.highwayLampLensOffsetM * scale / ctx.mps),
+		color = if lit then l.lensLitColor else l.lensOffColor,
+		material = if lit then Enum.Material.Neon else Enum.Material.Glass,
+		parent = parent,
+		transparency = if lit then l.lensLitTransparency else l.lensOffTransparency,
+	})
+	CollectionService:AddTag(lens, WorldLighting.LAMP_TAG)
+	return true
+end
+
 function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent: Instance): Folder
 	local l = cfg.lamps
 	local r = cfg.road
@@ -137,38 +172,6 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 	local lit = WorldLighting.timeOfDay(cfg).lamps.enabled
 	local headColor = if lit then l.bulbColor else l.headOffColor
 	local headMaterial = if lit then Enum.Material.Neon else Enum.Material.Metal
-	-- The real post is a store mesh (AssetRegistry.highwayLamp); the box
-	-- build below is only the stand-in for when that mesh fails to load.
-	local useMesh = l.useMesh and AssetRegistry.hasProp("highwayLamp")
-	local lensOffset = AssetRegistry.highwayLampLensOffsetM
-	local lensSize = Vector3.new(ctx.s(l.lensSizeM.X), ctx.s(l.lensSizeM.Y), ctx.s(l.lensSizeM.Z))
-
-	-- One mesh post: foot on the ground at `foot`, arm reaching along
-	-- `armDir`. The lens is a separate thin part under the head, Neon when
-	-- the hour lights the lamps and dark glass otherwise, and it carries the
-	-- tag the client light manager looks for. Its bottom face points down,
-	-- which is where the pooled SpotLight shines from.
-	local function meshPost(lamp: Folder, foot: Vector3, armDir: Vector3, scale: number)
-		-- lookAt puts -Z on the target; a quarter turn about Y then puts
-		-- the mesh's +X (the arm) along armDir.
-		local cf = CFrame.lookAt(foot, foot + armDir) * CFrame.Angles(0, math.pi / 2, 0)
-		local model = AssetRegistry.place("highwayLamp", cf, scale, ctx.mps, lamp, castShadow)
-		if not model then
-			return false
-		end
-		model.Name = "Post"
-		local lens = Build.part({
-			name = "Head",
-			size = lensSize * scale,
-			cframe = cf * CFrame.new(lensOffset * scale / ctx.mps),
-			color = if lit then l.lensLitColor else l.lensOffColor,
-			material = if lit then Enum.Material.Neon else Enum.Material.Glass,
-			parent = lamp,
-			transparency = if lit then l.lensLitTransparency else l.lensOffTransparency,
-		})
-		CollectionService:AddTag(lens, WorldLighting.LAMP_TAG)
-		return true
-	end
 
 	-- The stand-in: pole, arm and head from boxes.
 	local function boxPost(lamp: Folder, base: Vector3, p: RoadNetwork.PathPoint, arms: { number }, yaw: number, heightScale: number)
@@ -216,19 +219,17 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 		local lamp = Build.folder("Lamp", folder)
 		local yaw = math.rad(rng:NextNumber(-l.yawJitterDeg, l.yawJitterDeg))
 		local heightScale = 1 + rng:NextNumber(-l.heightJitter, l.heightJitter)
-		if useMesh then
-			local yawed = CFrame.Angles(0, yaw, 0)
-			local ok = true
-			for i, dir in arms do
-				local foot = base + p.cframe.LookVector * ((i - 1) * ctx.s(l.pairGapM))
-				local armDir = yawed:VectorToWorldSpace(p.cframe.RightVector * dir)
-				ok = meshPost(lamp, foot, armDir, l.meshScale * heightScale) and ok
-			end
-			if ok then
-				return
-			end
-			lamp:ClearAllChildren()
+		local yawed = CFrame.Angles(0, yaw, 0)
+		local ok = true
+		for i, dir in arms do
+			local foot = base + p.cframe.LookVector * ((i - 1) * ctx.s(l.pairGapM))
+			local armDir = yawed:VectorToWorldSpace(p.cframe.RightVector * dir)
+			ok = WorldLighting.meshLamp(cfg, ctx, lamp, foot, armDir, l.meshScale * heightScale, castShadow) and ok
 		end
+		if ok then
+			return
+		end
+		lamp:ClearAllChildren()
 		boxPost(lamp, base, p, arms, yaw, heightScale)
 	end
 

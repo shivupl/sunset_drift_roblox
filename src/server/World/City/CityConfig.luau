@@ -7,22 +7,23 @@
 -- Placement. The highway runs from the start line along -Z for 2 km and
 -- ends in the city: its centreline is the grid's central boulevard, and
 -- the first roundabout is a wider gateway square that the full 64 m of
--- highway lands on. The grid grows either side of that axis and south of
--- it, and the skyline's downtown stands beyond the grid's far edge, so the
--- towers rise dead ahead down the highway.
+-- highway lands on. The grid is four 360 m blocks, two either side of
+-- that axis and two deep: small on purpose. The owner asked for smaller
+-- and more refined, modelled on Riyadh, so the money goes into each
+-- frontage rather than into more of them.
 local config = {
 	enabled = true,
 	seed = 774411,
 
 	-- The north-west roundabout (nearest the highway) in world metres, then
 	-- the grid grows east (+X) and south (-Z).
-	originM = { x = -840, z = -2022 },
-	blocksX = 4,
+	originM = { x = -360, z = -2022 },
+	blocksX = 2,
 	blocksZ = 2,
-	blockM = 420, -- boulevard centre to boulevard centre
+	blockM = 360, -- boulevard centre to boulevard centre
 	-- The node the highway feeds: boulevard index along X (0-based) on the
 	-- first row, and the square's width so a 64 m road lands on asphalt.
-	gateway = { i = 2, widthM = 72 },
+	gateway = { i = 1, widthM = 72 },
 
 	boulevard = {
 		widthM = 44, -- kerb to kerb, both carriageways, median, parking lanes
@@ -88,8 +89,8 @@ local config = {
 	-- The owner cut the villa blocks: this is one dense core that runs into
 	-- the skyline, so every block is commercial, towers or the plaza.
 	districts = {
-		{ "commercial", "towers", "towers", "commercial" },
-		{ "commercial", "plaza", "commercial", "commercial" },
+		{ "commercial", "towers" },
+		{ "plaza", "commercial" },
 	},
 
 	buildings = {
@@ -118,15 +119,21 @@ local config = {
 		windowInsetM = 0.15,
 		windowDark = Color3.fromRGB(38, 40, 48),
 		windowLit = Color3.fromRGB(255, 214, 150),
-		litChance = 0.18, -- fraction of window segments lit at golden hour; the mesh buildings are unlit, so the box ones stay quiet too
+		-- Fraction of first-floor window segments that glow. 0: at golden
+		-- hour a lit strip on a textured wall read as a blank pale panel
+		-- stuck to the facade, not as a lit room.
+		litChance = 0,
 		windowSegmentsPerFace = 3,
 		acUnitChance = 0.8,
 		acUnitsMax = 4,
 		waterTankChance = 0.6,
 		-- Share of shop slots that take a textured mesh building
 		-- (AssetRegistry.cityBlocks) instead of the box shop, and how far
-		-- a mesh may be scaled to fill its slot's frontage.
-		meshChance = 0.65,
+		-- a mesh may be scaled to fill its slot's frontage. Down from 0.65
+		-- now that the European blocks are out: the box shops carry the
+		-- Gulf character (arcades, sign boxes, Najdi parapets), the meshes
+		-- are the office blocks between them.
+		meshChance = 0.4,
 		meshMinScale = 0.75,
 		meshMaxScale = 1.25,
 		commercial = {
@@ -146,11 +153,32 @@ local config = {
 			-- Street-level and rooftop detail, per building.
 			arcadeChance = 0.35, -- a colonnade along the ground floor instead of a flat front
 			balconyChance = 0.45, -- a couple of balconies on the second and third floors
-			billboardChance = 0.22, -- a rooftop billboard on a frame
+			billboardChance = 0.1, -- a rooftop billboard on a frame
 			facadeAcChance = 0.6, -- AC units hung on the front at first-floor height
-			verticalSignChance = 0.3, -- a lit sign box standing off the corner
+			-- A vertical sign standing off the corner, with the shop's name
+			-- in Arabic down it. Was a blank white Neon box.
+			verticalSignChance = 0.3,
 			fasciaPalette = { Color3.fromRGB(180, 40, 40), Color3.fromRGB(30, 90, 60), Color3.fromRGB(40, 60, 140), Color3.fromRGB(200, 150, 30), Color3.fromRGB(240, 240, 235) },
-			signChance = 0.6,
+			signChance = 0.85,
+			-- Shop sign boxes carry a name in Arabic over English, the way
+			-- every Riyadh shop fascia does. Picked at random per shop.
+			shopNames = {
+				{ "صيدلية", "PHARMACY" },
+				{ "مطعم", "RESTAURANT" },
+				{ "بقالة", "GROCERY" },
+				{ "مغسلة", "LAUNDRY" },
+				{ "اتصالات", "TELECOM" },
+				{ "حلويات", "SWEETS" },
+				{ "مقهى", "CAFE" },
+				{ "ملابس", "FASHION" },
+				{ "عطور", "PERFUMES" },
+				{ "مكتبة", "BOOKSTORE" },
+				{ "إطارات", "TYRES" },
+				{ "ذهب", "GOLD" },
+			},
+			-- A Najdi parapet on a share of the shops: the row of square
+			-- crenellations along the roof edge that says Riyadh from a car.
+			crenellationChance = 0.4,
 		},
 		residential = {
 			lotWidthM = 28,
@@ -186,11 +214,10 @@ local config = {
 			crownColor = Color3.fromRGB(255, 186, 120),
 			-- Share of tower spots that take a mesh tower (AssetRegistry.
 			-- cityTowers), and the scale range for each: the office tower
-			-- is 71 m at 1, the slab 38 m, the grey block 37 m.
+			-- is 71 m at 1, the grey office block 37 m.
 			meshChance = 0.5,
 			meshScales = {
 				officeTowerA = { 1.0, 1.3 },
-				officeSlab = { 1.5, 1.9 },
 				officeMidA = { 1.2, 1.6 },
 			},
 		},
@@ -225,9 +252,12 @@ local config = {
 		-- same from a moving car.
 		medianPalmSpacingM = 28,
 		medianPalmJitterM = 4,
-		lampSpacingM = 60,
-		sideStreetLampSpacingM = 75,
+		lampSpacingM = 45,
+		sideStreetLampSpacingM = 60,
 		lampSetbackM = 1.0, -- from the kerb, on the pavement
+		-- The city lamp is the highway's mesh post (WorldLighting.meshLamp)
+		-- at this scale: 0.85 of the 10.6 m mesh is a 9 m boulevard post.
+		lampMeshScale = 0.85,
 		lampHeightM = 9,
 		lampArmM = 3.5,
 		poleWidthM = 0.22,

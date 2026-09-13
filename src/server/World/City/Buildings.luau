@@ -150,6 +150,66 @@ local function roofClutter(ctx: Context, c: CCfg, rng: Random, parent: Instance,
 	end
 end
 
+-- Which face of an onFace() box looks out from the wall, for a SurfaceGui.
+local function outwardFace(dir: string): Enum.NormalId
+	if dir == "N" then
+		return Enum.NormalId.Back
+	elseif dir == "S" then
+		return Enum.NormalId.Front
+	elseif dir == "E" then
+		return Enum.NormalId.Right
+	end
+	return Enum.NormalId.Left
+end
+
+-- A shop sign: a lit box on the fascia with the shop's name in Arabic over
+-- English, the way every Riyadh shop fascia reads. Text is a SurfaceGui so
+-- it needs no asset and stays crisp.
+local function shopSign(ctx: Context, c: CCfg, rng: Random, parent: Instance, f: Face, along: number, y: number, widthM: number, heightM: number, panel: Color3)
+	local cm = c.buildings.commercial
+	local name = cm.shopNames[rng:NextInteger(1, #cm.shopNames)]
+	-- Opaque, not Neon: a half-transparent Neon panel bloomed straight over
+	-- its own lettering and the sign read as a blank white box.
+	local sign = onFace(ctx, parent, "Sign", f, along, y, widthM, heightM, 0.22, panel, Enum.Material.SmoothPlastic)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = outwardFace(f.dir)
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.Brightness = 1.4 -- the letters glow a touch, like a backlit box
+	gui.MaxDistance = 260
+	gui.Parent = sign
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Parent = gui
+	local textColor = if (panel.R + panel.G + panel.B) / 3 > 0.6 then Color3.fromRGB(30, 30, 34) else Color3.fromRGB(250, 250, 245)
+	for i, line in { { name[1], 0.55, Enum.Font.GothamBold }, { name[2], 0.32, Enum.Font.GothamMedium } } do
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Size = UDim2.fromScale(0.92, line[2])
+		l.Text = line[1]
+		l.Font = line[3]
+		l.TextScaled = true
+		l.TextColor3 = textColor
+		l.LayoutOrder = i
+		l.Parent = gui
+	end
+end
+
+-- A Najdi parapet: square crenellations along the roof edge of the main
+-- face, on top of the plain parapet.
+local function crenellations(ctx: Context, c: CCfg, parent: Instance, f: Face, topY: number, colour: Color3)
+	local b = c.buildings
+	local step = 2.2
+	local n = math.max(2, math.floor(f.width / step))
+	for i = 0, n - 1 do
+		local along = -f.width / 2 + step / 2 + i * (f.width / n)
+		onFace(ctx, parent, "Merlon", f, along, topY + b.parapetHeightM + 0.35, 0.9, 0.7, b.parapetThicknessM + 0.05, colour, Enum.Material.Concrete)
+	end
+end
+
 -- A mesh building in a shop slot: one of AssetRegistry.cityBlocks scaled
 -- so its long side fills the slot's frontage, its front on the same
 -- setback line the box shops use, long axis along the street. Returns
@@ -256,9 +316,27 @@ local function shop(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: nu
 			AssetRegistry.place("acUnit", CFrame.new(ctx.s(px), ctx.surfaceY + ctx.s(y), ctx.s(pz)) * CFrame.Angles(0, yaw, 0), 1, ctx.mps, model, false)
 		end
 	end
-	-- A lit sign box standing off the corner, vertical.
+	-- A blade sign standing off the corner with the shop's Arabic name on
+	-- it, the tall blue signs of Riyadh's Olaya and Tahlia streets.
 	if rng:NextNumber() < cm.verticalSignChance then
-		onFace(ctx, model, "VSign", main, main.width * 0.42, cm.awningHeightM + 3.0, 0.9, 3.4, 1.4, Color3.fromRGB(245, 240, 225), Enum.Material.Neon, 0.3)
+		local blade = onFace(ctx, model, "VSign", main, main.width * 0.42, cm.awningHeightM + 3.0, 1.0, 3.6, 0.3, Color3.fromRGB(28, 64, 120), Enum.Material.SmoothPlastic)
+		local name = cm.shopNames[rng:NextInteger(1, #cm.shopNames)]
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = outwardFace(main.dir)
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		gui.LightInfluence = 0
+		gui.MaxDistance = 220
+		gui.Parent = blade
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Size = UDim2.fromScale(1, 1)
+		l.Text = name[1]
+		l.TextWrapped = true
+		l.TextScaled = true
+		l.Font = Enum.Font.GothamBold
+		l.TextColor3 = Color3.fromRGB(250, 250, 245)
+		l.Parent = gui
 	end
 	-- A rooftop billboard on some.
 	if rng:NextNumber() < cm.billboardChance then
@@ -283,9 +361,14 @@ local function shop(ctx: Context, c: CCfg, rng: Random, parent: Instance, cx: nu
 		onFace(ctx, model, "Awning", main, 0, cm.awningHeightM, main.width * rng:NextNumber(0.5, 0.85), 0.12, cm.awningDepthM, tinted(fascia, rng, 0.1):Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Fabric)
 	end
 	if rng:NextNumber() < cm.signChance then
-		onFace(ctx, model, "Sign", main, rng:NextNumber(-main.width * 0.3, main.width * 0.3), cm.awningHeightM + cm.fasciaHeightM + 1.2, 3.2, 1.2, 0.2, Color3.fromRGB(240, 238, 230), Enum.Material.Neon, 0.35)
+		local signW = math.min(6, main.width * 0.45)
+		local signPanel = if rng:NextNumber() < 0.5 then Color3.fromRGB(240, 238, 230) else fascia
+		shopSign(ctx, c, rng, model, main, rng:NextNumber(-main.width * 0.25, main.width * 0.25), cm.awningHeightM + cm.fasciaHeightM + 1.1, signW, 1.3, signPanel)
 	end
 	parapet(ctx, c, model, cx, cz, sx, sz, h, colour:Lerp(Color3.new(1, 1, 1), 0.08), c.shadows.buildings)
+	if rng:NextNumber() < cm.crenellationChance then
+		crenellations(ctx, c, model, main, h, colour:Lerp(Color3.new(1, 1, 1), 0.08))
+	end
 	roofClutter(ctx, c, rng, model, cx, cz, sx, sz, h)
 end
 

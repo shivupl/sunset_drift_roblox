@@ -6,9 +6,11 @@
 -- planters around the plaza. Meshes from AssetRegistry where a box would
 -- look wrong; boxes and cylinders where it would not. Nothing here collides.
 --
--- Lamp heads carry the light manager's tag, so the city shares the same
--- twelve live lights as the highway; at golden hour they are dark anyway.
+-- Lamps are the highway's mesh post at boulevard scale, and their lenses
+-- carry the light manager's tag, so the city shares the same twelve live
+-- lights as the highway.
 local CollectionService = game:GetService("CollectionService")
+local WorldConfig = require(script.Parent.Parent.WorldConfig)
 local Build = require(script.Parent.Parent.Build)
 local RoadNetwork = require(script.Parent.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.Parent.AssetRegistry)
@@ -60,17 +62,14 @@ local function palm(ctx: Context, c: CCfg, rng: Random, parent: Instance, xM: nu
 	AssetRegistry.place(key, base, rng:NextNumber(0.8, 1.15), ctx.mps, parent, c.shadows.palms)
 end
 
+-- A lamp on the pavement: the highway's mesh post at boulevard scale,
+-- its arm reaching over the road. faceYaw is the yaw whose +Z points at
+-- the road.
 local function lamp(ctx: Context, c: CCfg, parent: Instance, xM: number, zM: number, yM: number, faceYaw: number)
 	local f = c.furniture
 	local base = CFrame.new(at(ctx, xM, zM, yM)) * CFrame.Angles(0, faceYaw, 0)
-	local model = AssetRegistry.place("streetLamp", base, 0.16, ctx.mps, parent, c.shadows.lamps)
-	if model then
-		-- The head is the last piece; tag it for the light manager.
-		local pieces = model:GetChildren()
-		local head = pieces[#pieces]
-		if head and head:IsA("BasePart") then
-			CollectionService:AddTag(head, WorldLighting.LAMP_TAG)
-		end
+	local armDir = CFrame.Angles(0, faceYaw, 0):VectorToWorldSpace(Vector3.new(0, 0, 1))
+	if WorldLighting.meshLamp(WorldConfig, ctx, parent, base.Position, armDir, f.lampMeshScale, c.shadows.lamps) then
 		return
 	end
 	-- Box fallback.
