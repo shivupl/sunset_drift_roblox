@@ -185,12 +185,17 @@ local function shopSign(ctx: Context, c: CCfg, rng: Random, parent: Instance, f:
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = gui
 	local textColor = if (panel.R + panel.G + panel.B) / 3 > 0.6 then Color3.fromRGB(30, 30, 34) else Color3.fromRGB(250, 250, 245)
-	for i, line in { { name[1], 0.55, Enum.Font.GothamBold }, { name[2], 0.32, Enum.Font.GothamMedium } } do
+	type Line = { text: string, height: number, font: Enum.Font }
+	local lines: { Line } = {
+		{ text = name[1], height = 0.55, font = Enum.Font.GothamBold },
+		{ text = name[2], height = 0.32, font = Enum.Font.GothamMedium },
+	}
+	for i, line in lines do
 		local l = Instance.new("TextLabel")
 		l.BackgroundTransparency = 1
-		l.Size = UDim2.fromScale(0.92, line[2])
-		l.Text = line[1]
-		l.Font = line[3]
+		l.Size = UDim2.fromScale(0.92, line.height)
+		l.Text = line.text
+		l.Font = line.font
 		l.TextScaled = true
 		l.TextColor3 = textColor
 		l.LayoutOrder = i
@@ -684,68 +689,6 @@ local function towers(ctx: Context, c: CCfg, rng: Random, parent: Instance, p: P
 	box(ctx, parent, "Piazza", (r.minX + r.maxX) / 2, 0.05, (r.minZ + r.maxZ) / 2, r.maxX - r.minX, 0.1, r.maxZ - r.minZ, tinted(c.surface.pavementColor, rng, 0.04), Enum.Material.Concrete, true, false)
 end
 
--- The mosque: courtyard wall around the parcel, prayer hall with a dome on
--- a drum, two minarets, a lit band under the dome.
-local function mosque(ctx: Context, c: CCfg, rng: Random, parent: Instance, p: Parcel)
-	local m = c.buildings.mosque
-	local r = p.rect
-	local cx, cz = (r.minX + r.maxX) / 2, (r.minZ + r.maxZ) / 2
-	local model = Instance.new("Model")
-	model.Name = "Mosque"
-	model.Parent = parent
-	local colour = tinted(m.color, rng, 0.03)
-	-- Courtyard paving and wall.
-	box(ctx, model, "Court", cx, 0.06, cz, r.maxX - r.minX, 0.12, r.maxZ - r.minZ, tinted(c.surface.pavementColor, rng, 0.03), Enum.Material.Sandstone, true, false)
-	local wh, wt = m.wallHeightM, 0.4
-	local w, d = r.maxX - r.minX, r.maxZ - r.minZ
-	box(ctx, model, "Wall", cx, wh / 2, r.maxZ - wt / 2, w, wh, wt, colour, Enum.Material.Sandstone, true, false)
-	box(ctx, model, "Wall", cx, wh / 2, r.minZ + wt / 2, w, wh, wt, colour, Enum.Material.Sandstone, true, false)
-	box(ctx, model, "Wall", r.minX + wt / 2, wh / 2, cz, wt, wh, d, colour, Enum.Material.Sandstone, true, false)
-	box(ctx, model, "Wall", r.maxX - wt / 2, wh / 2, cz, wt, wh, d, colour, Enum.Material.Sandstone, true, false)
-	-- Hall.
-	local hw, hd, hh = m.hallWidthM, m.hallDepthM, m.hallHeightM
-	local hx, hz = cx, cz - d * 0.12
-	box(ctx, model, "Hall", hx, hh / 2, hz, hw, hh, hd, colour, Enum.Material.Sandstone, true, c.shadows.buildings)
-	box(ctx, model, "Trim", hx, hh - 0.4, hz, hw + 0.6, 0.8, hd + 0.6, tinted(m.trimColor, rng, 0.05), Enum.Material.Sandstone, false, false)
-	-- Arched openings on the front: dark recesses with a trim above.
-	for i = -2, 2 do
-		box(ctx, model, "Arch", hx + i * 7, 2.6, hz + hd / 2 + 0.1, 3.2, 5.2, 0.2, Color3.fromRGB(40, 36, 34), Enum.Material.SmoothPlastic, false, false)
-		box(ctx, model, "ArchTrim", hx + i * 7, 5.5, hz + hd / 2 + 0.2, 3.8, 0.5, 0.3, tinted(m.trimColor, rng, 0.05), Enum.Material.Sandstone, false, false)
-	end
-	-- Drum, lit band and dome.
-	local dd = m.domeDiameterM
-	local drum = box(ctx, model, "Drum", hx, hh + 1.2, hz, 2.4, dd * 0.9, dd * 0.9, colour, Enum.Material.Sandstone, false, c.shadows.buildings)
-	drum.Shape = Enum.PartType.Cylinder
-	drum.CFrame = CFrame.new(ctx.s(hx), ctx.surfaceY + ctx.s(hh + 1.2), ctx.s(hz)) * CFrame.Angles(0, 0, math.pi / 2)
-	local band = box(ctx, model, "DomeBand", hx, hh + 2.5, hz, 0.4, dd * 0.92, dd * 0.92, Color3.fromRGB(255, 214, 150), Enum.Material.Neon, false, false)
-	band.Shape = Enum.PartType.Cylinder
-	band.CFrame = CFrame.new(ctx.s(hx), ctx.surfaceY + ctx.s(hh + 2.5), ctx.s(hz)) * CFrame.Angles(0, 0, math.pi / 2)
-	band.Transparency = 0.35
-	local dome = box(ctx, model, "Dome", hx, hh + 2.4, hz, dd, dd, dd, tinted(m.domeColor, rng, 0.05), Enum.Material.Metal, false, c.shadows.buildings)
-	dome.Shape = Enum.PartType.Ball
-	box(ctx, model, "Finial", hx, hh + 2.4 + dd / 2 + 1.2, hz, 0.4, 2.4, 0.4, Color3.fromRGB(220, 190, 110), Enum.Material.Metal, false, false)
-	-- Minarets at the two front corners of the courtyard.
-	local mh, md = m.minaretHeightM, m.minaretDiameterM
-	for _, side in { -1, 1 } do
-		local mx, mz = cx + side * (w / 2 - 6), r.maxZ - 6
-		local shaft = box(ctx, model, "Minaret", mx, mh / 2, mz, mh, md, md, colour, Enum.Material.Sandstone, true, c.shadows.buildings)
-		shaft.Shape = Enum.PartType.Cylinder
-		shaft.CFrame = CFrame.new(ctx.s(mx), ctx.surfaceY + ctx.s(mh / 2), ctx.s(mz)) * CFrame.Angles(0, 0, math.pi / 2)
-		local gallery = box(ctx, model, "Gallery", mx, mh * 0.78, mz, 1.0, md * 1.9, md * 1.9, tinted(m.trimColor, rng, 0.05), Enum.Material.Sandstone, false, false)
-		gallery.Shape = Enum.PartType.Cylinder
-		gallery.CFrame = CFrame.new(ctx.s(mx), ctx.surfaceY + ctx.s(mh * 0.78), ctx.s(mz)) * CFrame.Angles(0, 0, math.pi / 2)
-		local cap = box(ctx, model, "MinaretCap", mx, mh + md * 0.4, mz, md * 1.1, md * 1.1, md * 1.1, tinted(m.domeColor, rng, 0.05), Enum.Material.Metal, false, false)
-		cap.Shape = Enum.PartType.Ball
-	end
-	-- Palms in the courtyard corners.
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			local px, pz = cx + sx * (w / 2 - 10), cz + sz * (d / 2 - 10)
-			AssetRegistry.place("datePalm", CFrame.new(ctx.s(px), ctx.surfaceY + ctx.s(0.12), ctx.s(pz)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), 0), rng:NextNumber(0.9, 1.1), ctx.mps, model, c.shadows.palms)
-		end
-	end
-end
-
 local function plaza(ctx: Context, c: CCfg, rng: Random, parent: Instance, p: Parcel)
 	local pz = c.buildings.plaza
 	local r = p.rect
@@ -777,7 +720,6 @@ end
 function Buildings.build(ctx: Context, c: CCfg, plan: Streets.Plan, parent: Instance): Folder
 	local folder = Build.folder("Buildings", parent)
 	local rng = Build.rng(c.seed + 7)
-	local mosqueDone = false
 	for _, p in plan.parcels do
 		local holder = Build.folder(p.district, folder)
 		if p.district == "commercial" then
@@ -787,14 +729,9 @@ function Buildings.build(ctx: Context, c: CCfg, plan: Streets.Plan, parent: Inst
 		elseif p.district == "towers" then
 			towers(ctx, c, rng, holder, p)
 		elseif p.district == "plaza" then
-			-- The first plaza parcel is the mosque; the other three are the
-			-- open lot that is the meet spot.
-			if not mosqueDone then
-				mosque(ctx, c, rng, holder, p)
-				mosqueDone = true
-			else
-				plaza(ctx, c, rng, holder, p)
-			end
+			-- All four plaza parcels are the open lot that is the meet spot.
+			-- One used to be a mosque; the owner had it removed.
+			plaza(ctx, c, rng, holder, p)
 		end
 		-- "lot": left as sand.
 	end

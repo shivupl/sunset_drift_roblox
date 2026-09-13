@@ -229,20 +229,6 @@ local config = {
 			marginM = 12,
 			planterSpacingM = 14,
 		},
-		-- A mosque takes one of the plaza's four parcels: courtyard wall,
-		-- prayer hall, dome, two minarets. The Gulf identity piece.
-		mosque = {
-			hallWidthM = 44,
-			hallDepthM = 34,
-			hallHeightM = 10,
-			domeDiameterM = 22,
-			minaretHeightM = 42,
-			minaretDiameterM = 3.2,
-			wallHeightM = 2.6,
-			color = Color3.fromRGB(232, 222, 198),
-			trimColor = Color3.fromRGB(150, 112, 90),
-			domeColor = Color3.fromRGB(70, 110, 96),
-		},
 	},
 
 	furniture = {

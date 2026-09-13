@@ -348,7 +348,7 @@ through the same `RoadNetwork.ribbon` the highway uses.
 **Buildings** (`Buildings.luau`). Each parcel is filled by its block's
 district. The owner cut the villa blocks after the first build, and the
 grid later came down to four blocks: commercial and towers either side of
-the highway's arrival, then the plaza (mosque and meet spot) and commercial
+the highway's arrival, then the plaza (the meet spot) and commercial
 behind them, and the skyline's downtown beyond the far edge
 (with a keep-out so no backdrop building lands in a street). *Commercial*: rows of shops along both boulevard frontages and one
 side street, 18 to 36 m wide, 3 to 7 storeys, gaps between some; each has a
@@ -370,11 +370,10 @@ smaller upper tier, a dish on most roofs, a wall AC unit (the mesh) at
 first-floor height. *Towers*: four podium-and-tower blocks, the podium
 three storeys with shopfronts on every face, the tower 14 to 30 storeys of
 glass with mullions and floor bands, half with a setback, a lit crown, a
-plant room. *Plaza*: three of its four parcels are one flat asphalt slab each with a
+plant room. *Plaza*: all four parcels are one flat asphalt slab each with a
 few worn rows of bays through the middle, bollards and planters along the
-edges, lamps through it; this is the meet spot. The fourth parcel is the
-mosque: courtyard wall, prayer hall with arched openings, a drum, a lit
-band and a dome, two minarets with galleries, palms in the corners.
+edges, lamps through it; this is the meet spot. One parcel used to be a
+mosque; the owner had it removed.
 *Residential* and *lot* still exist in the generator but no block uses
 them.
 
