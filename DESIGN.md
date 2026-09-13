@@ -56,6 +56,67 @@ Tire forces act at ground level and spring forces at the hardpoints, so the
 lateral force times the centre-of-mass height is a real roll moment that
 loads the outside springs in a slide.
 
+**The slip model (wheels that spin).** The tyre above has no wheel speed:
+drive and brake demand either fit in the friction circle or the tyre jumps
+to its sliding level, so throttle cannot dial a slide, a locked wheel is a
+grip multiplier and a spinning rear pushes along the nose only because a
+flag says so. `VehicleSim/Wheel.luau` replaces that, behind
+`tires.slipModel.enabled` so the old tyre stays as the A/B.
+
+Each wheel carries an angular velocity. Engine torque through the gearing
+and the diff, the brakes, engine braking and the handbrake are torques on
+it; the tyre's longitudinal force pushes back. The force comes from two
+slips together, the slip angle and the slip ratio, each normalised by where
+it peaks and combined into one slip that runs through the axle's existing
+grip curve. With no slip ratio that is exactly the old tyre, which is why
+every lateral number the car was tuned on carried over. The force points
+the way the combined slip points: a spinning rear in a slide gives most of
+its grip to pushing along the nose and little to holding the tail, a locked
+rear gives most of it to dragging. Grip also falls off with load (0.08 per
+unit over static), so weight moving across and along the car changes the
+balance. The engine turns with the rear wheels' own spin, so wheelspin
+revs it to the limiter; gear changes still go by road speed. The spin is
+integrated in 3 ms substeps with a linearised implicit update, because the
+tyre's longitudinal stiffness is far too stiff for an explicit 60 Hz step;
+the spec checks it settles at 14 fps as well.
+
+What that let go of, and what it did not. The flick's rear grip cut, a
+stand-in for weight transfer, is weaker (0.7 instead of 0.35), because real
+weight transfer and wheelspin now swing the tail: at the old cut a
+part-throttle flick rotated 85 to 89 degrees against the old car's 72 to 74.
+The handbrake is now a brake torque on the rears (700 Nm) with a lighter
+grip cut (0.6). A full physical lock (2,500 Nm) was tried first and is what
+a real handbrake does, but it dragged a lever 360 from 110 down to 72 and
+cost every throw 4 km/h. The slide momentum relief below is still needed:
+with it off, pure physics took the held slide from 97 to 70, the chain from
+96 to 76 and the 360's exit to 70. And the throw controller stays at full
+strength: turning its torque caps down to 9,000 and 35,000 Nm spread the
+chain's angles from 29-36 to 24-42 degrees, dropped the held angle from 41
+to 33, slowed the 360 to 2.68 s and left the car 20 degrees sideways a
+second after it. It is what makes the tricks repeatable.
+
+Measured on the highway with the same harness inputs, old tyre against the
+slip model on its committed values:
+
+| Test | Old tyre | Slip model |
+|---|---|---|
+| Launch 0-30 / 0-70 / 0-100 | 1.03 / 2.62 / 3.95 s | 1.10 / 2.57 / 4.03 s |
+| Full lock at 100 km/h, peak drift (planted) | 3.6° | 3.5° |
+| Handbrake pull to 20° | 0.27 s | 0.27 s |
+| Hands-off catch after a slide | 0.82 s | 0.53 s |
+| Part-throttle flick from 100 km/h, peak | 72-74° | 76-81° |
+| 41° slide held on the gas, 4 s from 98 km/h | loses 2 km/h | loses 6 km/h |
+| Throw and four transitions on the gas from 96 | loses 9, 29-37° | loses 5, 29-36° |
+| Lever 360 from 110 | 2.57 s, exit 85 | 2.60 s, exit 85 |
+| Lever 720 from 110, exit | 63 | 62 |
+| Two-wheel tap at 102 km/h | 42° at 0.61 s, down 2.6 s | 42° at 0.58 s, down 2.4 s |
+| Two-wheel lean held 5 s | 54°, no topple | 54°, no topple |
+| Full brake | 33 km/h per s | 33 km/h per s |
+
+One thing seen and not explained: twice in about 30 flicks on the slip
+model, the first flick of a harness run rotated only 4 degrees. It did not
+come back in 15 further tries, including straight after a config reload.
+
 **Slide momentum.** A slip-angle model turns every degree of slide into
 drag: a tyre sideways to its travel pushes almost straight back against the
 car. A real hajwala sedan sideways at 100 km/h carries its speed for

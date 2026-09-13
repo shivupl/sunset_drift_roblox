@@ -56,6 +56,14 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | slideMomentum.leverRelief | The same with the handbrake held, blended by the lever's level. A lever 360 sits on locked rears for two and a half seconds; at 0.6 one from 110 exits at 85 km/h (was 69) and a 720 at 63 (was 40). Lower it to make spins cost more speed again. | — | — | — |
 | slideMomentum.fromDeg / fullDeg | Drift angle where the relief starts and is full (10 / 25). Below fromDeg nothing changes, so cornering, the grip limit and a straight-line lever pull are exactly as before. | — | — | — |
 | slideMomentum.minSpeedKmh / fullSpeedKmh | Speed where it starts and is full (30 / 60), so a slow slide still stops. The relief is never allowed to push the car on: a slide can hold its speed on the gas, never gain it. | — | — | — |
+| slipModel.enabled | The slip model: wheels with their own spin, tyre force from slip angle and slip ratio together, grip falling off with load (VehicleSim/Wheel.luau, DESIGN.md). false is the old friction-circle tyre, kept as the A/B; flip it and press L to compare in one session. Measured side by side the two match within a few hundredths on launch, pull, 360, 720 and two-wheel; the slip model catches faster (0.53 against 0.82 s) and carries a chain better (loses 5 against 9). | — | — | — |
+| slipModel.peakSlipRatio | Slip ratio where drive and brake grip peak (0.12). Higher needs more wheelspin before the rear pushes; lower snaps to spin sooner. | ↓ | ↓ | — |
+| slipModel.loadSensitivity / loadFactorMin / loadFactorMax | Grip lost per unit of load over static (0.08), clamped. Higher makes weight transfer matter more: lift-off and the flick swing harder, the loaded outside tyres give up sooner. | ↑ | ↑ | — |
+| slipModel.wheelInertia / engineInertia | Wheel and crank inertia (the crank's reflected through the gearing, so first gear spins up slowly). Lower is a twitchier throttle-to-spin response. | — | — | — |
+| slipModel.substepSeconds | Wheel spin integration step (3 ms). Only raise it if the client frame budget needs it. | — | — | — |
+| slipModel.handbrakeTorque / handbrakeGripCut | The lever as a brake torque on each rear (700 Nm) and a grip cut on top (0.6). 2,500 locks the rears like a real handbrake and dragged a lever 360 from 110 to 72; 700 keeps it at 85 with a 0.27 s pull. More torque = slower spins, a harder-hitting throw. | — | ↑ | — |
+| slipModel.flickRearGripMultiplier | The flick's rear grip cut in this model (0.7). The old tyre needs 0.35; weight transfer and wheelspin do the rest here. 0.35 flicked a part-throttle car to 85-89°, 0.5 to 82-84, 0.7 to 76-81. | ↓ | ↓ | — |
+| slipModel.slideRelief / leverRelief | Slide momentum in this model (0.4 / 0.7). Off, pure physics scrubs a held slide from 97 to 70 and a chain from 96 to 76. | — | — | — |
 
 ## drivetrain
 | Field | What it does | OS | INIT | 2W |

@@ -128,6 +128,51 @@ local config = {
 			minSpeedKmh = 30,
 			fullSpeedKmh = 60,
 		},
+		-- THE SLIP MODEL (VehicleSim/Wheel.luau). Each wheel carries its own
+		-- spin; drive, brakes, engine braking and the handbrake are torques on
+		-- it, and the tyre force comes from the slip angle and the slip ratio
+		-- together, through the axle curves above, with grip falling off under
+		-- load. A spinning rear in a slide pushes along its nose and lets the
+		-- tail hang; a locked rear drags and lets it go. Off (enabled = false)
+		-- is the legacy friction-circle tyre, kept as the A/B.
+		slipModel = {
+			enabled = true,
+			peakSlipRatio = 0.12, -- a road tyre peaks around 10-15% slip
+			lowSpeedMps = 3, -- floor on the slip ratio's denominator, for a calm standstill
+			-- Grip lost per unit of load over static: the outside tyres in a
+			-- slide and the rears under a launch grip less than their load
+			-- alone says. Real road tyres are around 0.1.
+			loadSensitivity = 0.08,
+			loadFactorMin = 0.6,
+			loadFactorMax = 1.25,
+			wheelInertia = 1.4, -- kg m^2, a 17" road wheel and tyre
+			-- Crank-side inertia reflected onto the rears through the gearing,
+			-- so first gear spins up slowly and fifth flares.
+			engineInertia = 0.15,
+			substepSeconds = 0.003,
+			-- The lever is a brake torque on the rears plus a grip cut. A full
+			-- lock (2,500 Nm, past the ~2,200 the tyre can react) is what a
+			-- real handbrake does, and measured it dragged a lever 360 from
+			-- 110 down to 72 and cost every throw 4 km/h. 700 drags the rears
+			-- well into slip without locking them, and the 0.6 cut lets the
+			-- tail go: 20 degrees in 0.28 s, the 360 exits at 85.
+			handbrakeTorque = 700,
+			handbrakeGripCut = 0.6,
+			-- The flick's rear grip cut for this model (steering has the
+			-- legacy one). Real weight transfer and a spinning rear already
+			-- swing the tail, so less of the stand-in is needed: at the
+			-- legacy 0.35 a part-throttle flick from 100 rotated to 85-89
+			-- degrees against the legacy car's 72-74; 0.5 gave 82-84 and
+			-- 0.7 gives 76-79.
+			flickRearGripMultiplier = 0.7,
+			-- Slide momentum for this model (see slideMomentum above). Pure
+			-- physics scrubs almost as hard as the legacy tyre did (held slide
+			-- 97 to 70, chain 96 to 76, lever 360 exit 70 with both at 0),
+			-- so the relief stays. At 0.4 / 0.7: held slide loses 5 km/h in
+			-- 4 s, the chain 4, the lever 360 exits at 85.
+			slideRelief = 0.4,
+			leverRelief = 0.7,
+		},
 	},
 
 	drivetrain = {

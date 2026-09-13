@@ -76,7 +76,12 @@ function Drivetrain.step(
 	brakeIn: number,
 	rearWheelSpeedMps: number,
 	rearSpinning: boolean,
-	tractionControlAllowed: boolean
+	tractionControlAllowed: boolean,
+	-- The driven wheels' own surface speed, when the caller integrates wheel
+	-- spin (Wheel.luau). The engine then turns with the wheels, spin and
+	-- all, and the float-to-redline stand-in is off. Gear changes still go
+	-- by road speed, so wheelspin never upshifts.
+	spinSpeedMps: number?
 ): Output
 	local speed = rearWheelSpeedMps
 	local throttle, brake = throttleIn, brakeIn
@@ -131,12 +136,15 @@ function Drivetrain.step(
 
 	-- Rpm from the wheels, or floating up while the rear spins.
 	local rpmFromWheel = math.abs(speed / wheelRadius * overall) * RPM_PER_RAD_S
-	if rearSpinning and throttle > 0.1 then
+	local rpmFromSpin = if spinSpeedMps then math.abs(spinSpeedMps / wheelRadius * overall) * RPM_PER_RAD_S else rpmFromWheel
+	if spinSpeedMps then
+		state.spinRpm = rpmFromSpin
+	elseif rearSpinning and throttle > 0.1 then
 		state.spinRpm = math.min(cfg.redlineRpm, math.max(state.spinRpm, rpmFromWheel) + cfg.spinRpmRate * throttle * dt)
 	else
 		state.spinRpm = math.max(rpmFromWheel, state.spinRpm - cfg.spinRpmRate * 2 * dt)
 	end
-	local rpm = math.clamp(math.max(rpmFromWheel, state.spinRpm), cfg.idleRpm, cfg.redlineRpm)
+	local rpm = math.clamp(if spinSpeedMps then rpmFromSpin else math.max(rpmFromWheel, state.spinRpm), cfg.idleRpm, cfg.redlineRpm)
 	state.rpm = rpm
 
 	-- Automatic gearbox on wheel-derived rpm (wheelspin never upshifts).

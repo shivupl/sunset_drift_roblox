@@ -13,6 +13,7 @@ local CarConfig = require(Shared.CarConfig)
 local Steering = require(script.Steering)
 local Suspension = require(script.Suspension)
 local Tire = require(script.Tire)
+local Wheel = require(script.Wheel)
 local Drivetrain = require(script.Drivetrain)
 local TwoWheel = require(script.TwoWheel)
 local Throw = require(script.Throw)
@@ -31,6 +32,7 @@ type Wheel = {
 	weld: Weld,
 	compression: number,
 	spinAngle: number,
+	omega: number, -- rad/s, integrated by the slip model (Wheel.luau); unused by the legacy tyre
 	state: WheelState,
 }
 
@@ -156,6 +158,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 			weld = weld,
 			compression = 0,
 			spinAngle = 0,
+			omega = 0,
 			state = newWheelState(def.name),
 		})
 	end
@@ -425,9 +428,13 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	end
 	local hbLevel = self.handbrakeLevel
 
-	-- 4. Drivetrain from rear wheel speed and last step's spin state.
+	-- 4. Drivetrain from rear wheel speed and last step's spin state. With
+	-- the slip model the engine turns with the rear wheels' own spin.
+	local slipCfg = cfg.tires.slipModel
+	local slipModel = slipCfg ~= nil and slipCfg.enabled
 	local rearWheelSpeed = (contacts[3].vLong + contacts[4].vLong) / 2
 	local rearSpinning = self.wheels[3].state.saturated or self.wheels[4].state.saturated
+	local rearSpinSpeed: number? = if slipModel then (self.wheels[3].omega + self.wheels[4].omega) / 2 * cfg.body.wheelRadius else nil
 	local drive = Drivetrain.step(
 		self.drivetrain,
 		cfg.drivetrain,
@@ -442,7 +449,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		-- cutting the throttle there takes away the yaw that holds a natl up.
 		math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
 			and self.handbrakeLevel <= 0
-			and not twoWheelActive
+			and not twoWheelActive,
+		rearSpinSpeed
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
@@ -487,7 +495,52 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			end
 		end
 		local axle = if w.front then cfg.tires.front else cfg.tires.rear
-		local out = Tire.compute(c.vLong, c.vLat, c.susp.force, axle, gripMult, fxDemand, cfg.tires.speedFadeMps)
+		local out: Tire.Output
+		if slipModel then
+			-- The wheel spins. Drive, brakes, engine braking and the lever are
+			-- torques on it; the tyre force follows from how its spin and the
+			-- patch's sideways motion compare with the road. The legacy
+			-- handbrake grip cut is replaced by locking the wheel, and any
+			-- that is left is handbrakeGripCut.
+			local sc = slipCfg :: Wheel.SlipConfig
+			local r = cfg.body.wheelRadius
+			local driveTorque, brakeTorque = 0, 0
+			local inertia = sc.wheelInertia
+			local wheelGrip = rimGrip
+			if w.front then
+				brakeTorque = drive.brakePerFrontWheel * r
+			else
+				local other = if w.left then contacts[4] else contacts[3]
+				local ratio = if c.susp.force > 1e-3 then math.clamp(other.susp.force / c.susp.force, 0, 1) else 1
+				local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
+				driveTorque = drive.drivePerRearWheel * diffShare * r
+				brakeTorque = (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * r + sc.handbrakeTorque * hbLevel
+				local gearRatio = if drive.gear == -1 then cfg.drivetrain.reverseRatio else cfg.drivetrain.gearRatios[drive.gear]
+				local overall = gearRatio * cfg.drivetrain.finalDrive
+				inertia += 0.5 * sc.engineInertia * overall * overall
+				if self.flickTimer > 0 then
+					wheelGrip *= sc.flickRearGripMultiplier
+				end
+				if hbLevel > 0 then
+					wheelGrip *= 1 + (sc.handbrakeGripCut - 1) * hbLevel
+				end
+			end
+			local staticLoad = mass * g / 4
+			local fMax = c.susp.force * axle.grip * wheelGrip * Wheel.loadFactor(sc, c.susp.force, staticLoad)
+			local res = Wheel.step(sc, axle, w.omega, c.vLong, c.vLat, r, fMax, inertia, driveTorque, brakeTorque, dt)
+			w.omega = res.omega
+			local fade = math.clamp(math.sqrt(c.vLong * c.vLong + c.vLat * c.vLat) / cfg.tires.speedFadeMps, 0, 1)
+			out = {
+				fx = res.fx,
+				fy = res.fy * fade,
+				slipAngleDeg = res.slipAngleDeg,
+				-- Spinning or locked: past half again the peak slip ratio.
+				saturated = math.abs(res.slipRatio) > sc.peakSlipRatio * 1.5,
+			}
+			fxDemand = if res.slipRatio < 0 then -1 else 1 -- only its sign is read below, for "locked"
+		else
+			out = Tire.compute(c.vLong, c.vLat, c.susp.force, axle, gripMult, fxDemand, cfg.tires.speedFadeMps)
+		end
 
 		-- Tire force acts at ground level: lateral force x CoM height is the
 		-- roll moment that loads the outside springs in a slide.
@@ -525,6 +578,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		end
 		local spinUp = 1 - math.exp(-cfg.effects.wheelSpinUpRate * dt)
 		ws.visualOmega += (targetOmega - ws.visualOmega) * spinUp
+		if slipModel then
+			-- The wheel's own spin is the real thing to show.
+			ws.visualOmega = w.omega
+		end
 		w.spinAngle -= ws.visualOmega * dt
 		local dropM = if c.hitDistM
 			then math.min(c.hitDistM - cfg.body.wheelRadius, cfg.suspension.restLength)
@@ -539,7 +596,14 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- never push the car along faster: a slide can hold its speed on the
 	-- gas, it cannot gain it. See Tire.scrubRelief.
 	if speed > 1 and scrubAlong < 0 and not twoWheelActive then
-		local relief = Tire.scrubRelief(cfg.tires.slideMomentum, driftAngleDeg, Units.mpsToKmh(speed), hbLevel)
+		local momentum = cfg.tires.slideMomentum
+		if slipModel then
+			local sc = slipCfg :: Wheel.SlipConfig
+			momentum = table.clone(momentum)
+			momentum.slideRelief = sc.slideRelief
+			momentum.leverRelief = sc.leverRelief
+		end
+		local relief = Tire.scrubRelief(momentum, driftAngleDeg, Units.mpsToKmh(speed), hbLevel)
 		local give = math.min(-scrubAlong * relief, math.max(0, -tireAlong))
 		if give > 0 then
 			totalForce += vHat * give
