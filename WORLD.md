@@ -44,9 +44,12 @@ the work:
 - `repeatAlong` places a thing every N metres — dashes, markers, lamps,
   gantries, posts.
 
-`testRoad` keeps the Phase 0 layout — 2 km straight, a 400 m transition pad
-at 900 m, a 400 m radius 30 degree curve — widened to a 120 m dual
-carriageway. A preset's `widthM` is the whole corridor; `road.medianWidthM`
+`testRoad` is the main highway: a 3.6 km straight from the start line to the
+city, with the 400 m transition pad (spawn bay, station) at 1.3 km. It began
+as the Phase 0 layout, a 2 km straight with the pad at 900 m and a 30 degree
+curve at the end. The curve went when the city moved onto the road's end,
+and the straight was extended on request: 400 m more before the pad and
+1.2 km more between the pad and the city (1.9 km now, 700 m before). A preset's `widthM` is the whole corridor; `road.medianWidthM`
 comes out of the middle and each carriageway gets half of what is left, so
 120 with a 14 m median is two 53 m five-lane carriageways.
 `RoadNetwork.layout` is the one place that arithmetic lives, and lamps,
@@ -225,7 +228,8 @@ cluster was invisible from the start. Now it is a band on the side away from
 the sun, from 1.1 km behind the start line to the city gateway, in two rows:
 a low front row at 1.3 to 1.6 km so the towers behind have a foot, and the
 tall row at 1.6 to 2.4 km. Density follows a curve along the band, full at
-350 m from the start and easing to a third at the ends, and the dense
+750 m from the start (moved 400 m with the spawn bay when the highway grew)
+and easing to a third at the ends, and the dense
 downtown cluster with the two landmarks sits at that peak, so from the start
 line and from the spawn bay the city is square on the right, and it is still
 there, thinner, at the far end. It stays inside 2.5 km because golden-hour
@@ -358,7 +362,7 @@ Studio focused, under the canopy and on the bay, vsync-capped either way.
 
 ## The city section (`src/server/World/City/`)
 
-A Riyadh-style city where the highway is going. The 2 km straight ends in
+A Riyadh-style city where the highway is going. The 3.6 km straight ends in
 the city's gateway roundabout, a 72 m square the full 64 m of highway
 lands on; the highway centreline is the grid's central boulevard, the grid
 grows one block either side of it and two blocks south, and the skyline's
@@ -372,7 +376,7 @@ the straight went with them. Nothing hand-placed: `CityConfig.luau` and a
 seeded random.
 
 **Spawn.** The parking bay and the player spawn are on the transition
-pad's right-hand wing (900 to 1,300 m down the road, off to the side of
+pad's right-hand wing (1,300 to 1,700 m down the road, off to the side of
 the traffic) whenever the preset has a pad; a 40 m marked slab a
 centimetre proud of the wing so the two never fight, ten slots across it,
 with a painted line each side of every slot. Without a pad they fall back

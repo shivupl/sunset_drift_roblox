@@ -231,7 +231,7 @@ local config = {
 		innerM = 750, -- nearest crest to the road centreline
 		outerM = 1900,
 		startM = -900, -- along the road; negative is behind the start line
-		endM = 3300, -- past the city
+		endM = 4900, -- past the city
 		-- Crest height envelope: small at the inner edge, full height by
 		-- fullDepthM into the field, so the border rises away from the road.
 		-- Kept under the sun and over the berm: 50 m at 1.3 km is 2.2
@@ -398,7 +398,7 @@ local config = {
 		-- the far dune field stay in view over it.
 		berm = {
 			enabled = true,
-			endM = 1940, -- stops short of the city gateway; the start-line end is open
+			endM = 3540, -- stops short of the city gateway; the start-line end is open
 			wallHeightM = 150, -- the invisible stop; a car off the crest at 200 km/h still meets it
 			wallRunCapM = 480, -- wall pieces along the road; under the 573 m part cap
 			wanderWavelengthM = 420, -- how fast the foot and the crest height wander
@@ -498,7 +498,7 @@ local config = {
 	-- clear of the shop, which stands upstream of it.
 	station = {
 		enabled = true,
-		alongM = 1100, -- distance along the road of the origin (the bay's centre)
+		alongM = 1500, -- distance along the road of the origin (the bay's centre); inside the pad
 		lateralM = 122, -- from the road centreline to the origin, right-hand side
 		yawDeg = 0, -- extra turn about the origin; the aprons follow
 		scale = 1,
@@ -646,16 +646,16 @@ local config = {
 		band = {
 			side = 1, -- +1 is the road's right; -1 its left
 			fromAlongM = -1100,
-			toAlongM = 1900,
+			toAlongM = 3500, -- the city gateway
 			-- Density along the band: full at densestAlongM, easing off to
 			-- thinFraction of it at both ends, so the city has a middle.
-			densestAlongM = 350,
+			densestAlongM = 750, -- square on from the spawn bay
 			thinFraction = 0.3,
 			rows = {
 				{
 					nearM = 1300,
 					farM = 1600,
-					count = 150, -- slots along the band; the density curve thins them
+					count = 230, -- slots along the band; the density curve thins them (150 over the old 3 km band)
 					minWidthM = 40,
 					maxWidthM = 110,
 					minHeightM = 30,
@@ -667,7 +667,7 @@ local config = {
 				{
 					nearM = 1600,
 					farM = 2400,
-					count = 210,
+					count = 322, -- 210 over the old 3 km band
 					minWidthM = 50,
 					maxWidthM = 150,
 					minHeightM = 90,
@@ -679,11 +679,12 @@ local config = {
 			},
 		},
 		-- Downtown: a KAFD-style cluster of tall slim towers on the band,
-		-- centred near the start line so it is square on the right from
-		-- the start and the spawn bay. Dense, tall, slim.
+		-- centred between the start line and the spawn bay so it is square
+		-- on the right from both. Dense, tall, slim. It moved 400 m down the
+		-- road with the bay when the highway was extended.
 		downtown = {
 			enabled = true,
-			alongM = 350, -- centre, from the start line
+			alongM = 750, -- centre, from the start line
 			spreadM = 600, -- half-length along the road
 			nearM = 1500,
 			farM = 2250,
@@ -707,8 +708,8 @@ local config = {
 		-- and a Faisaliah-style pyramid with the globe near its tip.
 		landmarks = {
 			enabled = true,
-			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, alongM = 200, lateralM = 1950 },
-			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, alongM = 560, lateralM = 2050 },
+			kingdom = { heightM = 340, widthM = 120, depthM = 50, archStartFrac = 0.6, bridgeFrac = 0.92, alongM = 600, lateralM = 1950 },
+			faisaliah = { heightM = 300, baseWidthM = 120, globeFrac = 0.8, globeDiameterM = 28, alongM = 960, lateralM = 2050 },
 		},
 		-- LIGHTS. The backdrop city is lit at every time of day, because a
 		-- dark silhouette on the horizon is not what anyone wants to look
@@ -1123,21 +1124,25 @@ local config = {
 	-- descriptors that expand into one. A waypoint is
 	-- { xM, zM, widthM, bankingDeg }; RoadNetwork walks between them.
 	presets = {
-		-- The Phase 0 physics test road, kept so tuning still has its
-		-- reference surface: 2 km straight, a 400 m transition pad starting
-		-- at 900 m, then a 400 m radius 30 degree curve.
+		-- The main highway: a 3.6 km straight from the start line to the
+		-- city, with the 400 m transition pad (spawn bay and station) at
+		-- 1.3 km. It was the Phase 0 test road, 2 km with the pad at 900 m;
+		-- the owner asked for more road before the spawn and much more
+		-- between the spawn and the city (700 m then, 1.9 km now).
 		testRoad = {
 			bayLengthM = 40,
 			-- The pad grows with the road so its wings, and the bay on the
 			-- right-hand one, stay 48 m wide.
-			pad = { startM = 900, lengthM = 400, widthM = 168 },
+			pad = { startM = 1300, lengthM = 400, widthM = 168 },
 			-- 72 m: an 8 m median and two 32 m carriageways of six 5.3 m lanes
 			-- (64 m and 4.7 m lanes until the owner asked for wider).
 			-- The straight ends in the city's gateway roundabout; the old
 			-- 30 degree curve at the end went when the city moved to where
 			-- the highway points (it survives in ringRoad).
 			segments = {
-				{ kind = "straight", lengthM = 2000, widthM = 72 } :: Segment,
+				-- Keep CityConfig.originM.z at -(this + 22) so the gateway
+				-- roundabout stays on the road's end.
+				{ kind = "straight", lengthM = 3600, widthM = 72 } :: Segment,
 			},
 		},
 		-- A longer ring-road loop for driving rather than measuring.

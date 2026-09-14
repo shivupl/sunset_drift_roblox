@@ -4,8 +4,8 @@
 -- the grid, the parcels, the buildings and the furniture all come from this
 -- file and a seeded random.
 --
--- Placement. The highway runs from the start line along -Z for 2 km and
--- ends in the city: its centreline is the grid's central boulevard, and
+-- Placement. The highway runs from the start line along -Z for 3.6 km
+-- (WorldConfig.presets.testRoad) and ends in the city: its centreline is the grid's central boulevard, and
 -- the first roundabout is a wider gateway square that the full 72 m of
 -- highway lands on. The grid is four 360 m blocks, two either side of
 -- that axis and two deep: small on purpose. The owner asked for smaller
@@ -17,7 +17,8 @@ local config = {
 
 	-- The north-west roundabout (nearest the highway) in world metres, then
 	-- the grid grows east (+X) and south (-Z).
-	originM = { x = -360, z = -2022 },
+	-- z is the highway's length plus 22: the gateway square sits on its end.
+	originM = { x = -360, z = -3622 },
 	blocksX = 2,
 	blocksZ = 2,
 	blockM = 360, -- boulevard centre to boulevard centre
