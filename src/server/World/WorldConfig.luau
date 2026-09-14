@@ -430,7 +430,9 @@ local config = {
 		-- Outer shoulders always. The median gets a double-arm post every
 		-- spacing too, offset by half a spacing so the three rows interleave.
 		medianLamps = true,
-		medianSpacingM = 22, -- twice the density of the outer rows, on request
+		-- The outer spacing, so each median post stands halfway between two
+		-- shoulder lamps. 22 (twice the density) read as too many.
+		medianSpacingM = 45,
 		-- The post is one store mesh (AssetRegistry.highwayLamp): concrete
 		-- pedestal, tapering pole, curved cobra arm and head in one textured
 		-- piece. Off, or if the mesh fails to load, the box stand-in below

@@ -477,7 +477,7 @@ The hill the car drives up, out of the same height function as the floor.
 |---|---|
 | spacingM | Distance between lamps. Drives both the rhythm of light and the part count. |
 | bothSides | False alternates the outer sides and halves that part count. |
-| medianLamps / medianSpacingM | Double-arm posts down the reservation at their own spacing (22 m, twice the outer density), offset half a spacing so the rows interleave. |
+| medianLamps / medianSpacingM | Double-arm posts down the reservation at their own spacing (45 m, the outer spacing), offset half a spacing so each median post stands midway between two shoulder lamps. |
 | useMesh | The post is one store mesh (AssetRegistry.highwayLamp: BryanROBLOXgamer10's "Street Lamp Light", pedestal, tapering pole, cobra arm and head in a single textured piece). Off, or if the mesh fails to load, the box stand-in below is built. |
 | meshScale | The mesh is 10.6 m tall with the head 4.5 m out at scale 1; 1.15 makes a 12.2 m highway post reaching 5.1 m. Raise for a taller road, and the head moves out with it. |
 | pairGapM | A median post is two mesh posts back to back; the second stands this far along the road (12 cm) so the two poles read as one thick pole and never share a surface. |
