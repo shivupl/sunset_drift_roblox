@@ -18,6 +18,7 @@ export type Raw = {
 	steerDigital: number, -- -1, 0, 1 from keys
 	steerAnalog: number?, -- gamepad stick or touch steer pad, nil when steering with keys
 	handbrake: boolean,
+	kick: boolean,
 	leanLeft: boolean,
 	leanRight: boolean,
 	-- Touch only: the NATL button. Keyboard and gamepad enter two-wheel by
@@ -34,6 +35,7 @@ Input.raw = {
 	steerDigital = 0,
 	steerAnalog = nil,
 	handbrake = false,
+	kick = false,
 	leanLeft = false,
 	leanRight = false,
 	twoWheelButton = false,
@@ -54,6 +56,7 @@ local function readOverride(player: Player): InputState
 	out.brake = math.clamp(tonumber(player:GetAttribute("OvBrake")) or 0, 0, 1)
 	out.steer = math.clamp(tonumber(player:GetAttribute("OvSteer")) or 0, -1, 1)
 	out.handbrake = player:GetAttribute("OvHandbrake") == true
+	out.kick = player:GetAttribute("OvKick") == true
 	local ovLean = math.clamp(tonumber(player:GetAttribute("OvLean")) or 0, -1, 1)
 	out.leanLeft = if player:GetAttribute("OvLeanLeft") == true or ovLean < 0 then 1 else 0
 	out.leanRight = if player:GetAttribute("OvLeanRight") == true or ovLean > 0 then 1 else 0
@@ -91,6 +94,7 @@ function Input.get(dt: number, cfg: Config): InputState
 	out.throttle = raw.throttle
 	out.brake = raw.brake
 	out.handbrake = raw.handbrake
+	out.kick = raw.kick
 	-- Lean is digital and unramped: balancing wants the torque the instant
 	-- the key goes down, not a ramp.
 	out.leanLeft = if raw.leanLeft then 1 else 0

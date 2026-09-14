@@ -81,7 +81,9 @@ function Drivetrain.step(
 	-- spin (Wheel.luau). The engine then turns with the wheels, spin and
 	-- all, and the float-to-redline stand-in is off. Gear changes still go
 	-- by road speed, so wheelspin never upshifts.
-	spinSpeedMps: number?
+	spinSpeedMps: number?,
+	-- Clutch kick: crank torque multiplier. Nil or 1 is none.
+	torqueMultiplier: number?
 ): Output
 	local speed = rearWheelSpeedMps
 	local throttle, brake = throttleIn, brakeIn
@@ -169,7 +171,7 @@ function Drivetrain.step(
 	if state.shiftTimer <= 0 and rpm < cfg.redlineRpm then
 		local speedKmh = math.abs(speed) * 3.6
 		local ceiling = math.clamp((cfg.topSpeedKmh - speedKmh) / math.max(cfg.topSpeedFadeKmh, 1), 0, 1)
-		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle * ceiling
+		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle * ceiling * (torqueMultiplier or 1)
 	end
 	local drivePerRearWheel = torque * overall * cfg.drivelineEfficiency / wheelRadius / 2
 

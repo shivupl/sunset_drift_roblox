@@ -45,6 +45,10 @@ function Keyboard.bind()
 	bind("HJ_KHandbrake", function(down)
 		Input.raw.handbrake = down
 	end, Enum.KeyCode.Space)
+	-- Clutch kick (CarConfig.kick): tap to kick the rears loose, hold to keep them lit.
+	bind("HJ_KKick", function(down)
+		Input.raw.kick = down
+	end, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
 	-- Q/E lift the car onto two wheels (a tap picks the side and the mode
 	-- latches) and then lean it: taps toward the lifted side keep it up,
 	-- the other key catches it, and held it lands the car.
@@ -79,6 +83,7 @@ function Keyboard.unbind()
 	left, right = false, false
 	Input.raw.throttle, Input.raw.brake = 0, 0
 	Input.raw.handbrake = false
+	Input.raw.kick = false
 	Input.raw.leanLeft, Input.raw.leanRight = false, false
 	Input.raw.steerDigital = 0
 end

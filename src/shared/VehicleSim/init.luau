@@ -73,6 +73,13 @@ export type Sim = typeof(setmetatable(
 		steerDeg: number,
 		comHeightM: number,
 		handbrakeLevel: number,
+		kicking: boolean,
+		kickAge: number, -- seconds since the current kick's dump began
+		kickCooldown: number,
+		kickWasDown: boolean,
+		kickCount: number,
+		kickLateralMps: number, -- sideways speed (along the flat right of the heading) when the kick began
+		kickReleaseTimer: number, -- seconds left in which the gas does not hold a slide
 		throwTail: number,
 		flickSign: number, -- sign of the last strong steer input, 0 none
 		flickAge: number, -- seconds since that input
@@ -134,6 +141,8 @@ local function emptyState(wheels: { Wheel }): VehicleState
 		rollDeg = 0,
 		rollMarginDeg = 0,
 		handbrake = false,
+		kicking = false,
+		kickCount = 0,
 		driftAssist = 0,
 		wheels = ws,
 	}
@@ -182,6 +191,13 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		steerDeg = 0,
 		comHeightM = 0.5,
 		handbrakeLevel = 0,
+		kicking = false,
+		kickAge = 0,
+		kickCooldown = 0,
+		kickWasDown = false,
+		kickCount = 0,
+		kickLateralMps = 0,
+		kickReleaseTimer = 0,
 		throwTail = 0,
 		flickSign = 0,
 		flickAge = 0,
@@ -283,6 +299,37 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- never falls through the angle gate: a tap that settled at 19
 	-- degrees straightened the moment the lever came out. Once on it
 	-- keeps down to throwThrottleHoldKeepDeg, a lower bar than starting.
+	-- Clutch kick: a fresh press dumps the clutch (torque spike, rear grip
+	-- cut) for kick.seconds; still held after that, the rears stay lit for
+	-- up to maxHoldSeconds. On four wheels in a forward gear only, and not
+	-- again until cooldownSeconds after the last one ended.
+	local kc = cfg.kick
+	local kickDown = kc.enabled and input.kick and not twoWheelActive and self.drivetrain.gear >= 1
+	if kickDown and not self.kickWasDown and not self.kicking and self.kickCooldown <= 0 then
+		self.kicking = true
+		self.kickAge = 0
+		self.kickCount += 1
+		local flatHeading = Vector3.new(forward.X, 0, forward.Z)
+		local flatRight = if flatHeading.Magnitude > 1e-3 then flatHeading.Unit:Cross(Vector3.yAxis) else Vector3.zero
+		self.kickLateralMps = vel:Dot(flatRight)
+		self.kickReleaseTimer = kc.releaseSlideSeconds
+	end
+	self.kickWasDown = input.kick
+	local kickTorque, kickRearGrip, kickDumping = 1, 1, false
+	if self.kicking then
+		self.kickAge += dt
+		local dumping = self.kickAge <= kc.seconds
+		if not dumping and (not kickDown or self.kickAge > kc.seconds + kc.maxHoldSeconds) then
+			self.kicking = false
+			self.kickCooldown = kc.cooldownSeconds
+		elseif dumping then
+			kickTorque, kickRearGrip, kickDumping = kc.torqueMultiplier, kc.rearGripMultiplier, true
+		else
+			kickTorque, kickRearGrip = kc.holdTorqueMultiplier, kc.holdRearGripMultiplier
+		end
+	else
+		self.kickCooldown = math.max(0, self.kickCooldown - dt)
+	end
 	local gasOn = not twoWheelActive and input.throttle >= cfg.steering.throwThrottleHold
 	local sidewaysNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldFromDeg
 	local keepNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldKeepDeg
@@ -297,6 +344,14 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		self.throttleHoldOn = true
 	elseif self.throttleHoldStraight >= cfg.steering.throwThrottleHoldGraceSeconds then
 		self.throttleHoldOn = false
+	end
+	-- A clutch kick sends the car where it points, so for a moment after
+	-- one the gas stops holding the slide (the lever still can).
+	if self.kickReleaseTimer > 0 then
+		self.kickReleaseTimer = math.max(0, self.kickReleaseTimer - dt)
+		if self.handbrakeLevel <= 0 then
+			self.throttleHoldOn = false
+		end
 	end
 	local throttleHold = self.throttleHoldOn
 	-- Hands off the wheel, whatever the lever and the gas are doing, and
@@ -464,6 +519,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	local tractionAllowed = math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
 		and self.handbrakeLevel <= 0
 		and not twoWheelActive
+		and not self.kicking
 	-- Launch control, slip model only. The wheels are real now, so rather
 	-- than wait for a spin and cut the throttle back (the loop never goes
 	-- under its 0.7 floor, and full launch torque is about twice what the
@@ -471,7 +527,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- can put down right now: their load, grip, load sensitivity and drive
 	-- grip at the peak slip, through this gear. The wheels sit just under
 	-- the peak instead of spinning past it onto the sliding floor.
-	local throttle = input.throttle
+	local throttle = if self.kicking then 1 else input.throttle
 	if slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
 		local sc = slipCfg :: Wheel.SlipConfig
 		local rearAxle = cfg.tires.rear
@@ -507,7 +563,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		rearWheelSpeed,
 		rearSpinning,
 		tractionAllowed,
-		rearSpinSpeed
+		rearSpinSpeed,
+		kickTorque
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
@@ -544,7 +601,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
 			fxDemand = drive.drivePerRearWheel * diffShare
 				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
-			gripMult *= flickCut
+			gripMult *= flickCut * kickRearGrip
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
@@ -578,6 +635,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				if self.flickTimer > 0 then
 					wheelGrip *= sc.flickRearGripMultiplier
 				end
+				wheelGrip *= kickRearGrip
 				if hbLevel > 0 then
 					wheelGrip *= 1 + (sc.handbrakeGripCut - 1) * hbLevel
 				end
@@ -668,6 +726,39 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		local give = math.min(-scrubAlong * relief, math.max(0, -tireAlong))
 		if give > 0 then
 			totalForce += vHat * give
+		end
+	end
+
+	-- 5c. Clutch kick push: the car goes where its nose points. For the
+	-- length of the dump, a push along the flat heading at the rear axle
+	-- (road height, so it comes from the back and squats the car), plus
+	-- part of the sideways speed the kick found turned into speed along
+	-- the heading: a slide exits toward the nose instead of carrying on
+	-- sideways. The sideways part is taken out at the centre of mass, so
+	-- neither changes the yaw. Rear wheels on the road only.
+	if kickDumping and (contacts[3].susp.grounded or contacts[4].susp.grounded) and vel:Dot(forward) > -1 then
+		local flatHeading = Vector3.new(forward.X, 0, forward.Z)
+		if flatHeading.Magnitude > 1e-3 then
+			flatHeading = flatHeading.Unit
+			local flatRight = flatHeading:Cross(Vector3.yAxis)
+			local seconds = math.max(kc.seconds, 1e-3)
+			local lateralNow = vel:Dot(flatRight)
+			local forwardNow = vel:Dot(flatHeading)
+			local turnedAccel = 0
+			-- Only while the slide is still going the way it was: never push
+			-- the car out the other side. The turn keeps the car's speed: the
+			-- sideways speed taken out this step comes back along the heading
+			-- only as far as the total stays the same, so a redirect swings
+			-- the path and the push is the only speed a kick adds.
+			if lateralNow * self.kickLateralMps > 0 and dt > 0 then
+				local take = math.min(math.abs(self.kickLateralMps * kc.redirect / seconds) * dt, math.abs(lateralNow))
+				local lateralAfter = lateralNow - math.sign(lateralNow) * take
+				local forwardAfter = math.sqrt(math.max(0, forwardNow * forwardNow + lateralNow * lateralNow - lateralAfter * lateralAfter))
+				totalForce -= flatRight * (mass * math.sign(lateralNow) * take / dt)
+				turnedAccel = math.max(0, forwardAfter - math.max(forwardNow, 0)) / dt
+			end
+			local rearAxleM = (contacts[3].contactM + contacts[4].contactM) / 2
+			applyAt(flatHeading * (mass * ((kc.pushKmh / 3.6) / seconds + turnedAccel)), rearAxleM)
 		end
 	end
 
@@ -814,6 +905,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.rollDeg = rollDeg
 	st.rollMarginDeg = self.twoWheel.marginDeg
 	st.handbrake = input.handbrake
+	st.kicking = self.kicking
+	st.kickCount = self.kickCount
 	st.driftAssist = cfg.steering.driftAssist
 	return st
 end

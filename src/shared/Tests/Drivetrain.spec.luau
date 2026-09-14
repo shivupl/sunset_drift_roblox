@@ -119,4 +119,18 @@ return function(t: T)
 	end
 	t.ok(out.rpm > 3000, "rpm climbs while spinning")
 	t.eq(out.gear, 1, "spin does not upshift")
+
+	-- Clutch kick: the crank torque multiplies, and the governor still holds.
+	st = Drivetrain.new(cfg)
+	local plain = Drivetrain.step(st, cfg, r, dt, 1, 0, 0, false, false)
+	st = Drivetrain.new(cfg)
+	local kicked = Drivetrain.step(st, cfg, r, dt, 1, 0, 0, false, false, nil, 2.5)
+	t.near(kicked.torque, plain.torque * 2.5, 1e-9, "a kick multiplies crank torque")
+	t.near(kicked.drivePerRearWheel, plain.drivePerRearWheel * 2.5, 1e-6, "and the drive at the rear wheels")
+	local atCeiling = Drivetrain.new(cfg)
+	local o
+	for _ = 1, 60 do
+		o = Drivetrain.step(atCeiling, cfg, r, dt, 1, 0, 140 / 3.6, false, false, nil, 3)
+	end
+	t.near(o.drivePerRearWheel, 0, 1e-6, "a kick does not pass the top speed ceiling")
 end

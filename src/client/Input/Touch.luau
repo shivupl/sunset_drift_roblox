@@ -11,6 +11,7 @@
 --   bottom right         GAS, with BRAKE inboard of it
 --   directly above GAS   HAND, close enough that the thumb slides between
 --                        the two without lifting
+--   inboard of HAND      KICK, the clutch kick
 --   top                  EXIT RESET LOAD DBG, small, right of the HUD card
 --
 -- Both sliders are positional and spring back to centre when released. The
@@ -77,6 +78,7 @@ local BUTTONS: { Spec } = {
 	{ name = "Gas", title = "GAS", x = 0.91, y = 0.80, size = 0.26, color = Color3.fromRGB(80, 225, 120) },
 	{ name = "Brake", title = "BRAKE", x = 0.755, y = 0.86, size = 0.18, color = Color3.fromRGB(245, 85, 85) },
 	{ name = "Hand", title = "HAND", x = 0.91, y = 0.545, size = 0.20, color = Color3.fromRGB(255, 165, 40) },
+	{ name = "Kick", title = "KICK", x = 0.755, y = 0.62, size = 0.15, color = Color3.fromRGB(255, 90, 200) },
 	{ name = "Natl", title = "NATL", x = 0.06, y = 0.45, size = 0.15, color = Color3.fromRGB(110, 205, 255) },
 	{ name = "Exit", title = "EXIT", x = 0.60, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Reset", title = "RESET", x = 0.66, y = 0, size = 0.11, color = GREY, top = true },
@@ -133,6 +135,9 @@ local handlers: { [string]: (boolean) -> () } = {
 	end,
 	Hand = function(down)
 		Input.raw.handbrake = down
+	end,
+	Kick = function(down)
+		Input.raw.kick = down
 	end,
 	Natl = function(down)
 		if down then
@@ -471,6 +476,7 @@ function Touch.unbind()
 	Input.raw.leanLeft, Input.raw.leanRight = false, false
 	Input.raw.twoWheelButton = false
 	Input.raw.handbrake = false
+	Input.raw.kick = false
 	Input.raw.throttle, Input.raw.brake = 0, 0
 	if Input.raw.source == "touch" then
 		Input.raw.steerAnalog = nil

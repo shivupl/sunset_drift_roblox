@@ -205,6 +205,44 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | slideYawDamping | Yaw damping while the driver is NOT throwing, Nm per deg/s. A slip-angle tyre model has no yaw stiffness once both axles slide, so a released slide kept rotating at 110 deg/s to 180 with full counter-steer on. This stands in for the rear's self-aligning and is what catches a released slide (let go at 28 degrees hands off: peaks about 60, settles straight). Off under the lever, where the controller holds the rate. | ↓ | ↓ | — |
 | driftAssistHandsOff / driftAssistHandsOffBelow | When the wheel is centred (|steer| under the threshold) the assist rises to this and does not fade with angle. With no permission in, lift and straighten means "bring it back". Under a hold (lever or gas) the controller owns the angle and the assist only aligns the fronts with the path; that cut the speed a held slide bled from 23 km/h over 4 s to 6, because fronts sitting 27 degrees off the velocity were most of the drag. Hands on, the driver's authority is untouched. | — | — | — |
 
+## kick
+The clutch kick (Shift, gamepad X, touch KICK). A press dumps the clutch for `seconds`:
+- **Push:** the throttle goes full, and a push along the flat heading acts at the rear axle, at road height. It comes from the back and squats the car.
+- **Redirect:** `redirect` of the sideways slide is swung toward the nose without adding speed, so a slide exits where the car points.
+- **Slide hold released:** for `releaseSlideSeconds` afterwards the gas no longer holds a slide. The handbrake still can.
+
+Held past the dump, the rears stay spinning for up to `maxHoldSeconds`, popping at the limiter. The exhaust bangs on every kick (random clips from `popSoundIds`, random pitch) and on a lift from above `overrunRpm`, with a flash of flame. W still keeps a slide going sideways; Shift is the way out of one, toward the nose.
+
+Measured in Studio on the Kamri, with the input-override harness:
+
+| | No kick | Kick |
+|---|---|---|
+| 0–100 km/h | 3.67 s | (unchanged when not pressed) |
+| Straight at 75 km/h, gas 0.35: speed gained after 0.5 s / 1.5 s | +4.7 / +13.6 km/h | +15.8 / +22.5 km/h (about 11 km/h from the kick), rear squat 1.9°, 6 bangs |
+| 45° held slide, gas held: angle and speed at 0.15 / 0.3 / 1.0 s | 45° 82, 45° 82, 45° 80 km/h | 11° 92, 2° 97, 0° 108 km/h, 4 bangs |
+| The same with counter-steer 0.5 held | | 27°, 3°, 3° at 85, 92, 92 km/h |
+| The same with the gas lifted | | 14°, 3°, 0° at 87, 89, 88 km/h (the push alone) |
+| Lift from 4,500 rpm | 3 overrun pops | |
+
+An earlier trial was rejected for feeling like a rocket or not kicking at all. That trial had 2.2 times torque held, with launch control off, no push, and the slide hold left on. It measured 60–120 km/h in 1.73 s against 2.78 s, and a mid-corner tap moved the tail 3.3° against 3.2°.
+
+| Field | What it does |
+|---|---|
+| enabled | Off: Shift does nothing. |
+| pushKmh | Speed added along the heading per kick. Up = a harder kick. |
+| redirect | Fraction of the sideways slide swung toward the nose during the dump (speed kept). Up = straighter exit; 0 = push only. |
+| releaseSlideSeconds | After a kick, how long the gas does not hold a slide. Down = a slide on the gas comes back sooner. |
+| torqueMultiplier | Crank torque during the dump, on top of full throttle. Up = more wheelspin and smoke, more straight-line gain. |
+| seconds | Length of the dump. The push and redirect are spread over it. |
+| rearGripMultiplier | Rear grip during the dump. Below 1 swings the tail instead (fights the redirect). |
+| holdTorqueMultiplier / holdRearGripMultiplier / maxHoldSeconds | Held past the dump: the rears stay lit this hard, this long. |
+| cooldownSeconds | From the end of one kick to the next; taps inside it are ignored. |
+| popSoundIds / popVolume / popPitchMin / popPitchMax | The bangs. Empty list = silent. |
+| kickPopsMin / kickPopsMax / popGapMin / popGapMax | Bangs per kick and the spacing inside a burst. |
+| holdPopsPerSecond | Pops while held at the limiter. |
+| overrunRpm / overrunPopsMin / overrunPopsMax | Lift-off crackle: above this rpm, a throttle lift pops this many times. |
+| flame | Flame and a light flash out of the exhaust with each bang. |
+
 ## handbrake
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|

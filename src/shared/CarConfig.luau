@@ -402,6 +402,48 @@ local config = {
 		slideYawDamping = 130,
 	},
 
+	-- Clutch kick (Shift, gamepad X, touch KICK): the drift driver's kick.
+	-- Revs up, clutch dumped, and the car is fired the way its nose points,
+	-- from the rear: a short push along the heading at the rear axle, and
+	-- part of any sideways slide turned into speed along the heading. The
+	-- throttle (W) keeps a slide going sideways; the kick sends it where the
+	-- car is pointing. It is a kick, not a rocket: pushKmh a time. The rear
+	-- wheels spin up and smoke with it. Held, the rears stay lit at the
+	-- limiter for a moment. The exhaust bangs on the kick and crackles on a lift from
+	-- high revs, the anti-lag / 2-step sound (unburnt fuel lighting off in
+	-- the hot exhaust).
+	kick = {
+		enabled = true,
+		pushKmh = 8, -- speed added along the heading per kick; up = a harder kick
+		redirect = 0.6, -- fraction of the sideways slide turned toward the nose; up = straighter exit
+		releaseSlideSeconds = 1.0, -- after a kick the gas stops holding a slide this long; the car goes where it points
+		torqueMultiplier = 1.0, -- crank torque during the dump (the throttle is full whatever the pedal); up = more wheelspin
+		seconds = 0.3, -- length of the dump
+		rearGripMultiplier = 1, -- rear grip during the dump (1 = untouched; below 1 swings the tail)
+		holdTorqueMultiplier = 1.3, -- after the dump, while still held: rears stay spinning
+		holdRearGripMultiplier = 1,
+		maxHoldSeconds = 1.0, -- how long a hold keeps them lit
+		cooldownSeconds = 0.5, -- from the end of one kick to the next
+		-- Exhaust: pops are picked at random from popSoundIds with a random
+		-- pitch. Free Creator Store clips checked to load here: BeaminYo's
+		-- "single exhaust pop" (17651322809, 0.09 s) and "exhaust pop"
+		-- (17651322371, 0.44 s), YaBoyZenvo's rally exhaust pop
+		-- (95058486030177, 0.11 s). Swap freely; empty plays nothing.
+		popSoundIds = { "rbxassetid://17651322809", "rbxassetid://95058486030177", "rbxassetid://17651322371" },
+		popVolume = 1.2,
+		popPitchMin = 0.85,
+		popPitchMax = 1.2,
+		kickPopsMin = 3, -- pops fired off by a kick
+		kickPopsMax = 6,
+		popGapMin = 0.045, -- seconds between pops in a burst
+		popGapMax = 0.14,
+		holdPopsPerSecond = 6, -- while held at the limiter
+		overrunRpm = 4800, -- lifting off above this crackles
+		overrunPopsMin = 2,
+		overrunPopsMax = 5,
+		flame = true, -- a flash of flame out of the exhaust with each bang
+	},
+
 	handbrake = {
 		-- Lowered from 0.35 alongside the softer rear falloff. The rear now
 		-- holds far more grip a few degrees past peak, which slowed the pull
