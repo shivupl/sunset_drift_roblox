@@ -12,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
-local Exhaust = require(script.Parent.Exhaust)
 
 type VehicleState = Types.VehicleState
 type WheelState = Types.WheelState
@@ -110,7 +109,6 @@ function DriftEffects.attach(model: Model)
 	end
 	local rig = VehicleRig.handles(model)
 	local chassis = rig.chassis
-	Exhaust.attach(chassis, cfg, 0)
 	screech = makeSound(chassis, "Screech", cfg.effects.screechSoundId, cfg.effects.screechMaxVolume)
 	engine = makeSound(chassis, "Engine", cfg.effects.engineSoundId, cfg.effects.engineMaxVolume)
 	if engine then
@@ -165,7 +163,6 @@ function DriftEffects.update(state: VehicleState)
 		return
 	end
 	local carCfg = ConfigLoader.forCar(carId)
-	Exhaust.update(state, carCfg)
 	local cfg = carCfg.effects
 	if not cfg.enabled then
 		for _, w in wheels do
@@ -219,7 +216,6 @@ function DriftEffects.update(state: VehicleState)
 end
 
 function DriftEffects.detach()
-	Exhaust.detach()
 	for _, w in wheels do
 		w.smoke.Rate = 0
 		w.trail.Enabled = false

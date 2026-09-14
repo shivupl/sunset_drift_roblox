@@ -56,9 +56,6 @@ function Gamepad.bind()
 	bindButton("HJ_GHandbrake", function(down)
 		Input.raw.handbrake = down
 	end, Enum.KeyCode.ButtonB)
-	bindButton("HJ_GKick", function(down)
-		Input.raw.kick = down
-	end, Enum.KeyCode.ButtonX)
 	-- Bumpers lift and lean, the same way Q/E do on a keyboard: a tap lifts,
 	-- taps keep it up, the other bumper held lands it.
 	bindButton("HJ_GLeanLeft", function(down)
@@ -84,7 +81,6 @@ function Gamepad.unbind()
 		ContextActionService:UnbindAction(name)
 	end
 	table.clear(bound)
-	Input.raw.kick = false
 	Input.raw.steerAnalog = nil
 	Input.raw.leanLeft, Input.raw.leanRight = false, false
 end

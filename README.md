@@ -34,7 +34,6 @@ either: hold the brake for `drivetrain.reverseHoldSeconds` (0.4 s) after the car
 stopped and it engages, and any throttle puts you back in drive. The hold is why braking hard
 to a standstill stays in drive instead of snapping into reverse the moment the car settles.
 | Handbrake | Space | B | HAND |
-| Clutch kick (fires the car where it points, exhaust bangs) | Shift | X | KICK |
 | Two-wheel / lean left | Q (tap) | LB (tap) | NATL (tap), then lean slider left |
 | Two-wheel / lean right | E (tap) | RB (tap) | NATL (tap), then lean slider right |
 | Exit car | F | Y | EXIT |

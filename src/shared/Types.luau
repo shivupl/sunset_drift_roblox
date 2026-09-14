@@ -9,7 +9,6 @@ export type InputState = {
 	leanLeft: number, -- 0/1, the left lean control by itself
 	leanRight: number, -- 0/1, the right lean control by itself
 	handbrake: boolean,
-	kick: boolean, -- held: clutch kick (CarConfig.kick)
 	twoWheel: boolean, -- mode held (a lean key, or the touch NATL button)
 	exit: boolean, -- edge
 	reset: boolean, -- edge
@@ -49,8 +48,6 @@ export type VehicleState = {
 	rollDeg: number,
 	rollMarginDeg: number,
 	handbrake: boolean,
-	kicking: boolean, -- a clutch kick is dumping or being held
-	kickCount: number, -- kicks so far; effects fire on a change
 	driftAssist: number,
 	wheels: { WheelState },
 }
@@ -66,7 +63,6 @@ function Types.newInput(): InputState
 		leanLeft = 0,
 		leanRight = 0,
 		handbrake = false,
-		kick = false,
 		twoWheel = false,
 		exit = false,
 		reset = false,
