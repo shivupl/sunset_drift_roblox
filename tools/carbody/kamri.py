@@ -468,12 +468,17 @@ def body_material(P, N, tag, chart):
     alpha = np.ones(k)
     metal = np.full(k, PAINT_METAL)
     rough = np.full(k, PAINT_ROUGH)
+    # Height in metres off the mesh surface, for the normal map: + raised,
+    # - recessed. The mesh stays smooth; this is what catches the light.
+    height = np.zeros(k)
 
-    def put(mask, col, a=0.0, m=0.0, r=0.5):
+    def put(mask, col, a=0.0, m=0.0, r=0.5, h=None):
         rgb[mask] = col
         alpha[mask] = a
         metal[mask] = m
         rough[mask] = r
+        if h is not None:
+            height[mask] = h
 
     flats = {
         "flat_paint": ((0.93, 0.93, 0.93), 1, PAINT_METAL, PAINT_ROUGH),
@@ -482,7 +487,8 @@ def body_material(P, N, tag, chart):
     }
     if chart in flats:
         c, a, m, r = flats[chart]
-        return {"rgb": np.tile(c, (k, 1)), "alpha": np.full(k, a), "metal": np.full(k, m), "rough": np.full(k, r)}
+        return {"rgb": np.tile(c, (k, 1)), "alpha": np.full(k, a), "metal": np.full(k, m), "rough": np.full(k, r),
+                "height": np.zeros(k)}
 
     bl = BELT(z)
     # Ambient occlusion baked into the paint: darker low down and in the arches.
@@ -494,28 +500,48 @@ def body_material(P, N, tag, chart):
     ao = ao * np.where(near_arch & (arch_d < 0.035) & (tag == "side"), 0.72 + 8 * arch_d, 1.0)
     rgb *= ao[:, None]
 
+    if tag == "side":
+        # Wheel arch lip: a rolled flare right at the opening.
+        height += np.where(near_arch, 0.006 * np.clip(1 - arch_d / 0.035, 0, 1), 0)
+        # Shoulder line: a crisp crease along the doors, lit on top and
+        # shadowed under.
+        run = (z > -1.95) & (z < 2.25)
+        d = y - 0.865
+        height += np.where(run, 0.004 * np.clip(1 - np.abs(d) / 0.016, 0, 1) - 0.0015 * np.clip(1 - np.abs(d + 0.03) / 0.02, 0, 1), 0)
+        # Sill crease.
+        height -= np.where((z > -0.95) & (z < 0.95), 0.002 * np.clip(1 - np.abs(y - 0.30) / 0.012, 0, 1), 0)
+
     line = np.zeros(k, dtype=bool)
     LW = 0.0035
+    gap_d = np.full(k, 1.0)  # distance to the nearest panel gap, metres
+
+    def gap(dist):
+        nonlocal gap_d
+        gap_d = np.minimum(gap_d, dist)
+        return dist < LW
+
     if tag in ("side", "front", "rear"):
         # Doors: front leading edge, B line, rear door trailing edge, sill line.
-        line |= (seg_dist(z, y, (-0.905, 0.26), (-0.875, 1.02)) < LW)
-        line |= (seg_dist(z, y, (0.265, 0.24), (0.272, 1.03)) < LW)
-        line |= (poly_dist(z, y, [(0.93, 0.24), (0.93, 0.60), (1.00, 0.80), (1.045, 1.06)]) < LW)
-        line |= (seg_dist(z, y, (-0.905, 0.265), (0.93, 0.265)) < LW)
+        line |= gap(seg_dist(z, y, (-0.905, 0.26), (-0.875, 1.02)))
+        line |= gap(seg_dist(z, y, (0.265, 0.24), (0.272, 1.03)))
+        line |= gap(poly_dist(z, y, [(0.93, 0.24), (0.93, 0.60), (1.00, 0.80), (1.045, 1.06)]))
+        line |= gap(seg_dist(z, y, (-0.905, 0.265), (0.93, 0.265)))
         # Bumper seams at the corners.
-        line |= (poly_dist(z, y, [(-1.93, 0.30), (-1.95, 0.56), (-1.93, 0.62)]) < LW)
-        line |= (poly_dist(z, y, [(2.02, 0.36), (2.08, 0.72), (2.46, 0.72)]) < LW) & (ax > 0.3)
+        line |= gap(poly_dist(z, y, [(-1.93, 0.30), (-1.95, 0.56), (-1.93, 0.62)]))
+        line |= gap(np.where(ax > 0.3, poly_dist(z, y, [(2.02, 0.36), (2.08, 0.72), (2.46, 0.72)]), 1.0))
         # Boot lid down the tail.
-        line |= (np.abs(ax - 0.66) < LW) & (z > 2.40) & (y > 0.80)
-        line |= (np.abs(y - 0.80) < LW) & (z > 2.40) & (ax < 0.66)
+        line |= gap(np.where((z > 2.40) & (y > 0.80), np.abs(ax - 0.66), 1.0))
+        line |= gap(np.where((z > 2.40) & (ax < 0.66), np.abs(y - 0.80), 1.0))
     if tag in ("top", "front"):
         hood = z < Z_COWL
         edge_x = np.vectorize(belt_x)(z) - 0.075
-        line |= hood & (np.abs(ax - edge_x) < LW) & (z > -2.22)
-        line |= (np.abs(z + 2.22) < LW) & (ax < edge_x)
+        line |= gap(np.where(hood & (z > -2.22), np.abs(ax - edge_x), 1.0))
+        line |= gap(np.where(ax < edge_x, np.abs(z + 2.22), 1.0))
     if tag == "top":
-        line |= (np.abs(z - 1.735) < LW) & (ax < np.vectorize(belt_x)(z) - 0.09)
-        line |= (z > 1.735) & (np.abs(ax - (np.vectorize(belt_x)(z) - 0.09)) < LW)
+        line |= gap(np.where(ax < np.vectorize(belt_x)(z) - 0.09, np.abs(z - 1.735), 1.0))
+        line |= gap(np.where(z > 1.735, np.abs(ax - (np.vectorize(belt_x)(z) - 0.09)), 1.0))
+    # A gap is a 3.5 mm deep groove with rounded shoulders.
+    height -= 0.0035 * np.clip(1 - gap_d / 0.008, 0, 1) ** 1.5
     rgb[line] = (0.05, 0.05, 0.055)
     alpha[line] = 0
     rough[line] = 0.9
@@ -524,7 +550,7 @@ def body_material(P, N, tag, chart):
     # Cowl panel and wiper well.
     if tag == "top":
         cowl = (z > -0.93) & (z < Z_COWL + 0.004)
-        put(cowl, (0.03, 0.03, 0.035), r=0.65)
+        put(cowl, (0.03, 0.03, 0.035), r=0.65, h=-0.006)
 
     if tag in ("window_trim",):
         put(np.ones(k, dtype=bool), (0.02, 0.02, 0.022), r=0.35)
@@ -535,7 +561,9 @@ def body_material(P, N, tag, chart):
     if tag == "side":
         for z0, z1 in ((-0.30, -0.15), (0.72, 0.87)):
             h = (z > z0) & (z < z1) & (y > 0.895) & (y < 0.927)
-            put(h, (0.78, 0.78, 0.80), m=1.0, r=0.14)
+            pocket = (z > z0 - 0.01) & (z < z1 + 0.01) & (y > 0.880) & (y < 0.935)
+            height[pocket] = -0.006
+            put(h, (0.78, 0.78, 0.80), m=1.0, r=0.14, h=0.002)
             sh = (z > z0 + 0.01) & (z < z1 - 0.01) & (y > 0.883) & (y <= 0.895)
             rgb[sh] *= 0.35
             alpha[sh] = 0
@@ -548,70 +576,75 @@ def body_material(P, N, tag, chart):
         lamp_top = bl - 0.014
         lamp = frontish & (y > lamp_bottom) & (y < lamp_top) & (ax > 0.40)
         edge = lamp & ((y < lamp_bottom + 0.008) | (y > lamp_top - 0.008) | (ax < 0.408))
-        put(lamp, (0.28, 0.29, 0.30), m=0.9, r=0.08)
+        put(lamp, (0.28, 0.29, 0.30), m=0.9, r=0.08, h=-0.010)
         for cx, cy, rr in ((0.575, 0.672, 0.046), (0.720, 0.688, 0.042)):
             d = np.hypot(ax - cx, y - cy)
             proj = lamp & (d < rr) & (z < -2.12)
-            put(proj, (0.92, 0.93, 0.95), m=0.2, r=0.04)
+            put(proj, (0.92, 0.93, 0.95), m=0.2, r=0.04, h=-0.014)
             ring = lamp & (d >= rr) & (d < rr + 0.008) & (z < -2.12)
-            put(ring, (0.55, 0.56, 0.58), m=1.0, r=0.1)
+            put(ring, (0.55, 0.56, 0.58), m=1.0, r=0.1, h=-0.004)
         amber = lamp & (z > -2.08)
-        put(amber, (0.85, 0.42, 0.05), m=0.1, r=0.06)
-        put(edge, (0.02, 0.02, 0.02), r=0.3)
+        put(amber, (0.85, 0.42, 0.05), m=0.1, r=0.06, h=-0.010)
+        put(edge, (0.02, 0.02, 0.02), r=0.3, h=-0.004)
 
     if tag in ("front", "side"):
         f = z < -2.24
         # Upper grille: dark slats, two chrome bars, chrome surround. No badge.
         gr = f & (ax < 0.40) & (y > 0.600) & (y < 0.690)
-        put(gr, (0.025, 0.025, 0.03), r=0.4)
+        put(gr, (0.025, 0.025, 0.03), r=0.4, h=-0.014)
+        # Slats: raised horizontal bars across the opening.
+        slat = gr & ((np.abs(y - 0.617) < 0.004) | (np.abs(y - 0.645) < 0.004) | (np.abs(y - 0.673) < 0.004))
+        put(slat, (0.05, 0.05, 0.055), r=0.5, h=-0.004)
         bars = gr & ((np.abs(y - 0.628) < 0.006) | (np.abs(y - 0.660) < 0.006))
-        put(bars, (0.82, 0.82, 0.84), m=1.0, r=0.1)
+        put(bars, (0.82, 0.82, 0.84), m=1.0, r=0.1, h=0.002)
         frame = f & (ax < 0.412) & (y > 0.590) & (y < 0.700) & ~gr
-        put(frame, (0.80, 0.80, 0.82), m=1.0, r=0.12)
+        put(frame, (0.80, 0.80, 0.82), m=1.0, r=0.12, h=0.004)
         # Lower intake with a gloss bar through it.
         taper = 0.52 - 0.10 * smoothstep(0.30, 0.46, y)
         intake = f & (ax < taper) & (y > 0.265) & (y < 0.465)
         cell = ((np.floor(ax / 0.022) + np.floor(y / 0.019)) % 2) == 0
-        put(intake & cell, (0.02, 0.02, 0.022), r=0.8)
-        put(intake & ~cell, (0.045, 0.045, 0.05), r=0.7)
-        put(intake & (np.abs(y - 0.365) < 0.011), (0.01, 0.01, 0.012), r=0.1)
+        put(intake & cell, (0.02, 0.02, 0.022), r=0.8, h=-0.018)
+        put(intake & ~cell, (0.045, 0.045, 0.05), r=0.7, h=-0.012)
+        put(intake & (np.abs(y - 0.365) < 0.011), (0.01, 0.01, 0.012), r=0.1, h=-0.004)
         # Fog lamps.
         dfog = np.hypot(ax - 0.665, y - 0.365)
-        put(f & (dfog < 0.075), (0.015, 0.015, 0.017), r=0.5)
-        put(f & (dfog < 0.045), (0.90, 0.90, 0.88), m=0.2, r=0.05)
+        put(f & (dfog < 0.075), (0.015, 0.015, 0.017), r=0.5, h=-0.010)
+        put(f & (dfog < 0.045), (0.90, 0.90, 0.88), m=0.2, r=0.05, h=-0.006)
         # Front plate: white, thin border, abstract characters.
         plate = (z < -2.30) & (ax < 0.26) & (y > 0.49) & (y < 0.60)
-        put(plate, (0.90, 0.90, 0.88), r=0.5)
+        put(plate, (0.90, 0.90, 0.88), r=0.5, h=0.003)
         border = plate & ((ax > 0.25) | (y < 0.498) | (y > 0.592) | (ax < 0.003))
         put(border, (0.08, 0.08, 0.10), r=0.5)
         glyph = plate & (y > 0.51) & (y < 0.58) & (((ax > 0.03) & (ax < 0.06)) | ((ax > 0.09) & (ax < 0.12))
                                                     | ((ax > 0.15) & (ax < 0.18)) | ((ax > 0.20) & (ax < 0.23)))
         put(glyph & ((np.floor(y / 0.012) % 2) == 0), (0.1, 0.12, 0.2), r=0.5)
         lip = (z < -2.0) & (y < 0.245)
-        put(lip, (0.03, 0.03, 0.032), r=0.7)
+        put(lip, (0.03, 0.03, 0.032), r=0.7, h=-0.004)
 
     if tag in ("side", "rear", "top"):
         # Tail lamps wrap round the corners under the boot line.
         tl = rearish & (y > 0.80) & (y < bl - 0.014) & (ax > 0.50)
         tl &= ~((z < 2.40) & (tag == "top"))
-        put(tl, (0.52, 0.02, 0.03), m=0.2, r=0.08)
-        put(tl & (np.abs(y - 0.875) < 0.010), (0.30, 0.01, 0.02), m=0.2, r=0.08)
-        put(tl & (ax < 0.60) & (z > 2.40), (0.86, 0.86, 0.88), m=0.3, r=0.05)
+        put(tl, (0.52, 0.02, 0.03), m=0.2, r=0.08, h=-0.008)
+        put(tl & (np.abs(y - 0.875) < 0.010), (0.30, 0.01, 0.02), m=0.2, r=0.08, h=-0.004)
+        put(tl & (ax < 0.60) & (z > 2.40), (0.86, 0.86, 0.88), m=0.3, r=0.05, h=-0.008)
         tedge = tl & ((y < 0.808) | (y > bl - 0.022) | ((ax < 0.508) & (z > 2.40)))
-        put(tedge, (0.02, 0.02, 0.02), r=0.3)
+        put(tedge, (0.02, 0.02, 0.02), r=0.3, h=-0.003)
 
     if tag in ("rear", "side"):
         r = z > 2.38
-        put(r & (ax < 0.50) & (y > 0.842) & (y < 0.874), (0.82, 0.82, 0.84), m=1.0, r=0.1)
+        put(r & (ax < 0.50) & (y > 0.842) & (y < 0.874), (0.82, 0.82, 0.84), m=1.0, r=0.1, h=0.003)
         rplate = r & (ax < 0.26) & (y > 0.56) & (y < 0.67)
-        put(rplate, (0.90, 0.90, 0.88), r=0.5)
+        # The plate sits in a recess in the boot panel.
+        height[r & (ax < 0.285) & (y > 0.545) & (y < 0.685)] = -0.008
+        put(rplate, (0.90, 0.90, 0.88), r=0.5, h=-0.004)
         put(rplate & ((ax > 0.25) | (y < 0.568) | (y > 0.662)), (0.08, 0.08, 0.10), r=0.5)
         put(rplate & (y > 0.58) & (y < 0.65) & (((ax > 0.04) & (ax < 0.07)) | ((ax > 0.11) & (ax < 0.14))
                                                   | ((ax > 0.18) & (ax < 0.21))), (0.1, 0.12, 0.2), r=0.5)
         put(r & (ax > 0.62) & (ax < 0.78) & (y > 0.44) & (y < 0.47), (0.35, 0.02, 0.02), r=0.2)
-        put((z > 2.12) & (y < 0.40), (0.03, 0.03, 0.032), r=0.7)
+        put((z > 2.12) & (y < 0.40), (0.03, 0.03, 0.032), r=0.7, h=-0.004)
 
-    return {"rgb": rgb, "alpha": alpha, "metal": metal, "rough": rough}
+    return {"rgb": rgb, "alpha": alpha, "metal": metal, "rough": rough, "height": height}
 
 
 # ---------------------------------------------------------------------------
@@ -650,6 +683,7 @@ def build_wheels(S: Surface):
 
 TYRE_PROFILE_S = np.concatenate([[0], np.cumsum([math.dist(TYRE_PROFILE[i], TYRE_PROFILE[i + 1])
                                                  for i in range(len(TYRE_PROFILE) - 1)])])
+TYRE_PROFILE_LEN = float(TYRE_PROFILE_S[-1])
 TYRE_PROFILE_S /= TYRE_PROFILE_S[-1]
 
 
@@ -674,10 +708,14 @@ def tyre_material(P, N, tag, chart):
     groove = tread & ((np.abs(x) < 0.005) | (np.abs(np.abs(x) - 0.042) < 0.005))
     sipe = tread & (np.abs(x) > 0.05) & (np.abs(((th / (2 * math.pi)) * 64) % 1 - 0.5) < 0.08)
     rgb[groove | sipe] = (0.02, 0.02, 0.022)
+    height = np.zeros(k)
+    height[groove] = -0.006
+    height[sipe & ~groove] = -0.003
     band = (~tread) & (r > 0.262) & (r < 0.282)
     rgb[band] = (0.085, 0.085, 0.09)
     rough[band] = 0.8
-    return {"rgb": rgb, "alpha": np.zeros(k), "metal": np.zeros(k), "rough": rough}
+    height[band] = 0.002
+    return {"rgb": rgb, "alpha": np.zeros(k), "metal": np.zeros(k), "rough": rough, "height": height}
 
 
 def rim_material(P, N, tag, chart):
@@ -800,7 +838,9 @@ def main():
     for key, img in maps.items():
         img.save(os.path.join(OUT_ASSETS, f"kamri_body_{key}.png"))
     tyre = Atlas("tyre", *tyre_atlas_size)
-    tmaps, _ = bake(tyre, face_list("Tyre", uv_tyre), tyre_material)
+    circumference = 2 * math.pi * TYRE_R
+    tmaps, _ = bake(tyre, face_list("Tyre", uv_tyre), tyre_material,
+                    ppm_of=lambda chart: (tyre_atlas_size[0] / circumference, tyre_atlas_size[1] / TYRE_PROFILE_LEN))
     tmaps["color"] = tmaps["color"].convert("RGB")
     for key, img in tmaps.items():
         img.save(os.path.join(OUT_ASSETS, f"kamri_tyre_{key}.png"))

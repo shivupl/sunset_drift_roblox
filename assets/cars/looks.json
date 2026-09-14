@@ -1,17 +1,19 @@
 {
   "Kamri_Body": {
     "AlphaMode": "TintMask",
-    "ColorMap": "rbxassetid://89025464992022",
+    "ColorMap": "rbxassetid://101732510158899",
     "MetalnessMap": "rbxassetid://89567131608089",
-    "RoughnessMap": "rbxassetid://83917337314385",
-    "source": "assets/cars/kamri/kamri_body_{color,metal,rough}.png"
+    "RoughnessMap": "rbxassetid://81481224583563",
+    "source": "assets/cars/kamri/kamri_body_{color,metal,rough,normal}.png",
+    "NormalMap": "rbxassetid://121643690038697"
   },
   "Kamri_Tyre": {
     "AlphaMode": "Overlay",
     "ColorMap": "rbxassetid://103546681121993",
     "MetalnessMap": "rbxassetid://85092134394932",
     "RoughnessMap": "rbxassetid://104011088532990",
-    "source": "assets/cars/kamri/kamri_tyre_{color,metal,rough}.png"
+    "source": "assets/cars/kamri/kamri_tyre_{color,metal,rough,normal}.png",
+    "NormalMap": "rbxassetid://94410012519152"
   },
   "Kamri_Rim": {
     "AlphaMode": "Transparency",

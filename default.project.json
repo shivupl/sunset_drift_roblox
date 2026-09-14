@@ -17,9 +17,10 @@
           "$className": "SurfaceAppearance",
           "$properties": {
             "AlphaMode": "TintMask",
-            "ColorMap": "rbxassetid://89025464992022",
+            "ColorMap": "rbxassetid://101732510158899",
             "MetalnessMap": "rbxassetid://89567131608089",
-            "RoughnessMap": "rbxassetid://83917337314385"
+            "RoughnessMap": "rbxassetid://81481224583563",
+            "NormalMap": "rbxassetid://121643690038697"
           }
         },
         "Kamri_Rim": {
@@ -37,7 +38,8 @@
             "AlphaMode": "Overlay",
             "ColorMap": "rbxassetid://103546681121993",
             "MetalnessMap": "rbxassetid://85092134394932",
-            "RoughnessMap": "rbxassetid://104011088532990"
+            "RoughnessMap": "rbxassetid://104011088532990",
+            "NormalMap": "rbxassetid://94410012519152"
           }
         }
       }

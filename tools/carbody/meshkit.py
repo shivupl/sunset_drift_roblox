@@ -210,20 +210,63 @@ class Atlas:
         return px / self.width, py / self.height
 
 
-def bake(atlas: Atlas, faces_uv, material, pad=4):
+def blur(a, sigma):
+    """Separable gaussian blur (edge-clamped)."""
+    if sigma <= 0:
+        return a
+    r = max(1, int(math.ceil(sigma * 3)))
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    k /= k.sum()
+    out = a
+    for axis in (0, 1):
+        pad = [(0, 0), (0, 0)]
+        pad[axis] = (r, r)
+        padded = np.pad(out, pad, mode="edge")
+        out = np.apply_along_axis(lambda m: np.convolve(m, k, mode="valid"), axis, padded)
+    return out
+
+
+def normal_from_height(height, ppm_x, ppm_y, blur_px=0.7):
+    """Tangent-space normal map from a height map in metres.
+
+    Roblox reads normal maps OpenGL style (measured in Studio): red along +u
+    (image right), green along -v (image up). ppm_x / ppm_y are the texels
+    per metre of surface at each texel, so a slope is metres over metres
+    whatever chart the texel belongs to."""
+    h = blur(height, blur_px)
+    dx = (np.roll(h, -1, axis=1) - np.roll(h, 1, axis=1)) / 2 * ppm_x
+    drow = (np.roll(h, -1, axis=0) - np.roll(h, 1, axis=0)) / 2 * ppm_y
+    n = np.dstack([-dx, drow, np.ones_like(h)])
+    n /= np.linalg.norm(n, axis=2, keepdims=True)
+    return Image.fromarray((np.clip(n * 0.5 + 0.5, 0, 1) * 255 + 0.5).astype(np.uint8), "RGB")
+
+
+def bake(atlas: Atlas, faces_uv, material, pad=4, ppm_of=None):
     """faces_uv: list of (uv3 (3x2 in 0..1), P3 (3x3), N3 (3x3), tag, chart).
     material(P (k,3), N (k,3), tag, chart) -> dict of arrays:
-      rgb (k,3) 0..1, alpha (k,) 0..1, metal (k,), rough (k,)
-    Returns dict of uint8 images (RGBA colour, L metal, L rough) and the
-    count of texels written by more than one chart."""
+      rgb (k,3) 0..1, alpha (k,) 0..1, metal (k,), rough (k,),
+      height (k,) metres, optional (0 = the mesh surface, + raised, - recessed)
+    ppm_of(chart) -> (texels per metre along u, along v); charts in the
+    atlas know their own.
+    Returns dict of images (RGBA colour, L metal, L rough, RGB normal) and
+    the count of texels written by more than one chart."""
     W, H = atlas.width, atlas.height
     rgb = np.zeros((H, W, 3))
     alpha = np.zeros((H, W))
     metal = np.zeros((H, W))
     rough = np.ones((H, W))
+    height = np.zeros((H, W))
+    ppm_x = np.full((H, W), 200.0)
+    ppm_y = np.full((H, W), 200.0)
     written = np.zeros((H, W), dtype=np.int32)  # chart id + 1
     chart_ids = {}
     overlaps = 0
+
+    def chart_ppm(chart):
+        if ppm_of:
+            return ppm_of(chart)
+        c = atlas.charts[chart]
+        return c.ppm, c.ppm
 
     # Flats first, whole squares.
     for fl in atlas.flats.values():
@@ -275,22 +318,28 @@ def bake(atlas: Atlas, faces_uv, material, pad=4):
         alpha[yy, xx] = m["alpha"]
         metal[yy, xx] = m["metal"]
         rough[yy, xx] = m["rough"]
+        if "height" in m:
+            height[yy, xx] = m["height"]
+        ux, uy = chart_ppm(chart)
+        ppm_x[yy, xx] = ux
+        ppm_y[yy, xx] = uy
         written[yy, xx] = cid
 
-    # Dilate into the gutters so mip levels don't pull in black.
+    # Dilate into the gutters so mip levels (and the height gradient at a
+    # chart edge) don't pull in the empty atlas.
     filled = written != 0
+    layers = [rgb, alpha, metal, rough, height, ppm_x, ppm_y]
     for _ in range(pad):
         grown = filled.copy()
-        nrgb, nal, nme, nro = rgb.copy(), alpha.copy(), metal.copy(), rough.copy()
+        new = [a.copy() for a in layers]
         for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
             src = np.roll(filled, (dy, dx), axis=(0, 1))
             take = src & ~grown
-            nrgb[take] = np.roll(rgb, (dy, dx), axis=(0, 1))[take]
-            nal[take] = np.roll(alpha, (dy, dx), axis=(0, 1))[take]
-            nme[take] = np.roll(metal, (dy, dx), axis=(0, 1))[take]
-            nro[take] = np.roll(rough, (dy, dx), axis=(0, 1))[take]
+            for a, n in zip(layers, new):
+                n[take] = np.roll(a, (dy, dx), axis=(0, 1))[take]
             grown |= take
-        rgb, alpha, metal, rough, filled = nrgb, nal, nme, nro, grown
+        layers, filled = new, grown
+    rgb, alpha, metal, rough, height, ppm_x, ppm_y = layers
 
     def u8(a):
         return (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
@@ -300,6 +349,8 @@ def bake(atlas: Atlas, faces_uv, material, pad=4):
         "color": Image.fromarray(colour, "RGBA"),
         "metal": Image.fromarray(u8(metal), "L"),
         "rough": Image.fromarray(u8(rough), "L"),
+        "normal": normal_from_height(height, ppm_x, ppm_y),
+        "height": Image.fromarray(u8(0.5 + height * 25), "L"),  # for looking at: 2 cm per 0.5
     }, overlaps
 
 
