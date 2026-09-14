@@ -98,6 +98,19 @@ function RigBuilder.build(cfg: Config, entry: VehicleRig.CarEntry, name: string)
 	bodyMount.Position = VehicleRig.bodyMountM(cfg) / mps
 	bodyMount.Parent = chassis
 
+	-- Plate mounts: where the plate system (and for now BodyBuilder's
+	-- placeholder plates) puts a car's number plates.
+	for _, pair in { { "front", VehicleRig.PLATE_FRONT }, { "rear", VehicleRig.PLATE_REAR } } do
+		local which, name = pair[1], pair[2]
+		local cf = VehicleRig.plateCFrame(cfg, entry, which :: any)
+		if cf then
+			local plate = Instance.new("Attachment")
+			plate.Name = name
+			plate.CFrame = cf
+			plate.Parent = chassis
+		end
+	end
+
 	-- Ray origins and hubs. A hub starts at full droop; the sim moves it to
 	-- the ground, steers it and spins it through WheelWeld.C0 every frame.
 	for _, w in VehicleRig.WHEELS do

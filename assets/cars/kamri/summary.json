@@ -1,15 +1,15 @@
 {
   "Body": {
-    "triangles": 4446,
+    "triangles": 3744,
     "sizeM": [
       2.1034,
       1.2639,
-      4.8315
+      4.8357
     ],
     "offsetM": [
       0.0,
       0.8319,
-      0.0513
+      0.0524
     ]
   },
   "Glass": {
@@ -38,6 +38,58 @@
       0.41
     ]
   },
+  "HeadLamps": {
+    "triangles": 112,
+    "sizeM": [
+      1.7833,
+      0.2517,
+      0.3809
+    ],
+    "offsetM": [
+      0.0,
+      0.6941,
+      -2.1372
+    ]
+  },
+  "TailLamps": {
+    "triangles": 92,
+    "sizeM": [
+      1.7634,
+      0.276,
+      0.2636
+    ],
+    "offsetM": [
+      0.0,
+      0.9165,
+      2.3029
+    ]
+  },
+  "LampHousings": {
+    "triangles": 436,
+    "sizeM": [
+      1.7953,
+      0.4977,
+      4.7739
+    ],
+    "offsetM": [
+      0.0,
+      0.8069,
+      0.0536
+    ]
+  },
+  "Grille": {
+    "triangles": 140,
+    "sizeM": [
+      0.9,
+      0.1884,
+      0.1041
+    ],
+    "offsetM": [
+      0.0,
+      0.6508,
+      -2.2913
+    ]
+  },
   "Tyre": {
     "triangles": 728,
     "sizeM": [
@@ -64,6 +116,19 @@
       0.0
     ]
   },
-  "car_triangles": 10108,
+  "car_triangles": 10190,
+  "detail_triangles": 784,
+  "plates": {
+    "front": [
+      0.0,
+      0.525,
+      -2.365
+    ],
+    "rear": [
+      0.0,
+      0.615,
+      2.4755
+    ]
+  },
   "body_texel_overlaps": 0
 }

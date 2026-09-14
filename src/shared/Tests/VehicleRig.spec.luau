@@ -177,6 +177,24 @@ return function(t: T)
 			end
 		end
 	end
+	t.ok(#problemsWith(function(e) e.body.pieces[1].lamp = "head" end) > 0, "a lamp piece on a car with no lamp colours")
+	t.ok(#problemsWith(function(e)
+		e.body.lamps = { head = Color3.new(1, 1, 1), tail = Color3.new(1, 0, 0) }
+		e.body.pieces[1].lamp = "fog"
+	end) > 0, "a lamp that is neither head nor tail")
+	t.ok(#problemsWith(function(e) e.body.plates = { front = { 0, 0.5, -2.3 } } end) > 0, "plates without a texture")
+	t.eq(#problemsWith(function(e) e.body.plates = { front = { 0, 0.5, -2.3 }, rear = { 0, 0.6, 2.4 }, textureId = 1 } end), 0, "plates with mounts and a texture")
+
+	-- Plate mounts: car space plus the body mount, rear turned to face back.
+	local withPlates = clone(PHASE0_SEDAN)
+	withPlates.body.plates = { front = { 0, 0.5, -2.3 }, rear = { 0, 0.6, 2.4 }, textureId = 1 }
+	local front = VehicleRig.plateCFrame(sedan, withPlates, "front") :: CFrame
+	local rear = VehicleRig.plateCFrame(sedan, withPlates, "rear") :: CFrame
+	t.near(front.Position.Y * 0.28, VehicleRig.bodyMountM(sedan).Y + 0.5, 1e-5, "front plate height is car space above the ground")
+	t.near(front.LookVector.Z, -1, 1e-6, "the front plate faces forward (-Z)")
+	t.near(rear.LookVector.Z, 1, 1e-6, "the rear plate faces back (+Z)")
+	t.ok(VehicleRig.plateCFrame(sedan, PHASE0_SEDAN, "front") == nil, "no plates, no mount")
+
 	local decoded = MeshData.base64("AQID/w==")
 	t.eq(buffer.len(decoded), 4, "base64 padding")
 	t.eq(buffer.readu8(decoded, 3), 255, "base64 bytes")

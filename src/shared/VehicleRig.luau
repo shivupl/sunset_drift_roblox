@@ -36,6 +36,10 @@ VehicleRig.BODY_MOUNT = "BodyMount" -- Attachment on Chassis at the car-space or
 VehicleRig.WHEEL_MOUNT = "WheelMount" -- Attachment on each hub at the wheel centre
 VehicleRig.WHEEL_WELD = "WheelWeld" -- Weld on each hub, Part0 = Chassis; the sim writes C0
 VehicleRig.CAR_ID_ATTRIBUTE = "CarId" -- on the car Model
+VehicleRig.PLATE_FRONT = "PlateFront" -- Attachment on Chassis: the front plate's centre, facing -Z
+VehicleRig.PLATE_REAR = "PlateRear" -- Attachment on Chassis: the rear plate's centre, facing +Z
+VehicleRig.PLATE_SIZE_M = { 0.52, 0.11 } -- width, height: a Saudi plate
+VehicleRig.LAMP_ATTRIBUTE = "Lamp" -- on a lamp lens part: "head" or "tail"
 
 function VehicleRig.rayOriginName(wheel: string): string
 	return "RayOrigin_" .. wheel
@@ -87,6 +91,9 @@ export type BodyPiece = {
 	-- metalness and roughness maps. With paint = true its Color is the paint
 	-- (AlphaMode TintMask: the colour map's alpha marks the painted texels).
 	look: string?,
+	-- A lamp lens: coloured from body.lamps[lamp], and switched between
+	-- unlit glass and glowing Neon by BodyBuilder.setLamps.
+	lamp: string?, -- "head" | "tail"
 	textureId: number?, -- asset meshes only; nil or 0: coloured by color/material
 	sizeM: Vec3, -- bounding box size in the mount's space
 	offsetM: Vec3, -- bounding box centre in the mount's space
@@ -98,8 +105,18 @@ export type BodyPiece = {
 	castShadow: boolean?, -- default true
 }
 
+-- Plate mounts, car space (origin on the ground, like pieces), and the
+-- texture every plate shows until the plate system sets its own.
+export type PlateSpec = {
+	front: Vec3?,
+	rear: Vec3?,
+	textureId: number,
+}
+
 export type BodySpec = {
 	paint: Color3,
+	lamps: { head: Color3, tail: Color3 }?, -- this car's lens colours
+	plates: PlateSpec?,
 	-- Mounted to BodyMount: offsets are car space (origin on the ground).
 	pieces: { BodyPiece },
 	-- Mounted to every WheelMount: offsets are wheel space (origin at the
@@ -264,6 +281,20 @@ function VehicleRig.hubM(cfg: CarConfig.Config, wheel: WheelDef, dropM: number):
 	return VehicleRig.rayOriginM(cfg, wheel) - Vector3.new(0, dropM, 0)
 end
 
+-- A plate attachment's CFrame on the chassis, studs, or nil if the car has
+-- no such plate. Front plates face -Z, rear plates are turned to face +Z.
+function VehicleRig.plateCFrame(cfg: CarConfig.Config, entry: CarEntry, which: "front" | "rear"): CFrame?
+	local plates = entry.body.plates
+	local at = plates and plates[which]
+	if not at then
+		return nil
+	end
+	local k = VehicleRig.scaleOf(entry)
+	local mps = cfg.units.metersPerStud
+	local pos = (VehicleRig.bodyMountM(cfg) + Vector3.new(at[1], at[2], at[3]) * k) / mps
+	return CFrame.new(pos) * (if which == "rear" then CFrame.Angles(0, math.pi, 0) else CFrame.identity)
+end
+
 -- CFrame of a piece relative to its mount, in studs, for a car of scale k.
 function VehicleRig.pieceCFrame(piece: BodyPiece, mps: number, mirrored: boolean, k: number?): CFrame
 	local o = piece.offsetM
@@ -325,6 +356,9 @@ local function pieces(problems: { string }, where: string, list: any)
 		if p.look ~= nil and type(p.look) ~= "string" then
 			table.insert(problems, `{at}.look must be the name of a CarLooks SurfaceAppearance`)
 		end
+		if p.lamp ~= nil and p.lamp ~= "head" and p.lamp ~= "tail" then
+			table.insert(problems, `{at}.lamp must be "head" or "tail"`)
+		end
 		vec(problems, `{at}.sizeM`, p.sizeM, true)
 		vec(problems, `{at}.offsetM`, p.offsetM, false)
 		if p.rotationDeg ~= nil then
@@ -384,6 +418,31 @@ function VehicleRig.validate(id: string, entry: any): { string }
 		end
 		pieces(problems, `{id}: body.pieces`, b.pieces)
 		pieces(problems, `{id}: body.wheelPieces`, b.wheelPieces)
+		local hasLampPiece = false
+		for _, p in (if type(b.pieces) == "table" then b.pieces else {}) do
+			if type(p) == "table" and p.lamp ~= nil then
+				hasLampPiece = true
+			end
+		end
+		if b.lamps ~= nil or hasLampPiece then
+			if type(b.lamps) ~= "table" or typeof(b.lamps.head) ~= "Color3" or typeof(b.lamps.tail) ~= "Color3" then
+				table.insert(problems, `{id}: body.lamps needs head and tail Color3s when a piece is a lamp`)
+			end
+		end
+		if b.plates ~= nil then
+			if type(b.plates) ~= "table" then
+				table.insert(problems, `{id}: body.plates must be a table`)
+			else
+				if type(b.plates.textureId) ~= "number" or b.plates.textureId <= 0 then
+					table.insert(problems, `{id}: body.plates.textureId must be an image asset id`)
+				end
+				for _, which in { "front", "rear" } do
+					if b.plates[which] ~= nil then
+						vec(problems, `{id}: body.plates.{which}`, b.plates[which], false)
+					end
+				end
+			end
+		end
 		if type(b.pieces) == "table" and #b.pieces == 0 then
 			table.insert(problems, `{id}: body.pieces is empty`)
 		end
@@ -425,6 +484,7 @@ export type Handles = {
 	bodyMount: Attachment,
 	rayOrigins: { [string]: Attachment },
 	hubs: { [string]: Hub },
+	plates: { front: Attachment?, rear: Attachment? },
 	body: Folder?,
 }
 
@@ -466,6 +526,10 @@ function VehicleRig.handles(model: Model): Handles
 		bodyMount = need(chassis, VehicleRig.BODY_MOUNT, "Attachment"),
 		rayOrigins = rayOrigins,
 		hubs = hubs,
+		plates = {
+			front = chassis:FindFirstChild(VehicleRig.PLATE_FRONT) :: Attachment?,
+			rear = chassis:FindFirstChild(VehicleRig.PLATE_REAR) :: Attachment?,
+		},
 		body = if body and body:IsA("Folder") then body else nil,
 	}
 end

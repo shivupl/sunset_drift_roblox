@@ -62,6 +62,8 @@ Z_WS_TOP = -0.07  # windscreen top / roof front header
 Z_RW_TOP = 1.07  # rear window top / roof rear header
 Z_DECK = 1.70  # rear window base / boot lid front
 B_PILLAR = (0.22, 0.32)
+HEAD_END_Z = -1.95  # headlamp openings end at this station
+TAIL_START_Z = 2.18  # tail lamp openings start at this station
 REAR_DIVIDER = (1.02, 1.06)
 DLO = (-0.80, 1.38)  # side glass runs between these
 
@@ -156,7 +158,7 @@ def arch_bottom(z):
 
 
 def stations():
-    zs = [Z_FRONT, -2.345, -2.335, -2.32, -2.30, -2.27, -2.22, -2.15, -2.05, -1.95]
+    zs = [Z_FRONT, -2.335, -2.30, -2.26, -2.20, -2.12, -2.03, -1.95]
     for zc in AXLES:
         for phi in np.linspace(-math.pi / 2, math.pi / 2, 13):
             zs.append(zc + ARCH_W * math.sin(phi) * 0.999)
@@ -173,18 +175,26 @@ def stations():
     return out
 
 
-SIDE_ROWS = [0.20, 0.26, 0.38, 0.52, 0.66, 0.78, 0.88, 0.95]
+# Rows sit on the detail edges too: 0.48/0.57 bound the front plate,
+# 0.57 the grille and headlamp bottoms, 0.78 the tail lamp bottoms.
+SIDE_ROWS = [0.20, 0.26, 0.38, 0.48, 0.57, 0.66, 0.78, 0.88, 0.95]
 ACROSS = [0.0, 0.04, 0.10, 0.25, 0.50, 0.75, 1.0]  # edge -> centre
 GLASS_ROWS = [0.0, 0.07, 0.93, 1.0]  # belt -> rail
 
 
 def side_heights(z):
+    """Row heights of the side panel at z. A row that falls below the arch
+    or within 4 mm of the belt collapses onto it (same height), and the
+    builder reuses that vertex, so no sliver faces are made and the
+    shading stays smooth across."""
     yb, yt = arch_bottom(z), belt(z)
     ys = [yb]
-    n = len(SIDE_ROWS)
-    for r in range(1, n):
-        y = max(SIDE_ROWS[r], ys[-1] + 0.002)
-        y = min(y, yt - (n - r) * 0.002)
+    for r in range(1, len(SIDE_ROWS)):
+        y = SIDE_ROWS[r]
+        if y <= ys[-1]:
+            y = ys[-1]
+        if y >= yt - 0.004:
+            y = yt
         ys.append(y)
     ys.append(yt)
     return ys
@@ -212,7 +222,13 @@ def build_body(S: Surface):
     for s in (-1, 1):
         cols = []
         for z in Z:
-            cols.append([S.vert((s * shoulder_x(z, y), y, z)) for y in side_heights(z)])
+            col = []
+            for y in side_heights(z):
+                if col and abs(S.P[col[-1]][1] - y) < 1e-9:
+                    col.append(col[-1])
+                else:
+                    col.append(S.vert((s * shoulder_x(z, y), y, z)))
+            cols.append(col)
         side[s] = cols
 
     # Top surface across the whole length: left edge -> centre -> right edge.
@@ -249,9 +265,30 @@ def build_body(S: Surface):
 
     S.grid(top, top_piece, lambda i, j: "top", top_tag, body_outward)
 
-    # Side panels.
+    # Side panels, less the lamp openings (kept as quads for build_details).
+    holes = {}
+
+    def side_hole(i, j, s):
+        z0, z1 = Z[i], Z[i + 1]
+        y0 = S.P[side[s][i][j]][1]
+        if z1 <= HEAD_END_Z + 1e-6 and (y0 >= 0.655 or (y0 >= 0.565 and z1 <= -2.20 + 1e-6)):
+            return f"head{s}"
+        if z0 >= TAIL_START_Z - 1e-6 and y0 >= 0.775:
+            return f"tail{s}"
+        return None
+
     for s in (-1, 1):
-        S.grid(side[s], lambda i, j: "Body", lambda i, j: "side", lambda i, j: "side", body_outward)
+        cols = side[s]
+        for i in range(len(cols) - 1):
+            for j in range(len(cols[i]) - 1):
+                a, b, c, d = cols[i][j], cols[i + 1][j], cols[i + 1][j + 1], cols[i][j + 1]
+                region = side_hole(i, j, s)
+                if len({a, b, c, d}) < 3:
+                    region = None  # a collapsed row: S.quad skips it
+                if region:
+                    holes.setdefault(region, []).append((a, b, c, d))
+                else:
+                    S.quad(a, b, c, d, "Body", "side", "side", body_outward)
 
     # Side glass and window frame between belt and roof rail.
     for s in (-1, 1):
@@ -288,37 +325,67 @@ def build_body(S: Surface):
 
         S.grid(cols, glass_piece, lambda i, j: "side", glass_tag, body_outward)
 
-    # End caps: ring round the last station, bulged outward.
+    # End caps: a grid across the last station, rows at the side panel's
+    # heights and columns at the top surface's, so the grille, lamp and plate
+    # edges fall on grid lines. The cap has its own copies of the edge so
+    # its normals face along the car.
+    cap_verts = {}
+
     def cap(ci, zsign, chart):
-        # The cap gets its own copies of the ring so its normals face along
-        # the car instead of borrowing the sills' and the hood's, and the
-        # straight bottom edge is split so no triangle spans the car.
-        edge = list(side[-1][ci])  # bottom -> belt, left
-        edge += top[ci][1:-1]  # across (edge verts are the belt verts outside the cabin)
-        edge += list(reversed(side[1][ci]))  # belt -> bottom, right
-        right_bottom, left_bottom = S.P[edge[-1]], S.P[edge[0]]
-        pts = [S.P[k] for k in edge]
-        for t in np.linspace(0, 1, 10)[1:-1]:
-            pts.append(right_bottom + (left_bottom - right_bottom) * t)
-        ring = [S.vert(p) for p in pts]
-        c = np.mean(np.array(pts), axis=0)
-        rings = [ring]
-        for scale, bulge in ((0.72, 0.008), (0.40, 0.013)):
-            rings.append([S.vert(c + (S.P[k] - c) * scale + np.array([0, 0, zsign * bulge])) for k in ring])
-        centre = S.vert(c + np.array([0, 0, zsign * 0.016]))
+        rows_l = side[-1][ci]
+        rows_r = side[1][ci]
+        R = len(rows_l) - 1
+        n_across = len(top[ci])
+        z_end = Z[ci]
+        grid = []
+        for r in range(R + 1):
+            y = S.P[rows_l[r]][1]
+            xr = abs(S.P[rows_l[r]][0])
+            t = r / R
+            row = []
+            for k in range(n_across):
+                a = ACROSS[k] if k <= centre_j else ACROSS[n_across - 1 - k]
+                sgn = -1 if k < centre_j else (1 if k > centre_j else 0)
+                if r == R:
+                    p = S.P[top[ci][k]].copy()
+                elif k == 0:
+                    p = S.P[rows_l[r]].copy()
+                elif k == n_across - 1:
+                    p = S.P[rows_r[r]].copy()
+                else:
+                    bulge = 0.018 * (1 - (1 - a) ** 2) * math.sin(math.pi * t)
+                    p = np.array([sgn * xr * (1 - a), y, z_end + zsign * bulge])
+                if grid and np.linalg.norm(S.P[grid[-1][k]] - p) < 1e-6:
+                    row.append(grid[-1][k])
+                else:
+                    row.append(S.vert(p))
+            grid.append(row)
+        cap_verts[chart] = [v for row in grid for v in row]
 
         def out(p):
-            return np.array([0, 0, zsign * 1.0]) + 0.2 * (p - c)
+            return np.array([0, 0, zsign * 1.0])
 
-        n = len(ring)
-        for r in range(len(rings) - 1):
-            for k in range(n):
-                a, b = rings[r][k], rings[r][(k + 1) % n]
-                c2, d = rings[r + 1][(k + 1) % n], rings[r + 1][k]
-                S.quad(a, b, c2, d, "Body", chart, chart, out)
-        last = rings[-1]
-        for k in range(n):
-            S.tri(last[k], last[(k + 1) % n], centre, "Body", chart, chart, out)
+        for r in range(R):
+            y0 = S.P[grid[r][0]][1]
+            for k in range(n_across - 1):
+                a0 = ACROSS[k] if k <= centre_j else ACROSS[n_across - 1 - k]
+                a1 = ACROSS[k + 1] if k + 1 <= centre_j else ACROSS[n_across - 2 - k]
+                quad = (grid[r][k], grid[r][k + 1], grid[r + 1][k + 1], grid[r + 1][k])
+                region = None
+                side_sign = -1 if k < centre_j else 1
+                if zsign < 0 and y0 >= 0.565:
+                    if max(a0, a1) <= 0.25 + 1e-9:
+                        region = f"head{side_sign}"
+                    elif min(a0, a1) >= 0.25 - 1e-9:
+                        region = "grille"
+                elif zsign > 0 and y0 >= 0.775 and max(a0, a1) <= 0.25 + 1e-9:
+                    region = f"tail{side_sign}"
+                if len(set(quad)) < 3:
+                    continue
+                if region:
+                    holes.setdefault(region, []).append(quad)
+                else:
+                    S.quad(*quad, "Body", chart, chart, out)
 
     cap(0, -1, "front")
     cap(nz - 1, 1, "rear")
@@ -369,7 +436,7 @@ def build_body(S: Surface):
             chart = "flat_black" if f == (1, 2, 6, 5) else "flat_paint"
             S.quad(box[f[0]], box[f[1]], box[f[2]], box[f[3]], "Body", chart, "mirror", out)
 
-    return Z
+    return {"Z": Z, "holes": holes, "cap_verts": cap_verts}
 
 
 def build_interior(S: Surface):
@@ -411,6 +478,112 @@ def build_interior(S: Surface):
         box((x - 0.12, 1.10, 0.34), (x + 0.12, 1.24, 0.42))
     box((-0.72, 0.30, 0.78), (0.72, 0.58, 1.28))  # rear bench
     box((-0.72, 0.58, 1.24), (0.72, 1.06, 1.40))
+
+
+DETAIL_BUDGET = 800  # triangles for lamps, housings, grille and plates together
+PLATE_SIZE = (0.52, 0.11)  # a Saudi plate, metres
+
+
+def build_details(S: Surface, body):
+    """Fills the openings build_body left with their own pieces. Runs after
+    lean(), on the final positions.
+
+    Lamps: a lens flush with the body (6 mm in, so the opening edge shows)
+    and a housing behind it (walls round the opening and a back 35-40 mm
+    deep). Grille: walls, a back 45 mm deep and three slats following the
+    leaning nose. Plates: positions only; the game mounts a flat quad there."""
+    holes = body["holes"]
+    P = S.P
+
+    def region_normals(quads):
+        acc = {}
+        for q in quads:
+            a, b, c, d = (P[v] for v in q)
+            n = np.cross(c - a, d - b)
+            if np.dot(n, body_outward((a + c) / 2)) < 0:
+                n = -n
+            for v in q:
+                acc[v] = acc.get(v, np.zeros(3)) + n
+        return {v: n / (np.linalg.norm(n) + 1e-12) for v, n in acc.items()}
+
+    def recess(quads, lens_piece, back_piece, depth, lens_inset=0.006):
+        normals = region_normals(quads)
+        centre = np.mean([P[v] for q in quads for v in q], axis=0)
+        lens = {v: S.vert(P[v] - normals[v] * lens_inset) for v in normals} if lens_piece else {}
+        back = {v: S.vert(P[v] - normals[v] * depth) for v in normals}
+        rim = {v: S.vert(P[v]) for v in normals}
+        region_out = np.mean(list(normals.values()), axis=0)
+
+        def out_along(p, n=region_out):
+            return n
+
+        for q in quads:
+            if lens_piece:
+                S.quad(*(lens[v] for v in q), lens_piece, "none", "lens", out_along)
+            S.quad(*(back[v] for v in q), back_piece, "none", "back", out_along)
+        edges = {}
+        for q in quads:
+            for e in ((q[0], q[1]), (q[1], q[2]), (q[2], q[3]), (q[3], q[0])):
+                key = tuple(sorted(e))
+                edges[key] = edges.get(key, 0) + 1
+        for (a, b), count in edges.items():
+            if count != 1 or a == b:
+                continue
+            S.quad(rim[a], rim[b], back[b], back[a], back_piece, "none", "wall",
+                   lambda p, c=centre, n=region_out: (c - p) - n * np.dot(c - p, n))
+        return normals
+
+    before = len(S.faces)
+    for s in (-1, 1):
+        recess(holes[f"head{s}"], "HeadLamps", "LampHousings", 0.040)
+        recess(holes[f"tail{s}"], "TailLamps", "LampHousings", 0.035)
+    grille_normals = recess(holes["grille"], None, "Grille", 0.045)
+
+    # Slats across the grille opening, 15 mm behind the surface.
+    gverts = list(grille_normals)
+    gpos = np.array([P[v] for v in gverts])
+
+    def surface_z(x, y):
+        d = np.hypot(gpos[:, 0] - x, (gpos[:, 1] - y) * 3) + 1e-4
+        w = 1 / d ** 2
+        return float(np.sum(w * gpos[:, 2]) / np.sum(w))
+
+    y_lo, y_hi = gpos[:, 1].min(), gpos[:, 1].max()
+    half = gpos[:, 0].max()
+    for y_s in np.linspace(y_lo, y_hi, 5)[1:-1]:
+        xs = [-half + 0.01, 0.0, half - 0.01]
+        front = [S.vert((x, y_s - 0.006, surface_z(x, y_s) + 0.015)) for x in xs]
+        front_top = [S.vert((x, y_s + 0.006, surface_z(x, y_s) + 0.015)) for x in xs]
+        deep_top = [S.vert((x, y_s + 0.006, surface_z(x, y_s) + 0.035)) for x in xs]
+        deep_bot = [S.vert((x, y_s - 0.006, surface_z(x, y_s) + 0.035)) for x in xs]
+        for k in range(2):
+            S.quad(front[k], front[k + 1], front_top[k + 1], front_top[k], "Grille", "none", "slat",
+                   lambda p: np.array([0, 0.3, -1.0]))
+            S.quad(front_top[k], front_top[k + 1], deep_top[k + 1], deep_top[k], "Grille", "none", "slat",
+                   lambda p: np.array([0, 1.0, 0]))
+            S.quad(deep_bot[k], deep_bot[k + 1], front[k + 1], front[k], "Grille", "none", "slat",
+                   lambda p: np.array([0, -1.0, 0]))
+    detail_tris = len(S.faces) - before
+
+    # Plate mounts: centred on the plate rows, just proud of the surface.
+    def plate_point(chart, y, zsign):
+        # The cap's centre column, interpolated to the plate's height; the
+        # plate's edges sit a little behind its centre on the bulge, so it
+        # stands 6 mm proud of the centre.
+        vs = np.array([P[v] for v in body["cap_verts"][chart]])
+        centre = vs[np.abs(vs[:, 0]) < 1e-6]
+        centre = centre[np.argsort(centre[:, 1])]
+        z = float(np.interp(y, centre[:, 1], centre[:, 2]))
+        edge = vs[np.abs(np.abs(vs[:, 0]) - PLATE_SIZE[0] / 2) < 0.08]
+        if len(edge):
+            nearest = edge[np.argsort(np.abs(edge[:, 1] - y))[:4]]
+            z = min(z, float(nearest[:, 2].min())) if zsign < 0 else max(z, float(nearest[:, 2].max()))
+        return [0.0, round(y, 4), round(z + zsign * 0.006, 4)]
+
+    plates = {"front": plate_point("front", 0.525, -1), "rear": plate_point("rear", 0.615, 1)}
+    total = detail_tris + 4  # two quads for the plates
+    assert total <= DETAIL_BUDGET, f"details are {total} triangles, over the {DETAIL_BUDGET} budget"
+    return {"triangles": total, "plates": plates}
 
 
 def lean(p):
@@ -568,37 +741,10 @@ def body_material(P, N, tag, chart):
             rgb[sh] *= 0.35
             alpha[sh] = 0
 
-    frontish = z < -1.88
-    rearish = z > 2.15
-    if tag in ("side", "front", "top"):
-        # Headlamps: under the hood edge, wrapping back onto the wings.
-        lamp_bottom = 0.575 + 0.17 * smoothstep(-2.18, -1.90, z) + 0.02 * smoothstep(0.4, 0.8, ax)
-        lamp_top = bl - 0.014
-        lamp = frontish & (y > lamp_bottom) & (y < lamp_top) & (ax > 0.40)
-        edge = lamp & ((y < lamp_bottom + 0.008) | (y > lamp_top - 0.008) | (ax < 0.408))
-        put(lamp, (0.28, 0.29, 0.30), m=0.9, r=0.08, h=-0.010)
-        for cx, cy, rr in ((0.575, 0.672, 0.046), (0.720, 0.688, 0.042)):
-            d = np.hypot(ax - cx, y - cy)
-            proj = lamp & (d < rr) & (z < -2.12)
-            put(proj, (0.92, 0.93, 0.95), m=0.2, r=0.04, h=-0.014)
-            ring = lamp & (d >= rr) & (d < rr + 0.008) & (z < -2.12)
-            put(ring, (0.55, 0.56, 0.58), m=1.0, r=0.1, h=-0.004)
-        amber = lamp & (z > -2.08)
-        put(amber, (0.85, 0.42, 0.05), m=0.1, r=0.06, h=-0.010)
-        put(edge, (0.02, 0.02, 0.02), r=0.3, h=-0.004)
-
+    # Headlamps, tail lamps, the upper grille and the plates are geometry
+    # now (build_details): the body only paints what stays on its surface.
     if tag in ("front", "side"):
         f = z < -2.24
-        # Upper grille: dark slats, two chrome bars, chrome surround. No badge.
-        gr = f & (ax < 0.40) & (y > 0.600) & (y < 0.690)
-        put(gr, (0.025, 0.025, 0.03), r=0.4, h=-0.014)
-        # Slats: raised horizontal bars across the opening.
-        slat = gr & ((np.abs(y - 0.617) < 0.004) | (np.abs(y - 0.645) < 0.004) | (np.abs(y - 0.673) < 0.004))
-        put(slat, (0.05, 0.05, 0.055), r=0.5, h=-0.004)
-        bars = gr & ((np.abs(y - 0.628) < 0.006) | (np.abs(y - 0.660) < 0.006))
-        put(bars, (0.82, 0.82, 0.84), m=1.0, r=0.1, h=0.002)
-        frame = f & (ax < 0.412) & (y > 0.590) & (y < 0.700) & ~gr
-        put(frame, (0.80, 0.80, 0.82), m=1.0, r=0.12, h=0.004)
         # Lower intake with a gloss bar through it.
         taper = 0.52 - 0.10 * smoothstep(0.30, 0.46, y)
         intake = f & (ax < taper) & (y > 0.265) & (y < 0.465)
@@ -610,37 +756,16 @@ def body_material(P, N, tag, chart):
         dfog = np.hypot(ax - 0.665, y - 0.365)
         put(f & (dfog < 0.075), (0.015, 0.015, 0.017), r=0.5, h=-0.010)
         put(f & (dfog < 0.045), (0.90, 0.90, 0.88), m=0.2, r=0.05, h=-0.006)
-        # Front plate: white, thin border, abstract characters.
-        plate = (z < -2.30) & (ax < 0.26) & (y > 0.49) & (y < 0.60)
-        put(plate, (0.90, 0.90, 0.88), r=0.5, h=0.003)
-        border = plate & ((ax > 0.25) | (y < 0.498) | (y > 0.592) | (ax < 0.003))
-        put(border, (0.08, 0.08, 0.10), r=0.5)
-        glyph = plate & (y > 0.51) & (y < 0.58) & (((ax > 0.03) & (ax < 0.06)) | ((ax > 0.09) & (ax < 0.12))
-                                                    | ((ax > 0.15) & (ax < 0.18)) | ((ax > 0.20) & (ax < 0.23)))
-        put(glyph & ((np.floor(y / 0.012) % 2) == 0), (0.1, 0.12, 0.2), r=0.5)
+        # Behind the front plate: a dark recess.
+        put((z < -2.30) & (ax < 0.285) & (y > 0.475) & (y < 0.575), (0.03, 0.03, 0.032), r=0.7, h=-0.006)
         lip = (z < -2.0) & (y < 0.245)
         put(lip, (0.03, 0.03, 0.032), r=0.7, h=-0.004)
-
-    if tag in ("side", "rear", "top"):
-        # Tail lamps wrap round the corners under the boot line.
-        tl = rearish & (y > 0.80) & (y < bl - 0.014) & (ax > 0.50)
-        tl &= ~((z < 2.40) & (tag == "top"))
-        put(tl, (0.52, 0.02, 0.03), m=0.2, r=0.08, h=-0.008)
-        put(tl & (np.abs(y - 0.875) < 0.010), (0.30, 0.01, 0.02), m=0.2, r=0.08, h=-0.004)
-        put(tl & (ax < 0.60) & (z > 2.40), (0.86, 0.86, 0.88), m=0.3, r=0.05, h=-0.008)
-        tedge = tl & ((y < 0.808) | (y > bl - 0.022) | ((ax < 0.508) & (z > 2.40)))
-        put(tedge, (0.02, 0.02, 0.02), r=0.3, h=-0.003)
 
     if tag in ("rear", "side"):
         r = z > 2.38
         put(r & (ax < 0.50) & (y > 0.842) & (y < 0.874), (0.82, 0.82, 0.84), m=1.0, r=0.1, h=0.003)
-        rplate = r & (ax < 0.26) & (y > 0.56) & (y < 0.67)
         # The plate sits in a recess in the boot panel.
-        height[r & (ax < 0.285) & (y > 0.545) & (y < 0.685)] = -0.008
-        put(rplate, (0.90, 0.90, 0.88), r=0.5, h=-0.004)
-        put(rplate & ((ax > 0.25) | (y < 0.568) | (y > 0.662)), (0.08, 0.08, 0.10), r=0.5)
-        put(rplate & (y > 0.58) & (y < 0.65) & (((ax > 0.04) & (ax < 0.07)) | ((ax > 0.11) & (ax < 0.14))
-                                                  | ((ax > 0.18) & (ax < 0.21))), (0.1, 0.12, 0.2), r=0.5)
+        put(r & (ax < 0.29) & (y > 0.550) & (y < 0.680), (0.05, 0.05, 0.055), r=0.6, h=-0.008)
         put(r & (ax > 0.62) & (ax < 0.78) & (y > 0.44) & (y < 0.47), (0.35, 0.02, 0.02), r=0.2)
         put((z > 2.12) & (y < 0.40), (0.03, 0.03, 0.032), r=0.7, h=-0.004)
 
@@ -773,8 +898,9 @@ def main():
     os.makedirs(OUT_LUAU, exist_ok=True)
 
     S = Surface()
-    build_body(S)
+    body = build_body(S)
     S.P = [lean(p) for p in S.P]
+    details = build_details(S, body)
     build_interior(S)
     n_body_faces = len(S.faces)
     build_wheels(S)
@@ -808,7 +934,7 @@ def main():
     rim.add(Flat("flat_rotor", 502, 2))
 
     def uv_body(f):
-        if f.piece in ("Glass", "Interior"):
+        if f.piece in ("Glass", "Interior", "HeadLamps", "TailLamps", "LampHousings", "Grille"):
             return np.zeros((3, 2))
         return np.array([body.uv_of(f.chart, P[k]) for k in f.v])
 
@@ -824,7 +950,8 @@ def main():
     groups = {}
     for f in S.faces:
         groups.setdefault(f.piece, []).append(f)
-    uv_fn = {"Body": uv_body, "Glass": uv_body, "Interior": uv_body, "Tyre": uv_tyre, "Rim": uv_rim}
+    uv_fn = {"Body": uv_body, "Glass": uv_body, "Interior": uv_body, "Tyre": uv_tyre, "Rim": uv_rim,
+             "HeadLamps": uv_body, "TailLamps": uv_body, "LampHousings": uv_body, "Grille": uv_body}
     pieces = {name: build_piece(name, P, N, fs, uv_fn[name]) for name, fs in groups.items()}
 
     # Bake.
@@ -848,10 +975,10 @@ def main():
     for key, img in rmaps.items():
         img.save(os.path.join(OUT_ASSETS, f"kamri_rim_{key}.png"))
 
-    order = ["Body", "Glass", "Interior", "Tyre", "Rim"]
+    order = ["Body", "Glass", "Interior", "HeadLamps", "TailLamps", "LampHousings", "Grille", "Tyre", "Rim"]
     plist = [pieces[n] for n in order]
     total = sum(p.triangles for p in plist)
-    per_car = sum(pieces[n].triangles for n in ("Body", "Glass", "Interior")) + 4 * (
+    per_car = sum(pieces[n].triangles for n in order if n not in ("Tyre", "Rim")) + 4 + 4 * (
         pieces["Tyre"].triangles + pieces["Rim"].triangles)
     header = [
         "The Kamri: a large Japanese four-door saloon, mid-2000s shape, no badge.",
@@ -868,6 +995,8 @@ def main():
     summary = {p.name: {"triangles": p.triangles, "sizeM": [round(v, 4) for v in p.size],
                         "offsetM": [round(v, 4) for v in p.offset]} for p in plist}
     summary["car_triangles"] = per_car
+    summary["detail_triangles"] = details["triangles"]
+    summary["plates"] = details["plates"]
     summary["body_texel_overlaps"] = overlap
     with open(os.path.join(OUT_ASSETS, "summary.json"), "w") as fh:
         json.dump(summary, fh, indent=2)

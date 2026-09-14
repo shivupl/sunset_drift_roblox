@@ -69,10 +69,21 @@ local cars: { [string]: CarEntry } = {
 		},
 		body = {
 			paint = Color3.fromRGB(236, 236, 232),
+			-- Lens colours; the lenses glow in them when lit (BodyBuilder.setLamps).
+			lamps = { head = Color3.fromRGB(246, 242, 228), tail = Color3.fromRGB(205, 18, 22) },
+			-- Plate mounts off the generator's nose and tail; the default plate
+			-- texture is tools/carbody/plate.py.
+			plates = { front = { 0, 0.525, -2.365 }, rear = { 0, 0.615, 2.4755 }, textureId = 125828616185618 },
 			pieces = {
-				{ name = "Body", mesh = "Kamri/Body", look = "Kamri_Body", paint = true, sizeM = { 2.1034, 1.2639, 4.8315 }, offsetM = { 0, 0.8319, 0.0513 } },
+				{ name = "Body", mesh = "Kamri/Body", look = "Kamri_Body", paint = true, sizeM = { 2.1034, 1.2639, 4.8357 }, offsetM = { 0, 0.8319, 0.0524 } },
 				{ name = "Glass", mesh = "Kamri/Glass", sizeM = { 1.7342, 0.4454, 2.49 }, offsetM = { 0, 1.2123, 0.415 }, color = Color3.fromRGB(30, 40, 44), material = Enum.Material.Glass, transparency = 0.45, castShadow = false },
 				{ name = "Interior", mesh = "Kamri/Interior", sizeM = { 1.6207, 1.1039, 2.5 }, offsetM = { 0, 0.8519, 0.41 }, color = Color3.fromRGB(34, 34, 36), castShadow = false },
+				-- Recessed lamps: lenses in their own pieces, housings behind them.
+				{ name = "HeadLamps", mesh = "Kamri/HeadLamps", lamp = "head", sizeM = { 1.7833, 0.2517, 0.3809 }, offsetM = { 0, 0.6941, -2.1372 } },
+				{ name = "TailLamps", mesh = "Kamri/TailLamps", lamp = "tail", sizeM = { 1.7634, 0.276, 0.2636 }, offsetM = { 0, 0.9165, 2.3029 } },
+				{ name = "LampHousings", mesh = "Kamri/LampHousings", sizeM = { 1.7953, 0.4977, 4.7739 }, offsetM = { 0, 0.8069, 0.0536 }, color = Color3.fromRGB(78, 80, 84), material = Enum.Material.Metal, castShadow = false },
+				-- Recessed grille with real slats, dark matte.
+				{ name = "Grille", mesh = "Kamri/Grille", sizeM = { 0.9, 0.1884, 0.1041 }, offsetM = { 0, 0.6508, -2.2913 }, color = Color3.fromRGB(38, 38, 42), material = Enum.Material.Plastic, castShadow = false },
 			},
 			wheelPieces = {
 				{ name = "Tyre", mesh = "Kamri/Tyre", look = "Kamri_Tyre", sizeM = { 0.215, 0.652, 0.652 }, offsetM = { 0, 0, 0 }, material = Enum.Material.Rubber },

@@ -118,7 +118,10 @@ function BodyBuilder.preload(entry: VehicleRig.CarEntry): number
 	return n
 end
 
-local function makePiece(piece: BodyPiece, paint: Color3, mps: number, k: number, name: string): BasePart
+local LAMP_OFF_TRANSPARENCY = 0.65 -- unlit: a clear lens, the housing shows through
+
+local function makePiece(piece: BodyPiece, body: VehicleRig.BodySpec, mps: number, k: number, name: string): BasePart
+	local paint = body.paint
 	local t = template(piece)
 	local part: BasePart
 	if t then
@@ -137,6 +140,14 @@ local function makePiece(piece: BodyPiece, paint: Color3, mps: number, k: number
 	part.Material = piece.material or Enum.Material.SmoothPlastic
 	part.Transparency = piece.transparency or 0
 	part.CastShadow = piece.castShadow ~= false
+	if piece.lamp and body.lamps then
+		-- Unlit: tinted glass over the housing. setLamps makes it Neon.
+		part.Color = (body.lamps :: any)[piece.lamp]
+		part.Material = Enum.Material.Glass
+		part.Transparency = LAMP_OFF_TRANSPARENCY
+		part.CastShadow = false
+		part:SetAttribute(VehicleRig.LAMP_ATTRIBUTE, piece.lamp)
+	end
 	if piece.look and t then
 		local looks = ReplicatedStorage:FindFirstChild("CarLooks")
 		local lookTemplate = looks and looks:FindFirstChild(piece.look)
@@ -180,18 +191,84 @@ function BodyBuilder.mount(model: Model, cfg: Config, entry: VehicleRig.CarEntry
 	local folder = Instance.new("Folder")
 	folder.Name = VehicleRig.BODY
 	for _, piece in entry.body.pieces do
-		local part = makePiece(piece, entry.body.paint, mps, k, piece.name)
+		local part = makePiece(piece, entry.body, mps, k, piece.name)
 		mount(part, handles.bodyMount, VehicleRig.pieceCFrame(piece, mps, false, k), folder)
 	end
 	for _, w in VehicleRig.WHEELS do
 		local hub = handles.hubs[w.name]
 		for _, piece in entry.body.wheelPieces do
-			local part = makePiece(piece, entry.body.paint, mps, k, `{piece.name}_{w.name}`)
+			local part = makePiece(piece, entry.body, mps, k, `{piece.name}_{w.name}`)
 			mount(part, hub.mount, VehicleRig.pieceCFrame(piece, mps, not w.left, k), folder)
+		end
+	end
+	-- Plates: a thin quad on each plate mount with the texture on its outer
+	-- face. The plate system swaps textures through setPlateTexture.
+	local plates = entry.body.plates
+	if plates then
+		local w, h = VehicleRig.PLATE_SIZE_M[1], VehicleRig.PLATE_SIZE_M[2]
+		local mounts: { { name: string, at: Attachment? } } = {
+			{ name = "PlateFront", at = handles.plates.front },
+			{ name = "PlateRear", at = handles.plates.rear },
+		}
+		for _, m in mounts do
+			local at = m.at
+			if not at then
+				continue
+			end
+			local plate = Instance.new("Part")
+			plate.Name = m.name
+			plate.Size = Vector3.new(w, h, 0.004) * (k / mps)
+			plate.Color = Color3.fromRGB(244, 244, 240)
+			plate.Material = Enum.Material.SmoothPlastic
+			plate.CastShadow = false
+			plate.Anchored = false
+			plate.Massless = true
+			plate.CanCollide = false
+			plate.CanQuery = false
+			plate.CanTouch = false
+			local decal = Instance.new("Decal")
+			decal.Name = "PlateTexture"
+			decal.Face = Enum.NormalId.Front -- -Z of the part, which the mount points outward
+			decal.Texture = `rbxassetid://{plates.textureId}`
+			decal.Parent = plate
+			mount(plate, at, CFrame.identity, folder)
 		end
 	end
 	folder.Parent = model
 	return folder
+end
+
+-- Lights the lamps of a mounted body: head and tail each on (Neon, their
+-- colour) or off (tinted glass). Leaves a kind alone when it is nil.
+function BodyBuilder.setLamps(model: Model, state: { head: boolean?, tail: boolean? })
+	local body = model:FindFirstChild(VehicleRig.BODY)
+	if not body then
+		return
+	end
+	for _, part in body:GetChildren() do
+		local kind = part:GetAttribute(VehicleRig.LAMP_ATTRIBUTE)
+		local on = if kind then (state :: any)[kind] else nil
+		if on ~= nil and part:IsA("BasePart") then
+			part.Material = if on then Enum.Material.Neon else Enum.Material.Glass
+			part.Transparency = if on then 0 else LAMP_OFF_TRANSPARENCY
+		end
+	end
+end
+
+-- Puts a texture on a mounted body's plates ("front", "rear" or both).
+function BodyBuilder.setPlateTexture(model: Model, textureId: number, which: ("front" | "rear")?)
+	local body = model:FindFirstChild(VehicleRig.BODY)
+	if not body then
+		return
+	end
+	local names: { string } = if which == "front" then { "PlateFront" } elseif which == "rear" then { "PlateRear" } else { "PlateFront", "PlateRear" }
+	for _, name in names do
+		local plate = body:FindFirstChild(name)
+		local decal = plate and plate:FindFirstChild("PlateTexture")
+		if decal and decal:IsA("Decal") then
+			decal.Texture = `rbxassetid://{textureId}`
+		end
+	end
 end
 
 return BodyBuilder
