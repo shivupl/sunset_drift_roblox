@@ -1,11 +1,11 @@
 {
   "Kamri_Body": {
     "AlphaMode": "TintMask",
-    "ColorMap": "rbxassetid://87796779823521",
-    "MetalnessMap": "rbxassetid://134711258850492",
-    "RoughnessMap": "rbxassetid://122290961913393",
+    "ColorMap": "rbxassetid://115610201263796",
+    "MetalnessMap": "rbxassetid://93448094833328",
+    "RoughnessMap": "rbxassetid://102031453015220",
     "source": "assets/cars/kamri/kamri_body_{color,metal,rough,normal}.png",
-    "NormalMap": "rbxassetid://116354851380846"
+    "NormalMap": "rbxassetid://73249763708021"
   },
   "Kamri_Tyre": {
     "AlphaMode": "Overlay",

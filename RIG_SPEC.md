@@ -135,7 +135,8 @@ past 90 m are skipped, and a parked (anchored) car settles its wheels once.
 droop to full bump. Relative to the resting body, a wheel centre moves
 between `−staticSag` (droop) and `travel − staticSag` (bump), both scaled
 with the car. For the Kamri at 1.2 that is −0.112 to +0.088 m. Its arch crown
-is 0.906 m off the ground, and the tyre top at full bump is 0.870 m.
+is 0.882 m off the ground after the proportion pass lowered the body, and the
+tyre top at full bump is 0.870 m.
 
 **Wheel space** (for `body.wheelPieces`): origin at the wheel centre, axle
 along X, authored as a **left** wheel with its **outer face toward −X**.
@@ -241,6 +242,38 @@ way.
 3D Importer, which uploads the mesh. Put the MeshPart's mesh id on the
 catalog piece as `meshId` and keep `mesh`, `sizeM`, `offsetM` and `look`.
 BodyBuilder then uses the asset and the looks exactly as before.
+
+### 7c. Lamps, grille and plates
+
+Parts that need real depth or their own material are their own geometry, not
+paint on the shell:
+
+- **Openings.** The generator leaves holes in the body for the headlamps,
+  tail lamps and upper grille. The end caps are grids whose rows and
+  columns fall on those edges. `build_details` fills them.
+- **Lamps.** A lens piece (`HeadLamps`, `TailLamps`) sits 6 mm inside the
+  opening. A `LampHousings` piece behind it has walls round the opening and
+  a back 35–40 mm deep. A lens piece has `lamp = "head"` or `"tail"` and
+  takes its colour from the car's `body.lamps`. Unlit it is tinted glass at
+  0.65 transparency, so the chrome housing shows. `BodyBuilder.setLamps(model, { head = true, tail = true })`
+  turns them to Neon in that colour; `false` puts the glass back.
+- **Grille.** Walls, a back 45 mm deep and three slats that follow the
+  leaning nose, in one dark matte piece.
+- **Plates.** `body.plates = { front = {x, y, z}, rear = {x, y, z}, textureId = n }`,
+  in car space. RigBuilder puts `PlateFront` and `PlateRear` attachments on
+  the chassis there: the front faces −Z, the rear faces +Z. BodyBuilder
+  mounts a 0.52 × 0.11 m quad on each, with a `PlateTexture` Decal on its
+  outer face. `BodyBuilder.setPlateTexture(model, id, "front" | "rear" | nil)`
+  swaps it. This is the mount point for the plate system. The placeholder
+  texture is `tools/carbody/plate.py`.
+- **Normal map.** The body's height channel records recessed panel gaps,
+  sunken lamp and intake areas, arch lips, the shoulder and sill creases, and
+  the plate recess. It becomes a tangent-space normal map on the look
+  (`NormalMap`). Roblox reads it OpenGL style: red is +u, green is up the
+  image. This was measured in Studio with tilted probe maps.
+
+After a generator run, `python3 tools/carbody/apply_catalog.py kamri` writes
+the new `sizeM`, `offsetM` and plate mounts into the catalog entry.
 
 ## 8. Handling: shared plus overrides
 
@@ -434,12 +467,21 @@ shared handling, on its real 2.775 m wheelbase, 1.575 m track and
 
 | Piece | Triangles |
 |---|---|
-| Body (paint, trim, lamps, wells, mirrors) | 4,446 |
-| Glass | 300 |
-| Interior | 434 |
+| Body (paint, trim, wells, mirrors) | 3,846 |
+| Glass | 304 |
+| Interior | 470 |
+| HeadLamps (lenses) | 108 |
+| TailLamps (lenses) | 92 |
+| LampHousings | 432 |
+| Grille (with slats) | 140 |
+| Plates (two quads) | 4 |
 | Tyre ×4 | 728 each |
 | Rim ×4 (with brake disc) | 504 each |
-| **Whole car** | **10,108** |
+| **Whole car** | **10,324** |
+
+The lamps, housings, grille and plates together are 776 triangles; the
+generator refuses more than 800. The body counted 4,446 before those parts
+became geometry; it lost sliver rows and gained the openings.
 
 Built by the real RigBuilder and BodyBuilder in Studio, the body mounts in
 0.06 s, and the wheels settle at 0.112 m compression, the static sag. In

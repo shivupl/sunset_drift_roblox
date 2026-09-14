@@ -64,8 +64,9 @@ local cars: { [string]: CarEntry } = {
 			trackWidthM = 1.575,
 			wheelRadiusM = 0.326,
 			wheelWidthM = 0.215,
-			-- Driver's side, over the front seat cushion, 0.3 m off the ground.
-			seatM = { -0.38, -0.51, 0.12 },
+			-- Driver's side, over the front seat cushion, 0.28 m off the ground
+			-- (the body sits 2 cm lower since the proportion pass).
+			seatM = { -0.38, -0.53, 0.12 },
 		},
 		body = {
 			paint = Color3.fromRGB(236, 236, 232),
@@ -73,17 +74,17 @@ local cars: { [string]: CarEntry } = {
 			lamps = { head = Color3.fromRGB(246, 242, 228), tail = Color3.fromRGB(205, 18, 22) },
 			-- Plate mounts off the generator's nose and tail; the default plate
 			-- texture is tools/carbody/plate.py.
-			plates = { front = { 0, 0.525, -2.365 }, rear = { 0, 0.615, 2.4755 }, textureId = 125828616185618 },
+			plates = { front = { 0, 0.505, -2.365 }, rear = { 0, 0.595, 2.4755 }, textureId = 125828616185618 },
 			pieces = {
-				{ name = "Body", mesh = "Kamri/Body", look = "Kamri_Body", paint = true, sizeM = { 2.1034, 1.2639, 4.8357 }, offsetM = { 0, 0.8319, 0.0524 } },
-				{ name = "Glass", mesh = "Kamri/Glass", sizeM = { 1.7342, 0.4454, 2.49 }, offsetM = { 0, 1.2123, 0.415 }, color = Color3.fromRGB(30, 40, 44), material = Enum.Material.Glass, transparency = 0.45, castShadow = false },
-				{ name = "Interior", mesh = "Kamri/Interior", sizeM = { 1.6207, 1.1039, 2.5 }, offsetM = { 0, 0.8519, 0.41 }, color = Color3.fromRGB(34, 34, 36), castShadow = false },
+				{ name = "Body", mesh = "Kamri/Body", look = "Kamri_Body", paint = true, sizeM = { 2.1074, 1.2547, 4.8357 }, offsetM = { 0, 0.7974, 0.0524 } },
+				{ name = "Glass", mesh = "Kamri/Glass", sizeM = { 1.7388, 0.4404, 2.66 }, offsetM = { 0, 1.1798, 0.41 }, color = Color3.fromRGB(30, 40, 44), material = Enum.Material.Glass, transparency = 0.45, castShadow = false },
+				{ name = "Interior", mesh = "Kamri/Interior", sizeM = { 1.626, 1.0847, 2.6809 }, offsetM = { 0, 0.8224, 0.4104 }, color = Color3.fromRGB(34, 34, 36), castShadow = false },
 				-- Recessed lamps: lenses in their own pieces, housings behind them.
-				{ name = "HeadLamps", mesh = "Kamri/HeadLamps", lamp = "head", sizeM = { 1.7833, 0.2517, 0.3809 }, offsetM = { 0, 0.6941, -2.1372 } },
-				{ name = "TailLamps", mesh = "Kamri/TailLamps", lamp = "tail", sizeM = { 1.7634, 0.276, 0.2636 }, offsetM = { 0, 0.9165, 2.3029 } },
-				{ name = "LampHousings", mesh = "Kamri/LampHousings", sizeM = { 1.7953, 0.4977, 4.7739 }, offsetM = { 0, 0.8069, 0.0536 }, color = Color3.fromRGB(78, 80, 84), material = Enum.Material.Metal, castShadow = false },
+				{ name = "HeadLamps", mesh = "Kamri/HeadLamps", lamp = "head", sizeM = { 1.7833, 0.2647, 0.3809 }, offsetM = { 0, 0.6805, -2.1372 } },
+				{ name = "TailLamps", mesh = "Kamri/TailLamps", lamp = "tail", sizeM = { 1.7634, 0.2758, 0.2636 }, offsetM = { 0, 0.8964, 2.3029 } },
+				{ name = "LampHousings", mesh = "Kamri/LampHousings", sizeM = { 1.7953, 0.4974, 4.7739 }, offsetM = { 0, 0.7868, 0.0536 }, color = Color3.fromRGB(78, 80, 84), material = Enum.Material.Metal, castShadow = false },
 				-- Recessed grille with real slats, dark matte.
-				{ name = "Grille", mesh = "Kamri/Grille", sizeM = { 0.9, 0.1884, 0.1041 }, offsetM = { 0, 0.6508, -2.2913 }, color = Color3.fromRGB(38, 38, 42), material = Enum.Material.Plastic, castShadow = false },
+				{ name = "Grille", mesh = "Kamri/Grille", sizeM = { 0.9, 0.1884, 0.1089 }, offsetM = { 0, 0.6308, -2.2889 }, color = Color3.fromRGB(38, 38, 42), material = Enum.Material.Plastic, castShadow = false },
 			},
 			wheelPieces = {
 				{ name = "Tyre", mesh = "Kamri/Tyre", look = "Kamri_Tyre", sizeM = { 0.215, 0.652, 0.652 }, offsetM = { 0, 0, 0 }, material = Enum.Material.Rubber },

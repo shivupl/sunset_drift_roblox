@@ -53,19 +53,25 @@ Z_FRONT = -(WHEELBASE / 2 + 0.965)  # -2.3525
 Z_REAR = WHEELBASE / 2 + 1.065  # 2.4525
 AXLES = (-WHEELBASE / 2, WHEELBASE / 2)
 
-ARCH_W = 0.43  # half the arch opening along the car
-ARCH_TOP = 0.755  # arch crown above the ground; tyre top at full bump is ~0.74
-ROCKER_Y = 0.20
+ARCH_W = 0.42  # half the arch opening along the car
+# Heights below are drawn before BODY_DROP lowers the whole body (not the
+# wheels): ride height against a 2007 car's 160 mm ground clearance.
+BODY_DROP = 0.02
+ARCH_TOP = 0.755  # arch crown before the drop: 0.735 after; tyre top at full bump is 0.725
+ROCKER_Y = 0.19  # sills 0.17 m off the ground after the drop
 
-Z_COWL = -0.86  # windscreen base
-Z_WS_TOP = -0.07  # windscreen top / roof front header
-Z_RW_TOP = 1.07  # rear window top / roof rear header
-Z_DECK = 1.70  # rear window base / boot lid front
-B_PILLAR = (0.22, 0.32)
+# Proportions checked against 2007 reference photos: a long raked
+# windscreen whose base sits over the front wheel's trailing edge, the roof
+# peak behind the B pillar, a short high boot.
+Z_COWL = -0.95  # windscreen base
+Z_WS_TOP = 0.05  # windscreen top / roof front header
+Z_RW_TOP = 1.14  # rear window top / roof rear header
+Z_DECK = 1.78  # rear window base / boot lid front
+B_PILLAR = (0.26, 0.36)
 HEAD_END_Z = -1.95  # headlamp openings end at this station
 TAIL_START_Z = 2.18  # tail lamp openings start at this station
-REAR_DIVIDER = (1.02, 1.06)
-DLO = (-0.80, 1.38)  # side glass runs between these
+REAR_DIVIDER = (1.08, 1.12)
+DLO = (-0.89, 1.46)  # side glass runs between these
 
 # ---------------------------------------------------------------------------
 # Shape curves
@@ -86,26 +92,27 @@ width_by_height = curve([
 # The shoulder line the side panel runs up to: the hood and fender edge at the
 # front, the waist under the glass, the boot edge at the back.
 belt = curve([
-    (Z_FRONT, 0.700), (-2.30, 0.755), (-2.22, 0.790), (-2.00, 0.815), (-1.50, 0.870),
-    (Z_COWL, 0.985), (0.30, 1.020), (1.00, 1.045), (Z_DECK, 1.065), (2.20, 1.055),
+    (Z_FRONT, 0.700), (-2.30, 0.745), (-2.22, 0.775), (-2.00, 0.825), (-1.50, 0.895),
+    (Z_COWL, 0.975), (0.30, 1.015), (1.00, 1.040), (Z_DECK, 1.060), (2.20, 1.055),
     (2.36, 1.040), (2.42, 0.990), (Z_REAR, 0.900),
 ])
 # Centreline height of the hood and the boot lid (before crown).
+# The hood falls away to the nose instead of running flat to it.
 top_centre = curve([
-    (Z_FRONT, 0.705), (-2.30, 0.765), (-2.22, 0.805), (-2.00, 0.835), (-1.50, 0.895),
-    (Z_COWL, 1.000), (Z_DECK, 1.075), (2.20, 1.070), (2.36, 1.055), (2.42, 1.000),
+    (Z_FRONT, 0.705), (-2.30, 0.755), (-2.22, 0.790), (-2.00, 0.845), (-1.50, 0.920),
+    (Z_COWL, 0.990), (Z_DECK, 1.070), (2.20, 1.070), (2.36, 1.055), (2.42, 1.000),
     (Z_REAR, 0.905),
 ])
-HOOD_CROWN = 0.020
+HOOD_CROWN = 0.035
 DECK_CROWN = 0.015
 # Greenhouse: roof rail height and half width, and the roof centreline.
 rail_y = curve([
-    (Z_COWL, belt(Z_COWL)), (-0.60, 1.090), (-0.30, 1.235), (Z_WS_TOP, 1.360), (0.10, 1.385),
-    (0.50, 1.392), (0.90, 1.375), (Z_RW_TOP, 1.355), (1.30, 1.240), (1.55, 1.120),
+    (Z_COWL, belt(Z_COWL)), (-0.65, 1.085), (-0.30, 1.230), (Z_WS_TOP, 1.345), (0.25, 1.368),
+    (0.65, 1.375), (1.00, 1.360), (Z_RW_TOP, 1.335), (1.38, 1.225), (1.62, 1.110),
     (Z_DECK, belt(Z_DECK)),
 ])
 roof_base = curve([
-    (Z_COWL, top_centre(Z_COWL)), (Z_WS_TOP, 1.385), (0.40, 1.415), (Z_RW_TOP, 1.365),
+    (Z_COWL, top_centre(Z_COWL)), (Z_WS_TOP, 1.370), (0.60, 1.395), (Z_RW_TOP, 1.345),
     (Z_DECK, top_centre(Z_DECK)),
 ])
 roof_crown = curve([(Z_COWL, HOOD_CROWN), (Z_WS_TOP, 0.050), (Z_RW_TOP, 0.050), (Z_DECK, DECK_CROWN)])
@@ -120,8 +127,8 @@ def belt_x(z):
 
 
 rail_x = curve([
-    (Z_COWL, belt_x(Z_COWL)), (-0.40, 0.780), (Z_WS_TOP, 0.705), (0.50, 0.690),
-    (Z_RW_TOP, 0.695), (1.40, 0.765), (Z_DECK, belt_x(Z_DECK)),
+    (Z_COWL, belt_x(Z_COWL)), (-0.45, 0.780), (Z_WS_TOP, 0.705), (0.60, 0.690),
+    (Z_RW_TOP, 0.695), (1.48, 0.765), (Z_DECK, belt_x(Z_DECK)),
 ])
 
 
@@ -164,9 +171,9 @@ def stations():
             zs.append(zc + ARCH_W * math.sin(phi) * 0.999)
         zs.append(zc - ARCH_W - 0.03)
         zs.append(zc + ARCH_W + 0.03)
-    zs += [-0.93, Z_COWL, -0.83, DLO[0], -0.65, -0.48, -0.30, -0.15, Z_WS_TOP, 0.08,
-           B_PILLAR[0], B_PILLAR[1], 0.50, 0.70, 0.88, REAR_DIVIDER[0], REAR_DIVIDER[1],
-           Z_RW_TOP, DLO[1], 1.50, 1.66, Z_DECK, 1.735, 2.05, 2.18, 2.28, 2.36, 2.40, 2.43, Z_REAR]
+    zs += [Z_COWL - 0.07, Z_COWL, Z_COWL + 0.03, DLO[0], -0.72, -0.52, -0.32, -0.12, Z_WS_TOP, 0.16,
+           B_PILLAR[0], B_PILLAR[1], 0.55, 0.75, 0.92, REAR_DIVIDER[0], REAR_DIVIDER[1],
+           Z_RW_TOP, DLO[1], 1.60, Z_DECK - 0.04, Z_DECK, Z_DECK + 0.035, 2.05, 2.18, 2.28, 2.36, 2.40, 2.43, Z_REAR]
     zs = sorted(set(round(z, 4) for z in zs))
     out = []
     for z in zs:
@@ -255,7 +262,7 @@ def build_body(S: Surface):
         zc = (z0 + z1) / 2
         a = ACROSS[j] if j < centre_j else ACROSS[2 * centre_j - j - 1]
         edge_band = a < 0.10
-        if not edge_band and (-0.83 <= zc <= Z_WS_TOP or Z_RW_TOP <= zc <= 1.66):
+        if not edge_band and (Z_COWL + 0.03 <= zc <= Z_WS_TOP or Z_RW_TOP <= zc <= Z_DECK - 0.04):
             return "Glass"
         return "Body"
 
@@ -420,7 +427,7 @@ def build_body(S: Surface):
 
     # Mirrors: a housing on a short arm at the front of the side glass.
     for s in (-1, 1):
-        z0, y0 = -0.72, 1.005
+        z0, y0 = -0.82, 0.995
         x0 = shoulder_x(z0, y0) - 0.01
         box = []
         for dz, dy, dx in [(-0.07, -0.05, 0.02), (0.05, -0.05, 0.02), (0.05, 0.06, 0.02), (-0.06, 0.06, 0.02),
@@ -471,7 +478,7 @@ def build_interior(S: Surface):
         for f in [(0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]:
             S.quad(v[f[0]], v[f[1]], v[f[2]], v[f[3]], "Interior", "none", "interior", lambda p, c=c: p - c)
 
-    box((-0.74, 0.72, -0.84), (0.74, 0.98, -0.52))  # dashboard
+    box((-0.74, 0.72, Z_COWL + 0.02), (0.74, 0.98, Z_COWL + 0.34))  # dashboard
     for x in (-0.38, 0.38):  # front seats
         box((x - 0.25, 0.30, -0.10), (x + 0.25, 0.55, 0.40))
         box((x - 0.24, 0.55, 0.32), (x + 0.24, 1.10, 0.44))
@@ -580,7 +587,7 @@ def build_details(S: Surface, body):
             z = min(z, float(nearest[:, 2].min())) if zsign < 0 else max(z, float(nearest[:, 2].max()))
         return [0.0, round(y, 4), round(z + zsign * 0.006, 4)]
 
-    plates = {"front": plate_point("front", 0.525, -1), "rear": plate_point("rear", 0.615, 1)}
+    plates = {"front": plate_point("front", 0.525 - BODY_DROP, -1), "rear": plate_point("rear", 0.615 - BODY_DROP, 1)}
     total = detail_tris + 4  # two quads for the plates
     assert total <= DETAIL_BUDGET, f"details are {total} triangles, over the {DETAIL_BUDGET} budget"
     return {"triangles": total, "plates": plates}
@@ -588,7 +595,8 @@ def build_details(S: Surface, body):
 
 def lean(p):
     """The nose and tail are not vertical: the grille leans back toward the
-    hood edge and the tail panel leans in under the boot lid."""
+    hood edge and the tail panel leans in under the boot lid. Then the whole
+    body drops BODY_DROP toward the road (the wheels do not move)."""
     x, y, z = p
     if z < -1.9:
         w = float(smoothstep(-1.9, Z_FRONT, z))
@@ -596,7 +604,7 @@ def lean(p):
     elif z > 2.1:
         w = float(smoothstep(2.1, Z_REAR, z))
         z -= 0.06 * w * float(smoothstep(0.62, 1.05, y))
-    return np.array([x, y, z])
+    return np.array([x, y - BODY_DROP, z])
 
 
 # ---------------------------------------------------------------------------
@@ -635,7 +643,8 @@ ARCH_B = np.vectorize(arch_bottom)
 
 def body_material(P, N, tag, chart):
     k = len(P)
-    x, y, z = P[:, 0], P[:, 1], P[:, 2]
+    # Features are drawn in the body's own frame, before the ride-height drop.
+    x, y, z = P[:, 0], P[:, 1] + BODY_DROP, P[:, 2]
     ax = np.abs(x)
     rgb = np.tile(PAINT_BASE, (k, 1))
     alpha = np.ones(k)
@@ -695,10 +704,10 @@ def body_material(P, N, tag, chart):
 
     if tag in ("side", "front", "rear"):
         # Doors: front leading edge, B line, rear door trailing edge, sill line.
-        line |= gap(seg_dist(z, y, (-0.905, 0.26), (-0.875, 1.02)))
-        line |= gap(seg_dist(z, y, (0.265, 0.24), (0.272, 1.03)))
-        line |= gap(poly_dist(z, y, [(0.93, 0.24), (0.93, 0.60), (1.00, 0.80), (1.045, 1.06)]))
-        line |= gap(seg_dist(z, y, (-0.905, 0.265), (0.93, 0.265)))
+        line |= gap(seg_dist(z, y, (-0.93, 0.26), (-0.93, 1.01)))
+        line |= gap(seg_dist(z, y, (0.305, 0.24), (0.312, 1.03)))
+        line |= gap(poly_dist(z, y, [(0.93, 0.24), (0.93, 0.60), (1.02, 0.80), (1.10, 1.06)]))
+        line |= gap(seg_dist(z, y, (-0.93, 0.265), (0.93, 0.265)))
         # Bumper seams at the corners.
         line |= gap(poly_dist(z, y, [(-1.93, 0.30), (-1.95, 0.56), (-1.93, 0.62)]))
         line |= gap(np.where(ax > 0.3, poly_dist(z, y, [(2.02, 0.36), (2.08, 0.72), (2.46, 0.72)]), 1.0))
@@ -711,8 +720,8 @@ def body_material(P, N, tag, chart):
         line |= gap(np.where(hood & (z > -2.22), np.abs(ax - edge_x), 1.0))
         line |= gap(np.where(ax < edge_x, np.abs(z + 2.22), 1.0))
     if tag == "top":
-        line |= gap(np.where(ax < np.vectorize(belt_x)(z) - 0.09, np.abs(z - 1.735), 1.0))
-        line |= gap(np.where(z > 1.735, np.abs(ax - (np.vectorize(belt_x)(z) - 0.09)), 1.0))
+        line |= gap(np.where(ax < np.vectorize(belt_x)(z) - 0.09, np.abs(z - (Z_DECK + 0.035)), 1.0))
+        line |= gap(np.where(z > Z_DECK + 0.035, np.abs(ax - (np.vectorize(belt_x)(z) - 0.09)), 1.0))
     # A gap is a 3.5 mm deep groove with rounded shoulders.
     height -= 0.0035 * np.clip(1 - gap_d / 0.008, 0, 1) ** 1.5
     rgb[line] = (0.05, 0.05, 0.055)
@@ -722,7 +731,7 @@ def body_material(P, N, tag, chart):
 
     # Cowl panel and wiper well.
     if tag == "top":
-        cowl = (z > -0.93) & (z < Z_COWL + 0.004)
+        cowl = (z > Z_COWL - 0.07) & (z < Z_COWL + 0.004)
         put(cowl, (0.03, 0.03, 0.035), r=0.65, h=-0.006)
 
     if tag in ("window_trim",):
@@ -732,7 +741,7 @@ def body_material(P, N, tag, chart):
 
     # Door handles.
     if tag == "side":
-        for z0, z1 in ((-0.30, -0.15), (0.72, 0.87)):
+        for z0, z1 in ((-0.26, -0.11), (0.76, 0.91)):
             h = (z > z0) & (z < z1) & (y > 0.895) & (y < 0.927)
             pocket = (z > z0 - 0.01) & (z < z1 + 0.01) & (y > 0.880) & (y < 0.935)
             height[pocket] = -0.006
@@ -901,7 +910,10 @@ def main():
     body = build_body(S)
     S.P = [lean(p) for p in S.P]
     details = build_details(S, body)
+    first_interior = len(S.P)
     build_interior(S)
+    for i in range(first_interior, len(S.P)):
+        S.P[i] = S.P[i] - np.array([0, BODY_DROP, 0])
     n_body_faces = len(S.faces)
     build_wheels(S)
 
