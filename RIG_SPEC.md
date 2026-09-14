@@ -7,8 +7,9 @@ A car is two separate things:
   actuators. Built from numbers by `src/server/RigBuilder.luau`. The sim
   (`src/shared/VehicleSim`) only ever touches the rig.
 - **Body**: the look. MeshParts only, welded to named mount attachments on
-  the rig. Built from meshes by `src/server/BodyBuilder.luau`. It never
-  takes part in the physics.
+  the rig. Built from meshes by `src/shared/BodyBuilder.luau`, on every
+  client (`src/client/CarBodies.luau`), never on the server. It never takes
+  part in the physics.
 
 Adding a car is an entry in `src/shared/CarCatalog.luau` plus its meshes.
 No code changes. `src/shared/VehicleRig.luau` is this document in code:
@@ -72,6 +73,7 @@ Car_<player>          Model   PrimaryPart = Rig.Chassis, attribute CarId = "<cat
 │  │  └─ WheelMount   Attachment   the wheel centre
 │  └─ DriverSeat      VehicleSeat  massless, non-colliding, entered by the prompt
 └─ Body               Folder  MeshParts, each with a WeldConstraint to its mount's part
+                              (each client builds its own; the server's car has no Body)
 ```
 
 The names are constants in `VehicleRig` (`VehicleRig.CHASSIS`,
@@ -117,8 +119,23 @@ piece more than 10% off. `wheelWidthM` sets the width of the skid marks.
 
 **Hubs.** `Hub_XX` is the wheel centre. The sim sets
 `WheelWeld.C0 = CFrame(RayOrigin − (0, drop, 0)) × steer yaw × spin about X`,
-where `drop` is the spring's current length. At rest the hub is exactly the
-car-space wheel centre `(±track/2, wheelRadiusM, ∓wheelbase/2)`.
+with `drop = restLength − compression` and `compression` the value
+`Suspension.step` just returned for that corner (0 in the air, never more
+than `suspension.travel`). The wheel therefore moves in its arch exactly as
+the spring does. At rest the hub is exactly the car-space wheel centre
+`(±track/2, wheelRadiusM, ∓wheelbase/2)`.
+
+A Weld's C0 set on one client never reaches the others, so every car this
+client is not driving gets the same treatment from `src/client/WheelVisuals.luau`.
+It casts the same four rays and runs the same `Suspension.step`. Steer follows
+the direction the front axle is moving, and spin follows ground speed. Cars
+past 90 m are skipped, and a parked (anchored) car settles its wheels once.
+
+**Arch clearance.** A body's wheel openings must clear the tyre from full
+droop to full bump. Relative to the resting body, a wheel centre moves
+between `−staticSag` (droop) and `travel − staticSag` (bump), both scaled
+with the car. For the Kamri at 1.2 that is −0.112 to +0.088 m. Its arch crown
+is 0.906 m off the ground, and the tyre top at full bump is 0.870 m.
 
 **Wheel space** (for `body.wheelPieces`): origin at the wheel centre, axle
 along X, authored as a **left** wheel with its **outer face toward −X**.
@@ -136,9 +153,8 @@ Y. Never model separate right wheels.
 
 ## 7. The body
 
-Every body part is a **MeshPart** made by `AssetService:CreateMeshPartAsync`
-from a bare mesh id, so no store model or script ever enters the game. Each
-part is set to:
+Every body part is a **MeshPart**, and no store model or script ever enters
+the game. Each part is set to:
 
 - `Massless = true`
 - `CanCollide = false`, `CanQuery = false`, `CanTouch = false`
@@ -150,23 +166,81 @@ It adds nothing to the physics. Built both ways in Studio, the sedan is
 identical with and without the body. The suspension rays exclude the whole
 car model.
 
+**Where it is built.** The server builds rigs only. Each client's
+`CarBodies` mounts a body on every car in `workspace.Cars` as it arrives:
+cars stream whole (`ModelStreamingMode.Persistent`), and a swap is a new
+model. A body is visual, so building it locally costs the network nothing.
+It also has to be local, because a generated mesh (below) is an
+EditableMesh, and those do not replicate.
+
 A **piece**:
 
 | Field | Meaning |
 |---|---|
 | `name` | Unique within its list. Wheel pieces become `<name>_FL` and so on. |
-| `meshId` | The mesh asset id (required). |
-| `textureId` | Optional colour map; nil or 0 colours the mesh instead. A textured piece ignores `paint`. |
+| `meshId` | An uploaded mesh asset id. |
+| `mesh` | A generated mesh, `"<Module>/<Piece>"` under `Shared.CarMeshes`. A piece needs `meshId`, `mesh` or both. With both, the asset is used. |
+| `look` | A SurfaceAppearance in `ReplicatedStorage.CarLooks` (colour, metalness and roughness maps) cloned onto the part. With `paint = true` its `Color` is the paint. |
+| `textureId` | Asset meshes without a `look`: an optional colour map. Nil or 0 colours the mesh instead. A textured piece ignores `paint`. |
 | `sizeM` | Size of the piece's **bounding box** in metres, `{X, Y, Z}` of the mount's space. The mesh is scaled to it. |
 | `offsetM` | Centre of that bounding box: car space for `pieces`, wheel space for `wheelPieces`. |
 | `rotationDeg` | Optional extra rotation `{X, Y, Z}` degrees (applied Y, X, Z) for a mesh not authored facing −Z. |
 | `paint` | `true` takes `body.paint` (the car's colour). |
 | `color`, `material`, `transparency` | Otherwise. |
-| `castShadow` | Default true. Set false on lamps and small trim. |
+| `castShadow` | Default true. Set false on glass, lamps and small trim. |
 
 `body.pieces` mount to `BodyMount`; `body.wheelPieces` mount to every
 `WheelMount`. A mesh that fails to load gets a plain box of the same size
 and a warning, so a bad id shows as a grey block, never as nothing.
+
+### 7b. Bodies made in the repo (`tools/carbody`)
+
+A car can be modelled in code instead of sourced: the Kamri is.
+`python3 tools/carbody/kamri.py` writes:
+
+- `src/shared/CarMeshes/Kamri/`: one data module per piece buffer, holding
+  quantised positions, normals, UVs and triangles in base64. Chunks stay
+  under the 200,000-character Source limit. `MeshData` decodes them into
+  an EditableMesh once per client and makes one template MeshPart per piece.
+- `assets/cars/kamri/*.png`: textures baked from 3D. Panel lines, lamps,
+  grille, plates, handles and trim are painted by functions of the car-space
+  position, so they line up across UV charts. There are three maps: colour
+  (alpha marks the painted texels), metalness and roughness.
+- `assets/cars/kamri/Kamri_<Piece>.obj`: the same meshes for Studio's 3D
+  Importer or any DCC tool.
+- `assets/cars/kamri/summary.json`: triangle counts, and every piece's
+  `sizeM` and `offsetM` for the catalog. A spec fails if the catalog and
+  the data drift apart.
+
+The textures are uploaded (the MCP `upload_image` tool, or by hand). Their
+ids go in `assets/cars/looks.json`, and `python3 tools/carbody/apply_looks.py`
+writes them into `default.project.json` as `ReplicatedStorage.CarLooks`.
+
+Construction rules the generator follows:
+- The body is lofted from real dimensions: stations along the car, side
+  panels whose lower edge traces the rocker and the wheel arches, one top
+  surface (hood, windscreen, roof, rear window, boot lid), side glass
+  between waist and roof rail, bulged end caps, wheel wells, and an inner
+  cabin skin.
+- Glass is its own piece: tint and transparency, no shadow.
+- Wheels are revolved: the tyre, and a rim whose spoke gaps are alpha (the
+  look uses `AlphaMode.Transparency`) over a barrel and a brake disc.
+- Paint uses `AlphaMode.TintMask`, where alpha 1 is tinted by `Color`,
+  measured in Studio. Paint is metalness 0.45, roughness 0.15. Chrome is 1
+  and 0.12, black plastic 0 and 0.7 to 0.8, lamp lenses low roughness.
+
+**The EditableMesh switch.** Generated meshes need the experience's
+**Allow Mesh / Image APIs** setting on. In Studio it is File > Game Settings >
+Security. For a published game it is the Creator Dashboard, and the owner
+must be 13+ and ID verified. It cannot be set from a script. Without it,
+Studio play and live servers refuse EditableMesh, and BodyBuilder puts
+boxes in with one warning that says this. Edit-mode previews work either
+way.
+
+**The route that needs no switch.** Import `Kamri_<Piece>.obj` with Studio's
+3D Importer, which uploads the mesh. Put the MeshPart's mesh id on the
+catalog piece as `meshId` and keep `mesh`, `sizeM`, `offsetM` and `look`.
+BodyBuilder then uses the asset and the looks exactly as before.
 
 ## 8. Handling: shared plus overrides
 
@@ -270,9 +344,11 @@ mycar = {
 
 Checklist:
 
-1. **Meshes.** Upload them, or use public store mesh ids with no brands.
-   Author the body facing −Z. Author the wheel as a left wheel, axle along
-   X, outer face −X. The tyre's diameter is the rolling diameter.
+1. **Meshes.** Generate them (§7b, copy `tools/carbody/kamri.py`), upload
+   them, or use public store mesh ids with no brands. Author the body facing
+   −Z. Author the wheel as a left wheel, axle along X, outer face −X. The
+   tyre's diameter is the rolling diameter. Cut the arches for the full
+   suspension travel (§5).
 2. **Measure in car space.** Find the four wheel centres on the model.
    Their midpoint is the car-space origin in X and Z, and the ground is one
    tyre radius under them. `wheelbaseM` and `trackWidthM` are the distances
@@ -348,3 +424,35 @@ handling personalities, and the numbers behind them, are in TUNING.md under
 A body piece with a `textureId` shows its texture and ignores `body.paint`.
 Paint only colours untextured pieces, so both of these cars show their mesh's
 own colours. Their `paint` value is used only by the spawn-menu swatch.
+
+### Phase 3: the Kamri (Sep 2026)
+
+The first car with a body made in the repo. It takes the Phase 0 sedan's
+place as the default car, with the same mass, centre-of-mass height and
+shared handling, on its real 2.775 m wheelbase, 1.575 m track and
+0.326 m tyres, at scale 1.2.
+
+| Piece | Triangles |
+|---|---|
+| Body (paint, trim, lamps, wells, mirrors) | 4,446 |
+| Glass | 300 |
+| Interior | 434 |
+| Tyre ×4 | 728 each |
+| Rim ×4 (with brake disc) | 504 each |
+| **Whole car** | **10,108** |
+
+Built by the real RigBuilder and BodyBuilder in Studio, the body mounts in
+0.06 s, and the wheels settle at 0.112 m compression, the static sag. In
+play the driven car's hubs follow the spring:
+
+| Corner compression (m) | FL | FR | RL | RR |
+|---|---|---|---|---|
+| At rest | 0.129 | 0.128 | 0.096 | 0.095 |
+
+- **Launch:** the rear reaches 0.151 and the front drops to 0.075.
+- **Hard braking from 90 km/h:** the front reaches 0.181 and the rear drops to 0.051.
+- **Right-hand corner at 80 km/h:** the outside wheels reach 0.173 and the inside drop to 0.053.
+
+Nothing passed the 0.200 travel. A second rig that the local client did not
+drive got its hubs from WheelVisuals. Anchored, it read the same rest numbers.
+Released onto its box, it read full bump (0.200).

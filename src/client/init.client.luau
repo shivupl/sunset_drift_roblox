@@ -14,10 +14,17 @@ local ScoreController = require(script.ScoreController)
 local Touch = require(script.Input.Touch)
 local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
+local CarBodies = require(script.CarBodies)
+local WheelVisuals = require(script.WheelVisuals)
 
 print("[Hajwala] client boot")
 -- Lamp lights follow the camera whether or not the player is driving.
 WorldLights.start()
+-- Every car's body is built here, and every car not driven by this client
+-- gets its wheel travel here.
+CarBodies.start()
+WheelVisuals.localCar = VehicleController.currentCar
+WheelVisuals.start()
 ScoreController.onSpin = function(bonus: number, spins: number)
 	Hud.flashSpin(bonus, spins)
 end

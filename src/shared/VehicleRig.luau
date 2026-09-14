@@ -74,11 +74,20 @@ export type RigGeometry = {
 	seatM: Vec3, -- seat centre from the box centre, car space
 }
 
--- One visual mesh. Placed by the centre of its bounding box.
+-- One visual mesh. Placed by the centre of its bounding box. The mesh is an
+-- uploaded asset (meshId), generated data in the repo (mesh, "<Module>/<Piece>"
+-- under Shared.CarMeshes, made by tools/carbody), or both: a generated mesh
+-- imported through Studio's 3D Importer keeps its data path and gains the
+-- asset id, which is then used (no EditableMesh needed; RIG_SPEC.md 7).
 export type BodyPiece = {
 	name: string,
-	meshId: number,
-	textureId: number?, -- nil or 0: coloured by color/material
+	meshId: number?,
+	mesh: string?,
+	-- A SurfaceAppearance template in ReplicatedStorage.CarLooks: colour,
+	-- metalness and roughness maps. With paint = true its Color is the paint
+	-- (AlphaMode TintMask: the colour map's alpha marks the painted texels).
+	look: string?,
+	textureId: number?, -- asset meshes only; nil or 0: coloured by color/material
 	sizeM: Vec3, -- bounding box size in the mount's space
 	offsetM: Vec3, -- bounding box centre in the mount's space
 	rotationDeg: Vec3?, -- extra X, Y, Z rotation, applied Y then X then Z
@@ -305,8 +314,16 @@ local function pieces(problems: { string }, where: string, list: any)
 		else
 			seen[p.name] = true
 		end
-		if type(p.meshId) ~= "number" or p.meshId <= 0 then
-			table.insert(problems, `{at}.meshId must be an asset id`)
+		local hasAsset = type(p.meshId) == "number" and p.meshId > 0
+		local hasData = type(p.mesh) == "string" and string.match(p.mesh, "^[%w_]+/[%w_]+$") ~= nil
+		if not hasAsset and not hasData then
+			table.insert(problems, `{at} needs a meshId (an asset id) or a mesh ("Module/Piece")`)
+		end
+		if p.mesh ~= nil and not hasData then
+			table.insert(problems, `{at}.mesh must be "Module/Piece"`)
+		end
+		if p.look ~= nil and type(p.look) ~= "string" then
+			table.insert(problems, `{at}.look must be the name of a CarLooks SurfaceAppearance`)
 		end
 		vec(problems, `{at}.sizeM`, p.sizeM, true)
 		vec(problems, `{at}.offsetM`, p.offsetM, false)

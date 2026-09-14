@@ -7,12 +7,13 @@
 -- Handling that every car shares lives in CarConfig. An entry's `tuning`
 -- overrides any part of it for that car only.
 --
--- Both current bodies come from "Low Poly Cars Pack: Mesh Vehicle Road Race"
--- (store 120535861432410, Ninja131Venom): free, no scripts shipped (the
--- builder makes its own MeshParts from the bare mesh ids), no real brands.
--- The pack's Cybertruck and Rimac are real brands and are not used. The
--- numbers below were measured off the pack model in Studio: wheel centres,
--- then every piece's bounding box relative to them, scaled.
+-- Bodies. The Kamri's is made in the repo (tools/carbody): generated meshes
+-- in CarMeshes, baked textures on ReplicatedStorage.CarLooks. The hatch's
+-- comes from "Low Poly Cars Pack: Mesh Vehicle Road Race" (store
+-- 120535861432410, Ninja131Venom): free, no scripts shipped (the builder
+-- makes its own MeshParts from the bare mesh ids), no real brands; its
+-- numbers were measured off the pack model in Studio. The pickup's and the
+-- cruiser's sources are above their entries.
 local VehicleRig = require(script.Parent.VehicleRig)
 
 type CarEntry = VehicleRig.CarEntry
@@ -35,44 +36,48 @@ local function wheelPieces(radiusM: number): { VehicleRig.BodyPiece }
 end
 
 local cars: { [string]: CarEntry } = {
-	-- The Phase 0 car. Its rig is exactly the old CarBuilder box, so the
-	-- physics did not change in the migration; the body is the pack's
-	-- saloon, scaled so its axles sit on the rig's 2.8 m wheelbase and
-	-- 1.55 m track (0.181 m per pack stud along and up, 0.193 across).
-	sedan = {
-		displayName = "Sedan",
-		blurb = "The heavy saloon. Long, planted, carries a slide.",
+	-- THE KAMRI. A large Japanese four-door saloon in the shape of a mid-2000s
+	-- family sedan, no make or badge. The first car with a body made in the
+	-- repo: tools/carbody/kamri.py generates the meshes (src/shared/CarMeshes/
+	-- Kamri) and bakes the textures (assets/cars/kamri, uploaded; the ids are
+	-- on the CarLooks SurfaceAppearances). sizeM and offsetM below are the
+	-- generator's numbers; a spec fails if they drift apart.
+	--
+	-- Real proportions: 4.805 m long, 1.82 m wide, 1.47 m tall, 2.775 m
+	-- wheelbase, 1.575 m track, 215/60 R16 tyres. It takes the Phase 0
+	-- sedan's place and its handling: same mass, centre of mass height and
+	-- shared tuning, on its own (real) wheelbase, track and tyres.
+	kamri = {
+		displayName = "Kamri",
+		blurb = "The big Japanese saloon. Planted, predictable, carries a slide.",
 		order = 1,
-		-- 1.2: at the pack's real-world 4.9 m it read small next to the wide
-		-- lanes and put a seated avatar's head (1.2 m above the seat, hair
-		-- included) through the 1.37 m roof. Now 5.9 m with a 1.65 m roof.
-		-- The numbers below stay as measured; the scale multiplies them.
 		scale = 1.2,
 		rig = {
 			massKg = 1600,
-			collisionSizeM = { 1.8, 1.3, 4.9 },
-			centerOfMassM = { 0, -0.35, -0.2 }, -- low and a little forward
+			-- Box bottom 0.21 m off the ground at rest, top 1.41 m: inside the
+			-- body from the sills to under the roof.
+			collisionSizeM = { 1.8, 1.2, 4.7 },
+			-- 0.51 m above the ground at rest, where the sedan's was.
+			centerOfMassM = { 0, -0.3, -0.2 },
 			shellMassFraction = 0.35,
-			wheelbaseM = 2.8,
-			trackWidthM = 1.55,
-			wheelRadiusM = 0.33,
-			wheelWidthM = 0.22,
-			-- Low in the box: 0.35 m off the ground at scale 1.2, so the seated
-			-- driver's head (1.2 m above the seat) stays under the roof.
-			seatM = { -0.4, -0.6, -0.2 },
+			wheelbaseM = 2.775,
+			trackWidthM = 1.575,
+			wheelRadiusM = 0.326,
+			wheelWidthM = 0.215,
+			-- Driver's side, over the front seat cushion, 0.3 m off the ground.
+			seatM = { -0.38, -0.51, 0.12 },
 		},
 		body = {
 			paint = Color3.fromRGB(236, 236, 232),
 			pieces = {
-				-- 9339166843 is the paint and 9339167457 the windows and trim (the
-				-- pack colours them red and black). AssetRegistry's parked-car
-				-- note had them the other way round.
-				{ name = "Shell", meshId = 9339166843, sizeM = { 1.899, 1.208, 4.697 }, offsetM = { 0, 0.765, 0.047 }, paint = true, material = Enum.Material.SmoothPlastic },
-				{ name = "Glass", meshId = 9339167457, sizeM = { 1.899, 1.21, 4.679 }, offsetM = { 0, 0.766, 0.054 }, color = GLASS, material = Enum.Material.Glass },
-				{ name = "TailLamps", meshId = 9339167038, sizeM = { 1.624, 0.165, 0.204 }, offsetM = { 0, 0.861, 2.189 }, color = TAILLAMP, material = Enum.Material.Neon, castShadow = false },
-				{ name = "HeadLamps", meshId = 9339167191, sizeM = { 1.75, 0.15, 0.347 }, offsetM = { 0, 0.639, -1.976 }, color = HEADLAMP, material = Enum.Material.Neon, castShadow = false },
+				{ name = "Body", mesh = "Kamri/Body", look = "Kamri_Body", paint = true, sizeM = { 2.1034, 1.2639, 4.8315 }, offsetM = { 0, 0.8319, 0.0513 } },
+				{ name = "Glass", mesh = "Kamri/Glass", sizeM = { 1.7342, 0.4454, 2.49 }, offsetM = { 0, 1.2123, 0.415 }, color = Color3.fromRGB(30, 40, 44), material = Enum.Material.Glass, transparency = 0.45, castShadow = false },
+				{ name = "Interior", mesh = "Kamri/Interior", sizeM = { 1.6207, 1.1039, 2.5 }, offsetM = { 0, 0.8519, 0.41 }, color = Color3.fromRGB(34, 34, 36), castShadow = false },
 			},
-			wheelPieces = wheelPieces(0.33),
+			wheelPieces = {
+				{ name = "Tyre", mesh = "Kamri/Tyre", look = "Kamri_Tyre", sizeM = { 0.215, 0.652, 0.652 }, offsetM = { 0, 0, 0 }, material = Enum.Material.Rubber },
+				{ name = "Rim", mesh = "Kamri/Rim", look = "Kamri_Rim", sizeM = { 0.187, 0.417, 0.417 }, offsetM = { -0.0035, 0, 0 }, material = Enum.Material.Metal },
+			},
 		},
 	},
 
@@ -268,6 +273,6 @@ local cars: { [string]: CarEntry } = {
 }
 
 return {
-	defaultCarId = "sedan",
+	defaultCarId = "kamri",
 	cars = cars,
 }

@@ -28,10 +28,10 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 ## CarCatalog
 | Field | What it does |
 |---|---|
-| defaultCarId | The car anyone gets who has not chosen one. |
+| defaultCarId | The car anyone gets who has not chosen one: the Kamri, which took the Phase 0 sedan's place and handling (measured against it below). |
 | cars.&lt;id&gt;.scale | Uniform size, default 1 (every car in the catalog is 1.2). Multiplies every length of rig and body and rescales the size-only handling terms so the car drives the same (RIG_SPEC.md §8b). Up = bigger car. |
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
-| cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. |
+| cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. A piece's `look` (ReplicatedStorage.CarLooks) carries its colour, metalness and roughness maps; with `paint` the look's Color is the paint. |
 | cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg; the pickup and cruiser are almost all tuning (below). |
 | cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). |
 | spawn.autoSpawnOnJoin (CarConfig) | false: players start on foot with the spawn menu open. true: a car is parked for them at join, the Phase 0 way. |
@@ -102,6 +102,21 @@ These numbers were measured in Studio, focused, at scale 1.2, using the input-ov
 - **Natl.** It gets no two-wheel overrides. The wide 1.7 m track and soft springs make the shared torques lift it slower and lower (34°). The low damping lets it hang up there for 5 s.
 
 The sedan remains the reference: the quickest to answer the wheel, the easiest to throw, and the one that needs the most throttle to keep a slide.
+
+**Kamri (Phase 3) against the sedan it replaced.** The Kamri keeps the sedan's mass, centre-of-mass height and shared tuning on its own real geometry: wheelbase 2.775 m (was 2.8), track 1.575 m (was 1.55), tyre radius 0.326 m (was 0.33), and a 1.2 m box (was 1.3) with the centre of mass 0.3 m below its centre (was 0.35), so the height above the road is the same. Measured with the same protocol:
+
+| | Sedan | Kamri |
+|---|---|---|
+| Box centre above road at rest | 1.063 m | 0.998 m (predicted 0.999; smaller box, same centre of mass height) |
+| 0–50 / 0–100 km/h | 1.59 / 3.67 s | 1.57 / 3.67 s |
+| 100–0 km/h | 44.3 m | 44.7 m |
+| Turn-in yaw at 0.1 s / 0.2 s, held at 3 s | 22.9 / 29.6 / 15.4 °/s | 23.9 / 29.6 / 15.2 °/s |
+| Peak roll | 3.5° | 3.4° |
+| Natl tap at 105 km/h | 41°, down at 2.6 s | 41°, down at 2.6 s |
+| Lever 360 from 110 km/h | 2.59 s, 52 km/h | 2.58 s, 51 km/h |
+| Slide held at gas 0.5 / 0.75 / 1.0 | 0.6 / 0.6 / 5.0 s | 0.5 / 1.1 / 5.0 s |
+
+Every difference is within run-to-run spread, so the numbers above still describe the default car.
 
 ## suspension
 | Field | What it does | OS | INIT | 2W |

@@ -180,4 +180,9 @@ function VehicleController.isDriving(): boolean
 	return sim ~= nil
 end
 
+-- The car the local sim is driving, if any.
+function VehicleController.currentCar(): Model?
+	return if sim then car else nil
+end
+
 return VehicleController

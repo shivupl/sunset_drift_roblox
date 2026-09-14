@@ -151,8 +151,12 @@ during play, or stop and replay after saving the file.
 - `src/shared/CarCatalog.luau` — every car: its rig numbers, its body meshes, its tuning overrides.
   Adding a car is an entry here plus meshes; `RIG_SPEC.md` is the contract.
 - `src/shared/VehicleRig.luau` — the rig/body contract in code: names, geometry, validation.
-- `src/server/` — road, RigBuilder (physics parts), BodyBuilder (visual meshes), spawner (car
-  choice, seat, ownership, self-healing), remotes.
+- `src/server/` — road, RigBuilder (physics parts), spawner (car choice, seat, ownership,
+  self-healing), remotes.
+- `src/shared/BodyBuilder.luau`, `MeshData.luau`, `CarMeshes/` — car bodies, mounted by every
+  client (`src/client/CarBodies.luau`); `WheelVisuals.luau` moves the wheels of cars the client is
+  not driving. Generated bodies come from `tools/carbody` (RIG_SPEC.md §7b). They need the
+  experience's "Allow Mesh / Image APIs" setting on, or their OBJ meshes imported as assets.
 - `src/server/World/` — the highway environment; `World/City/` the city section off the
   off-ramp. `WORLD.md` explains both.
 - `src/client/` — input (keyboard, gamepad, touch HUD), vehicle controller, camera, driver HUD, debug panel.

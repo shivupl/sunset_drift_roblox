@@ -1,6 +1,6 @@
 --!strict
--- One car per player. Owns choosing the car, building it (RigBuilder then
--- BodyBuilder), seating, network ownership handoff, driverless simulation
+-- One car per player. Owns choosing the car, building its rig (RigBuilder;
+-- every client mounts the body itself, see client/CarBodies), seating, network ownership handoff, driverless simulation
 -- (plugged in by VehicleSim), anchoring of settled cars, exit, and config
 -- reload.
 --
@@ -22,7 +22,6 @@ local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
 local VehicleRig = require(Shared.VehicleRig)
 local RigBuilder = require(script.Parent.RigBuilder)
-local BodyBuilder = require(script.Parent.BodyBuilder)
 local Remotes = require(script.Parent.Remotes)
 
 type Config = CarConfig.Config
@@ -202,12 +201,7 @@ spawnFor = function(player: Player)
 		catalogEntry = ConfigLoader.entry(carId)
 	end
 	local carConfig = ConfigLoader.forCar(carId)
-	BodyBuilder.preload(catalogEntry)
-	if cars[player] or not player.Parent then
-		return -- the preload yielded and something else got there first
-	end
 	local model = RigBuilder.build(carConfig, catalogEntry, "Car_" .. player.Name)
-	BodyBuilder.mount(model, carConfig, catalogEntry)
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute(VehicleRig.CAR_ID_ATTRIBUTE, carId)
 	local handles = VehicleRig.handles(model)

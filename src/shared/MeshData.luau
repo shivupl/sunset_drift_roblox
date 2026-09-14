@@ -1,0 +1,123 @@
+--!strict
+-- Turns a generated mesh module (tools/carbody, src/shared/CarMeshes) into
+-- MeshParts. Roblox cannot import a mesh from a script, so a car body made
+-- in the repo ships as data: quantised vertex, normal, UV and triangle
+-- buffers in base64. Each client decodes them once into an EditableMesh and
+-- makes one template MeshPart per mesh; every car clones the template.
+--
+-- EditableMesh does not replicate, which suits a body: it is visual only and
+-- every client builds its own (BodyBuilder). In a published game it needs
+-- the owner to be ID verified with "Enable Mesh / Image APIs" on in the
+-- Creator Dashboard (RIG_SPEC.md section 7). Studio needs nothing.
+local AssetService = game:GetService("AssetService")
+
+local MeshData = {}
+
+export type Piece = {
+	triangleCount: number,
+	sizeM: { number },
+	offsetM: { number },
+	counts: { number }, -- positions, normals, uvs
+	positions: string,
+	normals: string,
+	uvs: string,
+	triangles: string,
+}
+
+local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local DECODE: { [number]: number } = {}
+for i = 1, #ALPHABET do
+	DECODE[string.byte(ALPHABET, i)] = i - 1
+end
+
+function MeshData.base64(s: string): buffer
+	local n = #s
+	local padding = 0
+	if string.sub(s, -2) == "==" then
+		padding = 2
+	elseif string.sub(s, -1) == "=" then
+		padding = 1
+	end
+	local out = buffer.create(n // 4 * 3 - padding)
+	local o = 0
+	local size = buffer.len(out)
+	for i = 1, n, 4 do
+		local a, b, c, d = string.byte(s, i, i + 3)
+		local v = bit32.lshift(DECODE[a], 18) + bit32.lshift(DECODE[b], 12) + bit32.lshift(DECODE[c] or 0, 6) + (DECODE[d] or 0)
+		if o < size then
+			buffer.writeu8(out, o, bit32.rshift(v, 16))
+		end
+		if o + 1 < size then
+			buffer.writeu8(out, o + 1, bit32.band(bit32.rshift(v, 8), 255))
+		end
+		if o + 2 < size then
+			buffer.writeu8(out, o + 2, bit32.band(v, 255))
+		end
+		o += 3
+	end
+	return out
+end
+
+-- Builds the EditableMesh in the piece's own space: metres, centred on its
+-- bounding box.
+function MeshData.editable(piece: Piece): EditableMesh
+	local em = AssetService:CreateEditableMesh()
+	assert(em, "[MeshData] editable mesh budget exhausted")
+	local nPos, nNrm, nUv = piece.counts[1], piece.counts[2], piece.counts[3]
+	local hx, hy, hz = piece.sizeM[1] / 2, piece.sizeM[2] / 2, piece.sizeM[3] / 2
+	local pos = MeshData.base64(piece.positions)
+	local nrm = MeshData.base64(piece.normals)
+	local uv = MeshData.base64(piece.uvs)
+	local tri = MeshData.base64(piece.triangles)
+
+	local vids = table.create(nPos)
+	for i = 0, nPos - 1 do
+		local x = buffer.readi16(pos, i * 6) / 32767 * hx
+		local y = buffer.readi16(pos, i * 6 + 2) / 32767 * hy
+		local z = buffer.readi16(pos, i * 6 + 4) / 32767 * hz
+		vids[i + 1] = em:AddVertex(Vector3.new(x, y, z))
+	end
+	local nids = table.create(nNrm)
+	for i = 0, nNrm - 1 do
+		local n = Vector3.new(buffer.readi8(nrm, i * 3), buffer.readi8(nrm, i * 3 + 1), buffer.readi8(nrm, i * 3 + 2))
+		nids[i + 1] = em:AddNormal(if n.Magnitude > 0 then n.Unit else Vector3.yAxis)
+	end
+	local uids = table.create(nUv)
+	for i = 0, nUv - 1 do
+		uids[i + 1] = em:AddUV(Vector2.new(buffer.readu16(uv, i * 4) / 65535, buffer.readu16(uv, i * 4 + 2) / 65535))
+	end
+	for t = 0, piece.triangleCount - 1 do
+		local base = t * 18
+		local function corner(c: number): (number, number, number)
+			local o = base + c * 6
+			return buffer.readu16(tri, o), buffer.readu16(tri, o + 2), buffer.readu16(tri, o + 4)
+		end
+		local p0, n0, u0 = corner(0)
+		local p1, n1, u1 = corner(1)
+		local p2, n2, u2 = corner(2)
+		local f = em:AddTriangle(vids[p0 + 1], vids[p1 + 1], vids[p2 + 1])
+		em:SetFaceNormals(f, { nids[n0 + 1], nids[n1 + 1], nids[n2 + 1] })
+		em:SetFaceUVs(f, { uids[u0 + 1], uids[u1 + 1], uids[u2 + 1] })
+	end
+	return em
+end
+
+local templates: { [Piece]: MeshPart } = {}
+
+-- One template MeshPart per piece, made the first time it is asked for.
+-- Clone it; do not parent it.
+function MeshData.template(piece: Piece): MeshPart
+	local t = templates[piece]
+	if t then
+		return t
+	end
+	local em = MeshData.editable(piece)
+	local part = AssetService:CreateMeshPartAsync(Content.fromObject(em), {
+		CollisionFidelity = Enum.CollisionFidelity.Box,
+		RenderFidelity = Enum.RenderFidelity.Precise,
+	})
+	templates[piece] = part
+	return part
+end
+
+return MeshData

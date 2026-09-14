@@ -5,6 +5,8 @@ local VehicleRig = require(Shared.VehicleRig)
 local CarConfig = require(Shared.CarConfig)
 local CarCatalog = require(Shared.CarCatalog)
 local ConfigLoader = require(Shared.ConfigLoader)
+local BodyBuilder = require(Shared.BodyBuilder)
+local MeshData = require(Shared.MeshData)
 local Tests = require(script.Parent)
 type T = Tests.T
 
@@ -19,6 +21,33 @@ local function clone(t: any): any
 	return out
 end
 
+-- The Phase 0 sedan as it was migrated to the rig contract: the fixed
+-- reference for the numbers below, whatever the catalog holds now.
+local PHASE0_SEDAN: any = {
+	displayName = "Sedan",
+	rig = {
+		massKg = 1600,
+		collisionSizeM = { 1.8, 1.3, 4.9 },
+		centerOfMassM = { 0, -0.35, -0.2 },
+		shellMassFraction = 0.35,
+		wheelbaseM = 2.8,
+		trackWidthM = 1.55,
+		wheelRadiusM = 0.33,
+		wheelWidthM = 0.22,
+		seatM = { -0.4, -0.6, -0.2 },
+	},
+	body = {
+		paint = Color3.fromRGB(236, 236, 232),
+		pieces = {
+			{ name = "Shell", meshId = 9339166843, sizeM = { 1.899, 1.208, 4.697 }, offsetM = { 0, 0.765, 0.047 }, paint = true },
+			{ name = "Glass", meshId = 9339167457, sizeM = { 1.899, 1.21, 4.679 }, offsetM = { 0, 0.766, 0.054 }, paint = false },
+		},
+		wheelPieces = {
+			{ name = "Tyre", meshId = 9496370049, sizeM = { 0.257, 0.66, 0.66 }, offsetM = { 0, 0, 0 }, paint = false },
+		},
+	},
+}
+
 return function(t: T)
 	-- Every car in the catalog builds.
 	local count = 0
@@ -32,7 +61,7 @@ return function(t: T)
 
 	-- The migration kept the Phase 0 physics: the sedan's rig at scale 1 is
 	-- the old CarConfig.body, number for number.
-	local sedanOne = clone(CarCatalog.cars.sedan)
+	local sedanOne = clone(PHASE0_SEDAN)
 	sedanOne.scale = nil
 	local sedan = VehicleRig.configFor(CarConfig, sedanOne)
 	local b = sedan.body
@@ -59,7 +88,7 @@ return function(t: T)
 	t.ok(hatch.drivetrain.gearRatios ~= CarConfig.drivetrain.gearRatios, "merged tables are copies")
 
 	-- Arrays in tuning replace, dictionaries merge.
-	local custom = clone(CarCatalog.cars.sedan)
+	local custom = clone(PHASE0_SEDAN)
 	custom.scale = nil
 	custom.tuning = { drivetrain = { gearRatios = { 3.0, 2.0 } } }
 	local customCfg = VehicleRig.configFor(CarConfig, custom)
@@ -100,7 +129,7 @@ return function(t: T)
 
 	-- Validation catches the mistakes a new car will make.
 	local function problemsWith(mutate: (any) -> ()): { string }
-		local e = clone(CarCatalog.cars.sedan)
+		local e = clone(PHASE0_SEDAN)
 		mutate(e)
 		return VehicleRig.validate("test", e)
 	end
@@ -113,11 +142,49 @@ return function(t: T)
 	t.ok(#problemsWith(function(e) e.body.paint = "white" end) > 0, "paint that is not a Color3")
 	t.ok(#problemsWith(function(e) e.rig = nil end) > 0, "no rig")
 	t.eq(#problemsWith(function(_e) end), 0, "an untouched copy is clean")
+	t.eq(#problemsWith(function(e) e.body.pieces[1].mesh = "Kamri/Body" end), 0, "a generated mesh with its imported asset id is fine")
+	t.ok(#problemsWith(function(e)
+		e.body.pieces[1].meshId = nil
+		e.body.pieces[1].mesh = "Kamri Body"
+	end) > 0, "a generated mesh path that is not Module/Piece")
+	t.eq(#problemsWith(function(e)
+		e.body.pieces[1].meshId = nil
+		e.body.pieces[1].mesh = "Kamri/Body"
+	end), 0, "a generated mesh instead of an asset is fine")
+
+	-- Generated meshes: every catalog piece that names one finds it, places
+	-- it by the generator's own bounding box, and the buffers decode to the
+	-- sizes the header claims.
+	for id, entry in CarCatalog.cars do
+		for _, list in { entry.body.pieces, entry.body.wheelPieces } do
+			for _, p in list do
+				if not p.mesh then
+					continue
+				end
+				local data = BodyBuilder.meshData(p.mesh)
+				t.ok(data ~= nil, `{id} {p.name}: generated mesh {p.mesh} exists`)
+				if not data then
+					continue
+				end
+				for axis = 1, 3 do
+					t.near(p.sizeM[axis], data.sizeM[axis], 1e-3, `{id} {p.name}: sizeM[{axis}] matches the generator`)
+					t.near(p.offsetM[axis], data.offsetM[axis], 1e-3, `{id} {p.name}: offsetM[{axis}] matches the generator`)
+				end
+				t.eq(buffer.len(MeshData.base64(data.positions)), data.counts[1] * 6, `{id} {p.name}: positions decode`)
+				t.eq(buffer.len(MeshData.base64(data.normals)), data.counts[2] * 3, `{id} {p.name}: normals decode`)
+				t.eq(buffer.len(MeshData.base64(data.uvs)), data.counts[3] * 4, `{id} {p.name}: uvs decode`)
+				t.eq(buffer.len(MeshData.base64(data.triangles)), data.triangleCount * 18, `{id} {p.name}: triangles decode`)
+			end
+		end
+	end
+	local decoded = MeshData.base64("AQID/w==")
+	t.eq(buffer.len(decoded), 4, "base64 padding")
+	t.eq(buffer.readu8(decoded, 3), 255, "base64 bytes")
 
 	-- Scale: geometry grows, and the size-only handling terms follow so the
 	-- car drives the same per metre.
 	local k = 1.2
-	local big = clone(CarCatalog.cars.sedan)
+	local big = clone(PHASE0_SEDAN)
 	big.scale = k
 	local bigCfg = VehicleRig.configFor(CarConfig, big)
 	t.near(bigCfg.body.bodySize[1], 4.9 * k, 1e-9, "scale multiplies the box")

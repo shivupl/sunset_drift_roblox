@@ -5,3 +5,4 @@
 /build/
 /globalTypes.d.luau
 /sourcemap.json
+__pycache__/

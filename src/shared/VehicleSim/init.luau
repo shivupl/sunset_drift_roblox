@@ -641,9 +641,12 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			ws.visualOmega = w.omega
 		end
 		w.spinAngle -= ws.visualOmega * dt
-		local dropM = if c.hitDistM
-			then math.min(c.hitDistM - cfg.body.wheelRadius, cfg.suspension.restLength)
-			else cfg.suspension.restLength
+		-- Travel is the suspension's own compression, so the wheel moves in
+		-- the arch exactly as the spring does: full droop in the air, never
+		-- past full bump (the bump stop takes the rest, and the arches are
+		-- cut for travel). WheelVisuals does the same for cars this client
+		-- does not simulate.
+		local dropM = cfg.suspension.restLength - c.susp.compression
 		w.weld.C0 = CFrame.new(w.attachment.Position - Vector3.new(0, dropM / mps, 0))
 			* CFrame.Angles(0, -math.rad(c.steerDeg), 0)
 			* CFrame.Angles(w.spinAngle, 0, 0)
