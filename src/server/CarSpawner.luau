@@ -311,14 +311,31 @@ local function seatIn(entry: Entry, player: Player): boolean
 	if not hum or not hum:IsA("Humanoid") or hum.Health <= 0 or cars[player] ~= entry then
 		return false
 	end
+	-- Out of the old seat first, and wait until the humanoid has really left
+	-- it: a Sit = false that lands after the new seat takes throws the
+	-- player straight back out (seen swapping cruiser -> pickup, seated for
+	-- 0.03 s then standing beside the car).
 	if hum.SeatPart then
 		hum.Sit = false
+	end
+	local clearBy = os.clock() + 1
+	while (hum.SeatPart or hum:GetState() == Enum.HumanoidStateType.Seated) and os.clock() < clearBy do
 		task.wait()
 	end
 	entry.chassis.Anchored = false
-	character:PivotTo(entry.seat.CFrame * CFrame.new(0, s(1.5), 0))
-	entry.seat:Sit(hum)
-	return true
+	-- Then sit, and check it held; a late unseat gets another go.
+	for _ = 1, 3 do
+		if cars[player] ~= entry or hum.Health <= 0 or not entry.seat.Parent then
+			return false
+		end
+		character:PivotTo(entry.seat.CFrame * CFrame.new(0, s(1.5), 0))
+		entry.seat:Sit(hum)
+		task.wait(0.3)
+		if entry.seat.Occupant == hum then
+			return true
+		end
+	end
+	return entry.seat.Occupant == hum
 end
 
 -- The spawn menu's request: replace this player's car with catalog car

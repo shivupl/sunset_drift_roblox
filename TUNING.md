@@ -29,15 +29,79 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 | Field | What it does |
 |---|---|
 | defaultCarId | The car anyone gets who has not chosen one. |
-| cars.&lt;id&gt;.scale | Uniform size, default 1 (both cars are 1.2). Multiplies every length of rig and body and rescales the size-only handling terms so the car drives the same (RIG_SPEC.md §8b). Up = bigger car. |
+| cars.&lt;id&gt;.scale | Uniform size, default 1 (every car in the catalog is 1.2). Multiplies every length of rig and body and rescales the size-only handling terms so the car drives the same (RIG_SPEC.md §8b). Up = bigger car. |
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
 | cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. |
-| cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg. |
+| cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg; the pickup and cruiser are almost all tuning (below). |
 | cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). |
 | spawn.autoSpawnOnJoin (CarConfig) | false: players start on foot with the spawn menu open. true: a car is parked for them at join, the Phase 0 way. |
 | spawn.spawnCooldownSeconds (CarConfig) | Shortest gap the server allows between two spawn requests from one player (1.5 s). |
 | spawn.carId (CarConfig) | Overrides the default for everyone without a `CarId` attribute. |
 | spawn.showRig (CarConfig) | Draws the collision box, hubs and seat translucent over the body, for fitting a new car. |
+
+### Car personalities
+
+The pickup and the cruiser were added with catalog entries only: a rig, one body mesh, and a `tuning` block. No code changed for them. Each one is described below by what it feels like, the fields that make it so, and which way to move them. All three cars share every other number in CarConfig.
+
+These numbers were measured in Studio, focused, at scale 1.2, using the input-override harness on the test road. The table gives the same protocol for each car.
+
+| | Sedan (baseline) | Pickup | Cruiser |
+|---|---|---|---|
+| Mass / wheelbase / track | 1600 kg / 2.8 / 1.55 m | 2200 kg / 3.15 / 1.64 m | 1800 kg / 3.0 / 1.7 m |
+| Centre of mass (car space, +Z back) | 0.2 m forward | 0.25 m back | 0.1 m forward |
+| Box centre above road at rest | 1.063 m | 1.085 m | 0.864 m (sits 0.2 m into its travel) |
+| 0–50 / 0–100 km/h | 1.59 / 3.67 s | 2.70 / 7.20 s | 1.74 / 4.82 s |
+| 100–0 km/h, full brake | 44.3 m | 59.1 m | 60.4 m |
+| Turn-in at 80 km/h, half wheel: yaw at 0.1 s / 0.2 s | 22.9 / 29.6 °/s | 20.3 / 26.7 °/s | 5.5 / 17.4 °/s |
+| … yaw still held at 3 s | 15.4 °/s | 17.9 °/s | 16.5 °/s |
+| … peak body roll | 3.5° | 3.6° | 4.6° |
+| Natl, 0.2 s lean tap at 105 km/h | 41°, down at 2.6 s | 32°, down at 2.5 s (0.6 s lean: 36°) | 34°, down at 5.1 s |
+| Lever 360 from 110 km/h | 2.59 s, 52 km/h at 4.5 s | 2.78 s, 42 km/h | 2.75 s, 58 km/h |
+| Slide held 20–70° with wheel centred, 5 s at gas 0.5 / 0.75 / 1.0 | 0.6 / 0.6 / 5.0 s | 0.5 / 0.4 / 4.9 s | 5.0 / 5.0 / 5.0 s |
+| … exit speed at full gas | 73 km/h | 89 km/h | 97 km/h |
+| Continuous lever 720, full lock and gas | 5.1 s | 5.4 s | 5.1–5.2 s |
+
+**Pickup: heavy, slow to wind up, and once it goes, it goes.** It is the slowest car by far off the line and the longest to stop. A turn arrives a touch late but then keeps rotating. It takes the throw longest, and a slide carries the most momentum. Its natl lifts on the first tap but lower, with less to spare.
+
+- **Launch.** `drivetrain.torqueCurve` peaks at 580 Nm against the sedan's 640 and runs out at 6000 rpm. `slipModel.wheelInertia` is 2.8 (the sedan's is 1.4) and `engineInertia` 0.45 (0.15). Together these give a slow, heavy launch.
+  - To make it quicker, raise the curve. That keeps the heavy feel better than lowering the inertias.
+  - The curve started at 520 Nm peak, which was 8.9 s to 100; at 580 it is 7.2 s.
+- **Braking.** It stops late because `brakeForce` 15000 is hauling 2200 kg.
+- **Turn-in and rotation.**
+  - The yaw rate builds more slowly (`rig.shellMassFraction` 0.55 puts more mass out in the long box, so it has more yaw and roll inertia).
+  - The front is lighter (`tires.front.grip` 0.95), and the wheel is slower (`steerSpeedDegPerSec` 200).
+  - `centerOfMassM` 0.25 m back with `rear.grip` 1.1 keeps the tail planted until it goes.
+  - `throwYawMaxTorque` 13000 means a throw gets less help, so its 360 is the slowest.
+  - Going up on the rear numbers makes it more stable; going down on `shellMassFraction` makes it more eager.
+- **Momentum.** `slideRelief` 0.35 and `leverRelief` 0.75 (less speed bled while sideways) are why it leaves a full-gas slide at 89 km/h.
+  - Its slide sits shallow, 24–29°, because the heavy tail and grippy rear won't swing wider on their own.
+  - To make it hold a wider angle, lower `rear.slideGripRatio` (0.88).
+- **Natl.** `twoWheel.liftTorque` 16500 and `leanInTorque` 6000 are more than the shared torques (which lifted it only 11° before dropping) but less than the sedan-equivalent 21000/7500 (40°, as easy as the sedan).
+  - This range is steep: 18000 gave 35° and 15000 gave 11°.
+  - Stiffer springs (`stiffness` 45000, `damping` 4200, anti-roll 9000/6000) keep it at the sedan's ride height under the extra weight.
+
+**Cruiser: big, soft and lazy on the way in; it holds a slide all day.** You wind the wheel on and the nose follows a beat later, while the body leans more than any other car's. A slide, once started, stays at part throttle with the wheel centred and exits fastest. On two wheels it floats up slowly and stays up twice as long as the sedan. It is moderately quick in a straight line and stops long.
+
+- **Lazy turn-in.** At 0.1 s after the wheel moves it has a quarter of the sedan's yaw. Four settings stack for this:
+  - `steering.steerSpeedDegPerSec` 100 (the sedan's is 320).
+  - A slower speed lock, `speedLockCurve` 0.45 at 90 km/h (the sedan's is 0.55).
+  - A soft front tyre that peaks late: `front.peakSlipDeg` 12, `riseShape` 1.0.
+  - `rig.shellMassFraction` 0.6, for yaw inertia.
+
+  Before the first, second and fourth were added, it turned in exactly like the sedan (20.6 °/s at 0.1 s), which is why all four are there. `steerReturnDegPerSec` stays at 300, and `counterSteerRelief` gives the whole wheel back in a slide, so catching one is not lazy.
+  - To make it sharper, raise `steerSpeedDegPerSec` first.
+- **Soft body.** `suspension.stiffness` 20000 and `damping` 1400 on `restLength` 0.45 and `travel` 0.32 give the sag, the float and the low stance. `antiRollFront`/`antiRollRear` at 1500/600 give the roll. Raise the anti-roll to lean it less.
+- **Holds a slide.** `throwThrottleHold` 0.5 from `throwThrottleHoldFromDeg` 15 means half throttle past 15° keeps a slide. The sedan needs 0.8 past 20°, which is why it drops the slide at gas 0.5 and 0.75.
+  - `throwThrottleHoldGraceSeconds` 1.0 and `throwThrottleHoldKeepDeg` 6 forgive a lift through a transition.
+  - `throwHoldGain` 8 holds the angle stiffer.
+  - `rear.slideGripRatio` 0.84 and `falloffShape` 2.0 keep grip past the peak, so it doesn't let go.
+  - `slideYawDamping` 100 (the sedan's is 130) lets a released slide swing wider before it settles.
+  - `slideRelief` 0.4 and `leverRelief` 0.8 keep the speed.
+  - To make it harder to hold, raise `throwThrottleHold` back toward 0.8.
+- **Engine.** A torquey, early curve (620 Nm at 3500, gone by 6000) with quick 0.14 s shifts pulls well to 50 and then fades: 4.8 s to 100.
+- **Natl.** It gets no two-wheel overrides. The wide 1.7 m track and soft springs make the shared torques lift it slower and lower (34°). The low damping lets it hang up there for 5 s.
+
+The sedan remains the reference: the quickest to answer the wheel, the easiest to throw, and the one that needs the most throttle to keep a slide.
 
 ## suspension
 | Field | What it does | OS | INIT | 2W |

@@ -156,7 +156,7 @@ A **piece**:
 |---|---|
 | `name` | Unique within its list. Wheel pieces become `<name>_FL` and so on. |
 | `meshId` | The mesh asset id (required). |
-| `textureId` | Optional colour map; nil or 0 colours the mesh instead. |
+| `textureId` | Optional colour map; nil or 0 colours the mesh instead. A textured piece ignores `paint`. |
 | `sizeM` | Size of the piece's **bounding box** in metres, `{X, Y, Z}` of the mount's space. The mesh is scaled to it. |
 | `offsetM` | Centre of that bounding box: car space for `pieces`, wheel space for `wheelPieces`. |
 | `rotationDeg` | Optional extra rotation `{X, Y, Z}` degrees (applied Y, X, Z) for a mesh not authored facing −Z. |
@@ -334,3 +334,17 @@ The hatch at 1.2 against its unscaled numbers:
 - **Lever 360:** 2.53 s against 2.52 s.
 
 The hatch is a low car, so a seated avatar's head still shows over its roof.
+
+**The pickup and the cruiser** (Sep 2026) were added the way §10 says: a
+catalog entry and a mesh each, no code. Each body is one textured store mesh
+with empty wheel arches and no brand, measured in Studio for its arch
+positions, well spacing, width and ground clearance. The source and the
+measurements are in the comment above each entry. The rig contract held on the
+first build: rest heights came out at 1.085 m and 0.864 m (predicted 1.085 and
+0.859), and both masses matched `massKg` plus the 12 kg driver. Their
+handling personalities, and the numbers behind them, are in TUNING.md under
+"Car personalities".
+
+A body piece with a `textureId` shows its texture and ignores `body.paint`.
+Paint only colours untextured pieces, so both of these cars show their mesh's
+own colours. Their `paint` value is used only by the spawn-menu swatch.

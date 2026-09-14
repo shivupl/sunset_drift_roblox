@@ -116,6 +116,155 @@ local cars: { [string]: CarEntry } = {
 			suspension = { stiffness = 27000, damping = 2100 },
 		},
 	},
+
+	-- THE PICKUP. A 2.2 t work truck: long, heavy at the back, a lazy engine
+	-- turning a lot of rotating mass. Body: "Pickup Truck No Wheels" by
+	-- BadBoy12522 (store 7408695529), one textured mesh with empty arches,
+	-- no brand. Measured in Studio against a 0.1 m ruler at 5.3 m long:
+	-- arches at -1.74 and +1.41 m from the mesh centre (3.15 m wheelbase),
+	-- wells 1.64 m apart, 1.94 m wide without mirrors, the underside 0.33 m
+	-- off the ground on 0.38 m tyres.
+	pickup = {
+		displayName = "Pickup",
+		blurb = "2.2 tonnes, tail-heavy, slow to wind up. Once it goes, it goes.",
+		order = 3,
+		scale = 1.2,
+		rig = {
+			massKg = 2200,
+			collisionSizeM = { 1.85, 1.25, 5.1 },
+			-- Rearward: the bed and axle are the weight, 0.25 m behind centre.
+			centerOfMassM = { 0, -0.2, 0.25 },
+			-- More of the mass out in the long body and bed, less in a lump at
+			-- the centre: a bigger yaw and roll inertia to wind up.
+			shellMassFraction = 0.55,
+			wheelbaseM = 3.15,
+			trackWidthM = 1.64,
+			wheelRadiusM = 0.38,
+			wheelWidthM = 0.26,
+			seatM = { -0.42, -0.55, -0.45 },
+		},
+		body = {
+			paint = Color3.fromRGB(214, 206, 194),
+			pieces = {
+				{ name = "Shell", meshId = 7408695235, textureId = 7408695426, sizeM = { 2.29, 1.61, 5.3 }, offsetM = { 0, 1.135, 0.165 } },
+			},
+			wheelPieces = wheelPieces(0.38),
+		},
+		tuning = {
+			-- Heavier on stiffer springs, so it sits at the sedan's sag.
+			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
+			drivetrain = {
+				-- A tired lump: a flat, low curve that runs out early.
+				torqueCurve = { { 1000, 400 }, { 2000, 540 }, { 3200, 580 }, { 4500, 540 }, { 5400, 410 }, { 6000, 0 } },
+				redlineRpm = 6000,
+				upshiftRpm = 5600,
+				downshiftRpm = 2600,
+				shiftTime = 0.2,
+				topSpeedKmh = 180,
+				-- Same brakes as the sedan hauling 600 kg more: it stops late.
+				brakeForce = 15000,
+			},
+			tires = {
+				-- The rear carries the weight and bites; the front is light.
+				front = { grip = 0.95, slideGripRatio = 0.8 },
+				rear = { grip = 1.1, slideGripRatio = 0.88, longitudinalGrip = 1.7 },
+				slipModel = {
+					-- High inertia: heavy wheels and a heavy flywheel, so it
+					-- revs up slowly and a spinning rear keeps spinning.
+					wheelInertia = 2.8,
+					engineInertia = 0.45,
+					-- Momentum: once sideways it carries speed.
+					slideRelief = 0.35,
+					leverRelief = 0.75,
+				},
+			},
+			steering = {
+				maxSteerDeg = 34,
+				steerSpeedDegPerSec = 200,
+				-- Its size fights a throw: less help rotating it.
+				throwYawMaxTorque = 13000,
+			},
+			-- 600 kg more to lever onto two wheels. With the shared torques it
+			-- rose 11 degrees and dropped; at 21000/7500 it went up as easily
+			-- as the sedan. These get it up, lower and briefly.
+			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
+		},
+	},
+
+	-- THE CRUISER. A big, soft 1.8 t saloon: wallowing springs, a slow
+	-- nose, a torquey low-revving engine, and a tail that settles into a
+	-- slide and stays there. Body: "Sedan (No Wheels)" by BadBoy12522
+	-- (store 5991320944) with the creator's all-colour texture (decal
+	-- 5995377260, image 5995377253), no brand. Measured at 5.4 m long: arches
+	-- at -1.64 and +1.34 m (3.0 m wheelbase), wells 1.70 m apart, 2.02 m wide
+	-- without mirrors, the underside 0.25 m off the ground on 0.35 m tyres.
+	cruiser = {
+		displayName = "Cruiser",
+		blurb = "Big soft saloon. Lazy on the way in, holds a slide all day.",
+		order = 4,
+		scale = 1.2,
+		rig = {
+			massKg = 1800,
+			collisionSizeM = { 1.9, 1.1, 5.2 },
+			centerOfMassM = { 0, -0.25, -0.1 },
+			-- A long body with its mass spread out: slow to start rotating.
+			shellMassFraction = 0.6,
+			wheelbaseM = 3.0,
+			trackWidthM = 1.7,
+			wheelRadiusM = 0.35,
+			wheelWidthM = 0.24,
+			seatM = { -0.42, -0.45, 0 },
+		},
+		body = {
+			paint = Color3.fromRGB(196, 190, 180),
+			pieces = {
+				{ name = "Shell", meshId = 5991320872, textureId = 5995377253, sizeM = { 2.26, 1.23, 5.4 }, offsetM = { 0, 0.865, 0.15 } },
+			},
+			wheelPieces = wheelPieces(0.35),
+		},
+		tuning = {
+			-- Soft and long: sits 0.2 m into 0.32 m of travel, rolls a lot,
+			-- and the low damping lets it float over a load change.
+			suspension = { restLength = 0.45, travel = 0.32, stiffness = 20000, damping = 1400, antiRollFront = 1500, antiRollRear = 600 },
+			drivetrain = {
+				-- A big lazy V8: most of its pull by 2,500 rpm, gone by 5,500.
+				torqueCurve = { { 1000, 450 }, { 2500, 600 }, { 3500, 620 }, { 4500, 560 }, { 5500, 420 }, { 6000, 0 } },
+				redlineRpm = 6000,
+				upshiftRpm = 5400,
+				downshiftRpm = 2400,
+				shiftTime = 0.14,
+				topSpeedKmh = 200,
+			},
+			tires = {
+				-- A soft front that pushes on turn-in, a rear that keeps most
+				-- of its grip once sliding instead of letting go.
+				front = { grip = 0.95, peakSlipDeg = 12, riseShape = 1.0 },
+				rear = { grip = 1.02, slideGripRatio = 0.84, falloffShape = 2.0, deepSlideGripRatio = 0.6 },
+				slipModel = {
+					slideRelief = 0.4,
+					leverRelief = 0.8,
+				},
+			},
+			steering = {
+				-- Lazy turn-in: the wheel winds on slowly.
+				steerSpeedDegPerSec = 100,
+				steerReturnDegPerSec = 300,
+				-- A slow rack at speed: less lock for the same input past 60 km/h.
+				-- The counter-steer relief still gives the whole wheel back in a slide.
+				speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.45 }, { 150, 0.27 }, { 220, 0.24 }, { 300, 0.24 } },
+				-- Holds a slide easily: half throttle past 15 degrees is enough to
+				-- keep one (the sedan wants 0.8 past 20), the hold is stiffer,
+				-- and it forgives a second of lifting through a transition.
+				throwThrottleHold = 0.5,
+				throwThrottleHoldFromDeg = 15,
+				throwThrottleHoldGraceSeconds = 1.0,
+				throwThrottleHoldKeepDeg = 6,
+				throwHoldGain = 8,
+				-- A released slide settles slower and swings wider.
+				slideYawDamping = 100,
+			},
+		},
+	},
 }
 
 return {
