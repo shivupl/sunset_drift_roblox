@@ -305,6 +305,32 @@ Measured in Play:
 - **Collision:** driven from 170 m out at 45 degrees across the waves and mounds, full throttle, the car reached 204 km/h. It stopped at 438 m against the fence at 439 m and stayed flat (upright 0.99). Before the waves, the same run reached 182 km/h and tilted about 30 degrees over a mound.
 - **Frame rate:** with the fence at 250 m, the same with the fence hidden as shown.
 
+## Life in the dune field (`DuneLife.luau`)
+
+Sparse palms, acacias and small Middle Eastern scenes stand out on the dunes, between the flat strip and the fence. There are a few of each on purpose, so the field never looks crowded.
+
+| Scene | Count | What it is |
+|---|---|---|
+| Oasis | 6 | A clump of 3 to 6 palms with scrub and rocks. |
+| Camp | 4 | A tent facing the road, a carpet in front, a small fire, and camels. |
+| Majlis | 3 | An open-air sitting area: a carpet, floor cushions with backrests on three sides, a brass tray with a dallah and finjan cups, and a fire. |
+| Wreck | 3 | An old saloon left to the sand: sun-faded, no wheels, sunk to its sills and tipped, with its tyres in a heap. |
+| Tyre stacks | 4 | One to three stacks of old tyres, the kind drifters mark a spot with. |
+| Water tanker | 3 | A tanker trailer with a trough, and camels at it. |
+| Camels | 5 groups | Two to four strays. |
+| Lone trees | 24 palms, 14 acacias | One or two palms on their own, and single acacias. |
+
+**Placement rules.** Each scene needs a flattish spot (within 0.5 to 1.2 m of level across it) and keeps these distances:
+- 150 m from other scenes (40 m round a lone tree);
+- 25 m past the flat strip, 18 m inside the fence, 35 m from the petrol station, and 200 m short of where the dunes end;
+- off any mound standing more than 0.6 m high.
+
+A scene with no such spot is skipped. The fires carry a small warm PointLight. Nothing collides.
+
+**Measured in Play:** 59 palms, 29 camels and all the scenes above were placed, in 467 parts (about 246k triangles by estimate, mostly the palm and camel meshes). The fence still stops the car from either side (438 m, upright 0.93 to 0.99).
+
+**Screenshot trap:** `screen_capture` with a camera far from the Studio editor's real camera draws the terrain at coarse level of detail. Low scenes came out buried in blobs that are not there. Move `workspace.CurrentCamera` (and its Focus) to the spot for a few seconds first.
+
 ## Lighting and the time of day
 
 `timeOfDay` selects a preset from `timesOfDay`: `goldenHour` (default),

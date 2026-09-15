@@ -495,6 +495,17 @@ The dune field: random soft mounds over the sand between a flat strip beside the
 | endM / endTaperM | Where the dunes sink away before the city. |
 | wallHeightM / wallPieceM | The invisible stop where the fence would be, only built when the fence is off. |
 
+## duneLife
+Sparse palms and scenes out in the dune field (`DuneLife.luau`). Counts are for the whole field, both sides.
+
+| Field | What it does |
+|---|---|
+| oases / camps / majlis / wrecks / tyreStacks / waterTanks / camelGroups | How many of each scene to try to place. A scene that finds no flattish spot clear of the others is skipped. |
+| lonePalms / acacias | Single trees (a lone palm is one or two). |
+| sceneSpacingM / loneSpacingM | Clear ground between scenes, and round a lone tree. Raise for sparser. |
+| nearMarginM / fenceMarginM / endMarginM / stationGapM | Keep-outs: past the flat strip, inside the fence, short of the dunes' end, and from the station. |
+| maxMoundM | Never where a mound stands higher than this (its face). |
+
 ## lamps
 | Field | What it does |
 |---|---|

@@ -617,6 +617,31 @@ local config = {
 		wallHeightM = 150,
 	},
 
+	-- Sparse life out in the dune field (DuneLife.luau): palms, acacias and
+	-- small Middle Eastern scenes between the flat strip and the fence.
+	-- Counts are for the whole field, both sides; a scene that finds no
+	-- flattish spot clear of the others is skipped.
+	duneLife = {
+		enabled = true,
+		seed = 40423,
+		oases = 6, -- a clump of palms with scrub and rocks
+		camps = 4, -- tent, carpet, fire, camels
+		majlis = 3, -- open-air sitting area: carpet, floor cushions, dallah and cups, fire
+		wrecks = 3, -- an old drift car left to the sand, with its tyres
+		tyreStacks = 4,
+		waterTanks = 3, -- a tanker trailer with a trough and camels at it
+		camelGroups = 5,
+		lonePalms = 24, -- one or two palms on their own
+		acacias = 14,
+		sceneSpacingM = 150, -- clear between scenes
+		loneSpacingM = 40, -- clear round a lone tree
+		nearMarginM = 25, -- past the edge of the flat strip
+		fenceMarginM = 18, -- inside the fence
+		endMarginM = 200, -- short of where the dunes sink away
+		stationGapM = 35,
+		maxMoundM = 0.6, -- never where a mound stands higher than this (its face)
+	},
+
 	signage = {
 		enabled = true,
 		gantrySpacingM = 600,

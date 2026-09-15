@@ -20,6 +20,7 @@ local Relief = require(script.Relief)
 local Fence = require(script.Fence)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
+local DuneLife = require(script.DuneLife)
 local City = require(script.City)
 local Station = require(script.Station)
 
@@ -145,6 +146,20 @@ function World.build(): Result
 		end
 		local folder = Scatter.build(cfg, ctx, path, world)
 		tally("scatter", folder)
+	end
+
+	-- Sparse palms and scenes out in the dune field, on the relief.
+	if cfg.duneLife.enabled and cfg.relief.enabled then
+		local folder, placed = DuneLife.build(cfg, ctx, path, world)
+		tally("dune life", folder)
+		if cfg.debug.report then
+			local parts = {}
+			for key, n in placed do
+				table.insert(parts, `{n} {key}`)
+			end
+			table.sort(parts)
+			print(`[World] dune life: {table.concat(parts, ", ")}`)
+		end
 	end
 
 	-- The city section, off the highway. Its own config; it reads the road
