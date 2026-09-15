@@ -367,7 +367,7 @@ local config = {
 		-- stood a metre up a few metres off the kerb and read as a bank.
 		swellRampM = 26,
 		liftM = 0.1, -- hummock floor above the sand plane (unused while there is no floor)
-		sinkM = 0.6, -- the dune terrain sits this far down, so it meets the plane on a slope, not a ledge
+		sinkM = 0.3, -- the dune terrain sits this far down, so it meets the plane on a slope, not a ledge (0.6 when they were 8 m tall)
 		shellM = 3.5, -- solid sand below the surface; a shell, because nothing digs
 		-- Two octaves of undulation over the whole strip, berm included, so
 		-- the berm is a dune ridge and not an extrusion. math.noise spans
@@ -395,62 +395,50 @@ local config = {
 		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
 
-		-- The border: a line of dunes either side of the road, the edge of
-		-- the playable area. Each is shaped like a real dune: a long gentle
-		-- windward slope facing the road (drivable, it is sand), a sharp brink
-		-- at the crest, and a steep slip face falling away behind. Along the
-		-- road the crest rises into humps and dips into saddles and its foot
-		-- wanders, so it reads as a dune line, not a wall. An invisible wall
-		-- stands on the crest.
-		--
-		-- Heights are kept low enough to see over: the skyline is on the
-		-- right and the setting sun on the left, and from the driver's eye the
-		-- crest angles stay under the skyline's towers and the sun (the build
-		-- prints the tallest crest angle on each side next to the sun's).
-		--
-		-- The dune line bends out round the spawn pad and the petrol station
-		-- (a clearance, blended in and out), closes across behind the start
-		-- line, and tapers away into the city at the far end.
+		-- Low dunes either side of the road, starting about 100 ft past each
+		-- road edge: a gentle slope toward the road, a soft crest and a short
+		-- back. Humps and saddles along the road so they read as mounds, not
+		-- a bank. They were a taller border (8 m, walled on the crest); the
+		-- border is now the chain-link fence behind them (WorldConfig.fence),
+		-- so these are short and quiet. They fade out to flat sand round the
+		-- spawn pad and the station, run across behind the start line and
+		-- sink away before the city.
 		berm = {
 			enabled = true,
 			endM = 3540, -- the far end: the dunes are gone by here, short of the city gateway
 			endTaperM = 220, -- crests sink to nothing over this before endM
-			startCapBehindM = 70, -- the dune across behind the start line, its foot this far back
-			wallHeightM = 150, -- the invisible stop; a car off the crest at 200 km/h still meets it
-			wallPieceM = 12, -- wall pieces along the (wandering) crest
+			startCapBehindM = 27, -- the low dune across behind the start line (its visible foot is about 100 ft back)
+			wallHeightM = 150, -- the invisible stop on the crest, only built when the fence is off
+			wallPieceM = 12,
 			-- Along-road shape. math.noise spans about -0.5..0.5.
-			-- From the driver's seat humps 240 m long read as one smooth bank;
-			-- these are separate dunes with saddles between.
-			humpWavelengthM = 140, -- big dunes and the saddles between them
-			humpVariation = 0.7, -- crest height swings by this fraction
-			minCrestFraction = 0.45, -- the lowest a saddle goes, as a fraction of crestHeightM
+			humpWavelengthM = 140, -- mounds and the saddles between them
+			humpVariation = 0.35, -- crest height swings by this fraction
+			minCrestFraction = 0.5, -- the lowest a saddle goes, as a fraction of crestHeightM
 			detailWavelengthM = 45,
-			detailVariation = 0.2,
-			wanderWavelengthM = 300, -- how fast the foot wanders in and out
-			footJitterM = 9,
-			-- A shorter wobble on top, so no stretch of the dune line, its foot
-			-- or its back edge, is ever straight.
-			-- Big enough that the dune line swings toward the sun and away: on
-			-- the shaded side that is what gives the slope lit and dark faces
-			-- instead of one flat wall of shadow.
+			detailVariation = 0.1,
+			wanderWavelengthM = 300, -- how fast the foot wanders (outward only)
+			footJitterM = 2,
 			footWobbleWavelengthM = 90,
-			footWobbleM = 14,
-			backPower = 1.4, -- the slip face: >1 starts steep at the brink and flattens into the plane
-			-- Round the pad and the station: the foot stands this far past
-			-- whatever is there, eased back to the normal line over blendM.
+			footWobbleM = 3,
+			backPower = 1.2, -- the back slope: >1 starts steeper at the crest and flattens into the plane
+			-- Round the pad and the station the dunes fade to nothing (flat
+			-- sand) where they would reach within clearanceGapM of them,
+			-- easing back in over clearanceBlendM.
 			clearanceGapM = 30,
 			clearanceBlendM = 170,
+			-- footM sits a little inside 100 ft past the 39.4 m road edge: the
+			-- dune is sunk sinkM, so it breaks the plane a few metres out.
 			sun = {
-				footM = 70, -- nearest the foot comes to the road centreline: the 39 m road edge plus 31 m (about 100 ft)
-				riseWidthM = 40, -- windward slope, road side
-				crestHeightM = 5.5, -- lower: the sun sets over this side; the tallest hump has to stay under the 5.4 deg sun
-				backWidthM = 30, -- slip face
+				footM = 66,
+				riseWidthM = 22, -- the slope toward the road
+				crestHeightM = 2.8,
+				backWidthM = 14,
 			},
 			other = {
-				footM = 70, -- the same nearest distance
-				riseWidthM = 46,
-				crestHeightM = 8, -- the skyline side; its towers still clear this from the road
-				backWidthM = 34,
+				footM = 66,
+				riseWidthM = 24,
+				crestHeightM = 3.4,
+				backWidthM = 16,
 			},
 		},
 	},
@@ -598,6 +586,38 @@ local config = {
 			stain = Color3.fromRGB(34, 32, 30),
 			light = Color3.fromRGB(255, 232, 196), -- warm strip lens
 		},
+	},
+
+	-- THE BORDER: a chain-link fence either side of the highway, 250 ft
+	-- (76.2 m) past each road edge, behind the low dunes. Galvanised square
+	-- posts, a top rail, the mesh as a see-through texture (the desert and
+	-- the skyline show through it), and two strands of barbed wire, the
+	-- utility-land fence along every Saudi highway. It goes round the back
+	-- of the petrol station, closes across behind the start line and ends
+	-- short of the city gateway. An invisible wall stands in it, tall, so
+	-- nothing jumps it.
+	fence = {
+		enabled = true,
+		fromRoadEdgeM = 76.2, -- 250 ft, from the outer edge of the shoulder and kerb
+		behindStartM = 76.2, -- the cross fence behind the start line
+		endM = 3540, -- where the side fences stop, short of the city gateway
+		heightM = 2.4,
+		postSpacingM = 6,
+		postWidthM = 0.07, -- square galvanised tube
+		railWidthM = 0.05,
+		postColor = Color3.fromRGB(150, 154, 158),
+		-- The mesh: 8 diamonds a tile, tiled every meshTileM (so a diamond
+		-- is about 7.5 cm). At a distance it mips down to a faint grey veil.
+		meshTextureId = 137967953738964, -- assets/world/chainlink.png
+		meshTileM = 0.6,
+		meshTransparency = 0.05,
+		barbedWire = true,
+		barbedHeightsM = { 0.12, 0.26 }, -- above the top rail
+		barbedColor = Color3.fromRGB(110, 112, 116),
+		-- Round the station: this far past its site, eased back over blendM.
+		clearanceGapM = 20,
+		clearanceBlendM = 120,
+		wallHeightM = 150,
 	},
 
 	signage = {

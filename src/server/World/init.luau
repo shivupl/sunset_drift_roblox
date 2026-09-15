@@ -17,6 +17,7 @@ local Cityscape = require(script.Cityscape)
 local Dunes = require(script.Dunes)
 local Materials = require(script.Materials)
 local Relief = require(script.Relief)
+local Fence = require(script.Fence)
 local Signage = require(script.Signage)
 local Scatter = require(script.Scatter)
 local City = require(script.City)
@@ -127,6 +128,12 @@ function World.build(): Result
 		if cfg.debug.report then
 			print(string.format("[World] relief: %d terrain chunks, %d nabkha tufts, %d wall pieces, %.1f s", chunks, tufts, walls, os.clock() - t0))
 		end
+	end
+
+	-- The fence stands on the relief, so after it.
+	if cfg.fence.enabled then
+		local folder = Fence.build(cfg, ctx, path, world)
+		tally("fence", folder)
 	end
 
 	if cfg.scatter.enabled then

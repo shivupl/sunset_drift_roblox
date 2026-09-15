@@ -196,6 +196,11 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			return false
 		end
 		local side = if lateral >= 0 then 1 else -1
+		-- Outside the fence is open desert again: props there show through
+		-- the mesh.
+		if border.fenceEnabled and along >= -border.fenceBehindM and along <= border.fenceEndM and math.abs(lateral) > border.fenceAt(side, along) + 3 then
+			return false
+		end
 		local footM = border.at(side, along)
 		local limit = if climbs then footM + border.riseM[side] * 0.6 else footM - 2
 		return math.abs(lateral) > limit

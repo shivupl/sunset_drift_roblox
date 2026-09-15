@@ -85,6 +85,12 @@ export type Border = {
 	capBehindM: number,
 	endM: number,
 	maxReachM: number, -- farthest foot + rise + back anywhere
+	-- The fence (WorldConfig.fence): its distance from the centreline for a
+	-- side and metres along the road, and where it runs.
+	fenceEnabled: boolean,
+	fenceAt: (side: number, alongM: number) -> number,
+	fenceBehindM: number,
+	fenceEndM: number,
 }
 
 local borders: { [Path]: Border } = {}
@@ -112,9 +118,11 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 	local preset = cfg.presets[cfg.preset] :: any
 	local pad = preset.pad
 	local onStation = Station.keepOut(cfg, ctx, path)
-	local function required(side: number, along: number): number
+	-- How far from the centreline something stands at this spot (0 for
+	-- nothing): the pad's wing, the station's site.
+	local function siteExtent(side: number, along: number, withPad: boolean): number
 		local need = 0
-		if pad and pad.widthM > 0 and along >= pad.startM and along <= pad.startM + pad.lengthM then
+		if withPad and pad and pad.widthM > 0 and along >= pad.startM and along <= pad.startM + pad.lengthM then
 			need = pad.widthM / 2
 		end
 		if cfg.station.enabled and along >= 0 and along <= totalM then
@@ -127,17 +135,39 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 				lat += 6
 			end
 		end
-		return if need > 0 then need + b.clearanceGapM else 0
+		return need
 	end
+
+	local fc = cfg.fence
+	local fenceOn = fc.enabled
+	local roadEdgeM = RoadNetwork.layout(path, ctx).totalM / 2 + cfg.road.shoulderWidthM + cfg.road.kerbWidthM
+	local fenceStartM = -(fc.behindStartM + 10)
+	local fenceCount = math.floor((fc.endM - fenceStartM) / STEP) + 2
 
 	local foot: { [number]: { number } } = {}
 	local crest: { [number]: { number } } = {}
+	local fence: { [number]: { number } } = {}
 	local maxReach = 0
 	for _, side in { -1, 1 } do
 		local prof = if side == sunSide then b.sun else b.other
 		local base = table.create(count)
-		local need = table.create(count)
 		local height = table.create(count)
+		-- Where a dune would come within clearanceGapM of the pad or the
+		-- station it fades out: clear[i] is how much, 0..1.
+		local clear = table.create(count, 0)
+		local blendSteps = math.ceil(b.clearanceBlendM / STEP)
+		for i = 1, count do
+			local a = startM + (i - 1) * STEP
+			local extent = siteExtent(side, a, true)
+			if extent > 0 and extent + b.clearanceGapM > prof.footM then
+				for j = math.max(1, i - blendSteps), math.min(count, i + blendSteps) do
+					local t = 1 - smoothstep(math.abs(j - i) * STEP / b.clearanceBlendM)
+					if t > clear[j] then
+						clear[j] = t
+					end
+				end
+			end
+		end
 		for i = 1, count do
 			local a = startM + (i - 1) * STEP
 			-- footM is the nearest the dune ever comes: the wander and the
@@ -145,7 +175,6 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 			base[i] = prof.footM
 				+ math.clamp(math.noise(a / b.wanderWavelengthM, side * 7.3, seedFoot) + 0.5, 0, 1) * 2 * b.footJitterM
 				+ math.clamp(math.noise(a / b.footWobbleWavelengthM, side * 11.1, seedWobble) + 0.5, 0, 1) * 2 * b.footWobbleM
-			need[i] = required(side, a)
 			-- Noise sharpened toward its extremes, so the crest actually reaches
 			-- its humps and saddles instead of hovering near the middle.
 			local swing = 1
@@ -154,27 +183,34 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 			local taper = 1 - smoothstep((a - (endM - b.endTaperM)) / math.max(b.endTaperM, 1))
 			-- A saddle never drops below minCrestFraction: the invisible wall on
 			-- a 2 m hump reads as a barrier in the middle of flat sand.
-			height[i] = math.max(0, prof.crestHeightM * math.max(swing, b.minCrestFraction) * taper)
+			height[i] = math.max(0, prof.crestHeightM * math.max(swing, b.minCrestFraction) * taper * (1 - clear[i]))
 		end
-		-- Clearances: a bay in the dune line round anything that needs room,
-		-- easing back to the normal foot over clearanceBlendM either side.
-		local blendSteps = math.ceil(b.clearanceBlendM / STEP)
-		local feet = table.clone(base)
 		for i = 1, count do
-			if need[i] > 0 then
-				for j = math.max(1, i - blendSteps), math.min(count, i + blendSteps) do
-					local t = smoothstep(math.abs(j - i) * STEP / b.clearanceBlendM)
-					local want = need[i] - (need[i] - base[j]) * t
-					if want > feet[j] then
-						feet[j] = want
+			maxReach = math.max(maxReach, base[i] + prof.riseWidthM + prof.backWidthM)
+		end
+		foot[side], crest[side] = base, height
+
+		-- The fence line: 250 ft past the road edge, pushed out behind the
+		-- station (not the pad: its wing is well inside) and eased back.
+		local line = table.create(fenceCount, roadEdgeM + fc.fromRoadEdgeM)
+		if fenceOn then
+			local fenceBlend = math.ceil(fc.clearanceBlendM / STEP)
+			for i = 1, fenceCount do
+				local a = fenceStartM + (i - 1) * STEP
+				local extent = siteExtent(side, a, false)
+				if extent > 0 then
+					local want = extent + fc.clearanceGapM
+					for j = math.max(1, i - fenceBlend), math.min(fenceCount, i + fenceBlend) do
+						local t = smoothstep(math.abs(j - i) * STEP / fc.clearanceBlendM)
+						local v = want - (want - (roadEdgeM + fc.fromRoadEdgeM)) * t
+						if v > line[j] then
+							line[j] = v
+						end
 					end
 				end
 			end
 		end
-		for i = 1, count do
-			maxReach = math.max(maxReach, feet[i] + prof.riseWidthM + prof.backWidthM)
-		end
-		foot[side], crest[side] = feet, height
+		fence[side] = line
 	end
 
 	local function at(side: number, along: number): (number, number)
@@ -191,6 +227,15 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		return f[i] + (f[j] - f[i]) * t, h
 	end
 
+	local function fenceAt(side: number, along: number): number
+		local s = if side >= 0 then 1 else -1
+		local x = math.clamp((along - fenceStartM) / STEP + 1, 1, fenceCount)
+		local i = math.floor(x)
+		local j = math.min(i + 1, fenceCount)
+		local l = fence[s]
+		return l[i] + (l[j] - l[i]) * (x - i)
+	end
+
 	local sunProf, otherProf = b.sun, b.other
 	local border: Border = {
 		enabled = r.enabled and b.enabled,
@@ -200,6 +245,10 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		capBehindM = b.startCapBehindM,
 		endM = endM,
 		maxReachM = maxReach,
+		fenceEnabled = fenceOn,
+		fenceAt = fenceAt,
+		fenceBehindM = fc.behindStartM,
+		fenceEndM = fc.endM,
 	}
 	borders[path] = border
 	return border
@@ -493,7 +542,7 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 	-- behind the start line. Queryable: a colliding part with CanQuery off
 	-- is not honoured reliably, and nothing else raycasts out here.
 	local walls = 0
-	if dunesOn then
+	if dunesOn and not border.fenceEnabled then
 		local wallH = ctx.s(b.wallHeightM)
 		local piece = b.wallPieceM
 		local function wall(cf: CFrame, width: number, length: number)
