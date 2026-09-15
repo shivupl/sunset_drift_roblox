@@ -113,9 +113,10 @@ local config = {
 		-- The asphalt colours tint the variant's colour map below, so they
 		-- sit near white: the map carries the actual grey. A dark tint on it
 		-- (these were 52, 50, 54) is the near-black road the owner asked to
-		-- lose; the old map could not go grey even at a white tint.
-		asphaltColor = Color3.fromRGB(206, 206, 210),
-		padColor = Color3.fromRGB(206, 206, 212),
+		-- lose; the old map could not go grey even at a white tint. 182/186
+		-- (was 206/210): the owner asked for the road slightly darker.
+		asphaltColor = Color3.fromRGB(182, 182, 186),
+		padColor = Color3.fromRGB(182, 182, 188),
 		-- Concrete is stock material, so these are the rendered colour.
 		shoulderColor = Color3.fromRGB(112, 108, 102),
 		kerbColor = Color3.fromRGB(158, 156, 150),
@@ -563,7 +564,7 @@ local config = {
 		colors = {
 			concrete = Color3.fromRGB(176, 170, 158),
 			concreteUnder = Color3.fromRGB(160, 156, 148), -- the bay under the canopy, oil-darkened
-			apron = Color3.fromRGB(206, 206, 212), -- asphalt tint, like the pad
+			apron = Color3.fromRGB(182, 182, 188), -- asphalt tint, like the pad
 			fascia = Color3.fromRGB(238, 234, 224),
 			brand = Color3.fromRGB(0, 104, 78), -- deep green
 			brandGold = Color3.fromRGB(214, 170, 82),

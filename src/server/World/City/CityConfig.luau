@@ -108,7 +108,7 @@ local config = {
 		maxRunM = 80, -- slab length cap, for streaming
 		-- Tints on the asphalt variant's colour map (WorldConfig.road), so
 		-- near white; see the highway's asphaltColor.
-		asphaltColor = Color3.fromRGB(202, 202, 206),
+		asphaltColor = Color3.fromRGB(178, 178, 182), -- 202/206 until the highway went slightly darker
 		sideStreetColor = Color3.fromRGB(212, 210, 212),
 		slabTone = 0.06, -- per-slab colour jitter
 		kerbColor = Color3.fromRGB(166, 158, 142),
