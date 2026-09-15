@@ -361,7 +361,7 @@ local config = {
 		innerGapM = 0.5, -- from the asphalt edge to the strip
 		featherM = 6, -- the strip's inner and outer edges blend down to the plane over this
 		sinkM = 0.15, -- the dune terrain sits this far down, so it breaks the plane where its slope has just begun, not as a ledge
-		shellM = 3.5, -- solid sand below the surface; a shell, because nothing digs
+		shellM = 2, -- solid sand below the surface; a shell, because nothing digs (3.5 until the field doubled and every voxel layer cost build time)
 		hummocks = {
 			perKm = 0, -- none: the sand between the road and the dunes is flat, on request
 			minRadiusM = 3,
@@ -397,6 +397,7 @@ local config = {
 			-- edge); the owner wanted a bit more.
 			nearM = 140,
 			capNearM = 100, -- the same, behind the start line
+			cityMarginM = 120, -- and flat sand this wide round the city's grid, inside the fence circle
 			field = {
 				perKm2 = 100, -- mounds per square km of sand they may use
 				patchWavelengthM = 500, -- the slow noise that makes thick and thin stretches
@@ -592,12 +593,21 @@ local config = {
 	-- nothing jumps it.
 	fence = {
 		enabled = true,
-		-- From the outer edge of the shoulder and kerb: 400 m (about 1,300 ft),
-		-- with the dune field running out to it. It was 250 ft, then 250 m;
-		-- the owner asked for it further back each time.
-		fromRoadEdgeM = 400,
-		behindStartM = 400, -- the cross fence behind the start line
-		endM = 3540, -- where the side fences stop, short of the city gateway
+		-- From the outer edge of the shoulder and kerb: 700 m (about 2,300 ft),
+		-- with the dune field running out to it. It was 250 ft, then 250 m,
+		-- then 400 m; the owner asked for it further back each time, the last
+		-- time with the dune field twice as big.
+		fromRoadEdgeM = 700,
+		behindStartM = 800, -- the cross fence behind the start line
+		endM = 3540, -- where the side fences stop when there is no city circle
+		-- Round the city: a circle about the grid's centre, at least radiusM,
+		-- clear of its corners by clearM and wide enough to meet the side
+		-- fences, which run on until they do.
+		city = {
+			enabled = true,
+			radiusM = 800,
+			clearM = 150,
+		},
 		heightM = 2.4,
 		postSpacingM = 6,
 		postWidthM = 0.07, -- square galvanised tube
@@ -624,20 +634,29 @@ local config = {
 	duneLife = {
 		enabled = true,
 		seed = 40423,
-		oases = 6, -- a clump of palms with scrub and rocks
-		camps = 4, -- tent, carpet, fire, camels
-		majlis = 3, -- open-air sitting area: carpet, floor cushions, dallah and cups, fire
-		wrecks = 3, -- an old drift car left to the sand, with its tyres
-		tyreStacks = 4,
-		waterTanks = 3, -- a tanker trailer with a trough and camels at it
-		camelGroups = 5,
-		lonePalms = 24, -- one or two palms on their own
-		acacias = 14,
+		-- Twice the first counts, for a dune field twice the size, plus the
+		-- ruins, shades, wells, outcrops, drums, bones and markers.
+		oases = 12, -- a clump of palms with scrub and rocks
+		camps = 8, -- tent, carpet, fire, camels
+		majlis = 6, -- open-air sitting area: carpet, floor cushions, dallah and cups, fire
+		wrecks = 5, -- an old drift car left to the sand, with its tyres
+		tyreStacks = 8,
+		waterTanks = 5, -- a tanker trailer with a trough and camels at it
+		camelGroups = 10,
+		ruins = 5, -- a crumbling mud-brick enclosure with a corner tower
+		areesh = 6, -- a palm-frond shade on poles over a carpet and cushions
+		wells = 5, -- a stone ring, wooden frame, rope and bucket
+		outcrops = 12, -- a low sandstone rock with a few boulders
+		drums = 8, -- rusting oil drums
+		skeletons = 6, -- a camel's bleached bones
+		markers = 6, -- a painted stone and a leaning signpost
+		lonePalms = 48, -- one or two palms on their own
+		acacias = 28,
 		sceneSpacingM = 150, -- clear between scenes
 		loneSpacingM = 40, -- clear round a lone tree
 		nearMarginM = 25, -- past the edge of the flat strip
 		fenceMarginM = 18, -- inside the fence
-		endMarginM = 200, -- short of where the dunes sink away
+		endMarginM = 200, -- short of where the dunes sink away (when there is no city circle)
 		stationGapM = 35,
 		maxMoundM = 0.6, -- never where a mound stands higher than this (its face)
 	},

@@ -480,6 +480,7 @@ The dune field: random soft mounds over the sand between a flat strip beside the
 | Field | What it does |
 |---|---|
 | nearM / capNearM | Nothing of a dune shows nearer the centreline (or the start line, behind it) than this. **Move both to change the road-to-dune gap.** |
+| cityMarginM | Flat sand kept round the city's grid, inside the fence circle. |
 | field.perKm2 | Mounds per square km of usable sand. More is a busier field; about 100 covers 40 to 50%. |
 | field.patchWavelengthM / field.minDensity | The slow noise that makes thick and thin stretches, and how empty the thinnest ones get. |
 | field.maxOverlapM | No new mound where the others already stand this high, so overlaps are broad hills and not lumps. |
@@ -495,15 +496,30 @@ The dune field: random soft mounds over the sand between a flat strip beside the
 | endM / endTaperM | Where the dunes sink away before the city. |
 | wallHeightM / wallPieceM | The invisible stop where the fence would be, only built when the fence is off. |
 
+## fence
+The chain-link border (`Fence.luau`).
+
+| Field | What it does |
+|---|---|
+| fromRoadEdgeM / behindStartM | How far out the side fences stand (from the road edge) and how far behind the start line the cross fence is. The dune field fills out to them. |
+| endM | Where the side fences stop when there is no city circle. |
+| city.enabled / city.radiusM / city.clearM | The circle round the city: at least radiusM, at least clearM past the grid's corners, and always wide enough to meet the side fences, which run on until they do. |
+| heightM / postSpacingM / postWidthM / railWidthM / postColor | The frame. |
+| meshTextureId / meshTileM / meshTransparency | The chain-link mesh texture. |
+| barbedWire / barbedHeightsM / barbedColor | Strands above the rail. |
+| clearanceGapM / clearanceBlendM | How far the fence swings out round the station, and over what distance. |
+| wallHeightM | The invisible stop in the fence. |
+
 ## duneLife
 Sparse palms and scenes out in the dune field (`DuneLife.luau`). Counts are for the whole field, both sides.
 
 | Field | What it does |
 |---|---|
 | oases / camps / majlis / wrecks / tyreStacks / waterTanks / camelGroups | How many of each scene to try to place. A scene that finds no flattish spot clear of the others is skipped. |
+| ruins / areesh / wells / outcrops / drums / skeletons / markers | The second group of scenes: mud-brick ruins, palm-frond shades, wells, sandstone outcrops, oil drums, camel bones, painted markers with signposts. |
 | lonePalms / acacias | Single trees (a lone palm is one or two). |
 | sceneSpacingM / loneSpacingM | Clear ground between scenes, and round a lone tree. Raise for sparser. |
-| nearMarginM / fenceMarginM / endMarginM / stationGapM | Keep-outs: past the flat strip, inside the fence, short of the dunes' end, and from the station. |
+| nearMarginM / fenceMarginM / endMarginM / stationGapM | Keep-outs: past the flat strip and the city margin, inside the fence, short of the dunes' end (only without a city circle), and from the station. |
 | maxMoundM | Never where a mound stands higher than this (its face). |
 
 ## lamps

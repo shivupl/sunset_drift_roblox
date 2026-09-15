@@ -12,6 +12,13 @@
 -- - **Tyre stacks:** the kind drifters mark a spot with.
 -- - **Water tanker:** a trailer with a trough and camels at it.
 -- - **Camels:** strays.
+-- - **Ruin:** a crumbling mud-brick enclosure with a corner tower.
+-- - **Areesh:** a palm-frond shade on poles over a carpet and cushions.
+-- - **Well:** a stone ring with a wooden frame, rope and bucket.
+-- - **Outcrop:** a low sandstone rock breaking the sand.
+-- - **Drums:** rusting oil drums.
+-- - **Skeleton:** a camel's bleached bones.
+-- - **Marker:** a painted stone and a leaning signpost.
 --
 -- Everything is sparse on purpose. Each scene wants a flattish spot, keeps
 -- clear of the others, the station and the fence, and never stands on a
@@ -75,22 +82,24 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 	-- Places taken, flat, with their radius in studs.
 	local taken: { { pos: Vector3, r: number } } = {}
 	local fromAlong = -(cfg.fence.behindStartM - dl.fenceMarginM)
-	local toAlong = border.endM - dl.endMarginM
+	local toAlong = if border.cityCentre then border.endM else border.endM - dl.endMarginM
+	local sideFar = border.maxReachM
 
 	-- A spot for something radiusM across (half width), no more than flatM
 	-- from level across it, spacingM clear of everything placed. Returns
 	-- the spot on the sand and the yaw that faces the road, or nil.
 	local function site(radiusM: number, flatM: number, spacingM: number): (Vector3?, number)
-		for _ = 1, 80 do
+		for _ = 1, 120 do
 			local along = rng:NextNumber(fromAlong, toAlong)
-			local side = if rng:NextNumber() < 0.5 then -1 else 1
-			local fenceM = border.fenceAt(side, along) - dl.fenceMarginM
-			local behind = along < -border.capNearM - dl.nearMarginM
-			local lateralAbs = rng:NextNumber(if behind then 0 else border.nearM + dl.nearMarginM, fenceM)
-			if lateralAbs > fenceM then
+			local lateral = rng:NextNumber(-sideFar, sideFar)
+			-- On the fenced dunes: past the flat strip and the city's margin,
+			-- inside the fence.
+			if border.clearOf(along, lateral) < dl.nearMarginM + radiusM or border.insideFence(along, lateral) < dl.fenceMarginM + radiusM then
 				continue
 			end
-			local lateral = side * lateralAbs
+			local side = if lateral >= 0 then 1 else -1
+			local behind = along < -border.capNearM - dl.nearMarginM
+			local roundCity = border.cityCentre ~= nil and along > border.junctionM
 			-- Never on a mound's face.
 			local moundM = border.layersAt(along, lateral)
 			if moundM - border.sinkM > dl.maxMoundM then
@@ -123,8 +132,16 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 				continue
 			end
 			table.insert(taken, { pos = flat, r = r })
-			-- Facing the road (behind the start line, facing the start).
+			-- Facing the road (behind the start line, the start; round the
+			-- city, the city).
 			local toRoad = if behind then frame.LookVector else -frame.RightVector * side
+			local cityCentre = border.cityCentre
+			if roundCity and cityCentre then
+				local d = Vector3.new(cityCentre.X - flat.X, 0, cityCentre.Z - flat.Z)
+				if d.Magnitude > 1e-3 then
+					toRoad = d.Unit
+				end
+			end
 			return centre, math.atan2(-toRoad.X, -toRoad.Z)
 		end
 		return nil, 0
@@ -421,6 +438,201 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 		bump("camelGroups")
 	end
 
+
+	-- A crumbling mud-brick ruin: a broken square of walls with a doorway
+	-- and a corner tower, rubble in the sand.
+	local function ruin()
+		local c, yaw = site(11, 0.8, dl.sceneSpacingM)
+		if not c then
+			return
+		end
+		local frame = CFrame.new(c) * CFrame.Angles(0, yaw + rng:NextNumber(-0.6, 0.6), 0)
+		-- Sun-dried mud brick: Sandstone renders pink unless it is kept dark.
+		local mud = Color3.fromRGB(150 + rng:NextInteger(-8, 8), 112, 78)
+		local function block(name: string, offset: Vector3, size: Vector3, tilt: number)
+			local at = onSand((frame * CFrame.new(s(offset.X), 0, s(offset.Z))).Position)
+			Build.part({
+				name = name,
+				size = Vector3.new(s(size.X), s(size.Y), s(size.Z)),
+				cframe = CFrame.new(at) * frame.Rotation * CFrame.new(0, s(offset.Y + size.Y / 2 - 0.15), 0) * CFrame.Angles(tilt, 0, tilt * 0.5),
+				color = mud,
+				material = Enum.Material.Sandstone,
+				parent = folder,
+				castShadow = true,
+			})
+		end
+		local half, t = 6, 0.7
+		-- Each wall is a few courses of different lengths, so its top is broken.
+		local function wall(from: Vector3, to: Vector3, maxH: number, doorway: boolean)
+			local len = (to - from).Magnitude
+			local dir = (to - from).Unit
+			local segments = math.max(2, math.floor(len / 2))
+			for k = 0, segments - 1 do
+				local t0 = (k + 0.5) / segments
+				if doorway and math.abs(t0 - 0.5) < 0.1 then
+					continue
+				end
+				local h = maxH * rng:NextNumber(0.55, 1)
+				local mid = from + (to - from) * t0
+				local along = if math.abs(dir.X) > 0.5 then Vector3.new(len / segments + 0.05, h, t) else Vector3.new(t, h, len / segments + 0.05)
+				block("RuinWall", Vector3.new(mid.X, 0, mid.Z), along, 0)
+			end
+		end
+		wall(Vector3.new(-half, 0, -half), Vector3.new(half, 0, -half), 3.4, true)
+		wall(Vector3.new(half, 0, -half), Vector3.new(half, 0, half), 3.0, false)
+		wall(Vector3.new(-half, 0, half), Vector3.new(half, 0, half), 2.2, false)
+		if rng:NextNumber() < 0.7 then
+			wall(Vector3.new(-half, 0, -half), Vector3.new(-half, 0, half), 1.6, false)
+		end
+		block("RuinTower", Vector3.new(half, 0, -half), Vector3.new(2.6, rng:NextNumber(4.2, 5.4), 2.6), 0)
+		for _ = 1, rng:NextInteger(4, 8) do
+			local sz = rng:NextNumber(0.3, 0.8)
+			block("Rubble", Vector3.new(rng:NextNumber(-7, 7), -sz * 0.3, rng:NextNumber(-7, 7)), Vector3.new(sz * 1.4, sz, sz), rng:NextNumber(-0.4, 0.4))
+		end
+		bump("ruins")
+	end
+
+	-- An old well: a ring of stone, a wooden frame, a rope and a bucket.
+	local function well()
+		local c, yaw = site(3, 0.4, dl.sceneSpacingM)
+		if not c then
+			return
+		end
+		local frame = CFrame.new(c) * CFrame.Angles(0, yaw, 0)
+		local stone = Color3.fromRGB(150, 132, 108)
+		for k = 1, 10 do
+			local a = k / 10 * 2 * math.pi
+			Build.part({ name = "WellStone", size = Vector3.new(s(0.6), s(0.75), s(0.35)), cframe = frame * CFrame.Angles(0, a, 0) * CFrame.new(0, s(0.3), s(0.9)), color = stone, material = Enum.Material.Cobblestone, parent = folder })
+		end
+		cylinder("WellWater", frame * CFrame.new(0, s(0.2), 0) * CFrame.Angles(0, 0, math.pi / 2), 0.02, 1.6, Color3.fromRGB(28, 32, 30), Enum.Material.SmoothPlastic)
+		local wood = Color3.fromRGB(96, 70, 46)
+		for _, x in { -1, 1 } do
+			Build.part({ name = "WellPost", size = Vector3.new(s(0.14), s(2.1), s(0.14)), cframe = frame * CFrame.new(x * s(1.15), s(1.0), 0), color = wood, material = Enum.Material.Wood, parent = folder, castShadow = true })
+		end
+		cylinder("WellBeam", frame * CFrame.new(0, s(2.0), 0), 2.5, 0.12, wood, Enum.Material.Wood)
+		Build.part({ name = "WellRope", size = Vector3.new(s(0.02), s(1.1), s(0.02)), cframe = frame * CFrame.new(0, s(1.45), 0), color = Color3.fromRGB(170, 150, 110), material = Enum.Material.Fabric, parent = folder })
+		cylinder("WellBucket", frame * CFrame.new(0, s(0.85), 0) * CFrame.Angles(0, 0, math.pi / 2), 0.3, 0.28, Color3.fromRGB(80, 84, 88), Enum.Material.Metal)
+		bump("wells")
+	end
+
+	-- An areesh: a shade of palm fronds on wooden poles, a carpet and
+	-- cushions under it, a cool box.
+	local function areesh()
+		local c, yaw = site(5, 0.5, dl.sceneSpacingM)
+		if not c then
+			return
+		end
+		local frame = CFrame.new(c) * CFrame.Angles(0, yaw + rng:NextNumber(-0.3, 0.3), 0)
+		local wood = Color3.fromRGB(110, 82, 54)
+		local w, d, h = 4.6, 3.6, 2.5
+		for _, x in { -1, 1 } do
+			for _, z in { -1, 1 } do
+				local foot = onSand((frame * CFrame.new(x * s(w / 2), 0, z * s(d / 2))).Position)
+				Build.part({ name = "AreeshPole", size = Vector3.new(s(0.12), s(h + 0.2), s(0.12)), cframe = CFrame.new(foot + Vector3.new(0, s((h + 0.2) / 2 - 0.1), 0)) * frame.Rotation, color = wood, material = Enum.Material.Wood, parent = folder, castShadow = true })
+			end
+		end
+		local roof = CFrame.new(onSand(c)) * frame.Rotation * CFrame.new(0, s(h + 0.05), 0)
+		Build.part({ name = "AreeshRoof", size = Vector3.new(s(w + 0.8), s(0.18), s(d + 0.6)), cframe = roof * CFrame.Angles(math.rad(rng:NextNumber(-3, 3)), 0, 0), color = Color3.fromRGB(150, 128, 84), material = Enum.Material.Grass, parent = folder, castShadow = true })
+		for _, x in { -1.5, 0, 1.5 } do
+			Build.part({ name = "AreeshBeam", size = Vector3.new(s(0.1), s(0.1), s(d + 0.4)), cframe = roof * CFrame.new(s(x), -s(0.12), 0), color = wood, material = Enum.Material.Wood, parent = folder })
+		end
+		carpet(c, yaw, Vector2.new(3.4, 2.8), FABRICS[rng:NextInteger(1, #FABRICS)])
+		local cushion = CUSHIONS[rng:NextInteger(1, #CUSHIONS)]
+		for _, x in { -1, 1 } do
+			local cf = CFrame.new(onSand((frame * CFrame.new(x * s(1.2), 0, s(1.1))).Position)) * frame.Rotation
+			Build.part({ name = "Cushion", size = Vector3.new(s(1.4), s(0.14), s(0.7)), cframe = cf * CFrame.new(0, s(0.1), 0), color = cushion, material = Enum.Material.Fabric, parent = folder })
+		end
+		local box = CFrame.new(onSand((frame * CFrame.new(s(1.9), 0, -s(1.2))).Position)) * frame.Rotation
+		Build.part({ name = "CoolBox", size = Vector3.new(s(0.6), s(0.4), s(0.4)), cframe = box * CFrame.new(0, s(0.2), 0), color = Color3.fromRGB(40, 110, 160), material = Enum.Material.SmoothPlastic, parent = folder })
+		Build.part({ name = "CoolBoxLid", size = Vector3.new(s(0.62), s(0.06), s(0.42)), cframe = box * CFrame.new(0, s(0.43), 0), color = Color3.fromRGB(236, 236, 230), material = Enum.Material.SmoothPlastic, parent = folder })
+		bump("areesh")
+	end
+
+	-- Rusting oil drums, one on its side.
+	local function drums()
+		local c, _yaw = site(3, 0.5, dl.sceneSpacingM * 0.6)
+		if not c then
+			return
+		end
+		local colours = { Color3.fromRGB(120, 64, 40), Color3.fromRGB(52, 78, 108), Color3.fromRGB(160, 120, 40), Color3.fromRGB(96, 92, 86) }
+		local n = rng:NextInteger(3, 6)
+		for k = 1, n do
+			local at = onSand(c + Vector3.new(s(rng:NextNumber(-1.8, 1.8)), 0, s(rng:NextNumber(-1.8, 1.8))))
+			local colour = colours[rng:NextInteger(1, #colours)]
+			if k == n and rng:NextNumber() < 0.7 then
+				cylinder("Drum", CFrame.new(at + Vector3.new(0, s(0.28), 0)) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), 0.88, 0.58, colour, Enum.Material.CorrodedMetal)
+			else
+				cylinder("Drum", CFrame.new(at + Vector3.new(0, s(0.44), 0)) * CFrame.Angles(0, rng:NextNumber(0, 6), math.pi / 2), 0.88, 0.58, colour, Enum.Material.CorrodedMetal)
+			end
+		end
+		bump("drums")
+	end
+
+	-- The bones of a camel, bleached, half in the sand.
+	local function skeleton()
+		local c, yaw = site(3, 0.4, dl.sceneSpacingM * 0.6)
+		if not c then
+			return
+		end
+		local bone = Color3.fromRGB(232, 222, 198)
+		local frame = CFrame.new(c - Vector3.new(0, s(0.05), 0)) * CFrame.Angles(0, yaw + rng:NextNumber(0, math.pi * 2), 0)
+		-- Spine along X, ribs arching up either side, skull and legs strewn.
+		for k = 0, 9 do
+			Build.part({ name = "Vertebra", size = Vector3.new(s(0.16), s(0.12), s(0.12)), cframe = frame * CFrame.new(s(-1.0 + k * 0.22), s(0.06 + math.sin(k / 9 * math.pi) * 0.12), 0), color = bone, material = Enum.Material.SmoothPlastic, parent = folder })
+		end
+		for k = 1, 6 do
+			for _, side in { -1, 1 } do
+				local x = -0.6 + k * 0.2
+				Build.part({ name = "Rib", size = Vector3.new(s(0.05), s(0.05), s(0.6)), cframe = frame * CFrame.new(s(x), s(0.26), side * s(0.24)) * CFrame.Angles(side * math.rad(55), 0, 0), color = bone, material = Enum.Material.SmoothPlastic, parent = folder })
+			end
+		end
+		local skull = frame * CFrame.new(s(1.45), s(0.1), s(0.1)) * CFrame.Angles(0, rng:NextNumber(-0.6, 0.6), rng:NextNumber(-0.3, 0.3))
+		Build.part({ name = "Skull", size = Vector3.new(s(0.55), s(0.22), s(0.2)), cframe = skull, color = bone, material = Enum.Material.SmoothPlastic, parent = folder })
+		Build.wedge({ name = "Jaw", size = Vector3.new(s(0.16), s(0.1), s(0.4)), cframe = skull * CFrame.new(s(0.12), -s(0.1), 0) * CFrame.Angles(0, math.pi / 2, 0), color = bone, material = Enum.Material.SmoothPlastic, parent = folder })
+		for _ = 1, 4 do
+			Build.part({ name = "LegBone", size = Vector3.new(s(0.7), s(0.07), s(0.07)), cframe = frame * CFrame.new(s(rng:NextNumber(-1.2, 1.2)), s(0.03), s(rng:NextNumber(-1.2, 1.2))) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), color = bone, material = Enum.Material.SmoothPlastic, parent = folder })
+		end
+		bump("skeletons")
+	end
+
+	-- A low sandstone outcrop breaking the sand.
+	local function outcrop()
+		local c, _yaw = site(5, 1.2, dl.sceneSpacingM * 0.6)
+		if not c then
+			return
+		end
+		local keys = { "outcropPeak", "outcropMesa", "outcropRidge" }
+		local scales = { 0.22, 0.2, 0.2 }
+		local i = rng:NextInteger(1, #keys)
+		local scale = scales[i] * rng:NextNumber(0.8, 1.4)
+		local base = CFrame.new(c - Vector3.new(0, s(0.4), 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+		if AssetRegistry.place(keys[i], base, scale, ctx.mps, folder, cfg.shadows.rocks) then
+			for _ = 1, rng:NextInteger(2, 4) do
+				rock(c + Vector3.new(s(rng:NextNumber(-5, 5)), 0, s(rng:NextNumber(-5, 5))), rng:NextNumber(0.5, 1.2))
+			end
+			bump("outcrops")
+		end
+	end
+
+	-- A painted stone marker and a leaning signpost with two blank boards.
+	local function marker()
+		local c, yaw = site(2, 0.5, dl.sceneSpacingM * 0.6)
+		if not c then
+			return
+		end
+		local frame = CFrame.new(c) * CFrame.Angles(0, yaw, 0)
+		for k, colour in { Color3.fromRGB(236, 232, 222), Color3.fromRGB(170, 40, 36), Color3.fromRGB(236, 232, 222) } do
+			Build.part({ name = "MarkerStone", size = Vector3.new(s(0.4), s(0.3), s(0.4)), cframe = frame * CFrame.new(0, s(0.15 + (k - 1) * 0.3), 0), color = colour, material = Enum.Material.Concrete, parent = folder })
+		end
+		local post = frame * CFrame.new(s(1.4), 0, 0) * CFrame.Angles(0, 0, math.rad(rng:NextNumber(-8, 8)))
+		local wood = Color3.fromRGB(120, 92, 62)
+		Build.part({ name = "SignPost", size = Vector3.new(s(0.1), s(2.4), s(0.1)), cframe = post * CFrame.new(0, s(1.1), 0), color = wood, material = Enum.Material.WoodPlanks, parent = folder, castShadow = true })
+		for k, turn in { rng:NextNumber(-0.6, 0.6), rng:NextNumber(2.4, 3.8) } do
+			Build.part({ name = "SignBoard", size = Vector3.new(s(0.9), s(0.2), s(0.04)), cframe = post * CFrame.new(0, s(1.6 + k * 0.28), 0) * CFrame.Angles(0, turn, 0) * CFrame.new(s(0.4), 0, 0), color = Color3.fromRGB(200, 180, 140), material = Enum.Material.WoodPlanks, parent = folder })
+		end
+		bump("markers")
+	end
+
 	for _ = 1, dl.oases do
 		oasis()
 	end
@@ -441,6 +653,27 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 	end
 	for _ = 1, dl.camelGroups do
 		camels()
+	end
+	for _ = 1, dl.ruins do
+		ruin()
+	end
+	for _ = 1, dl.areesh do
+		areesh()
+	end
+	for _ = 1, dl.wells do
+		well()
+	end
+	for _ = 1, dl.outcrops do
+		outcrop()
+	end
+	for _ = 1, dl.drums do
+		drums()
+	end
+	for _ = 1, dl.skeletons do
+		skeleton()
+	end
+	for _ = 1, dl.markers do
+		marker()
 	end
 	for _ = 1, dl.lonePalms do
 		local c = site(3, 2, dl.loneSpacingM)

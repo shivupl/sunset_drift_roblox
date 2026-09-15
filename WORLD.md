@@ -258,9 +258,19 @@ windows and strips float free of the towers they belong to.
 Each side of the highway has three zones:
 - **Flat sand**, for the first 100 m or so (330 ft) past the road edge. Nothing of a dune comes nearer the centreline than 140 m.
 - **A dune field** of soft rounded mounds, scattered at random from there right out to the fence, and behind the start line too. Mounds are up to about 3.5 m high. Under them, light waves roll unbroken from a wandering start line to the fence and beyond it, so once the dunes begin the ground never goes back to flat.
-- **A chain-link fence**, 400 m (about 1,300 ft) past the road edge, 439 m from the centreline, which is the edge of the playable area. It runs over the dunes: they carry on under it and past it. It was 250 ft, then 250 m; the owner asked for it further back each time.
+- **A chain-link fence**, 700 m (about 2,300 ft) past the road edge, 739 m from the centreline, and 800 m behind the start line: the edge of the playable area. It runs over the dunes, which carry on under it and past it. At the far end the side fences run on into a **circle round the city**, 800 m in radius, so the highway and the city are one fenced ground. It was 250 ft, then 250 m, then 400 m; the owner asked for it further back each time, the last time with the dune field doubled.
 
-**The dunes** are 231 separate mounds scattered over the sand. Each is an ellipse 90 to 220 m long with its own height and width, and low ones are smaller all round. Most follow a slow common drift, each turned a little off it, up to 20 degrees from the road. A slow noise makes the field thick in some stretches and thin in others, leaving bays of flat sand. No mound is placed where the others already stand 0.8 m high, so overlaps make broad hills and never lumps on a shoulder. Each mound keeps its whole visible rim out of the flat strip, no more than 30 m past the fence, and 30 m from the petrol station's site.
+**Round the city** the dunes carry on inside the fence circle, with 120 m of flat sand kept round the city's grid. The circle is centred on the grid, at least 150 m clear of its corners and wide enough to meet the side fences, which run on to about 3,680 m and join it there. `Relief.border` works the circle out (`cityCentre`, `cityRadiusM`, `junctionM`), and the fence, the terrain, Scatter and DuneLife all read it. Two shared tests decide where dunes and props may go: `insideFence(along, lateral)` covers the corridor closed at the junction plus the circle, and `clearOf(along, lateral)` measures clearance from the flat strip and the city margin.
+
+Measured with the doubled field:
+- **Mounds:** 619.
+- **Cover:** 88 to 100% from 180 m out to the fence at 739 m.
+- **City:** no terrain on the city grid; 91% cover in a ring 650 to 760 m from the city centre.
+- **Fence:** 2,264 posts, 3,459 parts; 3,140 m of it on the circle.
+- **Build time:** relief builds in 9 to 11 s. The first build of the doubled field took 40 s; heights are now worked out on a grid two voxels apart and interpolated per column, and the sand shell is 2 m thick (was 3.5).
+- **Collision:** driven at the side fence and at the city circle, the car stopped at 737.8 m (fence 739.4) and 798.6 m (circle 800), upright.
+
+**The dunes** began as 231 separate mounds scattered over the sand, before the field doubled. Each is an ellipse 90 to 220 m long with its own height and width, and low ones are smaller all round. Most follow a slow common drift, each turned a little off it, up to 20 degrees from the road. A slow noise makes the field thick in some stretches and thin in others, leaving bays of flat sand. No mound is placed where the others already stand 0.8 m high, so overlaps make broad hills and never lumps on a shoulder. Each mound keeps its whole visible rim out of the flat strip, no more than 30 m past the fence, and 30 m from the petrol station's site.
 
 **The light waves** are a smooth noise layer with long crests: 200 m along each crest, about 60 m from crest to crest, turned 25 degrees off the road, plus a finer octave at 30%. They stand 0.35 to about 1.2 m above the sunk base, so the plane never shows through in patches.
 - **Start:** they rise from nothing over 60 m, flush, from a start line that wanders up to 45 m past the flat strip.
@@ -307,27 +317,34 @@ Measured in Play:
 
 ## Life in the dune field (`DuneLife.luau`)
 
-Sparse palms, acacias and small Middle Eastern scenes stand out on the dunes, between the flat strip and the fence. There are a few of each on purpose, so the field never looks crowded.
+Palms, acacias and small Middle Eastern scenes stand out on the dunes, anywhere inside the fence past the flat strip, including round the city. Everything is sparse, so the field never looks crowded; the counts doubled with the field, and the second group of scenes was added then.
 
 | Scene | Count | What it is |
 |---|---|---|
-| Oasis | 6 | A clump of 3 to 6 palms with scrub and rocks. |
-| Camp | 4 | A tent facing the road, a carpet in front, a small fire, and camels. |
-| Majlis | 3 | An open-air sitting area: a carpet, floor cushions with backrests on three sides, a brass tray with a dallah and finjan cups, and a fire. |
-| Wreck | 3 | An old saloon left to the sand: sun-faded, no wheels, sunk to its sills and tipped, with its tyres in a heap. |
-| Tyre stacks | 4 | One to three stacks of old tyres, the kind drifters mark a spot with. |
-| Water tanker | 3 | A tanker trailer with a trough, and camels at it. |
-| Camels | 5 groups | Two to four strays. |
-| Lone trees | 24 palms, 14 acacias | One or two palms on their own, and single acacias. |
+| Oasis | 12 | A clump of 3 to 6 palms with scrub and rocks. |
+| Camp | 8 | A tent facing the road, a carpet in front, a small fire, camels. |
+| Majlis | 6 | An open-air sitting area: carpet, floor cushions with backrests on three sides, a brass tray with a dallah and finjan cups, a fire. |
+| Wreck | 5 | An old saloon left to the sand: sun-faded, no wheels, sunk and tipped, its tyres in a heap. |
+| Tyre stacks | 8 | Stacks of old tyres, the kind drifters mark a spot with. |
+| Water tanker | 5 | A tanker trailer and a trough with camels at it. |
+| Camels | 10 groups | Two to four strays. |
+| Ruin | 5 | A crumbling mud-brick enclosure: broken walls, a doorway, a corner tower, rubble. |
+| Areesh | 6 | A palm-frond shade on four poles over a carpet, cushions and a cool box. |
+| Well | 5 | A ring of stones, a wooden frame, a rope and a bucket. |
+| Outcrop | 12 | A low sandstone rock (the dune-field outcrop meshes, scaled down) with boulders. |
+| Drums | 8 | Rusting oil drums, one on its side. |
+| Skeleton | 6 | A camel's bleached bones: spine, ribs, skull, leg bones. |
+| Marker | 6 | A painted red-and-white stone and a leaning signpost with two blank boards. |
+| Lone trees | 48 palm spots, 28 acacias | One or two palms on their own, and single acacias. |
 
-**Placement rules.** Each scene needs a flattish spot (within 0.5 to 1.2 m of level across it) and keeps these distances:
-- 150 m from other scenes (40 m round a lone tree);
-- 25 m past the flat strip, 18 m inside the fence, 35 m from the petrol station, and 200 m short of where the dunes end;
+**Placement rules.** Each scene needs a flattish spot and keeps these distances:
+- 150 m from other scenes (the small ones 90 m, a lone tree 40 m);
+- 25 m past the flat strip or the city margin, 18 m inside the fence, 35 m from the petrol station;
 - off any mound standing more than 0.6 m high.
 
-A scene with no such spot is skipped. The fires carry a small warm PointLight. Nothing collides.
+Scenes face the road; round the city they face the city. Fires carry a small warm PointLight. Nothing collides.
 
-**Measured in Play:** 59 palms, 29 camels and all the scenes above were placed, in 467 parts (about 246k triangles by estimate, mostly the palm and camel meshes). The fence still stops the car from either side (438 m, upright 0.93 to 0.99).
+**Measured in Play:** every scene above was placed, with 124 palms and 62 camels, in 1,537 parts (about 558k triangles by estimate, mostly palm and camel meshes).
 
 **Screenshot trap:** `screen_capture` with a camera far from the Studio editor's real camera draws the terrain at coarse level of detail. Low scenes came out buried in blobs that are not there. Move `workspace.CurrentCamera` (and its Focus) to the spot for a few seconds first.
 

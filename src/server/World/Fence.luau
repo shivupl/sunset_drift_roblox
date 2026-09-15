@@ -1,6 +1,10 @@
 --!strict
 -- The border: a chain-link fence either side of the highway (WorldConfig.fence).
 --
+-- Round the city it is a circle (WorldConfig.fence.city): the two side
+-- fences run on until they meet it, and it closes round the far side, so
+-- the highway and the city are one fenced ground.
+--
 -- It follows the fence line Relief.border works out, the same lookup the
 -- dunes and Scatter read, so the three always agree: 400 m past each road
 -- edge, pushed out round the back of the petrol station, closed across
@@ -75,12 +79,15 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 		end
 	end
 
-	local function point(side: number, along: number): Vector3
+	local function flatPoint(side: number, along: number): Vector3
 		local p = RoadNetwork.sample(path, math.clamp(along, 0, totalM))
-		local pos = p.position
-			+ p.cframe.LookVector * ctx.s(math.min(along, 0))
+		local extra = if along < 0 then along elseif along > totalM then along - totalM else 0
+		return p.position
+			+ p.cframe.LookVector * ctx.s(extra)
 			+ p.cframe.RightVector * ctx.s(side * border.fenceAt(side, along))
-		return onGround(pos)
+	end
+	local function point(side: number, along: number): Vector3
+		return onGround(flatPoint(side, along))
 	end
 
 	local posts = 0
@@ -205,15 +212,76 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 	end
 
 	local spacing = fc.postSpacingM
+
+	-- The circle round the city, as Relief.border worked it out (centred on
+	-- the grid, clear of its corners, wide enough to meet the side fences),
+	-- so the dunes and the fence agree on it.
+	local centre = border.cityCentre
+	local radius = if centre then ctx.s(border.cityRadiusM) else 0
+	local function flatDistance(a: Vector3, b: Vector3): number
+		return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
+	end
+
+	-- Each side fence ends where it enters the circle (or at endM).
+	local sideEnd: { [number]: number } = { [-1] = border.fenceEndM, [1] = border.fenceEndM }
+	if centre then
+		for _, side in { -1, 1 } do
+			-- Walk up to the first point inside, then halve the step.
+			local limit = totalM + radius * ctx.mps * 2
+			local a = 0
+			while a <= limit and flatDistance(flatPoint(side, a), centre) > radius do
+				a += 10
+			end
+			if a <= limit then
+				local lo, hi = a - 10, a
+				for _ = 1, 20 do
+					local mid = (lo + hi) / 2
+					if flatDistance(flatPoint(side, mid), centre) > radius then
+						lo = mid
+					else
+						hi = mid
+					end
+				end
+				sideEnd[side] = hi
+			end
+		end
+	end
+
 	local sides: { [number]: { Vector3 } } = { [-1] = {}, [1] = {} }
 	for _, side in { -1, 1 } do
 		local along = -fc.behindStartM
-		while along < border.fenceEndM do
+		while along < sideEnd[side] do
 			table.insert(sides[side], point(side, along))
 			along += spacing
 		end
-		table.insert(sides[side], point(side, border.fenceEndM))
+		table.insert(sides[side], point(side, sideEnd[side]))
 		build(sides[side], false)
+	end
+
+	-- The arc: from one side fence's end round the far side of the city to
+	-- the other's, never across the highway's end.
+	local arcM = 0
+	if centre then
+		local a1 = flatPoint(-1, sideEnd[-1])
+		local a2 = flatPoint(1, sideEnd[1])
+		local function angle(p: Vector3): number
+			return math.atan2(p.Z - centre.Z, p.X - centre.X)
+		end
+		local t1, t2 = angle(a1), angle(a2)
+		local tRoad = angle(path[1].position)
+		local tau = 2 * math.pi
+		local sweep = (t2 - t1) % tau
+		if (tRoad - t1) % tau < sweep then
+			sweep -= tau -- the other way round
+		end
+		local n = math.max(2, math.ceil(math.abs(sweep) * radius * ctx.mps / spacing))
+		local arc: { Vector3 } = {}
+		for k = 0, n do
+			local t = t1 + sweep * k / n
+			table.insert(arc, onGround(centre + Vector3.new(math.cos(t) * radius, 0, math.sin(t) * radius)))
+		end
+		build(arc, true) -- its two end posts are the side fences' last
+		arcM = math.abs(sweep) * radius * ctx.mps
 	end
 
 	-- Across behind the start line, between the two side fences' first posts.
@@ -227,7 +295,15 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 	build(cross, true) -- the two corner posts are already there
 
 	if cfg.debug.report then
-		print(string.format("[World] fence: %d posts, %d runs, %.0f m either side", posts, runs, border.fenceEndM + fc.behindStartM))
+		print(string.format(
+			"[World] fence: %d posts, %d runs, %.0f / %.0f m along the sides, %.0f m round the city (radius %.0f m)",
+			posts,
+			runs,
+			sideEnd[-1] + fc.behindStartM,
+			sideEnd[1] + fc.behindStartM,
+			arcM,
+			radius * ctx.mps
+		))
 	end
 	return folder
 end

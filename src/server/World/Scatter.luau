@@ -192,7 +192,7 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			return false
 		end
 		local along, lateral = Relief.roadCoords(ctx, path, pos)
-		if along > border.endM then
+		if along > border.farAlongM then
 			return false
 		end
 		-- Off the mounds entirely, except scrub, which may stand on a low
