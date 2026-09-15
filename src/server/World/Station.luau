@@ -109,6 +109,30 @@ function Station.keepOut(cfg: Config, ctx: Context, path: Path): (pos: Vector3) 
 	end
 end
 
+-- Metres from a position to the site's keep-out rectangle: positive outside,
+-- negative inside, math.huge with the station off. The relief feathers its
+-- sand down to nothing by this, so the forecourt stays on the plane.
+function Station.keepOutDistance(cfg: Config, ctx: Context, path: Path): (pos: Vector3) -> number
+	local st = cfg.station
+	if not st.enabled then
+		return function(_pos: Vector3): number
+			return math.huge
+		end
+	end
+	local o = originFrame(cfg, ctx, path)
+	local u0, u1, v0, v1 = siteRect(cfg, path, ctx)
+	local m = st.keepOutMarginM
+	local k = st.scale
+	return function(pos: Vector3): number
+		local l = o:PointToObjectSpace(pos)
+		local u, v = l.X * ctx.mps / k, -l.Z * ctx.mps / k
+		local du = math.max(u0 - m - u, u - (u1 + m))
+		local dv = math.max(v0 - m - v, v - (v1 + m))
+		local d = if du > 0 and dv > 0 then math.sqrt(du * du + dv * dv) else math.max(du, dv)
+		return d * k
+	end
+end
+
 -- A SurfaceGui on one face of a part, lit like the surface it is on.
 local function faceGui(part: BasePart, face: Enum.NormalId, pps: number, lit: boolean): SurfaceGui
 	local gui = Instance.new("SurfaceGui")

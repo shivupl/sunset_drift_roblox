@@ -351,25 +351,33 @@ local config = {
 	-- is the one piece of sand the car is ever near. It all collides, at
 	-- real slopes, so running wide feels like sand and the crest stops you.
 	relief = {
-		-- OFF. The owner wants plain flat sand again: the terrain strip and
-		-- the berm are kept here for when a border is wanted back, but the
-		-- desert is the plane and nothing else. With this off nothing stops
-		-- the car leaving the road; running wide costs speed, not the run.
-		enabled = false,
+		-- ON: dune borders either side of the highway, their foot about 30 m
+		-- (100 ft) past each road edge. The owner had asked for plain flat
+		-- sand after the first berm (170 to 200 m out, a ramp with a flat
+		-- top); this is the border back, closer in and shaped as dunes.
+		enabled = true,
 		seed = 8083,
-		innerGapM = 40, -- from the asphalt edge to the strip
-		featherM = 26, -- the strip's inner and outer edges blend down to the plane over this
-		liftM = 0.15, -- floor above the sand plane, so the plane never shows through
+		-- The strip starts right at the asphalt edge: a band of the flat sand
+		-- plane between the two showed as a different sand.
+		innerGapM = 0.5, -- from the asphalt edge to the strip
+		featherM = 6, -- the strip's inner and outer edges blend down to the plane over this
+		-- The swell and the ripple are eased in over this distance from the
+		-- strip's inner edge, so the sand beside the shoulder is flat and the
+		-- undulation grows toward the dunes. Without it the ripple alone
+		-- stood a metre up a few metres off the kerb and read as a bank.
+		swellRampM = 26,
+		liftM = 0.1, -- hummock floor above the sand plane (unused while there is no floor)
+		sinkM = 0.6, -- the dune terrain sits this far down, so it meets the plane on a slope, not a ledge
 		shellM = 3.5, -- solid sand below the surface; a shell, because nothing digs
 		-- Two octaves of undulation over the whole strip, berm included, so
 		-- the berm is a dune ridge and not an extrusion. math.noise spans
 		-- about -0.5..0.5, so amplitude is twice the swing.
 		swellWavelengthM = 70,
-		swellAmplitudeM = 2.4,
+		swellAmplitudeM = 0.35, -- 2.4 when the strip started 40 m out; at 0.8 the floor stood a metre above the road beside the kerb
 		rippleWavelengthM = 22,
-		rippleAmplitudeM = 0.8,
+		rippleAmplitudeM = 0.25,
 		hummocks = {
-			perKm = 110, -- per side, on the floor only, never on the berm
+			perKm = 0, -- none: the first 30 m past the road is flat sand, on request
 			minRadiusM = 3,
 			maxRadiusM = 9,
 			minHeightM = 0.5,
@@ -379,42 +387,70 @@ local config = {
 		-- Patches of a darker, coarser material where a slow noise is high:
 		-- gravel flats between the sand.
 		gravel = { threshold = 0.36, scaleM = 60, material = Enum.Material.Ground },
-		-- Terrain renders about 1.15x brighter than a part for the same tint,
-		-- so these sit one step darker than ground.color to come out as the
-		-- same sand. Matched by eye from the air, where the strip and the
-		-- plane meet over the berm's back.
-		sandColor = SAND_DARK,
+		-- The same tint as the plane: the terrain now wears the plane's sand
+		-- MaterialVariant (Relief sets the base material override), and with
+		-- it the old one-step-darker tint (for stock terrain sand, which
+		-- rendered brighter) came out a shade off at the dune's foot.
+		sandColor = SAND,
 		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
 
-		-- The berm: the edge of the playable area, a sand hill the car can
-		-- drive up with a natural stop at the top. The rise is a smoothstep,
-		-- so there is no kink where it leaves the floor and none at the
-		-- crest; its steepest point is 1.5 * height / riseWidth. The foot
-		-- and the crest height wander along the road from a slow noise, so
-		-- the crest is a dune line rather than a straight ramp.
+		-- The border: a line of dunes either side of the road, the edge of
+		-- the playable area. Each is shaped like a real dune: a long gentle
+		-- windward slope facing the road (drivable, it is sand), a sharp brink
+		-- at the crest, and a steep slip face falling away behind. Along the
+		-- road the crest rises into humps and dips into saddles and its foot
+		-- wanders, so it reads as a dune line, not a wall. An invisible wall
+		-- stands on the crest.
 		--
-		-- The sun side is farther out, lower and gentler, so the sunset and
-		-- the far dune field stay in view over it.
+		-- Heights are kept low enough to see over: the skyline is on the
+		-- right and the setting sun on the left, and from the driver's eye the
+		-- crest angles stay under the skyline's towers and the sun (the build
+		-- prints the tallest crest angle on each side next to the sun's).
+		--
+		-- The dune line bends out round the spawn pad and the petrol station
+		-- (a clearance, blended in and out), closes across behind the start
+		-- line, and tapers away into the city at the far end.
 		berm = {
 			enabled = true,
-			endM = 3540, -- stops short of the city gateway; the start-line end is open
+			endM = 3540, -- the far end: the dunes are gone by here, short of the city gateway
+			endTaperM = 220, -- crests sink to nothing over this before endM
+			startCapBehindM = 70, -- the dune across behind the start line, its foot this far back
 			wallHeightM = 150, -- the invisible stop; a car off the crest at 200 km/h still meets it
-			wallRunCapM = 480, -- wall pieces along the road; under the 573 m part cap
-			wanderWavelengthM = 420, -- how fast the foot and the crest height wander
-			footJitterM = 8,
-			heightVariation = 0.3, -- crest height wanders by this fraction
+			wallPieceM = 12, -- wall pieces along the (wandering) crest
+			-- Along-road shape. math.noise spans about -0.5..0.5.
+			-- From the driver's seat humps 240 m long read as one smooth bank;
+			-- these are separate dunes with saddles between.
+			humpWavelengthM = 140, -- big dunes and the saddles between them
+			humpVariation = 0.7, -- crest height swings by this fraction
+			minCrestFraction = 0.45, -- the lowest a saddle goes, as a fraction of crestHeightM
+			detailWavelengthM = 45,
+			detailVariation = 0.2,
+			wanderWavelengthM = 300, -- how fast the foot wanders in and out
+			footJitterM = 9,
+			-- A shorter wobble on top, so no stretch of the dune line, its foot
+			-- or its back edge, is ever straight.
+			-- Big enough that the dune line swings toward the sun and away: on
+			-- the shaded side that is what gives the slope lit and dark faces
+			-- instead of one flat wall of shadow.
+			footWobbleWavelengthM = 90,
+			footWobbleM = 14,
+			backPower = 1.4, -- the slip face: >1 starts steep at the brink and flattens into the plane
+			-- Round the pad and the station: the foot stands this far past
+			-- whatever is there, eased back to the normal line over blendM.
+			clearanceGapM = 30,
+			clearanceBlendM = 170,
 			sun = {
-				footM = 200,
-				riseWidthM = 78, -- gentler: 1.5 * 7 / 78 is a 7.7 degree steepest slope
-				crestHeightM = 7,
-				backWidthM = 42,
+				footM = 70, -- nearest the foot comes to the road centreline: the 39 m road edge plus 31 m (about 100 ft)
+				riseWidthM = 40, -- windward slope, road side
+				crestHeightM = 5.5, -- lower: the sun sets over this side; the tallest hump has to stay under the 5.4 deg sun
+				backWidthM = 30, -- slip face
 			},
 			other = {
-				footM = 170,
-				riseWidthM = 70, -- 1.5 * 13 / 70 is a 15.6 degree steepest slope
-				crestHeightM = 13,
-				backWidthM = 36,
+				footM = 70, -- the same nearest distance
+				riseWidthM = 46,
+				crestHeightM = 8, -- the skyline side; its towers still clear this from the road
+				backWidthM = 34,
 			},
 		},
 	},

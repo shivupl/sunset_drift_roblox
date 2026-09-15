@@ -183,8 +183,25 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 	local taken: { Vector3 } = {}
 	-- Nothing lands on the petrol station's site.
 	local onStation = Station.keepOut(cfg, ctx, path)
-	local function free(pos: Vector3, radius: number): boolean
-		if onStation(pos) then
+	-- Nor on the border dunes: a palm or a camp on a dune face reads as
+	-- floating, and anything past the crest is out of sight. Scrub is the
+	-- exception and climbs part way up the windward slope.
+	local border = if cfg.relief.enabled then Relief.border(cfg, ctx, path) else nil
+	local function onDune(pos: Vector3, climbs: boolean): boolean
+		if not border or not border.enabled then
+			return false
+		end
+		local along, lateral = Relief.roadCoords(ctx, path, pos)
+		if along > border.endM then
+			return false
+		end
+		local side = if lateral >= 0 then 1 else -1
+		local footM = border.at(side, along)
+		local limit = if climbs then footM + border.riseM[side] * 0.6 else footM - 2
+		return math.abs(lateral) > limit
+	end
+	local function free(pos: Vector3, radius: number, climbs: boolean?): boolean
+		if onStation(pos) or onDune(pos, climbs == true) then
 			return false
 		end
 		for _, t in taken do
@@ -277,7 +294,7 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 				-- last plant held the sand.
 				for _ = 1, rng:NextInteger(s.clusterMin, s.clusterMax) do
 					local pos = ground(along + rng:NextNumber(-s.clusterSpreadM, s.clusterSpreadM), side * (lay.totalM / 2 + edgeM + rng:NextNumber(-s.clusterSpreadM, s.clusterSpreadM)))
-					if free(pos, ctx.s(0.9)) then
+					if free(pos, ctx.s(0.9), true) then
 						scrub(cfg, ctx, pos, rng, bushes)
 					end
 				end
@@ -286,7 +303,7 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			if rng:NextNumber() < s.medianChance then
 				local half = lay.medianM / 2 - p.medianMarginM
 				local pos = ground(along + rng:NextNumber(-6, 6), rng:NextNumber(-half, half))
-				if free(pos, ctx.s(1.2)) then
+				if free(pos, ctx.s(1.2), true) then
 					scrub(cfg, ctx, pos, rng, bushes)
 				end
 			end

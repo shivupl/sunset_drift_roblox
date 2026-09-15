@@ -253,6 +253,30 @@ a building body long before it swallows an emissive part, so in daylight
 every light here is pulled back by `lights.dayExtraTransparency`, or the
 windows and strips float free of the towers they belong to.
 
+## The border dunes (`Relief.luau`)
+
+Both sides of the highway end in a line of dunes. The first 30 m past each road edge (100 ft, on request) is the flat desert plane itself: no terrain, no props that would sit on a slope, the same sand as everywhere. Then the dune rises: a long gentle windward slope facing the road (drivable), a sharp brink at the crest and a steep slip face behind. An invisible wall stands on the crest.
+
+Along the road the dune line is shaped so it never reads as a wall:
+- **Humps and saddles:** the crest rises into humps about every 140 m and dips into saddles between them, never below 45% of its height.
+- **Foot:** it wanders out from its nearest distance (never in) on two scales, so parts of the slope turn toward the sun and catch light.
+- **Sunset side (left):** lower, so the sun stays in view; its tallest crest is 3.7 degrees above the driver's eye against a 5.4 degree sun.
+- **Skyline side (right):** its tallest crest is 5.4 degrees, under the skyline's towers.
+
+The build prints both angles.
+
+The dune line bends out round the spawn pad (both wings) and the petrol station, found from the station's own keep-out rectangle, standing 30 m past each and easing back over 170 m. It closes across behind the start line, and sinks away over the last 220 m before 3,540 m, short of the city gateway.
+
+Three things made it look right:
+- **Terrain only where there is a dune.** A terrain floor between the road and the dunes could not lie flat at the plane's height (voxels round up), and stood a metre above the road beside the kerb, which read as a bank.
+- **The same sand.** The terrain takes the plane's sand MaterialVariant through `MaterialService:SetBaseMaterialOverride` and the plane's tint, so nothing changes at the dune's foot.
+- **Sunk 0.6 m, one depth for every chunk.** The dune breaks the plane on a rising slope instead of a voxel-high ledge, and neighbouring write chunks no longer disagree underneath (which drew seams up the face).
+
+The shape along the road is worked out once (`Relief.border`), and the terrain, the crest wall and Scatter all read it: Scatter keeps palms, trees, rocks and camps off the dune faces and lets scrub climb part way up. Measured in Play:
+- **Build:** 667 terrain chunks in 6 to 8 s.
+- **Frame rate:** 60 fps.
+- **Border hit at 140 km/h:** the car climbed to 5 m, stopped at the crest and stayed upright.
+
 ## Lighting and the time of day
 
 `timeOfDay` selects a preset from `timesOfDay`: `goldenHour` (default),
