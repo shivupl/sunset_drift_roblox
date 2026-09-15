@@ -257,14 +257,14 @@ windows and strips float free of the towers they belong to.
 
 Each side of the highway has three zones:
 - **Flat sand**, for the first 100 m or so (330 ft) past the road edge. Nothing of a dune comes nearer the centreline than 140 m.
-- **A dune field** of soft rounded mounds, scattered at random from there right out to the fence, and behind the start line too. Mounds are up to about 3.5 m high. Under them, light waves roll unbroken from a wandering start line to the fence, so once the dunes begin the ground never goes back to flat.
-- **A chain-link fence**, 400 m (about 1,300 ft) past the road edge, 439 m from the centreline, which is the edge of the playable area. It was 250 ft, then 250 m; the owner asked for it further back each time.
+- **A dune field** of soft rounded mounds, scattered at random from there right out to the fence, and behind the start line too. Mounds are up to about 3.5 m high. Under them, light waves roll unbroken from a wandering start line to the fence and beyond it, so once the dunes begin the ground never goes back to flat.
+- **A chain-link fence**, 400 m (about 1,300 ft) past the road edge, 439 m from the centreline, which is the edge of the playable area. It runs over the dunes: they carry on under it and past it. It was 250 ft, then 250 m; the owner asked for it further back each time.
 
-**The dunes** are 231 separate mounds scattered over the sand. Each is an ellipse 90 to 220 m long with its own height and width, and low ones are smaller all round. Most follow a slow common drift, each turned a little off it, up to 20 degrees from the road. A slow noise makes the field thick in some stretches and thin in others, leaving bays of flat sand. No mound is placed where the others already stand 0.8 m high, so overlaps make broad hills and never lumps on a shoulder. Each mound keeps its whole visible rim out of the flat strip, 15 m inside the fence and 30 m from the petrol station's site.
+**The dunes** are 231 separate mounds scattered over the sand. Each is an ellipse 90 to 220 m long with its own height and width, and low ones are smaller all round. Most follow a slow common drift, each turned a little off it, up to 20 degrees from the road. A slow noise makes the field thick in some stretches and thin in others, leaving bays of flat sand. No mound is placed where the others already stand 0.8 m high, so overlaps make broad hills and never lumps on a shoulder. Each mound keeps its whole visible rim out of the flat strip, no more than 30 m past the fence, and 30 m from the petrol station's site.
 
 **The light waves** are a smooth noise layer with long crests: 200 m along each crest, about 60 m from crest to crest, turned 25 degrees off the road, plus a finer octave at 30%. They stand 0.35 to about 1.2 m above the sunk base, so the plane never shows through in patches.
 - **Start:** they rise from nothing over 60 m, flush, from a start line that wanders up to 45 m past the flat strip.
-- **Fence:** they carry on 15 m past the fence and ease out there, so no edge shows at it.
+- **Fence:** they keep full height to 30 m past the fence and ease out by 70 m, so the fence stands on them and no edge shows near it.
 - **Station and city:** they fade out round the station's site and sink away before the city with the mounds.
 
 The owner asked for the dunes to "continue till the fenceline in light waves".
@@ -283,6 +283,12 @@ Measured (terrain raycasts every 10 m along and 4 m across):
 They are the only terrain. The flat sand is the desert plane itself, and the dunes wear the plane's sand MaterialVariant (the base material override) and tint. They are sunk 0.15 m, and every chunk writes to the same depth, so there are no seams. The terrain pass only scans chunks that have a mound nearby, and finds each column's nearest road point by walking from the previous column's. Scanning every road point per column took 35 s once the field reached the fence.
 
 **Terrain draws a surface half a voxel (2 studs, 0.56 m) above where its occupancy puts it.** This was measured on flats: filling to height t renders the top at t + 2 studs, exactly. `Relief` fills to half a voxel under the height it wants. Before that fix every dune stood 0.56 m proud, which was the ledge along the old berm's foot.
+
+**The fence runs over the dunes.** Each post stands on the sand under it. Wherever the sand stays within 0.35 m of a straight line (and 0.1 m sideways), one run of panel, rail, wire and wall covers it, and each post reaches up to its run's rail. So the rail is straight between bends, and a panel's foot floats or sinks by at most 0.35 m. The invisible wall reaches 1.35 m under the run.
+
+Terrain written in the relief pass is not raycastable for a while, and the fence first came out standing on the plane, buried in the dunes. `Fence` now waits until a spot where it crosses a dune reads as sand.
+
+Measured: 1,399 of 1,461 posts stand on dunes, each post's foot sits on the sand, and the fence is 1,881 parts in 84 runs (1,576 parts when it was all on the flat).
 
 **The fence** has these parts:
 - **Posts:** galvanised square posts every 6 m, casting long shadows at golden hour.

@@ -195,15 +195,10 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 		if along > border.endM then
 			return false
 		end
-		local side = if lateral >= 0 then 1 else -1
-		-- Outside the fence is open desert again: props there show through
-		-- the mesh.
-		if border.fenceEnabled and along >= -border.fenceBehindM and along <= border.fenceEndM and math.abs(lateral) > border.fenceAt(side, along) + 3 then
-			return false
-		end
 		-- Off the mounds entirely, except scrub, which may stand on a low
-		-- flank. The light waves between them are fine: props sit on the
-		-- terrain there (ground() below).
+		-- flank; that holds past the fence too, where the dunes run on. The
+		-- light waves between them are fine: props sit on the terrain there
+		-- (ground() below).
 		local moundM = border.layersAt(along, lateral)
 		return moundM - border.sinkM > (if climbs then 0.8 else -border.sinkM)
 	end

@@ -6,10 +6,14 @@
 -- edge, pushed out round the back of the petrol station, closed across
 -- behind the start line, and stopping short of the city gateway.
 --
+-- It runs over the dunes: every post stands on the sand under it.
+--
 -- Built cheaply: square posts every postSpacingM, and between them long
--- runs, not per-bay pieces. Wherever the line is straight and level, one
--- panel, one top rail, the barbed strands and one invisible wall cover the
--- whole stretch. The mesh is a tiled Texture on an invisible panel, so the
+-- runs, not per-bay pieces. Wherever the ground stays within RUN_SAG_M of a
+-- straight line, one panel, one top rail, the barbed strands and one
+-- invisible wall cover the whole stretch; each post then reaches from the
+-- sand up to that run's rail, so the rail is straight and the posts meet
+-- it. The mesh is a tiled Texture on an invisible panel, so the
 -- desert and the skyline show through it, and the panel casts no shadow
 -- (a shadow would be a solid rectangle).
 local WorldConfig = require(script.Parent.WorldConfig)
@@ -23,10 +27,11 @@ type Path = RoadNetwork.Path
 
 local Fence = {}
 
--- A run keeps going while the line turns less than this and rises less than
--- RUN_RISE_M between posts.
-local RUN_TURN_DEG = 0.35
-local RUN_RISE_M = 0.05
+-- A run keeps going while every post in it stays within RUN_BEND_M sideways
+-- and RUN_SAG_M up or down of the straight line from its first post to its
+-- last: the panel's foot floats or sinks by at most that on a dune.
+local RUN_BEND_M = 0.1
+local RUN_SAG_M = 0.35
 local RUN_MAX_M = 400
 
 function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): Folder
@@ -42,6 +47,34 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 		local y = Relief.surfaceY(Vector3.new(pos.X, groundY, pos.Z))
 		return Vector3.new(pos.X, math.max(y or groundY, groundY), pos.Z)
 	end
+	-- Terrain written in the relief pass is not raycastable for a frame or
+	-- more (longer the more there is), and a post placed before then stands
+	-- on the plane, buried in the dune. Wait until a spot where the fence
+	-- crosses a dune reads as sand.
+	local probe: Vector3? = nil
+	local probeAlong = 0
+	while not probe and probeAlong < border.fenceEndM do
+		for _, side in { -1, 1 } do
+			local lateral = side * border.fenceAt(side, probeAlong)
+			if border.heightAt(probeAlong, lateral) > border.sinkM + 0.5 then
+				local p = RoadNetwork.sample(path, math.clamp(probeAlong, 0, totalM))
+				probe = p.position + p.cframe.RightVector * ctx.s(lateral)
+				break
+			end
+		end
+		probeAlong += 25
+	end
+	if probe then
+		local deadline = os.clock() + 10
+		while os.clock() < deadline do
+			local y = Relief.surfaceY(Vector3.new(probe.X, groundY, probe.Z))
+			if y and y > groundY + ctx.s(0.3) then
+				break
+			end
+			task.wait(0.1)
+		end
+	end
+
 	local function point(side: number, along: number): Vector3
 		local p = RoadNetwork.sample(path, math.clamp(along, 0, totalM))
 		local pos = p.position
@@ -53,9 +86,11 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 	local posts = 0
 	local runs = 0
 
-	local function post(pos: Vector3)
+	-- A post standing on the sand at pos, up to the rail at railY (the top
+	-- of the mesh) and the barbed strands above.
+	local function post(pos: Vector3, railY: number)
 		local extra = if fc.barbedWire then ctx.s(fc.barbedHeightsM[#fc.barbedHeightsM] + 0.04) else 0
-		local height = H + extra
+		local height = math.max(railY - pos.Y, H * 0.5) + extra
 		Build.part({
 			name = "FencePost",
 			size = Vector3.new(ctx.s(fc.postWidthM), height, ctx.s(fc.postWidthM)),
@@ -109,34 +144,62 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 				piece(H + ctx.s(h), Vector3.new(ctx.s(0.012), ctx.s(0.012), length), "BarbedWire", { color = fc.barbedColor })
 			end
 		end
-		-- The stop: tall and invisible, in the fence.
+		-- The stop: tall and invisible, in the fence, reaching a little under
+		-- the panel's foot where the sand dips below the run.
 		local wallH = ctx.s(fc.wallHeightM)
-		piece(wallH / 2, Vector3.new(ctx.s(0.5), wallH, length), "FenceWall", { transparency = 1, collide = true, query = true })
+		local under = ctx.s(RUN_SAG_M + 1)
+		piece((wallH - under) / 2, Vector3.new(ctx.s(0.5), wallH + under, length), "FenceWall", { transparency = 1, collide = true, query = true })
 		runs += 1
 	end
 
-	-- A line of posts, merged into runs.
-	local function build(points: { Vector3 })
-		for _, p in points do
-			post(p)
-		end
-		local startIndex = 1
-		for i = 2, #points do
-			local a, b = points[startIndex], points[i]
-			local dirRun = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
-			local breakHere = i == #points
-			if not breakHere then
-				local nextPoint = points[i + 1]
-				local seg = Vector3.new(nextPoint.X - b.X, 0, nextPoint.Z - b.Z)
-				local turn = if dirRun.Magnitude > 1e-3 and seg.Magnitude > 1e-3
-					then math.deg(math.acos(math.clamp(dirRun.Unit:Dot(seg.Unit), -1, 1)))
-					else 0
-				local rise = math.abs((nextPoint.Y - b.Y) - (b.Y - points[i - 1].Y)) * ctx.mps
-				breakHere = turn > RUN_TURN_DEG or rise > RUN_RISE_M or (nextPoint - a).Magnitude * ctx.mps > RUN_MAX_M
+	-- A line of posts on the ground, merged into runs. The end posts are
+	-- left out when skipEnds (they belong to the side fences).
+	local function build(points: { Vector3 }, skipEnds: boolean)
+		local function straight(first: number, last: number): boolean
+			local a, b = points[first], points[last]
+			local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+			local len = flat.Magnitude
+			if len * ctx.mps > RUN_MAX_M then
+				return false
 			end
-			if breakHere then
-				run(a, b)
-				startIndex = i
+			if len < 1e-3 then
+				return true
+			end
+			local dir = flat / len
+			for k = first + 1, last - 1 do
+				local p = points[k]
+				local rel = Vector3.new(p.X - a.X, 0, p.Z - a.Z)
+				local along = rel:Dot(dir)
+				local side = (rel - dir * along).Magnitude * ctx.mps
+				local sag = math.abs(p.Y - (a.Y + (b.Y - a.Y) * along / len)) * ctx.mps
+				if side > RUN_BEND_M or sag > RUN_SAG_M then
+					return false
+				end
+			end
+			return true
+		end
+		-- Runs from post to post, and the rail height at every post.
+		local railY = table.create(#points, 0)
+		local first = 1
+		while first < #points do
+			local last = first + 1
+			while last < #points and straight(first, last + 1) do
+				last += 1
+			end
+			local a, b = points[first], points[last]
+			local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+			local len = flat.Magnitude
+			for k = first, last do
+				local p = points[k]
+				local t = if len > 1e-3 then Vector3.new(p.X - a.X, 0, p.Z - a.Z):Dot(flat) / (len * len) else 0
+				railY[k] = a.Y + (b.Y - a.Y) * t + H
+			end
+			run(a, b)
+			first = last
+		end
+		for k, p in points do
+			if not (skipEnds and (k == 1 or k == #points)) then
+				post(p, railY[k])
 			end
 		end
 	end
@@ -150,7 +213,7 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 			along += spacing
 		end
 		table.insert(sides[side], point(side, border.fenceEndM))
-		build(sides[side])
+		build(sides[side], false)
 	end
 
 	-- Across behind the start line, between the two side fences' first posts.
@@ -161,14 +224,7 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 	for k = 0, n do
 		table.insert(cross, onGround(left:Lerp(right, k / n)))
 	end
-	-- The two corner posts are already there.
-	local inner = table.clone(cross)
-	table.remove(inner, 1)
-	table.remove(inner, #inner)
-	for _, p in inner do
-		post(p)
-	end
-	run(cross[1], cross[#cross])
+	build(cross, true) -- the two corner posts are already there
 
 	if cfg.debug.report then
 		print(string.format("[World] fence: %d posts, %d runs, %.0f m either side", posts, runs, border.fenceEndM + fc.behindStartM))

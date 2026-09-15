@@ -402,7 +402,7 @@ local config = {
 				patchWavelengthM = 500, -- the slow noise that makes thick and thin stretches
 				minDensity = 0.15, -- in the thinnest stretches, this fraction of tries still counts
 				maxOverlapM = 0.8, -- no mound where the others already stand this high (no lumps on shoulders)
-				fenceGapM = 15, -- flat sand kept inside the fence
+				pastFenceM = 30, -- mounds may run this far over the fence line: the fence goes over the dunes
 			},
 			-- Light waves under the mounds: from a wandering start line past
 			-- the flat strip, long low crests run over all the sand to the
@@ -419,7 +419,8 @@ local config = {
 				startWanderM = 45, -- the start line wanders out this far past nearM
 				startWanderWavelengthM = 260,
 				rampM = 60, -- rising from nothing over this, flush
-				pastFenceM = 15, -- carried on past the fence and eased out, so no edge shows at it
+				pastFenceM = 70, -- carried on under and beyond the fence, gone by this far past it
+				fadeM = 40, -- eased out over the last of that, so no edge shows
 			},
 			-- Each mound, drawn at random from these ranges.
 			lengthM = { 90, 220 }, -- along the road, rim to rim before sinking

@@ -7,8 +7,8 @@
 -- thin in others, with bays of flat sand between. Every mound leaves the
 -- sand plane at a grazing angle, so there is no foot line to see, and there
 -- is no small-scale noise on them: calm shapes, nothing to bump over. They
--- keep clear of the petrol station and the fence, and sink away before the
--- city. The whole field is one height function worked out once
+-- run on under the fence and a little beyond it, keep clear of the petrol
+-- station, and sink away before the city. The whole field is one height function worked out once
 -- (Relief.border), which the terrain, the wall and Scatter all read, so
 -- they always agree.
 --
@@ -270,7 +270,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 
 	local f = b.field
 	local fenceFar = roadEdgeM + fc.fromRoadEdgeM
-	local fromAlong = if fenceOn then -(fc.behindStartM - f.fenceGapM) else -(b.capNearM + 300)
+	local fromAlong = if fenceOn then -(fc.behindStartM + f.pastFenceM) else -(b.capNearM + 300)
 	local toAlong = endM
 	-- Rim points (at half the sink, like the placement) round a mound, grown
 	-- by `grow` metres: the whole visible mound lies inside them.
@@ -289,14 +289,15 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 				local l = m.lateral + uu * m.al + vv * m.nl
 				if grow == 0 then
 					-- Out of the flat strip beside the road (and its run on
-					-- behind the start line), inside the fence, short of the city.
+					-- behind the start line), no more than pastFenceM over the
+					-- fence (the fence runs over the dunes), short of the city.
 					if a >= -b.capNearM and math.abs(l) < b.nearM then
 						return false
 					end
 					if a < fromAlong or a > toAlong + b.endTaperM then
 						return false
 					end
-					if math.abs(l) > (if fenceOn then fenceAt(l, a) else fenceFar) - f.fenceGapM then
+					if math.abs(l) > (if fenceOn then fenceAt(l, a) else fenceFar) + f.pastFenceM then
 						return false
 					end
 				elseif cfg.station.enabled and a > 0 and a < totalM and onStation(world(a, l)) then
@@ -307,7 +308,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		return true
 	end
 
-	local sideFar = fenceFar - f.fenceGapM
+	local sideFar = fenceFar + f.pastFenceM
 	local areaKm2 = ((toAlong - fromAlong) * 2 * sideFar - (toAlong + b.capNearM) * 2 * b.nearM) / 1e6
 	local target = math.floor(areaKm2 * f.perKm2)
 	local attempts = target * 12
@@ -359,8 +360,10 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 
 	-- The light waves under the mounds: from a wandering start line just
 	-- past the flat strip, long low crests turned off the road run over all
-	-- the sand to the fence and a little past it, so once the dunes begin the
-	-- ground never goes back to dead flat. They rise from nothing over rampM,
+	-- the sand, under the fence and on beyond it, so once the dunes begin the
+	-- ground never goes back to dead flat. They keep full height to
+	-- pastFenceM - fadeM beyond the fence (the fence runs over them) and ease
+	-- out by pastFenceM. They rise from nothing over rampM,
 	-- flush, and sink away before the city. Round the station they fade in
 	-- the terrain pass, which has the world position.
 	local wv = b.waves
@@ -400,7 +403,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		if wIn <= 0 then
 			return 0
 		end
-		local wOut = smoothstep((insideFence(along, lateral) + wv.pastFenceM) / wv.pastFenceM)
+		local wOut = smoothstep((insideFence(along, lateral) + wv.pastFenceM) / wv.fadeM)
 		if wOut <= 0 then
 			return 0
 		end
