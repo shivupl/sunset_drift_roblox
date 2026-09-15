@@ -79,6 +79,9 @@ export type Border = {
 	-- The terrain surface there is the sand plane - sinkM + this, so the dune
 	-- only shows where it is above sinkM; 0 is no dune at all.
 	heightAt: (alongM: number, lateralM: number) -> number,
+	-- The same, split: the mounds, and the light waves under them (before
+	-- the terrain pass fades the waves round the station).
+	layersAt: (alongM: number, lateralM: number) -> (number, number),
 	sinkM: number,
 	nearM: number, -- nothing of a dune shows nearer the centreline than this
 	capNearM: number, -- nor nearer the start line, behind it
@@ -354,8 +357,75 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		capReach = math.max(capReach, -(m.along - spread))
 	end
 
-	-- Whether any mound comes within radius metres of a spot.
+	-- The light waves under the mounds: from a wandering start line just
+	-- past the flat strip, long low crests turned off the road run over all
+	-- the sand to the fence and a little past it, so once the dunes begin the
+	-- ground never goes back to dead flat. They rise from nothing over rampM,
+	-- flush, and sink away before the city. Round the station they fade in
+	-- the terrain pass, which has the world position.
+	local wv = b.waves
+	local wavesOn = wv.enabled
+	local fenceMax = 0
+	for _, line in fence do
+		for _, v in line do
+			fenceMax = math.max(fenceMax, v)
+		end
+	end
+	local seedWave = (seed % 823) / 23
+	local cosA, sinA = math.cos(math.rad(wv.angleDeg)), math.sin(math.rad(wv.angleDeg))
+	-- Metres out of the flat strip (negative inside it), round a rounded
+	-- corner into its run behind the start line.
+	local function outOfStrip(along: number, latAbs: number): number
+		if along >= -b.capNearM then
+			return latAbs - b.nearM
+		end
+		local back = -b.capNearM - along
+		local out = latAbs - b.nearM
+		return if out > 0 then math.sqrt(back * back + out * out) else back
+	end
+	-- Metres inside the fence (negative outside it).
+	local function insideFence(along: number, lateral: number): number
+		local latAbs = math.abs(lateral)
+		if not fenceOn then
+			return fenceFar - latAbs
+		end
+		return math.min(fenceAt(lateral, along) - latAbs, along + fc.behindStartM)
+	end
+	local function waveAt(along: number, lateral: number): number
+		if not wavesOn or along > endM then
+			return 0
+		end
+		local wander = math.clamp(math.noise(along / wv.startWanderWavelengthM, lateral / wv.startWanderWavelengthM, seedWave + 5.3) + 0.5, 0, 1)
+		local wIn = smoothstep((outOfStrip(along, math.abs(lateral)) - wander * wv.startWanderM) / wv.rampM)
+		if wIn <= 0 then
+			return 0
+		end
+		local wOut = smoothstep((insideFence(along, lateral) + wv.pastFenceM) / wv.pastFenceM)
+		if wOut <= 0 then
+			return 0
+		end
+		local u = along * cosA + lateral * sinA
+		local v = lateral * cosA - along * sinA
+		local n = math.noise(u / wv.crestLengthM, v / wv.spacingM, seedWave)
+			+ math.noise(u / (wv.crestLengthM * 0.5), v / (wv.spacingM * 0.5), seedWave + 9.7) * wv.detail
+		local h = wv.baseM + wv.amplitudeM * math.clamp(n + 0.5, 0, 1.2)
+		local taper = 1 - smoothstep((along - (endM - b.endTaperM)) / math.max(b.endTaperM, 1))
+		return h * wIn * wOut * taper
+	end
+	if wavesOn then
+		maxReach = math.max(maxReach, fenceMax + wv.pastFenceM)
+		capReach = math.max(capReach, fc.behindStartM + wv.pastFenceM)
+	end
+
+	-- Whether any dune comes within radius metres of a spot: a mound, or
+	-- the waves.
 	local function anyNear(along: number, lateral: number, radius: number): boolean
+		if wavesOn and along - radius < endM
+			and outOfStrip(along, math.abs(lateral)) + radius > 0
+			and insideFence(along, lateral) + wv.pastFenceM + radius > 0
+		then
+			return true
+		end
 		for kb = math.floor((along - radius) / BUCKET), math.floor((along + radius) / BUCKET) do
 			local list = buckets[kb]
 			if list then
@@ -370,7 +440,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 	end
 
 	local shoulder, ceiling = b.overlapM[1], b.overlapM[2]
-	local function heightAt(along: number, lateral: number): number
+	local function moundAt(along: number, lateral: number): number
 		if along > endM then
 			return 0
 		end
@@ -387,10 +457,17 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		-- Sunk away before the city.
 		return sum * (1 - smoothstep((along - (endM - b.endTaperM)) / math.max(b.endTaperM, 1)))
 	end
+	local function layersAt(along: number, lateral: number): (number, number)
+		return moundAt(along, lateral), waveAt(along, lateral)
+	end
+	local function heightAt(along: number, lateral: number): number
+		return moundAt(along, lateral) + waveAt(along, lateral)
+	end
 
 	local border: Border = {
 		enabled = r.enabled and b.enabled,
 		heightAt = heightAt,
+		layersAt = layersAt,
 		sinkM = sinkM,
 		nearM = b.nearM,
 		capNearM = b.capNearM,
@@ -585,7 +662,11 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 						local along = best.distanceM + (relX * look.X + relZ * look.Z) * ctx.mps
 						local behindStart = -along / ctx.mps -- studs behind the start line (negative ahead of it)
 
-						local duneM = if dunesOn then border.heightAt(along, lateral * ctx.mps) else 0
+						local moundM, waveM = 0, 0
+						if dunesOn then
+							moundM, waveM = border.layersAt(along, lateral * ctx.mps)
+						end
+						local duneM = moundM + waveM
 						-- Distance in from the strip's inner edge: the shoulder,
 						-- or behind the start line where there is no road.
 						local innerD = 0
@@ -595,13 +676,18 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 								innerD = math.max(innerD, behindStart - innerGap)
 							end
 							if innerD > 0 then
-								innerD = math.min(innerD, ctx.s(stationDistance(Vector3.new(wx, groundY, wz))))
+								local stationM = stationDistance(Vector3.new(wx, groundY, wz))
+								innerD = math.min(innerD, ctx.s(stationM))
+								-- The waves ease out round the station's site.
+								if waveM > 0 then
+									duneM = moundM + waveM * smoothstep((stationM - b.clearanceGapM) / b.waves.rampM)
+								end
 							end
 						end
 
-						-- Terrain is the dune and nothing else: the flat sand
-						-- between the road and the dunes is the desert plane
-						-- itself, so it is dead flat and the same sand.
+						-- Terrain is the dunes and nothing else: the flat sand
+						-- between the road and them is the desert plane itself,
+						-- so it is dead flat and the same sand.
 						local surface = -math.huge
 						local material = Enum.Material.Sand
 						if duneM > 0 and innerD > 0 then

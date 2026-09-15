@@ -483,7 +483,11 @@ The dune field: random soft mounds over the sand between a flat strip beside the
 | field.perKm2 | Mounds per square km of usable sand. More is a busier field; about 100 covers 40 to 50%. |
 | field.patchWavelengthM / field.minDensity | The slow noise that makes thick and thin stretches, and how empty the thinnest ones get. |
 | field.maxOverlapM | No new mound where the others already stand this high, so overlaps are broad hills and not lumps. |
-| field.fenceGapM | Flat sand kept inside the fence. |
+| field.fenceGapM | Mounds keep this far inside the fence (the waves go right to it). |
+| waves.baseM / waves.amplitudeM | The light waves under the mounds: their lowest height above the sunk base (keep it over sinkM or flat patches show) and the crest height over that. |
+| waves.spacingM / waves.crestLengthM / waves.angleDeg / waves.detail | Crest to crest, length along a crest, turn off the road, and a finer octave as a fraction. Slope is roughly amplitude x 2 / spacing. |
+| waves.startWanderM / waves.startWanderWavelengthM / waves.rampM | How far the wave start line wanders past nearM and how fast, and how far they take to rise from flush. |
+| waves.pastFenceM | How far past the fence they carry on before easing out. |
 | lengthM / nearSpreadM / farSpreadM / heightM | Ranges each mound is drawn from (low ones come out smaller all round). **Steepest slope is about 1.7 x height / spread**, so raise a spread or lower the height for calmer dunes. |
 | yawDeg | Mounds turn off the road by up to this. |
 | overlapM | Overlapping heights add, eased from the first value toward the second, so two tall mounds make a broad hill rather than a peak. |

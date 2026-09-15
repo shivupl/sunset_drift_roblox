@@ -202,9 +202,10 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			return false
 		end
 		-- Off the mounds entirely, except scrub, which may stand on a low
-		-- flank. Between the mounds and past them is open sand again.
-		local duneM = border.heightAt(along, lateral) - border.sinkM
-		return duneM > (if climbs then 0.8 else -border.sinkM)
+		-- flank. The light waves between them are fine: props sit on the
+		-- terrain there (ground() below).
+		local moundM = border.layersAt(along, lateral)
+		return moundM - border.sinkM > (if climbs then 0.8 else -border.sinkM)
 	end
 	local function free(pos: Vector3, radius: number, climbs: boolean?): boolean
 		if onStation(pos) or onDune(pos, climbs == true) then

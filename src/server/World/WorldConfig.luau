@@ -404,6 +404,23 @@ local config = {
 				maxOverlapM = 0.8, -- no mound where the others already stand this high (no lumps on shoulders)
 				fenceGapM = 15, -- flat sand kept inside the fence
 			},
+			-- Light waves under the mounds: from a wandering start line past
+			-- the flat strip, long low crests run over all the sand to the
+			-- fence, so once the dunes begin the ground never goes back to
+			-- dead flat. math.noise spans about -0.5..0.5.
+			waves = {
+				enabled = true,
+				baseM = 0.35, -- lowest, above the sunk base (sinkM less shows), so no flat patches
+				amplitudeM = 0.7, -- crest height over that
+				spacingM = 60, -- across the crests
+				crestLengthM = 200, -- along them
+				angleDeg = 25, -- crests turned this far off the road
+				detail = 0.3, -- a second, finer octave, as a fraction
+				startWanderM = 45, -- the start line wanders out this far past nearM
+				startWanderWavelengthM = 260,
+				rampM = 60, -- rising from nothing over this, flush
+				pastFenceM = 15, -- carried on past the fence and eased out, so no edge shows at it
+			},
 			-- Each mound, drawn at random from these ranges.
 			lengthM = { 90, 220 }, -- along the road, rim to rim before sinking
 			nearSpreadM = { 40, 58 }, -- half width toward the road: the long, gentle side (steepest about 7 deg)
