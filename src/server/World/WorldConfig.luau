@@ -381,46 +381,40 @@ local config = {
 		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
 
-		-- Low dunes either side of the road, starting about 110 to 120 m
-		-- (360 to 400 ft) past each road edge: a loose chain of soft, rounded mounds of
-		-- different sizes, turned a little off the road, their near edges
-		-- wandering over a 32 m band, some overlapping, some with a smaller
-		-- one behind. Each leaves the sand at a grazing angle, so there is no
-		-- foot line, and nothing small on them to bump over. They were one
-		-- continuous ridge with humps; the owner found that read as a line.
-		-- The border itself is the chain-link fence behind them
-		-- (WorldConfig.fence). They fade out to flat sand round the spawn pad
-		-- and the station, run across behind the start line and sink away
-		-- before the city.
+		-- Low dunes over all the sand between a flat strip beside the road and
+		-- the fence: a random field of soft, rounded mounds of different sizes,
+		-- turned a little off the road, thick in places and thin in others.
+		-- Each leaves the sand at a grazing angle, so there is no foot line,
+		-- and nothing small on them to bump over. They were a chain along the
+		-- road; the owner wanted them random and out to the fence. They keep
+		-- clear of the station and sink away before the city.
 		berm = {
 			enabled = true,
 			endM = 3540, -- the far end: the dunes are gone by here, short of the city gateway
 			endTaperM = 220, -- heights sink to nothing over this before endM
-			-- Nothing of a dune shows nearer the centreline than about nearM
-			-- (measured: nearest 146 m, typically 160 m, so 107 to 120 m past the
-			-- 39.4 m road edge). It was 128 m (89 m past the edge); the owner
-			-- wanted a bit more.
+			-- Nothing of a dune shows nearer the centreline than nearM, about
+			-- 100 m past the 39.4 m road edge. It was 128 m (89 m past the
+			-- edge); the owner wanted a bit more.
 			nearM = 140,
 			capNearM = 100, -- the same, behind the start line
-			bandDepthM = 32, -- a mound's near edge sits up to this much further out
-			wanderWavelengthM = 380, -- how fast that wanders along the road
+			field = {
+				perKm2 = 100, -- mounds per square km of sand they may use
+				patchWavelengthM = 500, -- the slow noise that makes thick and thin stretches
+				minDensity = 0.15, -- in the thinnest stretches, this fraction of tries still counts
+				maxOverlapM = 0.8, -- no mound where the others already stand this high (no lumps on shoulders)
+				fenceGapM = 15, -- flat sand kept inside the fence
+			},
 			-- Each mound, drawn at random from these ranges.
 			lengthM = { 90, 220 }, -- along the road, rim to rim before sinking
 			nearSpreadM = { 40, 58 }, -- half width toward the road: the long, gentle side (steepest about 7 deg)
 			farSpreadM = { 24, 34 }, -- half width behind (steepest about 12 deg)
-			heightM = { 1.6, 3.4 }, -- above the sunk base; sinkM less shows. Skewed low.
+			heightM = { 1.6, 3.4 }, -- above the sunk base; sinkM less shows. Skewed low; low ones are smaller all round.
 			yawDeg = 20, -- turned off the road by up to this
-			stepFraction = { 0.35, 0.7 }, -- next mound's start, as a fraction of this one's length
-			backRow = { chance = 0.35, scale = { 0.5, 0.75 }, offsetM = { 12, 26 } },
 			-- Overlapping mounds add, eased from the first number toward the
 			-- second, so two tall ones make a broad hill and not a peak.
 			overlapM = { 2.8, 4.0 },
-			-- Round the pad and the station the dunes fade to nothing (flat
-			-- sand) where they would reach within clearanceGapM of them,
-			-- easing back in over clearanceBlendM.
-			clearanceGapM = 30,
-			clearanceBlendM = 170,
-			wallHeightM = 150, -- the invisible stop through the mounds, only built when the fence is off
+			clearanceGapM = 30, -- no mound comes within this of the petrol station's site
+			wallHeightM = 150, -- the invisible stop where the fence would be, only built when the fence is off
 			wallPieceM = 12,
 		},
 	},
@@ -580,11 +574,11 @@ local config = {
 	-- nothing jumps it.
 	fence = {
 		enabled = true,
-		-- From the outer edge of the shoulder and kerb: 250 m (about 820 ft),
-		-- leaving about 120 m of open sand behind the dunes. It was 250 ft,
-		-- which put it barely 10 m behind them.
-		fromRoadEdgeM = 250,
-		behindStartM = 250, -- the cross fence behind the start line
+		-- From the outer edge of the shoulder and kerb: 400 m (about 1,300 ft),
+		-- with the dune field running out to it. It was 250 ft, then 250 m;
+		-- the owner asked for it further back each time.
+		fromRoadEdgeM = 400,
+		behindStartM = 400, -- the cross fence behind the start line
 		endM = 3540, -- where the side fences stop, short of the city gateway
 		heightM = 2.4,
 		postSpacingM = 6,

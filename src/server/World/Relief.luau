@@ -1,15 +1,16 @@
 --!strict
 -- The near desert and the edge of the world, as one continuous surface.
 --
--- Low dunes either side of the road, well out past the shoulder: a loose,
--- uneven chain of soft mounds, each a different size and turned a little,
--- some overlapping, some with a lower one behind. Every mound leaves the
+-- Low dunes over all the sand between a flat strip beside the road and the
+-- fence, both sides and behind the start line: a random field of soft
+-- mounds, each a different size and turned a little, thick in places and
+-- thin in others, with bays of flat sand between. Every mound leaves the
 -- sand plane at a grazing angle, so there is no foot line to see, and there
 -- is no small-scale noise on them: calm shapes, nothing to bump over. They
--- fade out round the spawn pad and the petrol station, run across behind the
--- start line and sink away before the city. The whole field is one height
--- function worked out once (Relief.border), which the terrain, the crest
--- wall and Scatter all read, so they always agree.
+-- keep clear of the petrol station and the fence, and sink away before the
+-- city. The whole field is one height function worked out once
+-- (Relief.border), which the terrain, the wall and Scatter all read, so
+-- they always agree.
 --
 -- Terrain is the right tool here and nowhere else in the world: it only
 -- reaches the client inside the streaming radius, and this strip is the one
@@ -84,6 +85,8 @@ export type Border = {
 	endM: number,
 	maxReachM: number, -- farthest lateral reach of any mound
 	capReachM: number, -- farthest reach behind the start line
+	moundCount: number,
+	anyNear: (alongM: number, lateralM: number, radiusM: number) -> boolean,
 	-- The fence (WorldConfig.fence): its distance from the centreline for a
 	-- side and metres along the road, and where it runs.
 	fenceEnabled: boolean,
@@ -106,9 +109,17 @@ type Mound = {
 	near: number, -- half width on the road side
 	far: number, -- half width behind
 	height: number,
+	reach: number, -- farthest any of it gets from the centre
 }
 
 local borders: { [Path]: Border } = {}
+
+-- Squared flat distance from path point k to (x, z).
+local function dist2(points: { PathPoint }, k: number, x: number, z: number): number
+	local q = points[k].position
+	local dx, dz = q.X - x, q.Z - z
+	return dx * dx + dz * dz
+end
 
 -- A mound's height at (du, dl) metres from its centre. (1 - q)^3 over the
 -- ellipse: flat at the top and, more to the point, flat at the rim -- the
@@ -182,33 +193,11 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 	local fenceStartM = -(fc.behindStartM + 10)
 	local fenceCount = math.floor((fc.endM - fenceStartM) / STEP) + 2
 
-	-- Along-road lookups, both sides: how far the dunes are faded out for
-	-- the pad and the station (0..1), and the fence line.
-	local startM = -(b.capNearM + 200)
-	local count = math.floor((endM - startM) / STEP) + 2
-	local clears: { [number]: { number } } = {}
+	-- The fence line, both sides: fromRoadEdgeM past the road edge, pushed
+	-- out behind the station (not the pad: its wing is well inside) and
+	-- eased back.
 	local fence: { [number]: { number } } = {}
 	for _, side in { -1, 1 } do
-		-- Where a dune would come within clearanceGapM of the pad or the
-		-- station it fades out, easing back in over clearanceBlendM.
-		local clear = table.create(count, 0)
-		local blendSteps = math.ceil(b.clearanceBlendM / STEP)
-		for i = 1, count do
-			local a = startM + (i - 1) * STEP
-			local extent = siteExtent(side, a, true)
-			if extent > 0 and extent + b.clearanceGapM > b.nearM then
-				for j = math.max(1, i - blendSteps), math.min(count, i + blendSteps) do
-					local t = 1 - smoothstep(math.abs(j - i) * STEP / b.clearanceBlendM)
-					if t > clear[j] then
-						clear[j] = t
-					end
-				end
-			end
-		end
-		clears[side] = clear
-
-		-- The fence line: fromRoadEdgeM past the road edge, pushed out behind the
-		-- station (not the pad: its wing is well inside) and eased back.
 		local line = table.create(fenceCount, roadEdgeM + fc.fromRoadEdgeM)
 		if fenceOn then
 			local fenceBlend = math.ceil(fc.clearanceBlendM / STEP)
@@ -239,88 +228,125 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		return l[i] + (l[j] - l[i]) * (x - i)
 	end
 
-	-- The mounds. Each side is a loose chain of them along the road: every
-	-- one a different length, height and width, turned a few degrees, its
-	-- near rim anywhere in a band bandDepthM deep past nearM (a slow wander
-	-- plus its own jitter), overlapping its neighbour or leaving a low gap.
-	-- Now and then a smaller one sits behind, so the edge has depth and
-	-- never reads as a line. Behind the start line a chain runs across.
+	-- The mounds: a random field over all the sand between the flat strip
+	-- beside the road and the fence, both sides and behind the start line.
+	-- Every mound a different length, height and width, turned a little;
+	-- denser in some stretches and thin in others (a slow noise), leaving
+	-- bays of flat sand. Each keeps its whole visible rim out of the flat
+	-- strip, clear of the fence, and clear of the station.
 	local mounds: { Mound } = {}
-	local function between(range: { number }): number
-		return rng:NextNumber(range[1], range[2])
-	end
-	local function add(along: number, lateral: number, yaw: number, cap: boolean, halfLength: number, near: number, far: number, height: number)
-		local c, s = math.cos(yaw), math.sin(yaw)
-		local m: Mound
-		if cap then
-			-- Long axis across the road, facing the start line.
-			m = { along = along, lateral = lateral, ax = -s, al = c, nx = -c, nl = -s, halfLength = halfLength, near = near, far = far, height = height }
-		else
-			local side = if lateral >= 0 then 1 else -1
-			m = { along = along, lateral = lateral, ax = c, al = s, nx = -s * side, nl = c * side, halfLength = halfLength, near = near, far = far, height = height }
-		end
-		table.insert(mounds, m)
-	end
-	-- How far a mound reaches toward the road from its centre, turned by yaw.
-	local function nearReach(halfLength: number, near: number, height: number, yaw: number): number
-		-- Measured to where the mound is half the sink deep, not the sink:
-		-- overlapping tails add, and this keeps their sum behind nearM too.
-		local rim = rimFraction(height, sinkM * 0.5)
-		return math.sqrt((halfLength * math.sin(yaw)) ^ 2 + (near * math.cos(yaw)) ^ 2) * rim
-	end
-	local function chain(side: number, from: number, to: number, cap: boolean)
-		local at = from
-		while at < to do
-			local halfLength = between(b.lengthM) / 2
-			local height = b.heightM[1] + (b.heightM[2] - b.heightM[1]) * rng:NextNumber() ^ 1.4
-			local near, far = between(b.nearSpreadM), between(b.farSpreadM)
-			local key = if cap then 0 else side
-			local yaw = math.rad(b.yawDeg) * math.clamp(math.noise(at / 700, key * 5.7, seedYaw) * 2.5 + rng:NextNumber(-0.5, 0.5), -1, 1)
-			local wander = math.clamp(math.noise(at / b.wanderWavelengthM, key * 9.1, seedWander) * 2 + 0.5, 0, 1)
-			local depth = (wander * 0.65 + rng:NextNumber() * 0.35) * b.bandDepthM
-			local centre = at + halfLength
-			local off = (if cap then b.capNearM else b.nearM) + nearReach(halfLength, near, height, yaw) + depth
-			if cap then
-				add(-off, centre, yaw, true, halfLength, near, far, height)
-			else
-				add(centre, side * off, yaw, false, halfLength, near, far, height)
-			end
-			if rng:NextNumber() < b.backRow.chance then
-				-- Smaller, but not narrower in proportion: a half-height
-				-- mound at half width would be as steep as a full one.
-				local k = between(b.backRow.scale)
-				local kw = math.sqrt(k)
-				local back = off + between(b.backRow.offsetM)
-				local shift = rng:NextNumber(-0.6, 0.6) * halfLength
-				local yaw2 = yaw + math.rad(rng:NextNumber(-b.yawDeg, b.yawDeg))
-				if cap then
-					add(-back, centre + shift, yaw2, true, halfLength * kw, near * kw, far * kw, height * k)
-				else
-					add(centre + shift, side * back, yaw2, false, halfLength * kw, near * kw, far * kw, height * k)
-				end
-			end
-			at += 2 * halfLength * between(b.stepFraction)
-		end
-	end
-	for _, side in { -1, 1 } do
-		chain(side, -(b.capNearM + 60), endM, false)
-	end
-	-- Across behind the start line, from one side's chain to the other.
-	chain(0, -(b.nearM + 60), b.nearM + 60, true)
-
-	-- Bucketed by along-road position, so a column only looks at the few
-	-- mounds that could touch it.
 	local BUCKET = 40
 	local buckets: { [number]: { Mound } } = {}
 	local maxReach, capReach = 0, 0
-	for _, m in mounds do
-		local spread = math.max(m.halfLength, m.near, m.far)
-		local lo, hi = math.floor((m.along - spread) / BUCKET), math.floor((m.along + spread) / BUCKET)
-		for k = lo, hi do
-			local list = buckets[k]
+	local function between(range: { number }): number
+		return rng:NextNumber(range[1], range[2])
+	end
+
+	-- Raw summed height of the mounds placed so far.
+	local function sumAt(along: number, lateral: number): number
+		local list = buckets[math.floor(along / BUCKET)]
+		if not list then
+			return 0
+		end
+		local sum = 0
+		for _, m in list do
+			local dl = lateral - m.lateral
+			if dl < m.reach and dl > -m.reach then
+				sum += moundHeight(m, along - m.along, dl)
+			end
+		end
+		return sum
+	end
+
+	-- A spot as a world position, straight on past either end of the road.
+	local function world(along: number, lateral: number): Vector3
+		local p = RoadNetwork.sample(path, math.clamp(along, 0, totalM))
+		local extra = if along < 0 then along elseif along > totalM then along - totalM else 0
+		return p.position + p.cframe.LookVector * ctx.s(extra) + p.cframe.RightVector * ctx.s(lateral)
+	end
+
+	local f = b.field
+	local fenceFar = roadEdgeM + fc.fromRoadEdgeM
+	local fromAlong = if fenceOn then -(fc.behindStartM - f.fenceGapM) else -(b.capNearM + 300)
+	local toAlong = endM
+	-- Rim points (at half the sink, like the placement) round a mound, grown
+	-- by `grow` metres: the whole visible mound lies inside them.
+	local RIM_POINTS = 24
+	local function fits(m: Mound): boolean
+		local rim = rimFraction(m.height, sinkM * 0.5)
+		for k = 0, RIM_POINTS - 1 do
+			local t = k / RIM_POINTS * 2 * math.pi
+			local cu, sv = math.cos(t), math.sin(t)
+			local u = cu * m.halfLength * rim
+			local vBase = if sv > 0 then m.far else m.near
+			for _, grow in { 0, b.clearanceGapM } do
+				local uu = u + cu * grow
+				local vv = sv * (vBase * rim + grow)
+				local a = m.along + uu * m.ax + vv * m.nx
+				local l = m.lateral + uu * m.al + vv * m.nl
+				if grow == 0 then
+					-- Out of the flat strip beside the road (and its run on
+					-- behind the start line), inside the fence, short of the city.
+					if a >= -b.capNearM and math.abs(l) < b.nearM then
+						return false
+					end
+					if a < fromAlong or a > toAlong + b.endTaperM then
+						return false
+					end
+					if math.abs(l) > (if fenceOn then fenceAt(l, a) else fenceFar) - f.fenceGapM then
+						return false
+					end
+				elseif cfg.station.enabled and a > 0 and a < totalM and onStation(world(a, l)) then
+					return false
+				end
+			end
+		end
+		return true
+	end
+
+	local sideFar = fenceFar - f.fenceGapM
+	local areaKm2 = ((toAlong - fromAlong) * 2 * sideFar - (toAlong + b.capNearM) * 2 * b.nearM) / 1e6
+	local target = math.floor(areaKm2 * f.perKm2)
+	local attempts = target * 12
+	local placed = 0
+	while placed < target and attempts > 0 do
+		attempts -= 1
+		local along = rng:NextNumber(fromAlong, toAlong)
+		local lateral = rng:NextNumber(-sideFar, sideFar)
+		-- Patchiness: where the slow noise is low, most tries are thrown away.
+		local patch = math.noise(along / f.patchWavelengthM, lateral / f.patchWavelengthM, seedWander) * 2 + 0.5
+		if rng:NextNumber() > math.clamp(patch, f.minDensity, 1) then
+			continue
+		end
+		local halfLength = between(b.lengthM) / 2
+		local height = b.heightM[1] + (b.heightM[2] - b.heightM[1]) * rng:NextNumber() ^ 1.4
+		local k = math.sqrt(height / b.heightM[2]) -- low ones are smaller all round
+		local near, far = between(b.nearSpreadM) * (0.6 + 0.4 * k), between(b.farSpreadM) * (0.6 + 0.4 * k)
+		halfLength *= 0.6 + 0.4 * k
+		-- Mostly lined up with a slow drift (the wind), each a little off it.
+		local yaw = math.rad(b.yawDeg) * math.clamp(math.noise(along / 700, lateral / 700, seedYaw) * 2 + rng:NextNumber(-0.6, 0.6), -1, 1)
+		local c, s = math.cos(yaw), math.sin(yaw)
+		local side = if lateral >= 0 then 1 else -1
+		local m: Mound
+		if along < -b.capNearM and math.abs(lateral) < b.nearM + 40 then
+			-- Behind the start line: long axis across, the gentle side facing it.
+			m = { along = along, lateral = lateral, ax = -s, al = c, nx = -c, nl = -s, halfLength = halfLength, near = near, far = far, height = height, reach = math.max(halfLength, near, far) }
+		else
+			m = { along = along, lateral = lateral, ax = c, al = s, nx = -s * side, nl = c * side, halfLength = halfLength, near = near, far = far, height = height, reach = math.max(halfLength, near, far) }
+		end
+		-- Not stacked on another: overlapping tails are fine, a mound on a
+		-- mound's shoulder is a lump.
+		if sumAt(along, lateral) > f.maxOverlapM or not fits(m) then
+			continue
+		end
+		table.insert(mounds, m)
+		placed += 1
+		local spread = m.reach
+		for kb = math.floor((m.along - spread) / BUCKET), math.floor((m.along + spread) / BUCKET) do
+			local list = buckets[kb]
 			if not list then
 				list = {}
-				buckets[k] = list
+				buckets[kb] = list
 			end
 			table.insert(list, m)
 		end
@@ -328,16 +354,27 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		capReach = math.max(capReach, -(m.along - spread))
 	end
 
+	-- Whether any mound comes within radius metres of a spot.
+	local function anyNear(along: number, lateral: number, radius: number): boolean
+		for kb = math.floor((along - radius) / BUCKET), math.floor((along + radius) / BUCKET) do
+			local list = buckets[kb]
+			if list then
+				for _, m in list do
+					if math.abs(along - m.along) < m.reach + radius and math.abs(lateral - m.lateral) < m.reach + radius then
+						return true
+					end
+				end
+			end
+		end
+		return false
+	end
+
 	local shoulder, ceiling = b.overlapM[1], b.overlapM[2]
 	local function heightAt(along: number, lateral: number): number
-		local list = buckets[math.floor(along / BUCKET)]
-		if not list or along > endM then
+		if along > endM then
 			return 0
 		end
-		local sum = 0
-		for _, m in list do
-			sum += moundHeight(m, along - m.along, lateral - m.lateral)
-		end
+		local sum = sumAt(along, lateral)
 		if sum <= 0 then
 			return 0
 		end
@@ -347,15 +384,8 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		if sum > shoulder then
 			sum = shoulder + (ceiling - shoulder) * math.tanh((sum - shoulder) / (ceiling - shoulder))
 		end
-		-- Sunk away before the city and faded out round the pad and station.
-		local taper = 1 - smoothstep((along - (endM - b.endTaperM)) / math.max(b.endTaperM, 1))
-		local side = if lateral >= 0 then 1 else -1
-		local x = math.clamp((along - startM) / STEP + 1, 1, count)
-		local i = math.floor(x)
-		local j = math.min(i + 1, count)
-		local c = clears[side]
-		local clear = c[i] + (c[j] - c[i]) * (x - i)
-		return sum * taper * (1 - clear)
+		-- Sunk away before the city.
+		return sum * (1 - smoothstep((along - (endM - b.endTaperM)) / math.max(b.endTaperM, 1)))
 	end
 
 	local border: Border = {
@@ -367,6 +397,8 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		endM = endM,
 		maxReachM = maxReach,
 		capReachM = capReach,
+		moundCount = #mounds,
+		anyNear = anyNear,
 		fenceEnabled = fenceOn,
 		fenceAt = fenceAt,
 		fenceBehindM = fc.behindStartM,
@@ -398,7 +430,9 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 	local rng = Build.rng(r.seed)
 	local totalM = RoadNetwork.lengthM(path)
 	local groundY = ctx.surfaceY - ctx.s(cfg.ground.dropM)
+	local borderClock = os.clock()
 	local border = Relief.border(cfg, ctx, path)
+	borderClock = os.clock() - borderClock
 	local dunesOn = border.enabled
 
 	-- Everything below is in studs unless it ends in M.
@@ -487,18 +521,34 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 	while cx < maxX do
 		local cz = math.floor(minZ / chunk) * chunk
 		while cz < maxZ do
-			-- Path points this chunk could be nearest to. Scanning only
-			-- these per column keeps the lateral distance exact through a
-			-- curve, where one frame for the whole chunk would step.
+			-- Path points this chunk could be nearest to: none further from
+			-- its centre than the nearest one plus the chunk's width. Scanning
+			-- only these per column keeps the lateral distance exact through
+			-- a curve, where one frame for the whole chunk would step.
 			local candidates: { PathPoint } = {}
-			local span = chunk * 0.71 + reach + behind
 			local ccx, ccz = cx + chunk / 2, cz + chunk / 2
+			local centreBest, centreD = path[1], math.huge
 			for _, p in path do
 				local dx, dz = p.position.X - ccx, p.position.Z - ccz
-				if dx * dx + dz * dz < span * span then
-					table.insert(candidates, p)
+				local d = dx * dx + dz * dz
+				if d < centreD then
+					centreBest, centreD = p, d
 				end
 			end
+			local span = math.sqrt(centreD) + chunk * 1.42 + VOXEL
+			-- Only where a mound is near: most of the sand is flat.
+			local cRel = Vector3.new(ccx - centreBest.position.X, 0, ccz - centreBest.position.Z)
+			local cAlong = centreBest.distanceM + cRel:Dot(centreBest.cframe.LookVector) * ctx.mps
+			local cLateral = cRel:Dot(centreBest.cframe.RightVector) * ctx.mps
+			if dunesOn and math.sqrt(centreD) < reach + behind and border.anyNear(cAlong, cLateral, chunk * 0.71 * ctx.mps + 20) then
+				for _, p in path do
+					local dx, dz = p.position.X - ccx, p.position.Z - ccz
+					if dx * dx + dz * dz < span * span then
+						table.insert(candidates, p)
+					end
+				end
+			end
+			local hint = 1
 
 			local lo, hi = math.huge, -math.huge
 			if #candidates > 0 then
@@ -514,14 +564,19 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 					local srow, mrow = surfaces[ix], mats[ix]
 					for iz = 1, n do
 						local wz = cz + (iz - 0.5) * VOXEL
-						local best, bestD = candidates[1], math.huge
-						for _, p in candidates do
-							local dx, dz = p.position.X - wx, p.position.Z - wz
-							local d = dx * dx + dz * dz
-							if d < bestD then
-								best, bestD = p, d
-							end
+						-- The nearest candidate, walked downhill from the last
+						-- column's: distance along the road to a point is
+						-- one-dipped, and neighbouring columns share a nearest.
+						local bestD = dist2(candidates, hint, wx, wz)
+						while hint > 1 and dist2(candidates, hint - 1, wx, wz) < bestD do
+							hint -= 1
+							bestD = dist2(candidates, hint, wx, wz)
 						end
+						while hint < #candidates and dist2(candidates, hint + 1, wx, wz) < bestD do
+							hint += 1
+							bestD = dist2(candidates, hint, wx, wz)
+						end
+						local best = candidates[hint]
 						local relX, relZ = wx - best.position.X, wz - best.position.Z
 						local right, look = best.cframe.RightVector, best.cframe.LookVector
 						local lateral = relX * right.X + relZ * right.Z
@@ -533,12 +588,15 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 						local duneM = if dunesOn then border.heightAt(along, lateral * ctx.mps) else 0
 						-- Distance in from the strip's inner edge: the shoulder,
 						-- or behind the start line where there is no road.
-						local innerD = latAbs - (edgeStuds(best.halfWidth, along) + innerGap)
-						if behindStart > 0 then
-							innerD = math.max(innerD, behindStart - innerGap)
-						end
-						if innerD > 0 and latAbs < reach then
-							innerD = math.min(innerD, ctx.s(stationDistance(Vector3.new(wx, groundY, wz))))
+						local innerD = 0
+						if duneM > 0 then
+							innerD = latAbs - (edgeStuds(best.halfWidth, along) + innerGap)
+							if behindStart > 0 then
+								innerD = math.max(innerD, behindStart - innerGap)
+							end
+							if innerD > 0 then
+								innerD = math.min(innerD, ctx.s(stationDistance(Vector3.new(wx, groundY, wz))))
+							end
 						end
 
 						-- Terrain is the dune and nothing else: the flat sand
@@ -621,9 +679,8 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 
 	local folder = Build.folder("Relief", parent)
 
-	-- The invisible stop, only when there is no fence: short pieces along the
-	-- highest line through the mounds (or the middle of their band where
-	-- there is a gap), then one across behind the start line. Queryable: a colliding part with CanQuery off
+	-- The invisible stop, only when there is no fence: short pieces along
+	-- where the fence would be, then one across behind the start line. Queryable: a colliding part with CanQuery off
 	-- is not honoured reliably, and nothing else raycasts out here.
 	local walls = 0
 	if dunesOn and not border.fenceEnabled then
@@ -642,26 +699,13 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 			})
 			walls += 1
 		end
-		local bandM = b.bandDepthM + b.nearSpreadM[2]
-		local function crestLine(side: number, along: number): number
-			local best, bestH = border.nearM + bandM / 2, border.sinkM
-			local lat = border.nearM
-			while lat < border.nearM + bandM * 2 do
-				local h = border.heightAt(along, side * lat)
-				if h > bestH then
-					best, bestH = lat, h
-				end
-				lat += 2
-			end
-			return best
-		end
-		local capM = border.capNearM + bandM / 2
+		local capM = border.fenceBehindM
 		local crestLat = { [-1] = 0, [1] = 0 }
 		for _, side in { -1, 1 } do
 			local along = -capM
 			while along < border.endM do
 				local mid = along + piece / 2
-				local lat = crestLine(side, mid)
+				local lat = border.fenceAt(side, mid)
 				crestLat[side] = math.max(crestLat[side], if mid < 0 then lat else 0)
 				local p = RoadNetwork.sample(path, math.clamp(mid, 0, totalM))
 				local pos = p.position + p.cframe.LookVector * ctx.s(math.min(mid, 0)) + p.cframe.RightVector * ctx.s(side * lat)
@@ -704,7 +748,9 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 		local sunSide = Dunes.sideSign(cfg, path)
 		local sunDeg = math.deg(math.asin(math.clamp(Lighting:GetSunDirection().Y, -1, 1)))
 		print(string.format(
-			"[World] border dunes: tallest crest %.1f deg above the driver's eye on the sun side, %.1f deg on the skyline side; sun at %.1f deg",
+			"[World] border dunes: %d mounds laid out in %.1f s; tallest crest %.1f deg above the driver's eye on the sun side, %.1f deg on the skyline side; sun at %.1f deg",
+			border.moundCount,
+			borderClock,
 			tallest[sunSide],
 			tallest[-sunSide],
 			sunDeg

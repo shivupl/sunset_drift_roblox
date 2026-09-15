@@ -253,23 +253,26 @@ a building body long before it swallows an emissive part, so in daylight
 every light here is pulled back by `lights.dayExtraTransparency`, or the
 windows and strips float free of the towers they belong to.
 
-## The border: low dunes and a chain-link fence (`Relief.luau`, `Fence.luau`)
+## The border: a dune field and a chain-link fence (`Relief.luau`, `Fence.luau`)
 
 Each side of the highway has three zones:
-- **Flat sand**, for the first 107 to 120 m (350 to 400 ft) past the road edge.
-- **Low dunes:** a loose, uneven chain of soft rounded mounds, up to about 3.5 m high.
-- **Open sand** behind the dunes, typically 60 to 80 m of it.
-- **A chain-link fence**, 250 m (about 820 ft) past the road edge, about 290 m from the centreline, which is the edge of the playable area. The first build had 100 ft of flat and the fence at 250 ft, barely 10 m behind the dunes; the owner found both gaps far too small.
+- **Flat sand**, for the first 100 m or so (330 ft) past the road edge. Nothing of a dune comes nearer the centreline than 140 m.
+- **A dune field** of soft rounded mounds, scattered at random from there right out to the fence, and behind the start line too. Mounds are up to about 3.5 m high.
+- **A chain-link fence**, 400 m (about 1,300 ft) past the road edge, 439 m from the centreline, which is the edge of the playable area. It was 250 ft, then 250 m; the owner asked for it further back each time.
 
-**The dunes** are separate mounds, each an ellipse 90 to 220 m long with its own height and width, turned up to 20 degrees off the road. Their near edges wander over a 32 m band, and neighbours overlap into broad hills or leave a low gap. About a third have a smaller mound behind, so the edge has depth and never reads as a line. Each mound's profile is (1 - q)^3, whose slope and curvature both run out at the rim, so it leaves the sand at a grazing angle with no foot line. The road-facing slopes are at most 10 degrees and the backs about 15. There is no swell or ripple noise on them. From the driver's eye they reach under a degree above the horizon: a calm line under the skyline.
+**The dunes** are 231 separate mounds scattered over the sand. Each is an ellipse 90 to 220 m long with its own height and width, and low ones are smaller all round. Most follow a slow common drift, each turned a little off it, up to 20 degrees from the road. A slow noise makes the field thick in some stretches and thin in others, leaving bays of flat sand. No mound is placed where the others already stand 0.8 m high, so overlaps make broad hills and never lumps on a shoulder. Each mound keeps its whole visible rim out of the flat strip, 15 m inside the fence and 30 m from the petrol station's site.
 
-They were one continuous ridge with humps, which the owner found read as a line and started too abruptly.
+The profile is (1 - q)^3, whose slope and curvature both run out at the rim, so a mound leaves the sand at a grazing angle with no foot line. Slopes are 15 degrees at most. There is no swell or ripple noise.
 
-Measured (terrain raycasts every 10 m): the nearest visible dune is 146 to 148 m from the centreline and typically 160 to 168 m. The dunes end typically at 218 to 226 m and at most 252 m, against the fence at 289 m.
+History: the dunes were first one continuous humped ridge, then a chain of mounds along the road. The owner found both read as a line and wanted them random, out to the fence.
 
-They fade to flat sand round the spawn pad and the petrol station, where they would reach within 30 m of either, and ease back in over 170 m. They also run across behind the start line and sink away before the city.
+Measured (terrain raycasts every 10 m along and 4 m across):
+- **Extent:** the nearest dune is 148 m from the centreline and the farthest 420 m.
+- **Cover:** 11% at 140 to 180 m, 40 to 48% in each 40 m band from 180 to 380 m, and 20% at 380 to 420 m. Behind the start line it is 53%.
+- **Height and speed:** the tallest point is 3.7 m. Relief builds in 3.9 s.
+- **From the road:** layered low humps at every distance under the skyline, under a degree above the driver's eye.
 
-They are the only terrain. The flat sand is the desert plane itself, and the dunes wear the plane's sand MaterialVariant (the base material override) and tint. They are sunk 0.15 m, and every chunk writes to the same depth, so there are no seams.
+They are the only terrain. The flat sand is the desert plane itself, and the dunes wear the plane's sand MaterialVariant (the base material override) and tint. They are sunk 0.15 m, and every chunk writes to the same depth, so there are no seams. The terrain pass only scans chunks that have a mound nearby, and finds each column's nearest road point by walking from the previous column's. Scanning every road point per column took 35 s once the field reached the fence.
 
 **Terrain draws a surface half a voxel (2 studs, 0.56 m) above where its occupancy puts it.** This was measured on flats: filling to height t renders the top at t + 2 studs, exactly. `Relief` fills to half a voxel under the height it wants. Before that fix every dune stood 0.56 m proud, which was the ledge along the old berm's foot.
 
@@ -282,11 +285,11 @@ Where the line is straight and level, one panel, rail, pair of strands and invis
 
 It swings out round the back of the station (20 m past its site), closes across behind the start line, and stops at 3,540 m, short of the city gateway. A 150 m invisible wall stands in it.
 
-`Relief.border` is the shared lookup for the dune height function (`heightAt(along, lateral)`) and the fence line; the terrain, the fence and Scatter all read it. Scatter keeps props off the mounds (scrub may stand on a flank below 0.8 m), plants the sand between and behind them, and plants the desert outside the fence again, where it shows through the mesh.
+`Relief.border` is the shared lookup for the dune height function (`heightAt(along, lateral)`) and the fence line; the terrain, the fence and Scatter all read it. Scatter keeps props off the mounds (scrub may stand on a flank below 0.8 m), plants the sand between them, and plants the desert outside the fence again, where it shows through the mesh.
 
 Measured in Play:
-- **Collision:** driven into the fence across the dunes at 145 to 148 km/h, the car climbed the mounds, stopped at the fence and stayed upright, sliding along it.
-- **Frame rate:** the same with the fence hidden as shown.
+- **Collision:** driven from 180 m out at 45 degrees across the field, full throttle, the car reached 182 km/h. It stopped at 438 m against the fence at 439 m and stayed on its wheels (it tilted at most about 30 degrees over a mound).
+- **Frame rate:** with the fence at 250 m, the same with the fence hidden as shown.
 
 ## Lighting and the time of day
 

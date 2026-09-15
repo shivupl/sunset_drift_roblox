@@ -475,20 +475,21 @@ The border dunes, as terrain either side of the road. Everything in metres from 
 | chunkStuds | Voxel write chunk. 128 is 32 columns; bigger chunks mean fewer, larger writes. |
 
 ### relief.berm
-The dunes: a random chain of soft mounds per side, plus one across behind the start line.
+The dune field: random soft mounds over the sand between a flat strip beside the road and the fence.
 
 | Field | What it does |
 |---|---|
 | nearM / capNearM | Nothing of a dune shows nearer the centreline (or the start line, behind it) than this. **Move both to change the road-to-dune gap.** |
-| bandDepthM / wanderWavelengthM | How far past nearM a mound's near edge may sit, and how fast that wanders. Bigger is less of a line, and less sand before the fence. |
-| lengthM / nearSpreadM / farSpreadM / heightM | Ranges each mound is drawn from. **Steepest slope is about 1.7 x height / spread**, so raise a spread or lower the height for calmer dunes. |
+| field.perKm2 | Mounds per square km of usable sand. More is a busier field; about 100 covers 40 to 50%. |
+| field.patchWavelengthM / field.minDensity | The slow noise that makes thick and thin stretches, and how empty the thinnest ones get. |
+| field.maxOverlapM | No new mound where the others already stand this high, so overlaps are broad hills and not lumps. |
+| field.fenceGapM | Flat sand kept inside the fence. |
+| lengthM / nearSpreadM / farSpreadM / heightM | Ranges each mound is drawn from (low ones come out smaller all round). **Steepest slope is about 1.7 x height / spread**, so raise a spread or lower the height for calmer dunes. |
 | yawDeg | Mounds turn off the road by up to this. |
-| stepFraction | Where the next mound starts, as a fraction of this one's length. Under about 0.65 they overlap into hills; over it low gaps open. |
-| backRow.* | Chance of a smaller mound behind, its height scale (widths scale by the square root) and how far back. |
 | overlapM | Overlapping heights add, eased from the first value toward the second, so two tall mounds make a broad hill rather than a peak. |
-| clearanceGapM / clearanceBlendM | Fade to flat sand round the pad and the station. |
+| clearanceGapM | No mound within this of the petrol station's site. |
 | endM / endTaperM | Where the dunes sink away before the city. |
-| wallHeightM / wallPieceM | The invisible stop through the mounds, only built when the fence is off. |
+| wallHeightM / wallPieceM | The invisible stop where the fence would be, only built when the fence is off. |
 
 ## lamps
 | Field | What it does |

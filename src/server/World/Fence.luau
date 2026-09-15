@@ -2,7 +2,7 @@
 -- The border: a chain-link fence either side of the highway (WorldConfig.fence).
 --
 -- It follows the fence line Relief.border works out, the same lookup the
--- dunes and Scatter read, so the three always agree: 250 m past each road
+-- dunes and Scatter read, so the three always agree: 400 m past each road
 -- edge, pushed out round the back of the petrol station, closed across
 -- behind the start line, and stopping short of the city gateway.
 --
