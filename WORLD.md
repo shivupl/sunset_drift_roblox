@@ -256,16 +256,22 @@ windows and strips float free of the towers they belong to.
 ## The border: low dunes and a chain-link fence (`Relief.luau`, `Fence.luau`)
 
 Each side of the highway has three zones:
-- **Flat sand**, for the first 90 m (about 300 ft) past the road edge.
-- **Low dunes:** 3 to 3.5 m mounds with a gentle slope toward the road, a soft crest and a short back.
-- **Open sand** behind the dunes, about 120 m of it.
+- **Flat sand**, for the first 107 to 120 m (350 to 400 ft) past the road edge.
+- **Low dunes:** a loose, uneven chain of soft rounded mounds, up to about 3.5 m high.
+- **Open sand** behind the dunes, typically 60 to 80 m of it.
 - **A chain-link fence**, 250 m (about 820 ft) past the road edge, about 290 m from the centreline, which is the edge of the playable area. The first build had 100 ft of flat and the fence at 250 ft, barely 10 m behind the dunes; the owner found both gaps far too small.
 
-**The dunes** rise into humps about every 140 m and dip into saddles between them, never below half height. Their foot wanders a few metres outward, never in. From the driver's eye the tallest crest is about 2 degrees, so they read as texture in the desert rather than a wall.
+**The dunes** are separate mounds, each an ellipse 90 to 220 m long with its own height and width, turned up to 20 degrees off the road. Their near edges wander over a 32 m band, and neighbours overlap into broad hills or leave a low gap. About a third have a smaller mound behind, so the edge has depth and never reads as a line. Each mound's profile is (1 - q)^3, whose slope and curvature both run out at the rim, so it leaves the sand at a grazing angle with no foot line. The road-facing slopes are at most 10 degrees and the backs about 15. There is no swell or ripple noise on them. From the driver's eye they reach under a degree above the horizon: a calm line under the skyline.
+
+They were one continuous ridge with humps, which the owner found read as a line and started too abruptly.
+
+Measured (terrain raycasts every 10 m): the nearest visible dune is 146 to 148 m from the centreline and typically 160 to 168 m. The dunes end typically at 218 to 226 m and at most 252 m, against the fence at 289 m.
 
 They fade to flat sand round the spawn pad and the petrol station, where they would reach within 30 m of either, and ease back in over 170 m. They also run across behind the start line and sink away before the city.
 
-They are the only terrain. The flat sand is the desert plane itself, and the dunes wear the plane's sand MaterialVariant (the base material override) and tint. They are sunk 0.3 m and every chunk writes to the same depth, so they meet the plane on a slope with no ledge or seams.
+They are the only terrain. The flat sand is the desert plane itself, and the dunes wear the plane's sand MaterialVariant (the base material override) and tint. They are sunk 0.15 m, and every chunk writes to the same depth, so there are no seams.
+
+**Terrain draws a surface half a voxel (2 studs, 0.56 m) above where its occupancy puts it.** This was measured on flats: filling to height t renders the top at t + 2 studs, exactly. `Relief` fills to half a voxel under the height it wants. Before that fix every dune stood 0.56 m proud, which was the ledge along the old berm's foot.
 
 **The fence** has these parts:
 - **Posts:** galvanised square posts every 6 m, casting long shadows at golden hour.
@@ -276,7 +282,7 @@ Where the line is straight and level, one panel, rail, pair of strands and invis
 
 It swings out round the back of the station (20 m past its site), closes across behind the start line, and stops at 3,540 m, short of the city gateway. A 150 m invisible wall stands in it.
 
-`Relief.border` is the shared lookup for the dune shape and the fence line; the terrain, the fence and Scatter all read it. Scatter keeps props off the dune faces (scrub may climb part way) and plants the desert outside the fence again, where it shows through the mesh.
+`Relief.border` is the shared lookup for the dune height function (`heightAt(along, lateral)`) and the fence line; the terrain, the fence and Scatter all read it. Scatter keeps props off the mounds (scrub may stand on a flank below 0.8 m), plants the sand between and behind them, and plants the desert outside the fence again, where it shows through the mesh.
 
 Measured in Play:
 - **Collision:** driven into the fence across the dunes at 145 to 148 km/h, the car climbed the mounds, stopped at the fence and stayed upright, sliding along it.

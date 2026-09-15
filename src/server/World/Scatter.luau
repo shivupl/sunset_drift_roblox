@@ -201,13 +201,10 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 		if border.fenceEnabled and along >= -border.fenceBehindM and along <= border.fenceEndM and math.abs(lateral) > border.fenceAt(side, along) + 3 then
 			return false
 		end
-		local footM = border.at(side, along)
-		-- Past the dune's back, before the fence, is open sand again.
-		if math.abs(lateral) > footM + border.riseM[side] + border.backM[side] + 3 then
-			return false
-		end
-		local limit = if climbs then footM + border.riseM[side] * 0.6 else footM - 2
-		return math.abs(lateral) > limit
+		-- Off the mounds entirely, except scrub, which may stand on a low
+		-- flank. Between the mounds and past them is open sand again.
+		local duneM = border.heightAt(along, lateral) - border.sinkM
+		return duneM > (if climbs then 0.8 else -border.sinkM)
 	end
 	local function free(pos: Vector3, radius: number, climbs: boolean?): boolean
 		if onStation(pos) or onDune(pos, climbs == true) then

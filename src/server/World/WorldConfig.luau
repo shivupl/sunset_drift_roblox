@@ -351,33 +351,19 @@ local config = {
 	-- is the one piece of sand the car is ever near. It all collides, at
 	-- real slopes, so running wide feels like sand and the crest stops you.
 	relief = {
-		-- ON: dune borders either side of the highway, their foot about 30 m
-		-- (about 300 ft) past each road edge. The owner had asked for plain flat
-		-- sand after the first berm (170 to 200 m out, a ramp with a flat
-		-- top); this is the border back, closer in and shaped as dunes.
+		-- ON: low dunes either side of the highway (berm below), with the
+		-- chain-link fence behind them. No swell or ripple noise on the sand:
+		-- the owner wanted calm shapes, nothing to bump over.
 		enabled = true,
 		seed = 8083,
 		-- The strip starts right at the asphalt edge: a band of the flat sand
 		-- plane between the two showed as a different sand.
 		innerGapM = 0.5, -- from the asphalt edge to the strip
 		featherM = 6, -- the strip's inner and outer edges blend down to the plane over this
-		-- The swell and the ripple are eased in over this distance from the
-		-- strip's inner edge, so the sand beside the shoulder is flat and the
-		-- undulation grows toward the dunes. Without it the ripple alone
-		-- stood a metre up a few metres off the kerb and read as a bank.
-		swellRampM = 26,
-		liftM = 0.1, -- hummock floor above the sand plane (unused while there is no floor)
-		sinkM = 0.3, -- the dune terrain sits this far down, so it meets the plane on a slope, not a ledge (0.6 when they were 8 m tall)
+		sinkM = 0.15, -- the dune terrain sits this far down, so it breaks the plane where its slope has just begun, not as a ledge
 		shellM = 3.5, -- solid sand below the surface; a shell, because nothing digs
-		-- Two octaves of undulation over the whole strip, berm included, so
-		-- the berm is a dune ridge and not an extrusion. math.noise spans
-		-- about -0.5..0.5, so amplitude is twice the swing.
-		swellWavelengthM = 70,
-		swellAmplitudeM = 0.35, -- 2.4 when the strip started 40 m out; at 0.8 the floor stood a metre above the road beside the kerb
-		rippleWavelengthM = 22,
-		rippleAmplitudeM = 0.25,
 		hummocks = {
-			perKm = 0, -- none: the first 30 m past the road is flat sand, on request
+			perKm = 0, -- none: the sand between the road and the dunes is flat, on request
 			minRadiusM = 3,
 			maxRadiusM = 9,
 			minHeightM = 0.5,
@@ -395,52 +381,47 @@ local config = {
 		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
 
-		-- Low dunes either side of the road, starting about 90 m past each
-		-- road edge: a gentle slope toward the road, a soft crest and a short
-		-- back. Humps and saddles along the road so they read as mounds, not
-		-- a bank. They were a taller border (8 m, walled on the crest); the
-		-- border is now the chain-link fence behind them (WorldConfig.fence),
-		-- so these are short and quiet. They fade out to flat sand round the
-		-- spawn pad and the station, run across behind the start line and
-		-- sink away before the city.
+		-- Low dunes either side of the road, starting about 110 to 120 m
+		-- (360 to 400 ft) past each road edge: a loose chain of soft, rounded mounds of
+		-- different sizes, turned a little off the road, their near edges
+		-- wandering over a 32 m band, some overlapping, some with a smaller
+		-- one behind. Each leaves the sand at a grazing angle, so there is no
+		-- foot line, and nothing small on them to bump over. They were one
+		-- continuous ridge with humps; the owner found that read as a line.
+		-- The border itself is the chain-link fence behind them
+		-- (WorldConfig.fence). They fade out to flat sand round the spawn pad
+		-- and the station, run across behind the start line and sink away
+		-- before the city.
 		berm = {
 			enabled = true,
 			endM = 3540, -- the far end: the dunes are gone by here, short of the city gateway
-			endTaperM = 220, -- crests sink to nothing over this before endM
-			startCapBehindM = 86, -- the low dune across behind the start line (its visible foot about 90 m back)
-			wallHeightM = 150, -- the invisible stop on the crest, only built when the fence is off
-			wallPieceM = 12,
-			-- Along-road shape. math.noise spans about -0.5..0.5.
-			humpWavelengthM = 140, -- mounds and the saddles between them
-			humpVariation = 0.35, -- crest height swings by this fraction
-			minCrestFraction = 0.5, -- the lowest a saddle goes, as a fraction of crestHeightM
-			detailWavelengthM = 45,
-			detailVariation = 0.1,
-			wanderWavelengthM = 300, -- how fast the foot wanders (outward only)
-			footJitterM = 2,
-			footWobbleWavelengthM = 90,
-			footWobbleM = 3,
-			backPower = 1.2, -- the back slope: >1 starts steeper at the crest and flattens into the plane
+			endTaperM = 220, -- heights sink to nothing over this before endM
+			-- Nothing of a dune shows nearer the centreline than about nearM
+			-- (measured: nearest 146 m, typically 160 m, so 107 to 120 m past the
+			-- 39.4 m road edge). It was 128 m (89 m past the edge); the owner
+			-- wanted a bit more.
+			nearM = 140,
+			capNearM = 100, -- the same, behind the start line
+			bandDepthM = 32, -- a mound's near edge sits up to this much further out
+			wanderWavelengthM = 380, -- how fast that wanders along the road
+			-- Each mound, drawn at random from these ranges.
+			lengthM = { 90, 220 }, -- along the road, rim to rim before sinking
+			nearSpreadM = { 40, 58 }, -- half width toward the road: the long, gentle side (steepest about 7 deg)
+			farSpreadM = { 24, 34 }, -- half width behind (steepest about 12 deg)
+			heightM = { 1.6, 3.4 }, -- above the sunk base; sinkM less shows. Skewed low.
+			yawDeg = 20, -- turned off the road by up to this
+			stepFraction = { 0.35, 0.7 }, -- next mound's start, as a fraction of this one's length
+			backRow = { chance = 0.35, scale = { 0.5, 0.75 }, offsetM = { 12, 26 } },
+			-- Overlapping mounds add, eased from the first number toward the
+			-- second, so two tall ones make a broad hill and not a peak.
+			overlapM = { 2.8, 4.0 },
 			-- Round the pad and the station the dunes fade to nothing (flat
 			-- sand) where they would reach within clearanceGapM of them,
 			-- easing back in over clearanceBlendM.
 			clearanceGapM = 30,
 			clearanceBlendM = 170,
-			-- footM sits a little inside 90 m (about 300 ft) past the 39.4 m road
-			-- edge: the dune is sunk sinkM, so it breaks the plane a few metres
-			-- out. It was 100 ft, which the owner found far too close.
-			sun = {
-				footM = 125,
-				riseWidthM = 22, -- the slope toward the road
-				crestHeightM = 2.8,
-				backWidthM = 14,
-			},
-			other = {
-				footM = 125,
-				riseWidthM = 24,
-				crestHeightM = 3.4,
-				backWidthM = 16,
-			},
+			wallHeightM = 150, -- the invisible stop through the mounds, only built when the fence is off
+			wallPieceM = 12,
 		},
 	},
 

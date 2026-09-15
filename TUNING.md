@@ -464,28 +464,31 @@ switched off (`relief.enabled`, `duneField.enabled`), so the desert is a flat
 plane and running wide costs speed and dignity, not the run.
 
 ## relief
-The near desert and the berm, as one terrain surface either side of the road.
-Everything in metres from the road centreline.
+The border dunes, as terrain either side of the road. Everything in metres from the road centreline.
 
 | Field | What it does |
 |---|---|
-| innerGapM / featherM | Where the strip starts past the asphalt, and how far both its edges blend down under the plane so it has no rim. |
-| liftM / shellM | Floor height above the plane (so the plane never shows through) and how thick the solid sand shell is. Thicker costs terrain cells for something nobody sees. |
-| swellWavelengthM / swellAmplitudeM / rippleWavelengthM / rippleAmplitudeM | Two octaves of undulation over the whole strip, berm included. math.noise spans about -0.5..0.5, so amplitude is twice the swing. |
-| hummocks.* | Small mounds per km per side on the floor only, radius and height range, and the chance of a scrub tuft on top. |
-| gravel.* | A second terrain material where a slow noise is above threshold. |
-| sandColor / gravelColor | Terrain tints. One step darker than `ground.color` because terrain renders brighter for the same tint. |
+| innerGapM / featherM | Where terrain may start past the asphalt, and a feather to nothing toward the pad and station (a safety; the mounds fade out well before either). |
+| sinkM / shellM | How far the dune terrain sits under the plane, so a mound breaks the sand where its slope has begun; and how thick the solid sand shell is. |
+| hummocks.* | Small mounds per km per side between the road and the dunes (0: that sand is flat), with the chance of a scrub tuft on top. |
+| sandColor / gravelColor | Terrain tints; the sand is the plane's own tint, since terrain wears the plane's MaterialVariant. |
 | chunkStuds | Voxel write chunk. 128 is 32 columns; bigger chunks mean fewer, larger writes. |
 
 ### relief.berm
-The hill the car drives up, out of the same height function as the floor.
+The dunes: a random chain of soft mounds per side, plus one across behind the start line.
 
 | Field | What it does |
 |---|---|
-| endM | Where the berm stops along the road; the start-line end is open. |
-| wallHeightM / wallRunCapM | The invisible stop standing on the crest, and how long each piece of it is (keep under 573 m). A car off the crest at 200 km/h carries 150 m of climb, so keep it tall. |
-| wanderWavelengthM / footJitterM / heightVariation | How far and how fast the foot and the crest height wander along the road. This is what makes the crest a dune line instead of a ramp; zero them and you get an extrusion. |
-| sun.* / other.* | Per-side profile: footM, riseWidthM, crestHeightM, backWidthM. **Steepest slope is 1.5 x crestHeightM / riseWidthM** — that one number decides whether the car climbs it or bounces off. Lower and farther on the sun side keeps the sunset and the far dunes in view. |
+| nearM / capNearM | Nothing of a dune shows nearer the centreline (or the start line, behind it) than this. **Move both to change the road-to-dune gap.** |
+| bandDepthM / wanderWavelengthM | How far past nearM a mound's near edge may sit, and how fast that wanders. Bigger is less of a line, and less sand before the fence. |
+| lengthM / nearSpreadM / farSpreadM / heightM | Ranges each mound is drawn from. **Steepest slope is about 1.7 x height / spread**, so raise a spread or lower the height for calmer dunes. |
+| yawDeg | Mounds turn off the road by up to this. |
+| stepFraction | Where the next mound starts, as a fraction of this one's length. Under about 0.65 they overlap into hills; over it low gaps open. |
+| backRow.* | Chance of a smaller mound behind, its height scale (widths scale by the square root) and how far back. |
+| overlapM | Overlapping heights add, eased from the first value toward the second, so two tall mounds make a broad hill rather than a peak. |
+| clearanceGapM / clearanceBlendM | Fade to flat sand round the pad and the station. |
+| endM / endTaperM | Where the dunes sink away before the city. |
+| wallHeightM / wallPieceM | The invisible stop through the mounds, only built when the fence is off. |
 
 ## lamps
 | Field | What it does |
