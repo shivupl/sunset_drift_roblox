@@ -1,166 +1,194 @@
-# Behaviours: Roblox development on this project
+# Rules of thumb for Roblox game development
 
-Lessons from building Hajwala. Each one cost real time at least once. The notes are grouped into:
-1. What the engine actually does.
-2. How work gets done here.
-3. What the owner wants.
-4. Mistakes made and how they were corrected.
+These are general lessons, drawn from building a driving game with a large procedural world (highway, terrain dunes, props, a city and a distant skyline). They are written to apply to any Roblox project.
 
-Add to it whenever something surprises you; correct it when a note turns out wrong.
-
-Units: world code works in metres and converts with `ctx.s(m)` (studs = metres / 0.28).
+Add to them whenever the engine surprises you, and correct them when one turns out wrong.
 
 ---
 
-## 1. Engine facts and traps
+## 1. Before building anything
 
-### Parts and geometry
-- **A part axis caps at 2,048 studs (573 m).** Anything larger silently shrinks: ground tiles, haze panels and fence walls all have to be split.
-- **Plain Parts are invisible to `Stats.SceneTriangleCount`.** 100 boxes added 0. Count box and wedge geometry by hand (12 or 8 triangles each), plus 2 per SurfaceGui frame or glyph.
-- **A colliding part with `CanQuery = false` did not stop the car.** Keep any colliding scenery queryable; the car's suspension raycasts are how it finds anything.
-- **Coplanar faces z-fight.** Never leave two tops at the same height where parts overlap (lawn against kerb, marking against road); lift one by a marking epsilon.
-- **Shapes:**
-  - A `WedgePart`'s tall face is at its +Z end.
-  - A Ball part with non-uniform size still renders as a sphere; a Part with a sphere `SpecialMesh` renders as an ellipsoid.
-  - A big Cylinder part is visibly faceted.
-- **Materials:**
-  - `Metal` in a light colour renders as chrome. Use `SmoothPlastic` for painted steel.
-  - `Sandstone` renders pink unless the colour is kept dark (about 150/112/78 for mud brick).
-- **Script `Source` is capped at 200,000 characters.** Split generated data into chunk modules.
+- **Check that the API exists and is current.** Never invent a method; look it up.
+  - Avoid deprecated movers (BodyVelocity, BodyGyro, BodyPosition). Use constraints and forces instead: VectorForce, AlignOrientation, LinearVelocity.
+- **Check the platform gates before committing to a technique.** Several things look scriptable and are not:
+  - `Lighting.Technology` and the streaming radii are place settings; scripts can neither read nor write them.
+  - EditableMesh and EditableImage need the experience's "Allow Mesh / Image APIs" setting, which needs an ID-verified owner.
+  - `AssetService:CreateAssetAsync` and `PublishService` need capabilities a normal game does not have.
+  - MaterialVariant texture maps can only be set with plugin security. Declare variants in the place file, not from a server script.
+
+  If a technique depends on one of these, prove it with a quick spike first.
+- **Pin down the feel in the owner's words before tuning.** "A boost like drifters' exhaust pops, not rockets" is a spec. Tuning first and asking later wastes passes and sometimes the whole feature.
+- **Translate magnitude words literally.** "Slightly" and "very slightly" mean single-digit percentages or a degree or two. "Way way too small" means double it or more.
+
+---
+
+## 2. Architecture and code
+
+- **Use strict Luau with real tooling:** `--!strict` everywhere, Rojo for sync, luau-lsp for analysis. Know which errors are pre-existing baseline so new ones stand out.
+- **Put every tunable in a config module**, never inline. Next to each number, comment why it has that value and what it used to be. The history is what stops the next person reverting a fix.
+- **Make config reloadable at runtime** (a key or an attribute), so tuning does not need a rejoin. Always prove a reload happened with a visible change.
+- **Split authority clearly:**
+  - The server owns spawning and anything competitive.
+  - The client owns input, and the physics of the assembly it has network ownership of (its own car).
+- **Local changes do not replicate.** A Weld C0 set on one client, an EditableMesh, or a SurfaceAppearance built at runtime exists only for that client. Anything visual that must match for everyone either comes from the server or is rebuilt by every client from replicated state (for example, run the suspension maths on each client for other players' wheels).
+- **Seats and characters have race conditions.** When swapping a player between seats:
+  1. Wait for the old seat to clear.
+  2. Sit them.
+  3. Confirm `Occupant`.
+  4. Retry a few times.
+- **Seed all procedural content.** With `Random.new(seed)`, every server builds the same world and a bug can be reproduced.
+- **Give every system one shared lookup.** When terrain, props, fences and collision all need "where is the border", compute it once and have each system read it, so they can never disagree.
+- **Keep features easy to remove.** When someone says "remove it completely", revert it; do not leave a disabled flag behind.
+- **Script `Source` caps at 200,000 characters.** Split generated data into several modules.
+
+---
+
+## 3. Physics and vehicles
+
+- **Test driving with an input-override harness,** so real player input code is exercised. Never test with a scripted driver that bypasses it.
+- **Never tune to pass a test.** A criterion missed honestly is better than one met by a hack. Fix the mechanism.
+- **A new force must work with the systems already there.** A boost that ignores the drift-assist or grip model will fight it: the car snaps back, or energy appears from nowhere. Route it through the same model.
+- **A part the car can hit must be queryable** (`CanQuery = true`). Raycast-based vehicles do not see non-queryable parts, and a colliding but non-queryable part may not stop anything.
+- **Make invisible walls tall** (100+ m) and reach them slightly below the ground. Test them at full speed from several angles.
+- **Report results as numbers:** top speed, furthest point reached, minimum upright value, time to catch a slide. "Feels better" is not a measurement.
+
+---
+
+## 4. Building the world
+
+### Scale and streaming
+- **A part axis caps at 2,048 studs (about 573 m).** Anything larger silently shrinks, so tile big surfaces.
+- **Streaming decides what the player has.** With StreamingEnabled, parts and terrain only reach the client within the target radius (2,048 studs by default).
+  - Make distant backdrops (skyline, horizon) `Persistent` models so they never pop.
+  - Remember that terrain far from the player does not exist for them yet.
+- **Wait for streaming after teleports** before anything depends on the ground there.
 
 ### Terrain
-- **Terrain renders a surface half a voxel above its occupancy.** Filling a 4-stud-voxel column to height t draws its top at t + 2 studs, exactly. Fill to `surface - VOXEL / 2`; otherwise every landform stands 0.56 m proud with a ledge where it meets a part plane.
-- **Voxels written by `WriteVoxels` are not raycastable straight away**, and big writes take longer. Anything that snaps to the terrain (fence posts, props) must wait until a probe over a known dune reads as sand (see `Fence.luau`). A single `task.wait()` is not enough.
-- **Terrain streams to clients only within about 573 m** (StreamingTargetRadius 2,048 studs). Streaming radius is a place setting that scripts can neither read nor write. Terrain further out does not exist for the player until they drive toward it.
-- **Gentle terrain slopes show faint voxel-layer shading rings** from above. Accept it, or keep slopes varied.
-- **Cost:**
-  - The height function per column is what dominates build time. Evaluate on a coarse grid (two voxels) and interpolate; skip chunks with nothing in them; walk to the nearest road point from the previous column instead of scanning the whole path.
-  - Keep the solid shell thin (2 m); nothing digs.
-  - Always print the build time.
+- **Terrain renders half a voxel above what occupancy implies.** Filling to height t draws the top at t + half a voxel. Write to `surface - voxel / 2`, or landforms stand proud with a ledge where they meet other geometry.
+- **New terrain is not raycastable immediately**, and big writes take longer. Anything that snaps to it (fence posts, props) must wait until a probe over a known spot returns the new surface.
+- **Terrain is the right tool near the player and the wrong one far away.** It streams by radius; distant landforms are better as meshes or parts.
+- **Keep terrain generation cheap:**
+  - Evaluate the height function on a coarse grid (every 2 voxels) and interpolate per column.
+  - Skip chunks with nothing to write.
+  - Keep the solid shell thin; nobody digs.
+  - Print the build time every run; a slow world build is a slow server start.
+- **Gentle slopes show faint shading rings** at voxel layer boundaries. Varied slopes hide them.
 
-### Lighting, sky and post effects
-- **`Lighting.Technology` cannot be set from a script.** It is a place setting in the Studio Properties panel.
-- **Sun azimuth is `GeographicLatitude`.** Roblox has no azimuth control; latitude 60 swings the evening sun ahead-left of the highway.
-- **An untextured `Sky` object renders Roblox's default day skybox, not the procedural dome.** No Sky object at all gives the procedural dome.
-- **Atmosphere haze swallows building bodies long before emissive parts.** Neon survives distance, so a lit skyline needs dark bodies and Neon lights, or the lights float free of their buildings.
-- **Bloom** (`BloomEffect`) catches Neon, SurfaceGuis with `Brightness > 1`, and the sun. A low threshold blows the sun out into a white ball; about 1.1 to 1.2 at golden hour is safe.
+### Making things look natural
+- **Randomness must not read as a line.**
+  - Vary size, rotation and spacing, and cluster things with gaps between.
+  - Use slow noise for density (thick and thin stretches) as well as for position.
+  - Scatter over areas, not along a curve.
+- **Nothing should start with a visible edge.** Landforms leave the ground at a grazing angle. A profile like (1 - r²)³ has both slope and curvature at zero at the rim. Sink the base slightly under the ground plane.
+- **Calm beats busy.** Small bumps and noise on every surface look like errors. A few broad shapes plus one gentle wave layer read as dunes.
+- **Be generous with distances.** Gaps between the road, features and borders that look fine in an aerial view feel cramped at driving speed.
+- **Keep props sparse and purposeful.** A handful of distinct scenes (a camp, a ruin, a wreck), each on a flat spot, well spaced and off slopes, beat many repeated props.
+- **Check the player's eye view, not only an aerial.** Something made calm enough can vanish entirely from the road.
 
-### Materials and textures
-- **A MaterialVariant's colour map is multiplied by the part's Color.** A dark map cannot be lightened by tint, so keep tints near white and let the map carry the tone. At lower graphics quality the map detail drops, and a near-white tint can read bright.
-- **Creating MaterialVariant maps needs plugin capability.** A server script that tries it errors and can kill the world build. Declare variants in the place (`default.project.json` MaterialService); `MaterialService:SetBaseMaterialOverride` does work from the server.
-- **A MaterialVariant roughness map can read glossy.** Leaving it out made the sand matte. A road without one can still show sheen toward a low sun.
+### Parts and materials
+- **Coplanar faces z-fight.** Never leave two top faces at the same height where parts overlap; lift one a hair.
+- **Some materials render unexpectedly:**
+  - `Metal` in a light colour looks like chrome; painted steel is `SmoothPlastic`.
+  - `Sandstone` goes pink unless kept dark.
+  - `Neon` glows and survives haze; use it for lights, not surfaces.
+- **A MaterialVariant's colour map is multiplied by the part colour.** A dark map cannot be lightened, so keep the tint near white and let the map carry the tone. At low graphics quality the map detail drops, so check how the tint alone reads.
+- **Leaving out a roughness map can mean sheen.** Low sun and bloom turn that sheen into glare. Check surfaces facing the sun.
+- **Shapes:**
+  - Big Cylinder parts are visibly faceted.
+  - A Ball part never stretches (use a sphere SpecialMesh for ellipsoids).
+  - A WedgePart's tall face is at +Z.
 
-### GUIs in the world
-- **SurfaceGui renders at 9,000+ studs** with `MaxDistance = 0` (no limit). `LightInfluence = 0` plus a UIGradient makes a smooth, edgeless, unlit haze or glow layer with no texture upload.
-- **A UIGradient on a CanvasGroup inside a SurfaceGui did not fade.** For a two-axis fade, use strips of frames with stepped `BackgroundTransparency`, each carrying the vertical gradient.
-- **SurfaceGui text shows only from the second frame after the camera moves.** Capture twice before calling a sign blank.
+### Distant backdrops and atmosphere
+- **Atmosphere haze swallows solid bodies long before emissive parts.** A distant city needs dark bodies with Neon lights. In daylight, dim the lights too, or they float free of their buildings.
+- **Give backdrops aura with layers:** unlit gradient haze in front, dense at the ground and clear at the top, and a bright glow behind.
+  - A SurfaceGui with `LightInfluence = 0`, `MaxDistance = 0` and a UIGradient gives an edgeless gradient without uploading a texture.
+  - It renders at 9,000+ studs, and `Brightness > 1` makes it bloom.
+- **Fade the ends of any layered effect.** Hard vertical edges give it away. A UIGradient on a CanvasGroup inside a SurfaceGui did not fade; strips of frames with stepped transparency do.
+- **Bloom:** a low threshold blows out the sun and bright sand. Tune it with the sun in frame.
 
-### Meshes and assets
-- **EditableMesh is locked** unless the experience enables "Allow Mesh / Image APIs", which needs an ID-verified owner.
-  - `AssetService:CreateAssetAsync` is not available to us.
-  - `PublishService:PublishDescendantAssets` needs the RobloxScript capability.
-  - Generated meshes need a manual 3D Importer upload instead.
-- **`AssetService:CreateMeshPartAsync`** yields and hits the network. Load each id once, then Clone; preload before scatter loops.
-- **Store vetting:**
-  - Most free "mesh building" and "highway sign" models are hundreds of plain parts plus scripts.
-  - Decal ids are not image ids; get the image id with `InsertService:LoadAsset(decalId)` in Studio.
-  - `LoadAsset` refuses free models in Edit; use the MCP `insert_asset` tool.
-  - Look at every face of a mesh: a pack passed a front check and still had Cyrillic shop signs on its long faces.
-  - No real brands, badges or logos anywhere: the sedan is the "Kamri".
-
----
-
-## 2. Working in Studio through the MCP
-
-### The sync cycle
-1. `python3 scripts/mcp_sync.py --manifest` writes `build/manifest.json`, with `python3 -m http.server 8765 --bind 127.0.0.1` running in the repo root.
-2. Run the loader (`scripts/studio_loader.luau`) through `execute_luau` in the Edit datamodel. It creates or updates script Sources but never deletes, so remove stale modules by hand.
-3. **Server or world code needs a Play restart.** Stop Play, sync in Edit, start Play.
-4. **Config-only changes can go live** with the loader in the Server datamodel during Play, then set `OvReload = true` from the Client datamodel. Prove the reload with an observable change; the console line only shows once.
-
-### Previews and screenshots
-- **`screen_capture` renders only in Edit.** To preview the world:
-  1. Clone `ServerScriptService.Server.World` into ServerStorage as `WorldPreview`.
-  2. Call `require(clone).build()`.
-  3. Capture.
-  4. Destroy workspace `World`, `Road`, `RoadDetail` and `City`, run `Terrain:Clear()`, and remove the clone.
-- **Move the real editor camera first.** A capture far from `workspace.CurrentCamera` draws terrain at coarse level of detail; low props looked buried in blobs that were not there. Set `CurrentCamera.CFrame` and `.Focus` to the spot in a loop for about 5 s, then capture with the same camera.
-- **Take captures one at a time**; parallel calls time out.
-- **Clear `Selection` first**, or a white selection box appears in the shot.
-- **An identical camera can return a stale frame.** Nudge the position when checking a change.
-- **Focus Studio before anything timed:** `osascript -e 'tell application "RobloxStudio" to activate'`. Unfocused Studio runs at about 15 fps: builds run 2 to 4 times slower, and physics measurements come out pessimistic.
-
-### Harness and chunk traps
-- **`execute_luau` chunks longer than about 120 s get backgrounded.** Keep each under about 100 s and collect backgrounded results with TaskOutput.
-- **Module caching:** the Edit datamodel caches `require` of shared modules for the whole session, so require a `:Clone()` in harness chunks. A cloned module outside its hierarchy cannot require its siblings; rebuild through the World clone instead.
-- **Driving harness:**
-  - Set `InputOverride = true` on the LocalPlayer, then drive with `OvThrottle`, `OvSteer` and `OvBrake` (numbers).
-  - `OvHandbrake` and `OvLean*` must be the boolean `true`.
-  - Spawn with `Remotes.SpawnCar:FireServer(id)`; the car is `Humanoid.SeatPart.Parent.Parent`.
-  - The client owns its car, so reset it from the Client datamodel with `PivotTo` and zeroed velocities.
-- **After teleporting the car far out, wait a few seconds** for terrain to stream in before driving.
-- **Before taking the car, check `DriverSeat.Occupant`** and whether the car has moved; the owner often leaves Play running to test by hand.
-- **Specs:** `require(ReplicatedStorage.Shared:Clone().Tests)()`. `bash scripts/analyze.sh` runs strict luau-lsp. World/init.luau and Station.luau carry baseline errors; only new errors in touched files matter.
-
-### Measuring instead of guessing
-- **Terrain:** measure with raycasts on a grid (`Include` Terrain), reporting nearest and farthest visible points, cover per distance band, steepest slope, and the height of the first visible sample (flushness).
-- **Collision:** drive into the thing at full throttle with the harness and report furthest point, top speed and minimum upright.
-- **Build time and cost:** read from the `[World]` report lines (parts, triangles, seconds).
-- **Before redesigning something that "does not render"**, prove it:
-  - Raycast from the camera to the object (occlusion?).
-  - Put a bright marker in open ground at the same distance (distance culling?).
-  - Nudge the camera (stale frame?).
-
-  The SurfaceGui glow dome only looked missing because it stood behind the towers.
-
-### Git
-- **Stage specific files only.** The working tree carries uncommitted car-rig changes that are not ours: RIG_SPEC.md, RigBuilder, CarCatalog, VehicleRig, its spec and tools/carbody. Never commit them without the owner saying so.
-- **End commit messages** with the Co-Authored-By and Claude-Session trailers.
-- **Update WORLD.md or TUNING.md in the same commit as the change**, with the measured numbers.
+### Lighting and sky
+- **Sun direction is set by `GeographicLatitude`** together with ClockTime. There is no azimuth property, so use latitude to put a sunset in the player's windscreen.
+- **An untextured Sky object renders the default day skybox.** Use no Sky object for the procedural dome, or a real six-texture skybox for a painted sunset.
+- **Lights are expensive.** Pool a handful of real lights and move them to the nearest lamps; let Neon lenses stand in for the rest.
+- **Make lighting changes small**, and compare the same camera view before and after.
 
 ---
 
-## 3. What the owner wants
+## 5. Assets from the Creator Store
 
-### Working style
-- **Measure, then report numbers.** Every driving or world change gets before and after figures from Studio, not "should feel better". Lead with a table.
-- **No scripted drivers.** Use the input-override harness.
-- **Never tune to satisfy a test.** A criterion missed honestly beats one met by a hack.
-- **Leave feel judgements to them.** Name the knob for each.
-- **Show screenshots** for visual work, from the driver's view where it matters.
-- **Remove features completely when asked** ("remove this ability completely" means revert, not disable).
-- **Subtle means subtle.** "Very slightly more night" was a 1-degree sun change and a small exposure drop; "slightly darker road" was a 12% tint.
-- **They stop mid-task and redirect often.** Keep each step committed and working so a redirect never leaves the world broken.
-
-### Taste in the world
-- **Calm, natural randomness, never lines.**
-  - Dunes went from one ridge, to a chain of mounds, to a scattered field, to rolling waves out to the fence, each time because the previous one "read as a line".
-  - Nothing may start with a visible edge or ledge; no small bumps.
-- **Generous distances.** Every border gap was increased at least once ("way way too small"). When unsure, go bigger.
-- **Sparse props.** Scenes are a few of each, spaced 150 m apart, never crowded.
-- **Middle Eastern flavour without cliché overload:** camps, majlis, dallah, areesh, wells, mud-brick ruins, camels, tyre stacks, drift wrecks.
-- **The skyline needs aura.** Haze in front, glow behind, lights that pop against dark bodies; not "just blocks".
-- **No real brands**, anywhere.
-
-### Driving feel targets (Sep 2026)
-- **Tricks:** 360s easy, chained tricks keep speed, 720s may stay hard.
-- **Grip and launch:** nothing feels like ice, and launch is quick "off rip".
-- **Natl:** "first tap gets it up, later taps keep it".
-- **Steering lock** stays 38 degrees unless argued for.
+- **Most free models are not what their title says.** "Mesh building", "highway sign" and "camel" often turn out to be hundreds of plain parts, bundled scripts, or the wrong object. Count MeshParts, parts and scripts before using one.
+- **Look at every face.** A model can pass a front check and carry foreign text or branding on its sides.
+- **No real brands, badges or logos.** Rename lookalikes.
+- **Decal ids are not image ids.** Resolve the image id inside Studio before using it in a Texture.
+- **Load each mesh once, then clone.** `CreateMeshPartAsync` yields and hits the network; preload everything before a placement loop.
+- **Record provenance next to the asset id:** creator, store id, what was checked, what was rejected and why.
 
 ---
 
-## 4. Mistakes made, and the correction
+## 6. Performance
 
-| What went wrong | Correction |
+- **Print cost on every build:** parts, estimated triangles, and seconds per system. Regressions are then noticed immediately, not after they ship.
+- **`Stats.SceneTriangleCount` ignores plain Parts.** Estimate parts by hand (a box is 12 triangles).
+- **Merge repeated geometry.** One long panel per straight run instead of one per bay; merge wherever the shape stays within a tolerance.
+- **Skip empty work before optimising busy work.** Culling chunks with nothing in them is usually the biggest win.
+- **Measure frame rate with the Studio window focused.** Unfocused Studio throttles to about 15 fps and makes everything look slower.
+
+---
+
+## 7. Testing and verification
+
+- **Measure, don't eyeball:**
+  - Raycast grids for terrain: nearest and farthest points, cover per distance band, steepest slope, height at the edge.
+  - Drive-into-it tests for collision.
+  - Build logs for cost.
+- **Report before and after in a table.**
+- **Diagnose "it doesn't render" before redesigning.** Work through the cheap checks in order:
+  1. **Occlusion:** raycast from the camera to the object.
+  2. **Distance culling:** place a bright marker in open ground at the same distance.
+  3. **Stale frame:** nudge the camera and capture again.
+  4. **Level of detail:** terrain and meshes render coarsely far from the editor's real camera.
+  5. **Loading:** meshes, textures and SurfaceGui text can take a frame or more.
+- **When a shape looks wrong, measure the engine on a test patch first.** Write known values and read back what renders, before redesigning the shape.
+- **Remember the player's graphics quality.** Screenshots at maximum quality can differ from a player on Automatic.
+- **Run the type checker and the spec suite after every change.** Keep known failures listed so new ones stand out.
+
+---
+
+## 8. Driving Studio from tools (MCP, command bar, scripts)
+
+- **Server code needs a Play restart.** Config can often be hot-reloaded; world or server modules cannot.
+- **Edit mode caches `require` for the whole session.** Require a `:Clone()` of a module to see fresh code. A cloned module outside its original hierarchy cannot require its siblings.
+- **Keep scripted chunks short** (under about 100 s); long ones get backgrounded or time out.
+- **Screenshots:**
+  - Capture only in Edit mode, one at a time; parallel captures time out.
+  - Clear the Selection first.
+  - Move the real editor camera to the spot and wait a few seconds so level of detail and streaming catch up.
+- **Build previews in Edit from a clone of the world module, then clean up everything they created**, including terrain.
+- **Before taking over a running Play session, check whether someone is using it.** Is the seat occupied? Has the car moved?
+- **Sync tools often create and update but never delete.** Remove stale modules by hand.
+
+---
+
+## 9. Working with the owner
+
+- **Lead with numbers and show images.** Name the config knob for every judgement call and leave feel decisions to the owner.
+- **Do exactly the scope asked.** State trade-offs a change forces, for example a wider feature eating into a gap the owner asked to keep. Offer the fix rather than silently changing something else.
+- **Expect redirects mid-task.** Commit each working step, so a change of direction never leaves the game broken.
+- **Keep docs in the same commit as the change,** with the measured numbers and the reason.
+- **Never commit or discard someone else's uncommitted work.** Stage specific files only.
+- **When asked to remove something, remove it completely.**
+
+---
+
+## 10. General lessons from mistakes
+
+| Mistake | Rule |
 |---|---|
-| Fence posts were placed on the flat plane, buried in the dunes, because the terrain was not raycastable yet. | Wait on a probe over a known dune before snapping anything to terrain. |
-| The doubled dune field took 40 s to build and was only noticed when measured. | Print build times every pass; grid-interpolate heights; thin the shell. Now about 10 s. |
-| Close-up screenshots showed props buried in terrain that physics said was flat. | Coarse terrain LOD far from the editor camera; move the real camera first. |
-| The glow dome was judged "not rendering" and alternatives (Beams, slabs) were tried. | It was occluded by towers and too transparent where visible. Prove culling with an open-ground marker first. |
-| Two identical capture calls returned the same frame, hiding a scene change. | Nudge the camera for every verification capture. |
-| Dune edges showed a ledge through several redesigns. | The cause was the half-voxel render offset, found by measuring written against rendered heights on a test patch. Measure the engine before redesigning shapes. |
-| A regex-style multi-edit failed half-way on an indentation mismatch. | Assert every replacement matched before writing; re-read the exact whitespace (`sed -n l`) on failure. |
-| Band-end fades used a CanvasGroup UIGradient that did nothing. | Strips with stepped transparency. |
-| A "shift boost" feature was built, tuned for rocket-like thrust, then removed entirely at the owner's request. | Confirm the intended feel (the owner's words: "not super acceleration like rockets") before tuning, and keep features easy to revert. |
-| Dunes were made so flush and low they vanished from the road. | Check the driver's view, not only an aerial, when making things "calm". |
+| Objects snapped to terrain the same frame it was written, and ended up buried. | Wait until the terrain answers raycasts before placing on it. |
+| A world build grew from 7 s to 40 s unnoticed until measured. | Print build time on every run; optimise empty work first. |
+| Props looked buried in terrain that was really flat. | Suspect coarse level of detail in captures; move the real camera first. |
+| An effect judged "not rendering" was only hidden behind geometry. | Rule out occlusion and culling with a marker before switching techniques. |
+| A ledge at every landform edge survived several redesigns. | Measure the engine (half-voxel offset) before redesigning shapes. |
+| A feature was tuned before its feel was agreed, then removed. | Get the feel spec in the owner's words first; keep features revertible. |
+| Something was made so subtle it disappeared from the player's view. | Check the player's eye view whenever toning something down. |
+| A two-axis gradient fade silently did nothing. | Verify each effect in isolation; fall back to simple stepped geometry. |
