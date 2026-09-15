@@ -539,11 +539,25 @@ Sparse palms and scenes out in the dune field (`DuneLife.luau`). Counts are for 
 | maxLiveLights | **Hard cap on Light instances in the whole client.** The pool is this size, so the cap cannot be violated. Raising it past about 16 is where Roblox starts to hurt. |
 | lightUpdateInterval | How often the client re-picks which lamps are lit. Lower = tighter following, more CPU. Never per frame. |
 
+## cityscape.aura
+Haze and glow round the backdrop skyline (`Cityscape.luau`). Every layer is a line of invisible panels facing the road with an unlit SurfaceGui gradient.
+
+| Field | What it does |
+|---|---|
+| enabled | The whole aura. |
+| panelM / pixelsPerStud | Panel length along the band, and the gradient's resolution (it is smooth at any value). |
+| endFadeM | How far the layers fade out past each end of the band. |
+| curtains[].lateralM / heightM / color | Where each haze curtain stands from the centreline, how tall, and its colour. |
+| curtains[].fade / glow.fade | Transparency at four heights: top, 2/3 up, 1/3 up, foot. Lower numbers are denser. |
+| glow.lateralM / heightM | The glow dome behind the band. 570 m is the tallest a layer can be (a part axis caps at 2,048 studs). |
+| glow.groundColor / topColor | Its colour at the foot and at the top. |
+| glow.brightness | Over 1 makes it bloom. |
+
 ## timeOfDay / timesOfDay
 `timeOfDay` picks one of `dusk`, `goldenHour`, `blueHour`, `night`. Each preset:
 | Field | What it does |
 |---|---|
-| clockTime | Sun height. At latitude 60: 17.4 = 7° up, 17.55 = 5°, 17.75 = 3°, 17.88 = 1.5°. Lower = longer shadows and a darker sky. |
+| clockTime | Sun height. At latitude 60: 17.4 = 7° up, 17.55 = 5°, 17.68 = 3.9° (golden hour now), 17.75 = 3°, 17.88 = 1.5°. Lower = longer shadows and a darker sky. |
 | geographicLatitude | **This is the sun azimuth control**, because Roblox has no other. 24.7 (real Riyadh) puts the evening sun 90° off the road, out of the driving view; 60 puts it 127°, ahead-left, in the windscreen with shadows diagonal across the asphalt. 80 is 147°, nearly dead ahead. |
 | ambient / outdoorAmbient | Fill light. This is the readability knob: too low and the car disappears between lamps. |
 | brightness | Sun strength. |
@@ -561,6 +575,8 @@ Sparse palms and scenes out in the dune field (`DuneLife.luau`). Counts are for 
 | sky.skybox | Six texture ids `{ bk, dn, ft, lf, rt, up }`. Golden hour ships a photographed sunset; swap the ids for a different sky. |
 | sky.starCount / celestialBodiesShown / sunAngularSize | Only used when `useSkyObject` is true. |
 | lamps.enabled / brightness / rangeM | Whether street lamps are lit at this hour, and how hard. |
+| bloom.intensity / size / threshold | Glow round anything brighter than threshold: the skyline's Neon and aura glow, the lamp lenses, the sun. Lower threshold blooms more (and blows the sun out sooner). |
+| grade.contrast / saturation / tint | A light colour grade over the whole frame. |
 
 ## shadows
 Per-type switch. Shadow cost scales with the **number** of casters, not size.

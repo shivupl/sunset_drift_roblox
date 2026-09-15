@@ -794,11 +794,48 @@ local config = {
 			-- slab, the cheapest "there are a million lights over there".
 			-- Wide, low and faint: any narrower or more solid and it stops
 			-- being haze and starts being an orange slab in the desert.
-			glowEnabled = true,
+			glowEnabled = false, -- replaced by the aura's glow dome; the slab's hard edge read as a slab
 			glowWidthM = 3400,
 			glowHeightM = 70,
 			glowColor = Color3.fromRGB(255, 176, 96),
 			glowTransparency = 0.74,
+		},
+		-- AURA: what stops the skyline reading as boxes. Haze curtains stand
+		-- between the rows (unlit gradients, dense at the ground and gone by
+		-- their top), so the city sits in its own dust and the towers fade
+		-- down into it; behind the whole band a tall glowing dome of light
+		-- pollution backlights the silhouette, bright enough to bloom. Both are
+		-- SurfaceGui gradients on invisible panels: no textures to upload, and
+		-- a gradient has no edge to give it away. The ends of the band fade
+		-- out over endFadeM.
+		aura = {
+			enabled = true,
+			panelM = 540, -- panel length along the band; a part axis caps at 2,048 studs
+			pixelsPerStud = 0.05,
+			endFadeM = 900,
+			-- Each layer's transparency is given at four heights: its top, 2/3
+			-- up, 1/3 up, and its foot.
+			curtains = {
+				-- In front of the front row: the thickest, lowest.
+				{ lateralM = 1230, heightM = 170, color = Color3.fromRGB(196, 140, 112), fade = { 1, 0.88, 0.55, 0.2 } },
+				-- Between the rows.
+				{ lateralM = 1580, heightM = 260, color = Color3.fromRGB(178, 128, 116), fade = { 1, 0.9, 0.6, 0.3 } },
+				-- In among the towers.
+				{ lateralM = 2000, heightM = 340, color = Color3.fromRGB(152, 112, 120), fade = { 1, 0.92, 0.66, 0.4 } },
+			},
+			-- The dome of city light behind: warm at the ground to a dusky
+			-- violet above, still strong well over the tallest towers (380 m)
+			-- so it shows round their tops. Brightness over 1 is what the
+			-- bloom picks up. A part axis caps at 2,048 studs, so 570 m is the
+			-- tallest a layer can be.
+			glow = {
+				lateralM = 2500,
+				heightM = 570,
+				groundColor = Color3.fromRGB(255, 150, 86),
+				topColor = Color3.fromRGB(140, 76, 150),
+				fade = { 1, 0.5, 0.18, 0.08 },
+				brightness = 2.6,
+			},
 		},
 		-- Landmarks, both in the downtown: a Kingdom-Centre style tower
 		-- (two pillars over a slab with a sky bridge, the arch at the top)
@@ -824,7 +861,7 @@ local config = {
 			-- Vertical LED strips up the corners of a share of the towers,
 			-- which is what reads as a modern Gulf skyline at this range.
 			ledStripChance = 0.7,
-			ledStripWidthM = 1.5,
+			ledStripWidthM = 2.4, -- 1.5 was a hairline at 2 km
 			ledStripFromFrac = 0.06, -- up the tower from the base
 			ledStripToFrac = 0.97,
 			ledTransparency = 0,
@@ -840,13 +877,13 @@ local config = {
 			},
 			-- Horizontal lit rings round a share of the towers, at random
 			-- floors: a box a hair wider than the body, one part each.
-			ringChance = 0.55,
+			ringChance = 0.7,
 			ringsMin = 2,
 			ringsMax = 5,
-			ringHeightM = 1.3,
+			ringHeightM = 2.1,
 			-- A lit line along the roof edge of a share of the blocks, so
 			-- the flat tops are not dead.
-			roofEdgeChance = 0.6,
+			roofEdgeChance = 0.75,
 			roofEdgeColor = Color3.fromRGB(255, 206, 150),
 			-- A lit needle on some towers, in the strip's colour.
 			spireChance = 0.22,
@@ -860,12 +897,13 @@ local config = {
 		windowSegments = 2, -- per band
 		blockBandsMin = 1,
 		blockBandsMax = 3,
-		towerBandsMin = 3,
-		towerBandsMax = 6,
+		towerBandsMin = 4,
+		towerBandsMax = 8,
 		windowHeightM = 2.6,
 		windowInsetM = 0.4,
-		windowColorWarm = Color3.fromRGB(255, 214, 150),
-		windowColorCool = Color3.fromRGB(196, 222, 255),
+		-- Near white, so the Neon is bright enough to bloom.
+		windowColorWarm = Color3.fromRGB(255, 226, 176),
+		windowColorCool = Color3.fromRGB(214, 232, 255),
 		coolFraction = 0.3,
 		crownColor = Color3.fromRGB(255, 200, 140),
 		-- A warm mid tone rather than a dark silhouette: the haze tints it to
@@ -873,8 +911,10 @@ local config = {
 		-- at golden hour, which is the wrong read. Towers lean bluer (glass).
 		-- Darker than the first pass: the haze adds sky colour to everything
 		-- at this range, so a mid tone came out as pale slabs.
-		color = Color3.fromRGB(86, 76, 70),
-		towerColor = Color3.fromRGB(52, 62, 86),
+		-- Darker again for the aura pass (86/76/70 and 52/62/86), so the lights
+		-- have something to stand out from behind the haze curtains.
+		color = Color3.fromRGB(62, 56, 54),
+		towerColor = Color3.fromRGB(36, 42, 60),
 		colorVariation = 0.3,
 		-- Fraction of tall buildings that get a red aircraft warning light.
 		beaconChance = 0.7,
@@ -1059,6 +1099,10 @@ local config = {
 				haze = 0.6,
 			},
 			sunRays = { enabled = true, intensity = 0.04, spread = 0.9 },
+			-- Bloom makes the Neon lights glow; the threshold keeps it off lit
+			-- sand and sky. A light grade adds depth to the dusk colours.
+			bloom = { intensity = 0.9, size = 30, threshold = 1.05 },
+			grade = { contrast = 0.06, saturation = 0.08, tint = Color3.fromRGB(255, 248, 244) },
 			sky = { starCount = 1400, celestialBodiesShown = true, sunAngularSize = 12, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 2.4, rangeM = 30 },
 		},
@@ -1070,12 +1114,15 @@ local config = {
 			-- to the left, so the warm sky is in the windscreen and every palm
 			-- throws its shadow diagonally across the asphalt toward you.
 			-- Measured with Lighting:GetSunDirection; see WORLD.md.
-			clockTime = 17.55, -- about 5 degrees up
+			-- 17.68 and a little darker, from 17.55 at brightness 2.2: the owner
+			-- wanted the hour very slightly nearer night, so the skyline's
+			-- lights carry more.
+			clockTime = 17.68, -- about 3.5 degrees up
 			geographicLatitude = 60,
-			ambient = Color3.fromRGB(96, 84, 82),
-			outdoorAmbient = Color3.fromRGB(128, 110, 100),
-			brightness = 2.2,
-			exposureCompensation = -0.15,
+			ambient = Color3.fromRGB(88, 78, 80),
+			outdoorAmbient = Color3.fromRGB(116, 100, 96),
+			brightness = 1.95,
+			exposureCompensation = -0.25,
 			colorShiftTop = Color3.fromRGB(255, 196, 140),
 			colorShiftBottom = Color3.fromRGB(92, 82, 88),
 			globalShadows = true,
@@ -1092,6 +1139,11 @@ local config = {
 				haze = 0.9,
 			},
 			sunRays = { enabled = true, intensity = 0.05, spread = 0.9 },
+			-- Bloom makes the skyline's Neon lights glow; the threshold keeps it
+			-- off the lit sand and the sunset. A light grade: a touch more
+			-- contrast and colour, a hint of dusk in the tint.
+			bloom = { intensity = 0.85, size = 24, threshold = 1.1 },
+			grade = { contrast = 0.07, saturation = 0.08, tint = Color3.fromRGB(252, 244, 246) },
 			-- A painted skybox, because the procedural dome stays day-blue
 			-- until the sun is on the horizon and only then goes warm. This is
 			-- a photographed sunset (store 5133032250, "HD Sunset Skybox",
@@ -1129,6 +1181,8 @@ local config = {
 				haze = 2,
 			},
 			sunRays = { enabled = false, intensity = 0.03, spread = 0.9 },
+			bloom = { intensity = 1, size = 32, threshold = 0.95 },
+			grade = { contrast = 0.06, saturation = 0.06, tint = Color3.fromRGB(246, 246, 255) },
 			sky = { starCount = 900, celestialBodiesShown = true, sunAngularSize = 11, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 2, rangeM = 28 },
 		},
@@ -1151,6 +1205,8 @@ local config = {
 				haze = 1.4,
 			},
 			sunRays = { enabled = false, intensity = 0, spread = 1 },
+			bloom = { intensity = 1.1, size = 34, threshold = 0.9 },
+			grade = { contrast = 0.08, saturation = 0.04, tint = Color3.fromRGB(240, 244, 255) },
 			sky = { starCount = 4200, celestialBodiesShown = false, sunAngularSize = 0, useSkyObject = false, skybox = nil },
 			lamps = { enabled = true, brightness = 3.2, rangeM = 34 },
 		},

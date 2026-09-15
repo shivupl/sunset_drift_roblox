@@ -50,6 +50,11 @@ type Site = {
 	tower: boolean,
 }
 
+local function smoothstepCurve(t: number): number
+	t = math.clamp(t, 0, 1)
+	return t * t * (3 - 2 * t)
+end
+
 local function tinted(colour: Color3, rng: Random, variation: number): Color3
 	local tint = rng:NextNumber(-variation, variation)
 	return if tint < 0 then colour:Lerp(Color3.new(0, 0, 0), -tint) else colour:Lerp(Color3.new(1, 1, 1), tint)
@@ -131,7 +136,7 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				color = if litWindows then windowColor else bodyColor:Lerp(Color3.fromRGB(46, 54, 70), 0.55),
 				material = if litWindows then Enum.Material.Neon else Enum.Material.Glass,
 				parent = parent,
-				transparency = math.min(0.95, rng:NextNumber(0.1, 0.6) + dayDim),
+				transparency = math.min(0.95, rng:NextNumber(0, 0.3) + dayDim),
 			})
 		end
 	end
@@ -183,8 +188,8 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 	if not site.tower and litWindows and rng:NextNumber() < L.roofEdgeChance then
 		Build.part({
 			name = "RoofEdge",
-			size = Vector3.new(width * 1.02, ctx.s(0.9), depth * 1.02),
-			cframe = cf * CFrame.new(0, height / 2 - ctx.s(0.45), 0),
+			size = Vector3.new(width * 1.02, ctx.s(1.4), depth * 1.02),
+			cframe = cf * CFrame.new(0, height / 2 - ctx.s(0.7), 0),
 			color = L.roofEdgeColor,
 			material = Enum.Material.Neon,
 			parent = parent,
@@ -238,6 +243,91 @@ local function building(cfg: Config, ctx: Context, rng: Random, parent: Instance
 				material = Enum.Material.Neon,
 				parent = parent,
 			})
+		end
+	end
+end
+
+
+-- The aura (WorldConfig.cityscape.aura): haze curtains between the rows and
+-- a glowing dome behind the band. Each is a line of invisible panels facing
+-- the road, carrying an unlit SurfaceGui gradient whose transparency is
+-- given at four heights, top to foot. The panels abut exactly and the
+-- gradient is the same on each, so there is no seam. Toward either end of
+-- the band a panel is cut into strips that fade out sideways, over endFadeM.
+local FADE_STRIPS = 16
+
+type AuraLayer = {
+	name: string,
+	lateralM: number,
+	heightM: number,
+	groundColor: Color3,
+	topColor: Color3,
+	fade: { number }, -- transparency at the top, 2/3 up, 1/3 up and the foot
+	brightness: number,
+}
+
+local function auraLayer(cfg: Config, ctx: Context, parent: Instance, frameAt: (number) -> CFrame, layer: AuraLayer)
+	local c = cfg.cityscape
+	local a = c.aura
+	local band = c.band
+	local fromM, toM = band.fromAlongM - a.endFadeM, band.toAlongM + a.endFadeM
+	local count = math.ceil((toM - fromM) / a.panelM)
+	local panelM = (toM - fromM) / count
+	local transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, layer.fade[1]),
+		NumberSequenceKeypoint.new(1 / 3, layer.fade[2]),
+		NumberSequenceKeypoint.new(2 / 3, layer.fade[3]),
+		NumberSequenceKeypoint.new(1, layer.fade[4]),
+	})
+	local colour = ColorSequence.new(layer.topColor, layer.groundColor)
+	-- 0 at the faded-out tips of the band, 1 once endFadeM in.
+	local function presence(alongM: number): number
+		local t = math.min((alongM - fromM) / a.endFadeM, (toM - alongM) / a.endFadeM)
+		return smoothstepCurve(t)
+	end
+	for i = 0, count - 1 do
+		local startM = fromM + i * panelM
+		local f = frameAt(startM + panelM / 2)
+		local outward = f.RightVector * band.side
+		local h = ctx.s(math.min(layer.heightM, 570))
+		local pos = f.Position + outward * ctx.s(layer.lateralM) + Vector3.new(0, h / 2, 0)
+		local panel = Build.part({
+			name = layer.name,
+			size = Vector3.new(ctx.s(panelM), h, ctx.s(1)),
+			cframe = CFrame.lookAt(pos, pos - outward),
+			color = layer.groundColor,
+			parent = parent,
+			transparency = 1,
+		})
+		local gui = Instance.new("SurfaceGui")
+		gui.Name = "Gradient"
+		gui.Face = Enum.NormalId.Front
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = a.pixelsPerStud
+		gui.LightInfluence = 0
+		gui.Brightness = layer.brightness
+		gui.MaxDistance = 0 -- no limit: it is a backdrop
+		gui.Parent = panel
+		local faded = presence(startM) < 1 or presence(startM + panelM) < 1
+		local strips = if faded then FADE_STRIPS else 1
+		for k = 0, strips - 1 do
+			-- The gui's left edge, seen from the road, is the part's +X. With
+			-- the band on the right that is the later end of the stretch.
+			local xc = (k + 0.5) / strips
+			local alongM = if band.side > 0 then startM + panelM * (1 - xc) else startM + panelM * xc
+			local strip = Instance.new("Frame")
+			strip.Name = "Fill"
+			strip.Position = UDim2.fromScale(k / strips, 0)
+			strip.Size = UDim2.fromScale(1 / strips + 0.002, 1)
+			strip.BorderSizePixel = 0
+			strip.BackgroundColor3 = Color3.new(1, 1, 1)
+			strip.BackgroundTransparency = if faded then 1 - presence(alongM) else 0
+			strip.Parent = gui
+			local grad = Instance.new("UIGradient")
+			grad.Rotation = 90 -- top of the panel to its foot
+			grad.Color = colour
+			grad.Transparency = transparency
+			grad.Parent = strip
 		end
 	end
 end
@@ -416,6 +506,32 @@ function Cityscape.build(cfg: Config, ctx: Context, path: Path, parent: Instance
 				transparency = dt.glowTransparency,
 			})
 		end
+	end
+
+	-- The aura: haze between the rows, city glow behind.
+	local a = c.aura
+	if a.enabled then
+		for i, cu in a.curtains do
+			auraLayer(cfg, ctx, model, frameAt, {
+				name = `Haze{i}`,
+				lateralM = cu.lateralM,
+				heightM = cu.heightM,
+				groundColor = cu.color,
+				topColor = cu.color,
+				fade = cu.fade,
+				brightness = 1,
+			})
+		end
+		local g = a.glow
+		auraLayer(cfg, ctx, model, frameAt, {
+			name = "CityGlowDome",
+			lateralM = g.lateralM,
+			heightM = g.heightM,
+			groundColor = g.groundColor,
+			topColor = g.topColor,
+			fade = g.fade,
+			brightness = g.brightness,
+		})
 	end
 
 	-- Landmarks.

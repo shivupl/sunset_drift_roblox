@@ -246,12 +246,24 @@ spire on a fifth; the strips, rings and spires draw from one weighted
 palette, mostly gold and cool white with the odd magenta, cyan and green,
 the way Riyadh's towers actually light up. The verticals are what read as a
 modern Gulf skyline at this distance: they still catch the eye long after
-the window grid has become a smear. A wide, low, faint slab of sodium haze washes the base of
-the cluster; narrower or more solid and it stops being haze and becomes an
-orange slab standing in the desert. The one care needed is that haze swallows
+the window grid has become a smear. (A wide, low, faint Neon slab of sodium
+haze used to wash the base of the cluster; the aura below replaced it, since
+its hard edge read as a slab.) The one care needed is that haze swallows
 a building body long before it swallows an emissive part, so in daylight
 every light here is pulled back by `lights.dayExtraTransparency`, or the
 windows and strips float free of the towers they belong to.
+
+**The aura: haze in front, glow behind.** On its own the band read as lit boxes, so the owner asked for it to sit in haze with its lights popping.
+- **Haze curtains:** three layers stand between the rows, at 1,230, 1,580 and 2,000 m, 170 to 340 m tall. Each is dense at the ground and clear by its top, so the towers fade down into dust and the lights show through.
+- **Glow dome:** behind the whole band, at 2,500 m, stands a glow of city light: warm orange at the ground to a dusky violet at 570 m. It stays strong well above the tallest towers, so it shows round their tops, and its brightness (2.6) is over 1, so the bloom picks it up.
+- **How they are built:** every layer is a line of invisible panels facing the road, each carrying an unlit SurfaceGui with a UIGradient. There is no texture to upload and no edge to give it away. Toward either end of the band a panel is cut into 16 strips that fade out sideways over 900 m.
+- **Lights:** the lights are thicker and more numerous (LED strips 2.4 m, rings 2.1 m on seven in ten towers, four to eight window bands, near-white window colours). The building bodies are darker (62/56/54, towers 36/42/60), so the lights have something to stand out from.
+- **Bloom and grade:** every time of day now carries a Bloom effect and a light colour grade (`bloom`, `grade`).
+- **Hour:** golden hour moved very slightly toward night: ClockTime 17.68 (sun about 3.9 degrees up, was 5), brightness 1.95, exposure -0.25, ambient a touch lower.
+
+Two things found on the way:
+- **SurfaceGuis render at 9,000 studs.** The first dome looked missing only because it stood behind the towers with its top nearly clear.
+- **Band-end fades:** a UIGradient on a CanvasGroup did not fade the band ends in a SurfaceGui, hence the strips.
 
 ## The border: a dune field and a chain-link fence (`Relief.luau`, `Fence.luau`)
 

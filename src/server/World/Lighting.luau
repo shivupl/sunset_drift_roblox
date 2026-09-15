@@ -104,6 +104,27 @@ function WorldLighting.applyAtmosphere(cfg: Config)
 	a.Haze = t.atmosphere.haze
 	a.Parent = Lighting
 
+	-- Bloom, so Neon (the skyline, the lamp lenses) glows, and a light
+	-- colour grade.
+	for _, class in { "BloomEffect", "ColorCorrectionEffect" } do
+		local old = Lighting:FindFirstChildOfClass(class)
+		if old then
+			old:Destroy()
+		end
+	end
+	local bloom = Instance.new("BloomEffect")
+	bloom.Name = "Glow"
+	bloom.Intensity = t.bloom.intensity
+	bloom.Size = t.bloom.size
+	bloom.Threshold = t.bloom.threshold
+	bloom.Parent = Lighting
+	local grade = Instance.new("ColorCorrectionEffect")
+	grade.Name = "Grade"
+	grade.Contrast = t.grade.contrast
+	grade.Saturation = t.grade.saturation
+	grade.TintColor = t.grade.tint
+	grade.Parent = Lighting
+
 	local oldRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
 	if oldRays then
 		oldRays:Destroy()
