@@ -202,6 +202,10 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 			return false
 		end
 		local footM = border.at(side, along)
+		-- Past the dune's back, before the fence, is open sand again.
+		if math.abs(lateral) > footM + border.riseM[side] + border.backM[side] + 3 then
+			return false
+		end
 		local limit = if climbs then footM + border.riseM[side] * 0.6 else footM - 2
 		return math.abs(lateral) > limit
 	end

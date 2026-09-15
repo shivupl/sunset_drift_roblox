@@ -352,7 +352,7 @@ local config = {
 	-- real slopes, so running wide feels like sand and the crest stops you.
 	relief = {
 		-- ON: dune borders either side of the highway, their foot about 30 m
-		-- (100 ft) past each road edge. The owner had asked for plain flat
+		-- (about 300 ft) past each road edge. The owner had asked for plain flat
 		-- sand after the first berm (170 to 200 m out, a ramp with a flat
 		-- top); this is the border back, closer in and shaped as dunes.
 		enabled = true,
@@ -395,7 +395,7 @@ local config = {
 		gravelColor = Color3.fromRGB(138, 118, 90),
 		chunkStuds = 128, -- voxel write chunk; 32 columns of 4 studs
 
-		-- Low dunes either side of the road, starting about 100 ft past each
+		-- Low dunes either side of the road, starting about 90 m past each
 		-- road edge: a gentle slope toward the road, a soft crest and a short
 		-- back. Humps and saddles along the road so they read as mounds, not
 		-- a bank. They were a taller border (8 m, walled on the crest); the
@@ -407,7 +407,7 @@ local config = {
 			enabled = true,
 			endM = 3540, -- the far end: the dunes are gone by here, short of the city gateway
 			endTaperM = 220, -- crests sink to nothing over this before endM
-			startCapBehindM = 27, -- the low dune across behind the start line (its visible foot is about 100 ft back)
+			startCapBehindM = 86, -- the low dune across behind the start line (its visible foot about 90 m back)
 			wallHeightM = 150, -- the invisible stop on the crest, only built when the fence is off
 			wallPieceM = 12,
 			-- Along-road shape. math.noise spans about -0.5..0.5.
@@ -426,16 +426,17 @@ local config = {
 			-- easing back in over clearanceBlendM.
 			clearanceGapM = 30,
 			clearanceBlendM = 170,
-			-- footM sits a little inside 100 ft past the 39.4 m road edge: the
-			-- dune is sunk sinkM, so it breaks the plane a few metres out.
+			-- footM sits a little inside 90 m (about 300 ft) past the 39.4 m road
+			-- edge: the dune is sunk sinkM, so it breaks the plane a few metres
+			-- out. It was 100 ft, which the owner found far too close.
 			sun = {
-				footM = 66,
+				footM = 125,
 				riseWidthM = 22, -- the slope toward the road
 				crestHeightM = 2.8,
 				backWidthM = 14,
 			},
 			other = {
-				footM = 66,
+				footM = 125,
 				riseWidthM = 24,
 				crestHeightM = 3.4,
 				backWidthM = 16,
@@ -588,8 +589,8 @@ local config = {
 		},
 	},
 
-	-- THE BORDER: a chain-link fence either side of the highway, 250 ft
-	-- (76.2 m) past each road edge, behind the low dunes. Galvanised square
+	-- THE BORDER: a chain-link fence either side of the highway, 250 m
+	-- past each road edge, well behind the low dunes. Galvanised square
 	-- posts, a top rail, the mesh as a see-through texture (the desert and
 	-- the skyline show through it), and two strands of barbed wire, the
 	-- utility-land fence along every Saudi highway. It goes round the back
@@ -598,8 +599,11 @@ local config = {
 	-- nothing jumps it.
 	fence = {
 		enabled = true,
-		fromRoadEdgeM = 76.2, -- 250 ft, from the outer edge of the shoulder and kerb
-		behindStartM = 76.2, -- the cross fence behind the start line
+		-- From the outer edge of the shoulder and kerb: 250 m (about 820 ft),
+		-- leaving about 120 m of open sand behind the dunes. It was 250 ft,
+		-- which put it barely 10 m behind them.
+		fromRoadEdgeM = 250,
+		behindStartM = 250, -- the cross fence behind the start line
 		endM = 3540, -- where the side fences stop, short of the city gateway
 		heightM = 2.4,
 		postSpacingM = 6,

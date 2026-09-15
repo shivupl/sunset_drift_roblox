@@ -190,7 +190,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		end
 		foot[side], crest[side] = base, height
 
-		-- The fence line: 250 ft past the road edge, pushed out behind the
+		-- The fence line: fromRoadEdgeM past the road edge, pushed out behind the
 		-- station (not the pad: its wing is well inside) and eased back.
 		local line = table.create(fenceCount, roadEdgeM + fc.fromRoadEdgeM)
 		if fenceOn then

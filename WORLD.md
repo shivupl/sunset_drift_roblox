@@ -256,9 +256,10 @@ windows and strips float free of the towers they belong to.
 ## The border: low dunes and a chain-link fence (`Relief.luau`, `Fence.luau`)
 
 Each side of the highway has three zones:
-- **Flat sand**, for the first 100 ft (30 m) past the road edge.
+- **Flat sand**, for the first 90 m (about 300 ft) past the road edge.
 - **Low dunes:** 3 to 3.5 m mounds with a gentle slope toward the road, a soft crest and a short back.
-- **A chain-link fence**, 250 ft (76.2 m) past the road edge, about 116 m from the centreline, which is the edge of the playable area.
+- **Open sand** behind the dunes, about 120 m of it.
+- **A chain-link fence**, 250 m (about 820 ft) past the road edge, about 290 m from the centreline, which is the edge of the playable area. The first build had 100 ft of flat and the fence at 250 ft, barely 10 m behind the dunes; the owner found both gaps far too small.
 
 **The dunes** rise into humps about every 140 m and dip into saddles between them, never below half height. Their foot wanders a few metres outward, never in. From the driver's eye the tallest crest is about 2 degrees, so they read as texture in the desert rather than a wall.
 
