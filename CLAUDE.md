@@ -35,10 +35,8 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 - **Sync with Rojo, not HTTP:** newer Studio MCP builds run executed code without the Network capability, so `HttpService:GetAsync` (the `scripts/mcp_sync.py` + loader route) and `VirtualInputManager` both fail. Run `rojo serve` and connect the Rojo plugin; Rojo syncs into the **Edit** tree, so a running Play session keeps the old modules until Play is restarted.
 - **Driving the UI:** the MCP `user_mouse_input` / `user_keyboard_input` tools send real input (`instance_path` aims at a GuiObject). Mouse drags do **not** scroll a ScrollingFrame (only touch does); use `scrollUp`/`scrollDown` to test scrolling.
 - **Phone UI without a device:** set the LocalPlayer attribute `ForceTouch = true`, then reopen the menu (M) so it re-lays out in touch metrics.
-- **Sync:**
-  1. `python3 scripts/mcp_sync.py --manifest`, with `python3 -m http.server 8765 --bind 127.0.0.1` running in the repo root.
-  2. Run the loader chunk (`scripts/studio_loader.luau`) via `execute_luau` in Edit.
-  3. Server or world code needs Play stopped, then started again.
+- **Old HTTP sync (only where executed code still has Network):** `python3 scripts/mcp_sync.py --manifest` with `python3 -m http.server 8765 --bind 127.0.0.1` in the repo root, then run `scripts/studio_loader.luau` via `execute_luau` in Edit.
+- **Either way, server or world code needs Play stopped and started again.**
 - **World preview in Edit:**
   1. Clone `ServerScriptService.Server.World` into ServerStorage as `WorldPreview` and call `require(clone).build()`.
   2. Move `workspace.CurrentCamera` (CFrame and Focus) to the spot for a few seconds, then `screen_capture`.
