@@ -14,7 +14,7 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
    StarterPlayer/StarterPlayerScripts/Client.
 3. Press Play. The server builds the world and you start on foot beside the parking bay,
    with the spawn menu open.
-4. Pick a car and press SPAWN. It is built in your bay slot with you in the driver's seat,
+4. Tap or click a car (anywhere on its card) to spawn it. It is built in your bay slot with you in the driver's seat,
    and the chase camera takes over. M (or the CARS button at the bottom of the screen)
    opens the menu again at any time; spawning while driving swaps the car you are in.
    F gets out; walk up to a parked car and press E to get back in.

@@ -9,6 +9,25 @@
 --
 -- The request is only a wish: the server checks the id, the cooldown and
 -- whether a spawn is already building, and does the seating itself.
+--
+-- PHONE FIRST. The first version was a desktop panel shrunk onto a phone and
+-- the owner found it unusable: cards were tapped and nothing happened, and the
+-- button under the thumb stayed dark, as though it were disabled.
+--
+-- Three things caused that, and each is handled here:
+-- 1. **A tap inside a ScrollingFrame is a gesture, not a click.** The frame
+--    claims a touch that moves even slightly, so `Activated` never fires and
+--    the button is left in its pressed colour. Every card now tracks the touch
+--    itself, through UserInputService, and counts it as a tap only if the
+--    finger stays within TAP_SLOP_PX and lifts over the card. `AutoButtonColor`
+--    is off everywhere: a pressed or busy look is set here, so it can always be
+--    cleared.
+-- 2. **Roblox's own touch controls sit on top of any PlayerGui.** The
+--    thumbstick and the jump button are CoreGui, so they took taps meant for
+--    the cards. `UserInputService.ModalEnabled` hides them while the menu is
+--    open.
+-- 3. **Everything was sized in desktop pixels.** Sizes now come from the
+--    viewport, with phone minimums for tap targets (44 points is the floor).
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -22,21 +41,48 @@ local SpawnMenu = {}
 
 local INK = Color3.fromRGB(15, 15, 18)
 local CARD = Color3.fromRGB(28, 28, 33)
+local CARD_DOWN = Color3.fromRGB(46, 46, 54)
 local WHITE = Color3.new(1, 1, 1)
 local MUTED = Color3.fromRGB(165, 165, 175)
 local HOT = Color3.fromRGB(255, 165, 40)
 local HOT_DIM = Color3.fromRGB(120, 84, 34)
 
 local ACTION = "HJ_SpawnMenu"
+-- How far a finger may travel and still count as a tap rather than a scroll.
+local TAP_SLOP_PX = 14
+
+type Card = {
+	id: string,
+	frame: TextButton,
+	button: TextButton,
+	name: TextLabel,
+	blurb: TextLabel,
+	specs: TextLabel,
+	chip: TextLabel,
+	stroke: UIStroke,
+	paint: Frame,
+	touch: InputObject?,
+	origin: Vector2,
+	cancelled: boolean,
+}
 
 local gui: ScreenGui? = nil
-local backdrop: TextButton? = nil
+local openButton: TextButton? = nil
+local panel: Frame? = nil
+local header: Frame? = nil
+local closeButton: TextButton? = nil
+local title: TextLabel? = nil
+local subtitle: TextLabel? = nil
 local list: ScrollingFrame? = nil
 local status: TextLabel? = nil
-local spawnButtons: { [string]: TextButton } = {}
+local cards: { Card } = {}
 local remote: RemoteEvent? = nil
 local currentCarId: string? = nil
 local waitingUntil = 0
+
+local function isTouch(): boolean
+	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
+end
 
 local function corner(parent: Instance, radius: number)
 	local c = Instance.new("UICorner")
@@ -57,8 +103,118 @@ local function label(parent: Instance, text: string, font: Enum.Font, size: numb
 	return l
 end
 
-local function isTouch(): boolean
-	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
+-- Every size in the menu, worked out from the viewport. On a phone the
+-- numbers grow with the screen and never fall under a thumb-sized target;
+-- on a desktop they stay near the original panel.
+type Metrics = {
+	touch: boolean,
+	cardH: number,
+	gap: number,
+	pad: number,
+	buttonW: number,
+	buttonH: number,
+	nameSize: number,
+	blurbSize: number,
+	specSize: number,
+	titleSize: number,
+	subSize: number,
+	headerH: number,
+	closeSize: number,
+	footerH: number,
+	footerSize: number,
+	panelWidth: number,
+	panelMax: number,
+}
+
+local function metrics(): Metrics
+	local vp = if gui then (gui :: ScreenGui).AbsoluteSize else Vector2.new(1280, 720)
+	-- A ScreenGui that has never been enabled reports nothing; fall back to
+	-- the camera, which is always there.
+	if vp.X < 1 or vp.Y < 1 then
+		local cam = workspace.CurrentCamera
+		vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	end
+	local touch = isTouch()
+	local short = math.min(vp.X, vp.Y)
+	if not touch then
+		return {
+			touch = false,
+			cardH = 92,
+			gap = 10,
+			pad = 18,
+			buttonW = 118,
+			buttonH = 48,
+			nameSize = 22,
+			blurbSize = 14,
+			specSize = 12,
+			titleSize = 24,
+			subSize = 15,
+			headerH = 44,
+			closeSize = 40,
+			footerH = 18,
+			footerSize = 13,
+			panelWidth = 0.92,
+			panelMax = 560,
+		}
+	end
+	-- Phone: a card is about a fifth of the short side, a tap target never
+	-- under 44 points, and text scales with it.
+	local unit = math.clamp(short, 320, 900)
+	local cardH = math.clamp(unit * 0.21, 78, 132)
+	local buttonH = math.clamp(cardH * 0.58, 46, 72)
+	return {
+		touch = true,
+		cardH = cardH,
+		gap = math.clamp(unit * 0.022, 8, 16),
+		pad = math.clamp(unit * 0.035, 12, 24),
+		buttonW = math.clamp(cardH * 1.5, 104, 190),
+		buttonH = buttonH,
+		nameSize = math.clamp(cardH * 0.25, 19, 32),
+		blurbSize = math.clamp(cardH * 0.17, 13, 21),
+		specSize = math.clamp(cardH * 0.145, 11, 18),
+		titleSize = math.clamp(unit * 0.055, 20, 34),
+		subSize = math.clamp(unit * 0.035, 13, 22),
+		headerH = math.clamp(unit * 0.12, 44, 72),
+		closeSize = math.clamp(unit * 0.095, 44, 60),
+		footerH = math.clamp(unit * 0.05, 18, 30),
+		footerSize = math.clamp(unit * 0.032, 12, 19),
+		panelWidth = 0.96,
+		panelMax = 720,
+	}
+end
+
+local function busy(): boolean
+	return os.clock() < waitingUntil
+end
+
+local function paintCard(card: Card, down: boolean)
+	local m = metrics()
+	local current = card.id == currentCarId
+	local isBusy = busy()
+	card.frame.BackgroundColor3 = if down then CARD_DOWN else CARD
+	card.button.Text = if isBusy then "…" elseif current then "RESPAWN" else "SPAWN"
+	card.button.BackgroundColor3 = if isBusy then HOT_DIM elseif down then Color3.fromRGB(255, 196, 110) else HOT
+	card.button.TextSize = math.floor(m.buttonH * 0.36)
+	card.stroke.Transparency = if current then 0.1 else 1
+	card.chip.Visible = current
+end
+
+local function refreshButtons()
+	for _, card in cards do
+		paintCard(card, card.touch ~= nil and not card.cancelled)
+	end
+end
+
+local function requestSpawn(id: string)
+	if busy() or not remote then
+		return
+	end
+	local cooldown = ConfigLoader.current().spawn.spawnCooldownSeconds
+	waitingUntil = os.clock() + cooldown
+	refreshButtons()
+	;(remote :: RemoteEvent):FireServer(id)
+	SpawnMenu.close()
+	task.delay(cooldown + 0.05, refreshButtons)
 end
 
 local function specLine(entry: VehicleRig.CarEntry): string
@@ -66,27 +222,6 @@ local function specLine(entry: VehicleRig.CarEntry): string
 	local r = entry.rig
 	local mass = tostring(math.floor(r.massKg + 0.5)):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
 	return string.format("%.1f m long   ·   %s kg   ·   rear-wheel drive", r.collisionSizeM[3] * k, mass)
-end
-
-local function refreshButtons()
-	local busy = os.clock() < waitingUntil
-	for id, btn in spawnButtons do
-		local current = id == currentCarId
-		btn.Text = if busy then "…" elseif current then "RESPAWN" else "SPAWN"
-		btn.BackgroundColor3 = if busy then HOT_DIM else HOT
-		btn.AutoButtonColor = not busy
-		local card = btn.Parent
-		if card then
-			local stroke = card:FindFirstChildOfClass("UIStroke")
-			if stroke then
-				stroke.Transparency = if current then 0.1 else 1
-			end
-			local chip = card:FindFirstChild("Current")
-			if chip and chip:IsA("TextLabel") then
-				chip.Visible = current
-			end
-		end
-	end
 end
 
 local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
@@ -104,64 +239,67 @@ local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
 	return out
 end
 
+-- Is a screen position over this card? Input positions leave out the top bar
+-- and this gui ignores the inset, so absolute positions carry it.
+local function overCard(card: Card, position: Vector3): boolean
+	local p = Vector2.new(position.X, position.Y) + GuiService:GetGuiInset()
+	local a, size = card.frame.AbsolutePosition, card.frame.AbsoluteSize
+	return p.X >= a.X and p.X <= a.X + size.X and p.Y >= a.Y and p.Y <= a.Y + size.Y
+end
+
 local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntry, order: number)
-	local card = Instance.new("Frame")
-	card.Name = "Car_" .. id
-	card.BackgroundColor3 = CARD
-	card.BorderSizePixel = 0
-	card.Size = UDim2.new(1, 0, 0, 92)
-	card.LayoutOrder = order
-	corner(card, 10)
+	-- The whole card is the button: on a phone a 120 pixel wide SPAWN button
+	-- is a poor target, and the card is the thing a thumb aims at.
+	local frame = Instance.new("TextButton")
+	frame.Name = "Car_" .. id
+	frame.Text = ""
+	frame.AutoButtonColor = false -- pressed colour is set here, so it always clears
+	frame.BackgroundColor3 = CARD
+	frame.BorderSizePixel = 0
+	frame.Size = UDim2.new(1, 0, 0, 92)
+	frame.LayoutOrder = order
+	corner(frame, 10)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = HOT
 	stroke.Thickness = 2
 	stroke.Transparency = 1
-	stroke.Parent = card
-	card.Parent = parent
+	stroke.Parent = frame
+	frame.Parent = parent
 
 	-- The car's paint, as a stripe down the left edge.
 	local swatch = Instance.new("Frame")
 	swatch.Name = "Paint"
 	swatch.BackgroundColor3 = entry.body.paint
 	swatch.BorderSizePixel = 0
-	swatch.Position = UDim2.fromOffset(12, 14)
-	swatch.Size = UDim2.new(0, 8, 1, -28)
 	corner(swatch, 4)
-	swatch.Parent = card
+	swatch.Parent = frame
 
-	local name = label(card, entry.displayName, Enum.Font.GothamBlack, 22, WHITE)
-	name.Position = UDim2.fromOffset(34, 12)
-	name.Size = UDim2.new(1, -170, 0, 26)
-
-	local chip = label(card, "IN USE", Enum.Font.GothamBold, 11, HOT)
+	local name = label(frame, entry.displayName, Enum.Font.GothamBlack, 22, WHITE)
+	local chip = label(frame, "IN USE", Enum.Font.GothamBold, 11, HOT)
 	chip.Name = "Current"
 	chip.AutomaticSize = Enum.AutomaticSize.X
-	chip.Position = UDim2.fromOffset(34, 12)
-	chip.Size = UDim2.fromOffset(0, 26)
 	chip.Visible = false
-	-- Sits after the name: pad it past the name's text.
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, name.TextBounds.X + 10)
-	pad.Parent = chip
+	local chipPad = Instance.new("UIPadding")
+	chipPad.PaddingLeft = UDim.new(0, name.TextBounds.X + 10)
+	chipPad.Parent = chip
 	name:GetPropertyChangedSignal("TextBounds"):Connect(function()
-		pad.PaddingLeft = UDim.new(0, name.TextBounds.X + 10)
+		chipPad.PaddingLeft = UDim.new(0, name.TextBounds.X + 10)
 	end)
 
-	local blurb = label(card, entry.blurb or "", Enum.Font.Gotham, 14, MUTED)
-	blurb.Position = UDim2.fromOffset(34, 40)
-	blurb.Size = UDim2.new(1, -170, 0, 18)
+	local blurb = label(frame, entry.blurb or "", Enum.Font.Gotham, 14, MUTED)
 	blurb.TextTruncate = Enum.TextTruncate.AtEnd
 
-	local specs = label(card, specLine(entry), Enum.Font.GothamMedium, 12, MUTED)
-	specs.Position = UDim2.fromOffset(34, 62)
-	specs.Size = UDim2.new(1, -170, 0, 16)
+	local specs = label(frame, specLine(entry), Enum.Font.GothamMedium, 12, MUTED)
 	specs.TextTransparency = 0.25
+	specs.TextTruncate = Enum.TextTruncate.AtEnd
 
+	-- The SPAWN pill reads as the action; tapping anywhere on the card does it.
 	local btn = Instance.new("TextButton")
 	btn.Name = "Spawn"
+	btn.AutoButtonColor = false
+	btn.Active = false -- the card handles the touch, so this never eats one
+	btn.Selectable = false
 	btn.AnchorPoint = Vector2.new(1, 0.5)
-	btn.Position = UDim2.new(1, -14, 0.5, 0)
-	btn.Size = UDim2.fromOffset(118, 48)
 	btn.BackgroundColor3 = HOT
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBlack
@@ -169,18 +307,162 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 	btn.TextColor3 = INK
 	btn.Text = "SPAWN"
 	corner(btn, 10)
-	btn.Parent = card
-	btn.Activated:Connect(function()
-		if os.clock() < waitingUntil or not remote then
+	btn.Parent = frame
+
+	local card: Card = {
+		id = id,
+		frame = frame,
+		button = btn,
+		name = name,
+		blurb = blurb,
+		specs = specs,
+		chip = chip,
+		stroke = stroke,
+		paint = swatch,
+		touch = nil,
+		origin = Vector2.zero,
+		cancelled = false,
+	}
+	table.insert(cards, card)
+
+	-- Tap handling. The card takes the touch on InputBegan and follows it
+	-- through UserInputService, because a finger that slides off the card (or
+	-- that the ScrollingFrame steals) never sends the button an InputEnded.
+	frame.InputBegan:Connect(function(io: InputObject)
+		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
-		waitingUntil = os.clock() + ConfigLoader.current().spawn.spawnCooldownSeconds
-		refreshButtons()
-		remote:FireServer(id)
-		SpawnMenu.close()
-		task.delay(ConfigLoader.current().spawn.spawnCooldownSeconds + 0.05, refreshButtons)
+		if card.touch or busy() then
+			return
+		end
+		card.touch = io
+		card.origin = Vector2.new(io.Position.X, io.Position.Y)
+		card.cancelled = false
+		paintCard(card, true)
 	end)
-	spawnButtons[id] = btn
+end
+
+-- One place where a card's touch is followed: a drag past the slop is a
+-- scroll, a lift over the card is a tap.
+local function bindTapTracking()
+	UserInputService.InputChanged:Connect(function(io: InputObject)
+		for _, card in cards do
+			if card.touch == io or (card.touch and io.UserInputType == Enum.UserInputType.MouseMovement) then
+				local moved = (Vector2.new(io.Position.X, io.Position.Y) - card.origin).Magnitude
+				if not card.cancelled and moved > TAP_SLOP_PX then
+					card.cancelled = true
+					paintCard(card, false)
+				end
+			end
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(io: InputObject)
+		for _, card in cards do
+			if card.touch == io then
+				local tapped = not card.cancelled and overCard(card, io.Position)
+				card.touch = nil
+				card.cancelled = false
+				paintCard(card, false)
+				if tapped then
+					requestSpawn(card.id)
+				end
+			end
+		end
+	end)
+end
+
+-- Lay the whole menu out for the viewport it is in. Called on open and
+-- whenever the screen changes, so a phone rotating is handled.
+local function fit()
+	local g = gui
+	local p = panel
+	local scroll = list
+	if not g or not p or not scroll or not header or not closeButton or not title or not subtitle or not status then
+		return
+	end
+	local m = metrics()
+	local vp = g.AbsoluteSize
+	if vp.Y < 1 then
+		local cam = workspace.CurrentCamera
+		vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	end
+
+	p.Size = UDim2.new(m.panelWidth, 0, 0, 0)
+	local constraint = p:FindFirstChildOfClass("UISizeConstraint")
+	if constraint then
+		constraint.MaxSize = Vector2.new(m.panelMax, math.huge)
+	end
+	local padding = p:FindFirstChildOfClass("UIPadding")
+	if padding then
+		padding.PaddingTop = UDim.new(0, m.pad)
+		padding.PaddingBottom = UDim.new(0, m.pad - 2)
+		padding.PaddingLeft = UDim.new(0, m.pad)
+		padding.PaddingRight = UDim.new(0, m.pad)
+	end
+	local layout = p:FindFirstChildOfClass("UIListLayout")
+	if layout then
+		layout.Padding = UDim.new(0, m.gap)
+	end
+
+	header.Size = UDim2.new(1, 0, 0, m.headerH);
+	(title :: TextLabel).TextSize = m.titleSize;
+	(title :: TextLabel).Size = UDim2.new(1, -(m.closeSize + 16), 0, math.floor(m.headerH * 0.6));
+	(subtitle :: TextLabel).TextSize = m.subSize;
+	(subtitle :: TextLabel).Position = UDim2.fromOffset(0, math.floor(m.headerH * 0.6));
+	(subtitle :: TextLabel).Size = UDim2.new(1, -(m.closeSize + 16), 0, math.floor(m.headerH * 0.4));
+	(closeButton :: TextButton).Size = UDim2.fromOffset(m.closeSize, m.closeSize);
+	(closeButton :: TextButton).TextSize = math.floor(m.closeSize * 0.62)
+
+	local cardList = scroll:FindFirstChildOfClass("UIListLayout")
+	if cardList then
+		cardList.Padding = UDim.new(0, m.gap)
+	end
+	scroll.ScrollBarThickness = if m.touch then 6 else 4
+	for _, card in cards do
+		card.frame.Size = UDim2.new(1, 0, 0, m.cardH)
+		card.paint.Position = UDim2.fromOffset(12, math.floor(m.cardH * 0.15))
+		card.paint.Size = UDim2.new(0, 8, 1, -math.floor(m.cardH * 0.3))
+		local textW = -(m.buttonW + 46)
+		card.name.TextSize = m.nameSize
+		card.name.Position = UDim2.fromOffset(34, math.floor(m.cardH * 0.13))
+		card.name.Size = UDim2.new(1, textW, 0, math.floor(m.nameSize * 1.2))
+		card.chip.TextSize = math.floor(m.specSize * 0.95)
+		card.chip.Position = card.name.Position
+		local chipPad = card.chip:FindFirstChildOfClass("UIPadding")
+		if chipPad then
+			chipPad.PaddingLeft = UDim.new(0, card.name.TextBounds.X + 10)
+		end
+		card.chip.Size = UDim2.fromOffset(0, math.floor(m.nameSize * 1.2))
+		card.blurb.TextSize = m.blurbSize
+		card.blurb.Position = UDim2.fromOffset(34, math.floor(m.cardH * 0.43))
+		card.blurb.Size = UDim2.new(1, textW, 0, math.floor(m.blurbSize * 1.3))
+		card.specs.TextSize = m.specSize
+		card.specs.Position = UDim2.fromOffset(34, math.floor(m.cardH * 0.67))
+		card.specs.Size = UDim2.new(1, textW, 0, math.floor(m.specSize * 1.3))
+		-- On a narrow phone the spec line is noise; the name and blurb carry it.
+		card.specs.Visible = vp.X > 520 or not m.touch
+		card.button.Size = UDim2.fromOffset(m.buttonW, m.buttonH)
+		card.button.Position = UDim2.new(1, -14, 0.5, 0)
+	end
+
+	status.TextSize = m.footerSize
+	status.Size = UDim2.new(1, 0, 0, m.footerH)
+
+	-- The list gets what is left of the screen, so the header and footer are
+	-- always on it.
+	local chrome = m.headerH + m.footerH + m.gap * 2 + m.pad * 2 + math.floor(vp.Y * 0.08)
+	local want = #cards * (m.cardH + m.gap) - m.gap
+	scroll.Size = UDim2.new(1, 0, 0, math.max(m.cardH, math.min(want, vp.Y - chrome)))
+
+	local ob = openButton
+	if ob then
+		local w = if m.touch then math.clamp(vp.X * 0.2, 120, 220) else 92
+		local h = if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38
+		ob.Size = UDim2.fromOffset(w, h)
+		ob.TextSize = if m.touch then math.floor(h * 0.42) else 15
+		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35))
+	end
+	refreshButtons()
 end
 
 local function build()
@@ -192,10 +474,9 @@ local function build()
 	g.DisplayOrder = 20
 	g.Enabled = false
 
-	-- The dim backdrop is a button so a click outside the panel closes the
-	-- menu, and Modal so the mouse is free while it is open. A button behind
-	-- the panel still hears clicks on the panel (Active does not stop it),
-	-- so it checks where the click landed.
+	-- The dim backdrop is a button so a tap outside the panel closes the
+	-- menu. A button behind the panel still hears taps on the panel (Active
+	-- does not stop it), so it checks where the tap landed.
 	local back = Instance.new("TextButton")
 	back.Name = "Backdrop"
 	back.Text = ""
@@ -204,61 +485,52 @@ local function build()
 	back.BackgroundTransparency = 0.45
 	back.BorderSizePixel = 0
 	back.Size = UDim2.fromScale(1, 1)
-	back.Modal = true
 	back.Parent = g
-	backdrop = back
 
-	local panel = Instance.new("Frame")
-	panel.Name = "Panel"
-	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.new(0.92, 0, 0, 0)
-	panel.AutomaticSize = Enum.AutomaticSize.Y
-	panel.BackgroundColor3 = INK
-	panel.BackgroundTransparency = 0.08
-	panel.BorderSizePixel = 0
-	panel.Active = true -- clicks on the panel do not reach the backdrop
-	panel.ZIndex = 2
-	corner(panel, 14)
+	local p = Instance.new("Frame")
+	p.Name = "Panel"
+	p.AnchorPoint = Vector2.new(0.5, 0.5)
+	p.Position = UDim2.fromScale(0.5, 0.5)
+	p.Size = UDim2.new(0.92, 0, 0, 0)
+	p.AutomaticSize = Enum.AutomaticSize.Y
+	p.BackgroundColor3 = INK
+	p.BackgroundTransparency = 0.08
+	p.BorderSizePixel = 0
+	p.Active = true -- taps on the panel do not reach the backdrop
+	p.ZIndex = 2
+	corner(p, 14)
 	local maxSize = Instance.new("UISizeConstraint")
 	maxSize.MaxSize = Vector2.new(560, math.huge)
-	maxSize.Parent = panel
+	maxSize.Parent = p
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 18)
-	pad.PaddingBottom = UDim.new(0, 16)
-	pad.PaddingLeft = UDim.new(0, 18)
-	pad.PaddingRight = UDim.new(0, 18)
-	pad.Parent = panel
+	pad.Parent = p
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Vertical
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 12)
-	layout.Parent = panel
-	panel.Parent = g
+	layout.Parent = p
+	p.Parent = g
+	panel = p
 	back.Activated:Connect(function(io: InputObject)
-		-- Input positions leave out the top bar; this gui ignores the inset,
-		-- so its absolute positions include it.
-		local p = Vector2.new(io.Position.X, io.Position.Y) + GuiService:GetGuiInset()
-		local a, size = panel.AbsolutePosition, panel.AbsoluteSize
-		local inside = p.X >= a.X and p.X <= a.X + size.X and p.Y >= a.Y and p.Y <= a.Y + size.Y
+		local pos = Vector2.new(io.Position.X, io.Position.Y) + GuiService:GetGuiInset()
+		local a, size = p.AbsolutePosition, p.AbsoluteSize
+		local inside = pos.X >= a.X and pos.X <= a.X + size.X and pos.Y >= a.Y and pos.Y <= a.Y + size.Y
 		if not inside then
 			SpawnMenu.close()
 		end
 	end)
 
-	local header = Instance.new("Frame")
-	header.Name = "Header"
-	header.BackgroundTransparency = 1
-	header.Size = UDim2.new(1, 0, 0, 44)
-	header.LayoutOrder = 1
-	header.Parent = panel
-	local title = label(header, "CHOOSE YOUR CAR", Enum.Font.GothamBlack, 24, WHITE)
-	title.Size = UDim2.new(1, -60, 0, 26)
-	local sub = label(header, "اختر سيارتك", Enum.Font.GothamMedium, 15, HOT)
-	sub.Position = UDim2.fromOffset(0, 26)
-	sub.Size = UDim2.new(1, -60, 0, 18)
+	local head = Instance.new("Frame")
+	head.Name = "Header"
+	head.BackgroundTransparency = 1
+	head.Size = UDim2.new(1, 0, 0, 44)
+	head.LayoutOrder = 1
+	head.Parent = p
+	header = head
+	title = label(head, "CHOOSE YOUR CAR", Enum.Font.GothamBlack, 24, WHITE)
+	subtitle = label(head, "اختر سيارتك", Enum.Font.GothamMedium, 15, HOT)
 	local close = Instance.new("TextButton")
 	close.Name = "Close"
+	close.AutoButtonColor = false
 	close.AnchorPoint = Vector2.new(1, 0)
 	close.Position = UDim2.fromScale(1, 0)
 	close.Size = UDim2.fromOffset(40, 40)
@@ -269,7 +541,8 @@ local function build()
 	close.TextSize = 26
 	close.TextColor3 = MUTED
 	corner(close, 10)
-	close.Parent = header
+	close.Parent = head
+	closeButton = close
 	close.Activated:Connect(function()
 		SpawnMenu.close()
 	end)
@@ -284,41 +557,33 @@ local function build()
 	scroll.CanvasSize = UDim2.fromOffset(0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+	scroll.Active = true
 	local cardList = Instance.new("UIListLayout")
 	cardList.FillDirection = Enum.FillDirection.Vertical
 	cardList.SortOrder = Enum.SortOrder.LayoutOrder
-	cardList.Padding = UDim.new(0, 10)
 	cardList.Parent = scroll
-	scroll.Parent = panel
+	scroll.Parent = p
 	list = scroll
 
-	local cars = sortedCars()
-	for i, car in cars do
+	for i, car in sortedCars() do
 		buildCard(scroll, car.id, car.entry, i)
 	end
-	-- Tall enough for every card up to four, then it scrolls. Capped by the
-	-- screen so a phone in landscape still shows the header and footer.
-	local want = math.min(#cars, 4) * 102 - 10
-	local function fit()
-		local screenH = g.AbsoluteSize.Y
-		scroll.Size = UDim2.new(1, 0, 0, math.max(92, math.min(want, screenH - 190)))
-	end
-	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	bindTapTracking()
 
-	local footer = label(panel, "", Enum.Font.GothamMedium, 13, MUTED)
+	local footer = label(p, "", Enum.Font.GothamMedium, 13, MUTED)
 	footer.Name = "Footer"
 	footer.LayoutOrder = 3
 	footer.Size = UDim2.new(1, 0, 0, 18)
 	footer.TextXAlignment = Enum.TextXAlignment.Center
-	footer.Text = if isTouch() then "Tap CARS to come back here" else "Press M to come back here"
 	status = footer
 
 	-- The CARS button, on every platform: the only way back in on a phone.
 	-- Bottom centre: the top left is the debug panel, the top centre the HUD,
-	-- the top right Roblox's own menus (a click there hits CoreGui), and on a
-	-- phone the steer pad and the pedals leave the bottom centre free.
+	-- the top right Roblox's own menus, and on a phone the steer pad and the
+	-- pedals leave the bottom centre free.
 	local open = Instance.new("TextButton")
 	open.Name = "OpenSpawnMenu"
+	open.AutoButtonColor = false
 	open.AnchorPoint = Vector2.new(0.5, 1)
 	open.Position = UDim2.new(0.5, 0, 1, -14)
 	open.Size = UDim2.fromOffset(92, 38)
@@ -328,21 +593,27 @@ local function build()
 	open.Font = Enum.Font.GothamBlack
 	open.TextSize = 15
 	open.TextColor3 = WHITE
-	open.Text = if isTouch() then "CARS" else "CARS  (M)"
 	corner(open, 10)
+	local openStroke = Instance.new("UIStroke")
+	openStroke.Color = HOT
+	openStroke.Thickness = 2
+	openStroke.Transparency = 0.45
+	openStroke.Parent = open
 	local openGui = Instance.new("ScreenGui")
 	openGui.Name = "HajwalaSpawnButton"
 	openGui.ResetOnSpawn = false
 	openGui.DisplayOrder = 7
 	open.Parent = openGui
+	openButton = open
 	open.Activated:Connect(function()
 		SpawnMenu.toggle()
 	end)
 	openGui.Parent = player:WaitForChild("PlayerGui")
 
 	g.Parent = player:WaitForChild("PlayerGui")
-	fit()
 	gui = g
+	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
 end
 
 function SpawnMenu.isOpen(): boolean
@@ -353,26 +624,40 @@ function SpawnMenu.open()
 	if not gui then
 		return
 	end
-	refreshButtons()
 	local g = gui :: ScreenGui
 	g.Enabled = true
+	-- Roblox's own touch controls are CoreGui and draw over any PlayerGui;
+	-- modal hides them so they cannot take taps meant for the cards.
+	UserInputService.ModalEnabled = true
+	fit()
 	if list then
-		list.CanvasPosition = Vector2.zero
+		(list :: ScrollingFrame).CanvasPosition = Vector2.zero
 	end
 	if status then
-		status.Text = if isTouch() then "Tap CARS to come back here" else "Press M to come back here"
+		(status :: TextLabel).Text = if isTouch() then "Tap a car to spawn it   ·   CARS reopens this" else "Click a car to spawn it   ·   M reopens this"
 	end
-	if backdrop then
-		backdrop.Modal = true
+	local ob = openButton
+	if ob then
+		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
+		ob.Visible = false -- it sits under the backdrop; hide it while open
 	end
+	refreshButtons()
 end
 
 function SpawnMenu.close()
 	if gui then
 		(gui :: ScreenGui).Enabled = false
 	end
-	if backdrop then
-		backdrop.Modal = false
+	UserInputService.ModalEnabled = false
+	for _, card in cards do
+		card.touch = nil
+		card.cancelled = false
+		paintCard(card, false)
+	end
+	local ob = openButton
+	if ob then
+		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
+		ob.Visible = true
 	end
 end
 
