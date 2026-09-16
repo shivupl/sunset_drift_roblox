@@ -697,6 +697,12 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 		grid[gx] = table.create(n // 2 + 1, 0)
 	end
 
+	-- The whole field is a few seconds of solid work, and Roblox kills a
+	-- script that never yields ("exhausted allowed execution time"); an
+	-- unfocused Studio, or a busy server, stretches it past the limit. Give
+	-- the scheduler a frame every yieldSeconds of work.
+	local YIELD_SECONDS = 1.5
+	local lastYield = os.clock()
 	local cx = math.floor(minX / chunk) * chunk
 	while cx < maxX do
 		local cz = math.floor(minZ / chunk) * chunk
@@ -879,6 +885,10 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 				chunks += 1
 			end
 			cz += chunk
+			if os.clock() - lastYield > YIELD_SECONDS then
+				task.wait()
+				lastYield = os.clock()
+			end
 		end
 		cx += chunk
 	end

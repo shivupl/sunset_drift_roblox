@@ -31,7 +31,10 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 - **Rojo:** `rojo serve` (Rojo 7.7 via Rokit).
 
 ## Studio workflow (MCP)
-- **Studio id:** `9459db32-e35b-4263-baa3-5c372f8156d5` (call `list_roblox_studios` if it changes).
+- **Studio id:** changes between sessions (it was `9a8b2d85-e643-4b20-81cd-c7a90005d565` on 2026-09-15); call `list_roblox_studios` each session.
+- **Sync with Rojo, not HTTP:** newer Studio MCP builds run executed code without the Network capability, so `HttpService:GetAsync` (the `scripts/mcp_sync.py` + loader route) and `VirtualInputManager` both fail. Run `rojo serve` and connect the Rojo plugin; Rojo syncs into the **Edit** tree, so a running Play session keeps the old modules until Play is restarted.
+- **Driving the UI:** the MCP `user_mouse_input` / `user_keyboard_input` tools send real input (`instance_path` aims at a GuiObject). Mouse drags do **not** scroll a ScrollingFrame (only touch does); use `scrollUp`/`scrollDown` to test scrolling.
+- **Phone UI without a device:** set the LocalPlayer attribute `ForceTouch = true`, then reopen the menu (M) so it re-lays out in touch metrics.
 - **Sync:**
   1. `python3 scripts/mcp_sync.py --manifest`, with `python3 -m http.server 8765 --bind 127.0.0.1` running in the repo root.
   2. Run the loader chunk (`scripts/studio_loader.luau`) via `execute_luau` in Edit.

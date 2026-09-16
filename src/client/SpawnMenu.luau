@@ -29,7 +29,6 @@
 -- 3. **Everything was sized in desktop pixels.** Sizes now come from the
 --    viewport, with phone minimums for tap targets (44 points is the floor).
 local ContextActionService = game:GetService("ContextActionService")
-local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -53,7 +52,7 @@ local TAP_SLOP_PX = 14
 
 type Card = {
 	id: string,
-	frame: TextButton,
+	frame: Frame,
 	button: TextButton,
 	name: TextLabel,
 	blurb: TextLabel,
@@ -61,8 +60,15 @@ type Card = {
 	chip: TextLabel,
 	stroke: UIStroke,
 	paint: Frame,
-	touch: InputObject?,
+}
+
+-- The touch or click being followed across the list: which card it started
+-- on, where, and whether it has turned into a scroll.
+type Press = {
+	card: Card,
+	input: InputObject,
 	origin: Vector2,
+	canvas: number,
 	cancelled: boolean,
 }
 
@@ -76,9 +82,15 @@ local subtitle: TextLabel? = nil
 local list: ScrollingFrame? = nil
 local status: TextLabel? = nil
 local cards: { Card } = {}
+local press: Press? = nil
 local remote: RemoteEvent? = nil
 local currentCarId: string? = nil
 local waitingUntil = 0
+-- ModalEnabled hides Roblox's own touch controls. VehicleController holds it
+-- on for the whole drive (its thumbstick would sit under our steer pad), so
+-- the menu remembers what it found and puts that back: closing the menu in a
+-- car must not hand the thumbstick back mid-drive.
+local modalBefore = false
 
 local function isTouch(): boolean
 	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
@@ -200,8 +212,9 @@ local function paintCard(card: Card, down: boolean)
 end
 
 local function refreshButtons()
+	local p = press
 	for _, card in cards do
-		paintCard(card, card.touch ~= nil and not card.cancelled)
+		paintCard(card, p ~= nil and p.card == card and not p.cancelled)
 	end
 end
 
@@ -239,21 +252,38 @@ local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
 	return out
 end
 
--- Is a screen position over this card? Input positions leave out the top bar
--- and this gui ignores the inset, so absolute positions carry it.
+-- What is under a press, by the engine's own hit-test. It respects clipping,
+-- so a card scrolled half out of the list is only hit where it shows, and it
+-- avoids the inset question entirely: measured in Studio, an InputObject's
+-- position is already in the same space as AbsolutePosition under a gui with
+-- IgnoreGuiInset (GetMouseLocation is the one that carries the inset). Adding
+-- the inset here is what made taps miss the lower cards.
+local function hits(position: Vector3): { GuiObject }
+	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not pg then
+		return {}
+	end
+	local ok, found = pcall(function()
+		return pg:GetGuiObjectsAtPosition(position.X, position.Y)
+	end)
+	return if ok and found then found else {}
+end
+
 local function overCard(card: Card, position: Vector3): boolean
-	local p = Vector2.new(position.X, position.Y) + GuiService:GetGuiInset()
-	local a, size = card.frame.AbsolutePosition, card.frame.AbsoluteSize
-	return p.X >= a.X and p.X <= a.X + size.X and p.Y >= a.Y and p.Y <= a.Y + size.Y
+	for _, o in hits(position) do
+		if o == card.frame then
+			return true
+		end
+	end
+	return false
 end
 
 local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntry, order: number)
-	-- The whole card is the button: on a phone a 120 pixel wide SPAWN button
-	-- is a poor target, and the card is the thing a thumb aims at.
-	local frame = Instance.new("TextButton")
+	-- A Frame, not a button: a GuiButton inside a ScrollingFrame blocks the
+	-- drag that scrolls it, which left the lower cars unreachable on a phone.
+	-- The list handles taps for every card instead (see bindTapTracking).
+	local frame = Instance.new("Frame")
 	frame.Name = "Car_" .. id
-	frame.Text = ""
-	frame.AutoButtonColor = false -- pressed colour is set here, so it always clears
 	frame.BackgroundColor3 = CARD
 	frame.BorderSizePixel = 0
 	frame.Size = UDim2.new(1, 0, 0, 92)
@@ -319,54 +349,77 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 		chip = chip,
 		stroke = stroke,
 		paint = swatch,
-		touch = nil,
-		origin = Vector2.zero,
-		cancelled = false,
 	}
 	table.insert(cards, card)
+end
 
-	-- Tap handling. The card takes the touch on InputBegan and follows it
-	-- through UserInputService, because a finger that slides off the card (or
-	-- that the ScrollingFrame steals) never sends the button an InputEnded.
-	frame.InputBegan:Connect(function(io: InputObject)
+-- Taps for the whole list, tracked here rather than on each card, so the
+-- ScrollingFrame keeps its drag-to-scroll: a press picks the card under it, a
+-- drag past the slop (or any scrolling) turns into a scroll and cancels, and
+-- a lift still over that card spawns.
+local function cardAt(position: Vector3): Card?
+	for _, o in hits(position) do
+		for _, card in cards do
+			if o == card.frame then
+				return card
+			end
+		end
+	end
+	return nil
+end
+
+local function cancelPress()
+	local p = press
+	if p and not p.cancelled then
+		p.cancelled = true
+		paintCard(p.card, false)
+	end
+end
+
+local function bindTapTracking()
+	local scroll = list
+	if not scroll then
+		return
+	end
+	scroll.InputBegan:Connect(function(io: InputObject)
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
-		if card.touch or busy() then
+		if press or busy() then
 			return
 		end
-		card.touch = io
-		card.origin = Vector2.new(io.Position.X, io.Position.Y)
-		card.cancelled = false
+		local card = cardAt(io.Position)
+		if not card then
+			return
+		end
+		press = { card = card, input = io, origin = Vector2.new(io.Position.X, io.Position.Y), canvas = (scroll :: ScrollingFrame).CanvasPosition.Y, cancelled = false }
 		paintCard(card, true)
 	end)
-end
-
--- One place where a card's touch is followed: a drag past the slop is a
--- scroll, a lift over the card is a tap.
-local function bindTapTracking()
 	UserInputService.InputChanged:Connect(function(io: InputObject)
-		for _, card in cards do
-			if card.touch == io or (card.touch and io.UserInputType == Enum.UserInputType.MouseMovement) then
-				local moved = (Vector2.new(io.Position.X, io.Position.Y) - card.origin).Magnitude
-				if not card.cancelled and moved > TAP_SLOP_PX then
-					card.cancelled = true
-					paintCard(card, false)
-				end
-			end
+		local p = press
+		if not p or p.cancelled then
+			return
+		end
+		local moved = io == p.input or io.UserInputType == Enum.UserInputType.MouseMovement
+		if not moved then
+			return
+		end
+		local travel = (Vector2.new(io.Position.X, io.Position.Y) - p.origin).Magnitude
+		local scrolled = math.abs((scroll :: ScrollingFrame).CanvasPosition.Y - p.canvas)
+		if travel > TAP_SLOP_PX or scrolled > 2 then
+			cancelPress()
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(io: InputObject)
-		for _, card in cards do
-			if card.touch == io then
-				local tapped = not card.cancelled and overCard(card, io.Position)
-				card.touch = nil
-				card.cancelled = false
-				paintCard(card, false)
-				if tapped then
-					requestSpawn(card.id)
-				end
-			end
+		local p = press
+		if not p or p.input ~= io then
+			return
+		end
+		local tapped = not p.cancelled and overCard(p.card, io.Position)
+		press = nil
+		paintCard(p.card, false)
+		if tapped then
+			requestSpawn(p.card.id)
 		end
 	end)
 end
@@ -511,12 +564,14 @@ local function build()
 	p.Parent = g
 	panel = p
 	back.Activated:Connect(function(io: InputObject)
-		local pos = Vector2.new(io.Position.X, io.Position.Y) + GuiService:GetGuiInset()
-		local a, size = p.AbsolutePosition, p.AbsoluteSize
-		local inside = pos.X >= a.X and pos.X <= a.X + size.X and pos.Y >= a.Y and pos.Y <= a.Y + size.Y
-		if not inside then
-			SpawnMenu.close()
+		-- A button behind the panel still hears clicks on the panel, so ask
+		-- what is actually under this one.
+		for _, o in hits(io.Position) do
+			if o == p then
+				return
+			end
 		end
+		SpawnMenu.close()
 	end)
 
 	local head = Instance.new("Frame")
@@ -625,6 +680,9 @@ function SpawnMenu.open()
 		return
 	end
 	local g = gui :: ScreenGui
+	if not g.Enabled then
+		modalBefore = UserInputService.ModalEnabled
+	end
 	g.Enabled = true
 	-- Roblox's own touch controls are CoreGui and draw over any PlayerGui;
 	-- modal hides them so they cannot take taps meant for the cards.
@@ -648,10 +706,9 @@ function SpawnMenu.close()
 	if gui then
 		(gui :: ScreenGui).Enabled = false
 	end
-	UserInputService.ModalEnabled = false
+	UserInputService.ModalEnabled = modalBefore
+	press = nil
 	for _, card in cards do
-		card.touch = nil
-		card.cancelled = false
 		paintCard(card, false)
 	end
 	local ob = openButton

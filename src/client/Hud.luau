@@ -2,6 +2,12 @@
 -- Driver HUD. Top centre on every platform, clear of both thumbs, sized off
 -- hud.scale so it can be read at arm's length on a phone.
 --
+-- On a phone it sits under the touch HUD's top row (EXIT / RESET / LOAD /
+-- DBG), which runs along the top from 60% of the width: centred at the very
+-- top the card ran straight into those buttons. It also scales with the
+-- screen there, because a card in desktop pixels is a postage stamp on a
+-- phone held at arm's length.
+--
 -- Four rows, and the middle two only appear when they have something to say:
 --   speed, gear
 --   the slide in progress: points counting up and the chain multiplier,
@@ -14,6 +20,7 @@
 -- is the one that was actually paid.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
@@ -32,6 +39,7 @@ local BAD = Color3.fromRGB(245, 85, 85)
 
 local gui: ScreenGui? = nil
 local scaler: UIScale? = nil
+local cardFrame: Frame? = nil
 local labels: { [string]: TextLabel } = {}
 local rows: { [string]: Frame } = {}
 local flashText = ""
@@ -88,6 +96,36 @@ local function row(parent: Instance, name: string, gap: number, order: number): 
 	return f
 end
 
+local function isTouch(): boolean
+	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
+end
+
+-- Where the card sits and how big it is, for the screen it is on. On a phone
+-- it drops under the touch HUD's top row and grows with the screen; on a
+-- desktop it stays at the top, at hud.scale.
+local function place()
+	local g, c, s = gui, cardFrame, scaler
+	if not g or not c or not s then
+		return
+	end
+	local cfg = ConfigLoader.current()
+	local vp = (g :: ScreenGui).AbsoluteSize
+	if vp.Y < 1 then
+		local cam = workspace.CurrentCamera
+		vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	end
+	if isTouch() then
+		-- Touch.luau puts its top row at inset + d/2 + 6, with d = 0.11 of the
+		-- viewport height; this clears the bottom of it.
+		local d = vp.Y * 0.11 * cfg.input.touchScale;
+		(c :: Frame).Position = UDim2.new(0.5, 0, 0, math.floor(d + 12));
+		(s :: UIScale).Scale = cfg.hud.scale * math.clamp(vp.Y / 620, 0.8, 1.2)
+	else
+		(c :: Frame).Position = UDim2.new(0.5, 0, 0, 6);
+		(s :: UIScale).Scale = cfg.hud.scale
+	end
+end
+
 local function build(): ScreenGui
 	local g = Instance.new("ScreenGui")
 	g.Name = "HajwalaHud"
@@ -122,6 +160,7 @@ local function build(): ScreenGui
 	s.Parent = card
 	scaler = s
 	card.Parent = g
+	cardFrame = card
 
 	local top = row(card, "Top", 6, 1)
 	text(top, "Speed", Enum.Font.GothamBlack, 34, WHITE, 1)
@@ -150,6 +189,8 @@ local function build(): ScreenGui
 
 	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = g
+	place()
+	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
 	return g
 end
 
@@ -191,9 +232,7 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 	lastUpdate = now
 	local g = gui or build()
 	g.Enabled = true
-	if scaler then
-		scaler.Scale = cfg.hud.scale
-	end
+	place()
 
 	labels.Speed.Text = comma(math.floor(state.speedKmh + 0.5))
 	labels.Gear.Text = if state.gear == -1 then "R" else tostring(state.gear)
