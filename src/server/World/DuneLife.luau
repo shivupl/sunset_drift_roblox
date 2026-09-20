@@ -693,6 +693,24 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 		end
 	end
 
+	-- Shadows only near the road. One pass over everything just built, rather
+	-- than a test in each of the fourteen scene builders above.
+	local reachM = cfg.shadows.sceneryReachM
+	if reachM > 0 then
+		local limitM = border.roadEdgeM + reachM
+		local stilled = 0
+		for _, d in folder:GetDescendants() do
+			if d:IsA("BasePart") and d.CastShadow then
+				local _, lateralM = Relief.roadCoords(ctx, path, d.Position)
+				if math.abs(lateralM) > limitM then
+					d.CastShadow = false
+					stilled += 1
+				end
+			end
+		end
+		counts.shadowsOff = stilled
+	end
+
 	return folder, counts
 end
 

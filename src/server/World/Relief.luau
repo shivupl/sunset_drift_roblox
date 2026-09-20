@@ -84,6 +84,7 @@ export type Border = {
 	-- the terrain pass fades the waves round the station).
 	layersAt: (alongM: number, lateralM: number) -> (number, number),
 	sinkM: number,
+	roadEdgeM: number, -- centreline to the outside of the kerb
 	nearM: number, -- nothing of a dune shows nearer the centreline than this
 	capNearM: number, -- nor nearer the start line, behind it
 	endM: number,
@@ -559,6 +560,7 @@ function Relief.border(cfg: Config, ctx: Context, path: Path): Border
 		heightAt = heightAt,
 		layersAt = layersAt,
 		sinkM = sinkM,
+		roadEdgeM = roadEdgeM,
 		nearM = b.nearM,
 		capNearM = b.capNearM,
 		endM = endM,
@@ -703,10 +705,32 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 	-- the scheduler a frame every yieldSeconds of work.
 	local YIELD_SECONDS = 1.5
 	local lastYield = os.clock()
-	local cx = math.floor(minX / chunk) * chunk
-	while cx < maxX do
-		local cz = math.floor(minZ / chunk) * chunk
-		while cz < maxZ do
+	-- Nearest the spawn first. The build runs with players already in the
+	-- server (a solo tester's join is what starts it), so the sand they are
+	-- standing on should be the first to take its final shape, not the last.
+	local origins: { Vector3 } = {}
+	do
+		local x = math.floor(minX / chunk) * chunk
+		while x < maxX do
+			local z = math.floor(minZ / chunk) * chunk
+			while z < maxZ do
+				table.insert(origins, Vector3.new(x, 0, z))
+				z += chunk
+			end
+			x += chunk
+		end
+		local spawn = path[1].position
+		local function d2(o: Vector3): number
+			local dx, dz = o.X + chunk / 2 - spawn.X, o.Z + chunk / 2 - spawn.Z
+			return dx * dx + dz * dz
+		end
+		table.sort(origins, function(a, b)
+			return d2(a) < d2(b)
+		end)
+	end
+	for _, origin in origins do
+		local cx, cz = origin.X, origin.Z
+		do
 			-- Path points this chunk could be nearest to: none further from
 			-- its centre than the nearest one plus the chunk's width. Scanning
 			-- only these per column keeps the lateral distance exact through
@@ -884,13 +908,11 @@ function Relief.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 				terrain:WriteVoxels(Region3.new(Vector3.new(cx, yLo, cz), Vector3.new(cx + chunk, yHi, cz + chunk)), VOXEL, materials, occupancy)
 				chunks += 1
 			end
-			cz += chunk
 			if os.clock() - lastYield > YIELD_SECONDS then
 				task.wait()
 				lastYield = os.clock()
 			end
 		end
-		cx += chunk
 	end
 
 	-- Voxels written this frame are not raycastable until the next one, and

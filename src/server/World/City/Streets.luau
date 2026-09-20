@@ -126,10 +126,10 @@ end
 
 -- Thin painted strip on the asphalt.
 local function paint(ctx: Context, c: CCfg, parent: Instance, name: string, cx: number, cz: number, sx: number, sz: number, color: Color3, transparency: number?)
-	local p = slab(ctx, parent, name, cx, cz, sx, sz, c.surface.markingEpsilonM + c.surface.markingThicknessM, c.surface.markingThicknessM, color, Enum.Material.SmoothPlastic, false)
-	if transparency then
-		p.Transparency = transparency
-	end
+	-- The fade goes into the colour, not Transparency: see-through parts are
+	-- sorted and drawn one by one, and the streets had over a thousand.
+	local shown = if transparency then color:Lerp(c.surface.renderedAsphaltColor, transparency) else color
+	slab(ctx, parent, name, cx, cz, sx, sz, c.surface.markingEpsilonM + c.surface.markingThicknessM, c.surface.markingThicknessM, shown, Enum.Material.SmoothPlastic, false)
 end
 
 -- Boulevard markings along one segment: lane dashes, the parking-lane and

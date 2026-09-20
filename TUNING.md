@@ -407,7 +407,8 @@ Surface realism. None of it is geometry the car can feel.
 | seamsEnabled / seamWidthM / seamDarken | A darker line across the road at each slab joint. |
 | patchesEnabled / patchSpacingM / patchChance / patchMinLengthM / patchMaxLengthM / patchTone | Repair patches in a different shade. |
 | markingWear | How far each dash's colour is pulled toward the road. 0 is crisp white, which no real road has. |
-| markingFadeMax | Most transparent a worn dash gets. |
+| markingFadeMax | Most a worn dash fades into the road. Mixed into the dash's colour, not Transparency, so markings stay opaque parts. |
+| renderedAsphaltColor | The grey a dash fades toward: what the asphalt tint renders as (88, 88, 92), not the near-white tint. Re-pick it if asphaltColor moves a lot. |
 
 ## ground
 | Field | What it does |
@@ -584,6 +585,8 @@ Per-type switch. Shadow cost scales with the **number** of casters, not size.
 |---|---|
 | lamps / signage / palms | On. Sparse, tall, and their long raking shadows across the road are most of the realism. |
 | rocks / cityscape | Off. Too small and too far to pay for themselves. |
+| fence | Off. The fence was 2,503 of 5,515 casters and stands 700 m from the road. `true` brings the post shadows back. |
+| sceneryReachM | 150. Dune life further than this from the road edge casts no shadow. 0 = everything casts. Raise it if a camp near the road loses a shadow you miss. |
 
 ## signage
 | Field | What it does |

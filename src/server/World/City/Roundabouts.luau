@@ -691,7 +691,7 @@ function Roundabouts.build(ctx: Context, c: CCfg, plan: Plan, parent: Instance, 
 			for i = 0, n - 1 do
 				local a = (i + 0.5) / n * math.pi * 2
 				if not (skipMouths and inMouth(mouths, a, radiusM, 1)) then
-					onArc(ctx, ring, "RingLine", centre, radiusM, a, dashM, widthM, eps, s.markingThicknessM, paint, Enum.Material.SmoothPlastic, 0.1)
+					onArc(ctx, ring, "RingLine", centre, radiusM, a, dashM, widthM, eps, s.markingThicknessM, paint:Lerp(s.renderedAsphaltColor, 0.1), Enum.Material.SmoothPlastic)
 				end
 			end
 		end

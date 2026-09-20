@@ -500,6 +500,13 @@ local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt
 	local thick = r.markingThicknessM
 
 	-- Paint is bleached and driven over, never crisp white.
+	-- The fade used to be part Transparency, which made every dash a
+	-- see-through part: thousands of them, each sorted and drawn on its own,
+	-- which is what a phone GPU is worst at. Mixing the same fraction of the
+	-- road's rendered grey into the colour looks the same and stays opaque.
+	local function faded(color: Color3, fade: number): Color3
+		return color:Lerp(w.renderedAsphaltColor, fade)
+	end
 	local function wornPaint(): (Color3, number)
 		local amount = rng:NextNumber(0, w.markingWear)
 		return r.paintColor:Lerp(asphalt, amount), rng:NextNumber(0, w.markingFadeMax)
@@ -522,9 +529,8 @@ local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt
 				widthM = r.edgeLineWidthM,
 				heightM = thick,
 				yM = yM,
-				color = color,
+				color = faded(color, fade * 0.5),
 				material = Enum.Material.Concrete,
-				transparency = fade * 0.5,
 			})
 		end
 		-- Dashed dividers between lanes.
@@ -537,10 +543,9 @@ local function buildMarkings(ctx: Context, path: Path, parent: Instance, asphalt
 					name = "Dash",
 					size = Vector3.new(dashWidth, ctx.s(thick), dashLen * rng:NextNumber(0.94, 1.0)),
 					cframe = CFrame.lookAt(pos, pos + p.cframe.LookVector),
-					color = color,
+					color = faded(color, fade),
 					material = Enum.Material.Concrete,
 					parent = parent,
-					transparency = fade,
 				})
 			end)
 		end

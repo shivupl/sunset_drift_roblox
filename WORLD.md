@@ -769,6 +769,32 @@ radius nothing planted was in view at speed.
 Only the asphalt, median, shoulders, pad, bay, spawn and sand collide. The
 build-time audit printed exactly those names and nothing else.
 
+**The phone pass (2026-09-19).** Measured in Play on the Mac: 27,725 parts,
+61,063 client instances after join, 305 draw calls and 356k triangles at the
+desert spawn, 115 to 211 draw calls in the city. Geometry is inside a phone's
+budget; what is not is see-through surface and the join.
+
+| | Before | After |
+|---|---|---|
+| Semi-transparent parts | 8,203 | 4,505 (the skyline windows and lamp heads, which need it) |
+| Shadow casters | 5,515 | 2,496 |
+| Client boots (HUD, menu) | after the world build | at join, behind a cover |
+
+Road dashes, edge lines, city street paint and roundabout ring lines carried
+their wear as Transparency: 3,700 parts the renderer had to sort and draw one
+by one. The same fraction of `renderedAsphaltColor` mixed into the colour
+looks the same and is opaque. The fence (2,503 casters, 700 m out) no longer
+casts, and dune life casts only within `shadows.sceneryReachM` of the road.
+
+**The join.** A full build is 16 to 28 s on the Mac (terrain is most of it)
+and runs when a server starts, which for a solo tester is every join. The
+server now creates `Remotes` before the build and sets the ReplicatedStorage
+attribute `WorldReady` after it; the client boots at once, shows
+`LoadCover` until the flag is true, and starts `WorldLights` only then
+(it reads `WorldSettings`, which the build creates). Terrain chunks are written
+nearest the spawn first. Shadow stats read 0 in Edit, so shadow cost can only
+be measured in Play.
+
 Triangle counts for the meshes are the honest gap. Roblox does not expose
 them to Lua, and `EditableMesh` refuses assets the place owner did not upload,
 so the date palms, scrub and rocks cannot be counted from here. Read them from

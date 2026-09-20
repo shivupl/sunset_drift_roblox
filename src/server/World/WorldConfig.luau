@@ -161,7 +161,12 @@ local config = {
 			patchTone = 0.16,
 			-- Markings are painted, driven over and sun-bleached, never crisp.
 			markingWear = 0.4, -- fraction of each dash's colour pulled toward the road
-			markingFadeMax = 0.3, -- most transparent a worn dash gets
+			markingFadeMax = 0.3, -- most a worn dash fades into the road
+			-- What a dash fades toward: the grey the asphalt renders as (its
+			-- tint times the colour map), not the near-white tint itself. The
+			-- fade is mixed into the colour so markings stay opaque parts;
+			-- 2,236 see-through dashes were a phone GPU cost for no visible gain.
+			renderedAsphaltColor = Color3.fromRGB(88, 88, 92),
 		},
 	},
 
@@ -1231,6 +1236,14 @@ local config = {
 		rocks = false,
 		cityscape = false,
 		dunes = true,
+		-- The fence was 2,503 of the world's 5,515 casters (2,264 posts, 239
+		-- rails), and since it moved 700 m out nobody on the road can see a
+		-- post's shadow. Off for phones; true brings the post shadows back.
+		fence = false,
+		-- Dune life further than this from the road edge casts nothing: a
+		-- camel's shadow 400 m out is a few pixels. Near the road it still
+		-- throws the long golden-hour shadow. 0 = everything casts.
+		sceneryReachM = 150,
 	},
 
 	-- Legacy distance fog stays off: Atmosphere does the distance fade, and

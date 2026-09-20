@@ -109,6 +109,9 @@ local config = {
 		-- Tints on the asphalt variant's colour map (WorldConfig.road), so
 		-- near white; see the highway's asphaltColor.
 		asphaltColor = Color3.fromRGB(178, 178, 182), -- 202/206 until the highway went slightly darker
+		-- The grey that tint renders as. Worn paint fades toward this in its
+		-- colour instead of going see-through (WorldConfig road.wear has the why).
+		renderedAsphaltColor = Color3.fromRGB(88, 88, 92),
 		sideStreetColor = Color3.fromRGB(212, 210, 212),
 		slabTone = 0.06, -- per-slab colour jitter
 		kerbColor = Color3.fromRGB(166, 158, 142),

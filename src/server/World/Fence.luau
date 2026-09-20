@@ -105,7 +105,7 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 			color = fc.postColor,
 			material = Enum.Material.Metal,
 			parent = folder,
-			castShadow = true, -- long post shadows across the sand at golden hour
+			castShadow = cfg.shadows.fence, -- see WorldConfig shadows: 2,500 casters 700 m from the road
 		})
 		posts += 1
 	end
@@ -145,7 +145,7 @@ function Fence.build(cfg: Config, ctx: Context, path: Path, parent: Instance): F
 			tex.Parent = panel
 		end
 		-- Top rail and the barbed strands.
-		piece(H - ctx.s(fc.railWidthM) / 2, Vector3.new(ctx.s(fc.railWidthM), ctx.s(fc.railWidthM), length), "FenceRail", { shadow = true })
+		piece(H - ctx.s(fc.railWidthM) / 2, Vector3.new(ctx.s(fc.railWidthM), ctx.s(fc.railWidthM), length), "FenceRail", { shadow = cfg.shadows.fence })
 		if fc.barbedWire then
 			for _, h in fc.barbedHeightsM do
 				piece(H + ctx.s(h), Vector3.new(ctx.s(0.012), ctx.s(0.012), length), "BarbedWire", { color = fc.barbedColor })
