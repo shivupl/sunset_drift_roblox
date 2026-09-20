@@ -119,7 +119,9 @@ local function place()
 		-- viewport height; this clears the bottom of it.
 		local d = vp.Y * 0.11 * cfg.input.touchScale;
 		(c :: Frame).Position = UDim2.new(0.5, 0, 0, math.floor(d + 12));
-		(s :: UIScale).Scale = cfg.hud.scale * math.clamp(vp.Y / 620, 0.8, 1.2)
+		-- Bigger than a desktop, not smaller: a phone is held at arm's length
+		-- and the card is read at a glance.
+		(s :: UIScale).Scale = cfg.hud.scale * math.clamp(vp.Y / 620, 1, 1.35)
 	else
 		(c :: Frame).Position = UDim2.new(0.5, 0, 0, 6);
 		(s :: UIScale).Scale = cfg.hud.scale

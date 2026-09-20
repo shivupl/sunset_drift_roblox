@@ -28,6 +28,11 @@
 --    open.
 -- 3. **Everything was sized in desktop pixels.** Sizes now come from the
 --    viewport, with phone minimums for tap targets (44 points is the floor).
+-- 4. **The panel was taller than the phone.** It grew with AutomaticSize and
+--    was centred, so the header and the footer were cut off the top and the
+--    bottom, and a half-clipped card reads as a greyed-out one. The panel is
+--    sized to the screen now: the list takes what is left after the header,
+--    the footer and the margins, and scrolls when it has to.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -381,11 +386,15 @@ local function bindTapTracking()
 	if not scroll then
 		return
 	end
-	scroll.InputBegan:Connect(function(io: InputObject)
+	-- Every press is picked up from UserInputService rather than from the list:
+	-- a ScrollingFrame claims a touch for its gesture, and what it passes on to
+	-- its own handlers on a phone is not something to depend on. The hit test
+	-- below decides whether the press was on a card.
+	UserInputService.InputBegan:Connect(function(io: InputObject)
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
-		if press or busy() then
+		if press or busy() or not SpawnMenu.isOpen() then
 			return
 		end
 		local card = cardAt(io.Position)
@@ -501,11 +510,18 @@ local function fit()
 	status.TextSize = m.footerSize
 	status.Size = UDim2.new(1, 0, 0, m.footerH)
 
-	-- The list gets what is left of the screen, so the header and footer are
-	-- always on it.
-	local chrome = m.headerH + m.footerH + m.gap * 2 + m.pad * 2 + math.floor(vp.Y * 0.08)
+	-- The panel is sized, not grown: everything but the list is fixed, so the
+	-- list takes whatever the screen has left and the header and footer are
+	-- always on it. Margins keep it off the top bar and off a phone's home
+	-- indicator.
+	local topMargin = if m.touch then 10 else 8
+	local bottomMargin = if m.touch then 18 else 8
+	local chrome = m.pad * 2 + m.headerH + m.gap * 2 + m.footerH
+	local room = math.max(vp.Y - topMargin - bottomMargin - chrome, math.floor(m.cardH * 0.6))
 	local want = #cards * (m.cardH + m.gap) - m.gap
-	scroll.Size = UDim2.new(1, 0, 0, math.max(m.cardH, math.min(want, vp.Y - chrome)))
+	local listH = math.min(want, room)
+	scroll.Size = UDim2.new(1, 0, 0, listH)
+	p.Size = UDim2.new(m.panelWidth, 0, 0, chrome + listH)
 
 	local ob = openButton
 	if ob then
@@ -513,7 +529,7 @@ local function fit()
 		local h = if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38
 		ob.Size = UDim2.fromOffset(w, h)
 		ob.TextSize = if m.touch then math.floor(h * 0.42) else 15
-		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35))
+		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35) - (if m.touch then 10 else 0))
 	end
 	refreshButtons()
 end
@@ -523,7 +539,10 @@ local function build()
 	local g = Instance.new("ScreenGui")
 	g.Name = "HajwalaSpawnMenu"
 	g.ResetOnSpawn = false
-	g.IgnoreGuiInset = true
+	-- Not IgnoreGuiInset: the gui is then exactly the area under Roblox's top
+	-- bar, so a centred panel cannot end up beneath it. On a phone the panel
+	-- was taller than the screen and the header and footer were cut off.
+	g.IgnoreGuiInset = false
 	g.DisplayOrder = 20
 	g.Enabled = false
 
@@ -545,7 +564,6 @@ local function build()
 	p.AnchorPoint = Vector2.new(0.5, 0.5)
 	p.Position = UDim2.fromScale(0.5, 0.5)
 	p.Size = UDim2.new(0.92, 0, 0, 0)
-	p.AutomaticSize = Enum.AutomaticSize.Y
 	p.BackgroundColor3 = INK
 	p.BackgroundTransparency = 0.08
 	p.BorderSizePixel = 0
