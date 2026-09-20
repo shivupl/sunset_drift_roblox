@@ -544,6 +544,12 @@ local function build()
 	-- was taller than the screen and the header and footer were cut off.
 	g.IgnoreGuiInset = false
 	g.DisplayOrder = 20
+	-- Sibling, not the Global default: under Global every ZIndex 1 object in
+	-- the gui draws before every ZIndex 2 one, so the panel (2) was drawn over
+	-- its own cards and text (1) and its near-opaque background dimmed them.
+	-- That is the "dark overlay" the owner saw on a phone. With Sibling a
+	-- child always draws above its parent, and ZIndex only orders siblings.
+	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.Enabled = false
 
 	-- The dim backdrop is a button so a tap outside the panel closes the
