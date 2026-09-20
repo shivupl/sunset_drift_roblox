@@ -132,6 +132,10 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Merge repeated geometry.** One long panel per straight run instead of one per bay; merge wherever the shape stays within a tolerance.
 - **Skip empty work before optimising busy work.** Culling chunks with nothing in them is usually the biggest win.
 - **Measure frame rate with the Studio window focused.** Unfocused Studio throttles to about 15 fps and makes everything look slower.
+- **On phones, count see-through surface before triangles.** A few hundred draw calls and a few hundred thousand triangles are fine; thousands of semi-transparent parts are not, because each is sorted and drawn alone and phone GPUs are fill-rate bound. Never use Transparency for a cosmetic fade: mix the fade into the colour.
+- **Shadow stats read 0 in Edit.** `Stats.ShadowsDrawcallCount` and `ShadowsTriangleCount` only report in Play.
+- **A world built at server start is a join delay.** A solo tester starts a new server with every join. Create the Remotes and boot the client UI before the build, publish a ready flag after it, and cover the screen in between. Anything that reads what the build leaves behind waits for the flag.
+- **Persistent is for small, essential things.** Persistent models go to every client at join and never unload. Keep them to a few hundred instances: the driving surface, a low-detail silhouette of a distant landmark. Stream the detail.
 
 ---
 
