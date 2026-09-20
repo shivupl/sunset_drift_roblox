@@ -10,9 +10,14 @@ local ScoreService = require(script.ScoreService)
 
 print("[Hajwala] server boot")
 local config = ConfigLoader.current()
+-- Remotes before the world: the build takes tens of seconds and the player who
+-- started this server is already in it, with a client that boots nothing (no
+-- HUD, no menu) until the Remotes folder exists. WorldReady tells that client
+-- when the build is done and a car can actually be spawned.
+ReplicatedStorage:SetAttribute("WorldReady", false)
+local remotes = Remotes.create()
 local world = World.build()
 local road = world.road
-local remotes = Remotes.create()
 CarSpawner.setSimFactory(function(model: Model, cfg: ConfigLoader.Config): CarSpawner.Sim
 	-- VehicleSim.Sim is a metatable type; cast to the spawner's structural Sim interface.
 	return (VehicleSim.new(model, cfg) :: any) :: CarSpawner.Sim
@@ -21,4 +26,5 @@ CarSpawner.driverChanged = ScoreService.setDriving
 CarSpawner.configChanged = ScoreService.setConfig
 ScoreService.start(config, remotes)
 CarSpawner.start(config, road, remotes)
+ReplicatedStorage:SetAttribute("WorldReady", true)
 print("[Hajwala] ready")
