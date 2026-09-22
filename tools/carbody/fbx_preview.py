@@ -30,6 +30,8 @@ COLOURS = {
 def main(car_id, prefix, wheelbase=2.775, track=1.575):
     folder = os.path.join(ROOT, "assets", "cars", car_id)
     summary = json.load(open(os.path.join(folder, "summary.json")))
+    # store_body.py records the car's own track.
+    track = summary.get("scale", {}).get("trackM", track)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     # Car space is Y up; Blender is Z up.
     to_blender = Matrix.Rotation(math.radians(90), 4, "X")
@@ -40,7 +42,13 @@ def main(car_id, prefix, wheelbase=2.775, track=1.575):
         ob = bpy.context.selected_objects[0]
         ob.name = name
         m = bpy.data.materials.new(name)
-        m.diffuse_color = COLOURS.get(name, (0.5, 0.5, 0.5, 1))
+        entry = summary["pieces"][name]
+        if name in COLOURS:
+            m.diffuse_color = COLOURS[name]
+        elif "color" in entry:
+            m.diffuse_color = tuple(c / 255 for c in entry["color"]) + (1,)
+        else:
+            m.diffuse_color = (0.5, 0.5, 0.5, 1)
         ob.data.materials.clear()
         ob.data.materials.append(m)
         if name in ("Tyre", "Rim"):

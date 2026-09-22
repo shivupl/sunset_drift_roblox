@@ -55,12 +55,14 @@ def read_obj(path: str, name: str) -> meshkit.Piece:
 def main(car_id: str, module: str):
     folder = os.path.join(ROOT, "assets", "cars", car_id)
     summary = json.load(open(os.path.join(folder, "summary.json")))
-    pieces = [read_obj(os.path.join(folder, f"{n}.obj"), n) for n in ORDER if os.path.exists(os.path.join(folder, f"{n}.obj"))]
+    # The pieces the summary lists (store_body.py), or the fixed set.
+    names = list(summary["pieces"]) if "pieces" in summary else ORDER
+    pieces = [read_obj(os.path.join(folder, f"{n}.obj"), n) for n in names if os.path.exists(os.path.join(folder, f"{n}.obj"))]
     counts = ", ".join(f"{p.name} {p.triangles}" for p in pieces)
     whole = sum(p.triangles for p in pieces if p.name not in ("Tyre", "Rim")) + 4 * sum(p.triangles for p in pieces if p.name in ("Tyre", "Rim"))
     header = [
         summary.get("title", module),
-        f"Source: {summary['source']['file']} ({summary['source']['triangles']} triangles), cleaned by tools/carbody/fbx_body.py.",
+        f"Source: {summary['source']['file']} ({summary['source']['triangles']} triangles), cleaned by tools/carbody/{'store_body' if 'removed' in summary else 'fbx_body'}.py.",
         f"Triangles: {counts}; {whole} for the whole car with four wheels.",
     ]
     meshkit.write_luau(os.path.join(ROOT, "src", "shared", "CarMeshes", module), "fbx_pieces", header, pieces)

@@ -333,6 +333,55 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 	},
+
+	-- THE KAMRI '07. A mid-2000s Japanese saloon from the Creator Store
+	-- (asset 876308553, an A-Chassis car), debadged and cut down for the game
+	-- by tools/carbody/store_body.py: scripts, GUIs, sounds and lights
+	-- stripped in Studio; the engine bay and every face no ray from outside
+	-- can reach (inner skins of panels) deleted; the maker's ovals and script
+	-- lettering cut; the rear cabin trimmed harder than the front. 158,140
+	-- triangles in, 28,452 out, in eleven pieces. Uniformly scaled at
+	-- 0.2505 m a stud so its wheel centres sit on the real 2.775 m wheelbase:
+	-- 4.83 m long, 1.52 m track, 0.66 m tyres. Same mass and handling as the
+	-- Kamri.
+	kamri07 = {
+		displayName = "Kamri '07",
+		blurb = "The real-deal saloon. Same planted chassis as the Kamri.",
+		order = 6,
+		scale = 1.2,
+		rig = {
+			massKg = 1600,
+			-- Nose at -2.36 m, tail at +2.47 m.
+			collisionSizeM = { 1.8, 1.2, 4.6 },
+			centerOfMassM = { 0, -0.3, -0.2 },
+			shellMassFraction = 0.35,
+			wheelbaseM = 2.775,
+			trackWidthM = 1.523,
+			wheelRadiusM = 0.33,
+			wheelWidthM = 0.215,
+			-- Behind the wheel (-0.38 m across), 0.25 m off the ground: a
+			-- seated head tops out at 1.45 m, under the 1.48 m roof.
+			seatM = { -0.38, -0.56, 0.05 },
+		},
+		body = {
+			paint = Color3.fromRGB(236, 236, 232),
+			pieces = {
+				{ name = "Body", mesh = "Kamri07/Body", paint = true, sizeM = { 2.0342, 1.3019, 4.8331 }, offsetM = { -0.0019, 0.8294, 0.0546 } },
+				{ name = "Glass", mesh = "Kamri07/Glass", sizeM = { 1.5989, 0.5071, 3.1035 }, offsetM = { -0.0019, 1.2019, 0.3345 }, color = Color3.fromRGB(24, 30, 34), material = Enum.Material.Glass, transparency = 0.35, castShadow = false },
+				{ name = "Lenses", mesh = "Kamri07/Lenses", sizeM = { 1.6954, 0.3736, 4.5635 }, offsetM = { -0.0019, 0.7861, 0.0875 }, color = Color3.fromRGB(200, 205, 210), material = Enum.Material.Glass, transparency = 0.7, castShadow = false },
+				{ name = "TailLamps", mesh = "Kamri07/TailLamps", sizeM = { 1.6077, 0.1851, 0.3123 }, offsetM = { -0.0026, 0.8757, 2.2063 }, color = Color3.fromRGB(150, 8, 10), material = Enum.Material.Glass, castShadow = false },
+				{ name = "Chrome", mesh = "Kamri07/Chrome", sizeM = { 1.6425, 0.7107, 3.2897 }, offsetM = { -0.0019, 1.0526, 0.7486 }, color = Color3.fromRGB(205, 207, 210), material = Enum.Material.Metal },
+				{ name = "Trim", mesh = "Kamri07/Trim", sizeM = { 2.0167, 1.2756, 4.7605 }, offsetM = { -0.0019, 0.8385, 0.0625 }, color = Color3.fromRGB(22, 22, 24), material = Enum.Material.Plastic },
+				{ name = "Grey", mesh = "Kamri07/Grey", sizeM = { 1.8157, 1.2251, 4.5376 }, offsetM = { -0.1049, 0.7789, -0.0151 }, color = Color3.fromRGB(70, 70, 74), material = Enum.Material.Plastic },
+				{ name = "InteriorDark", mesh = "Kamri07/InteriorDark", sizeM = { 1.7094, 1.3243, 4.5792 }, offsetM = { -0.0019, 0.8083, 0.1007 }, color = Color3.fromRGB(28, 28, 30), castShadow = false },
+				{ name = "InteriorLight", mesh = "Kamri07/InteriorLight", sizeM = { 1.8306, 1.104, 3.1736 }, offsetM = { 0.103, 0.882, 0.38 }, color = Color3.fromRGB(120, 116, 108), castShadow = false },
+			},
+			wheelPieces = {
+				{ name = "Tyre", mesh = "Kamri07/Tyre", sizeM = { 0.2509, 0.6598, 0.6598 }, offsetM = { 0.0001, 0, 0 }, color = Color3.fromRGB(24, 24, 26), material = Enum.Material.Rubber },
+				{ name = "Rim", mesh = "Kamri07/Rim", sizeM = { 0.0511, 0.4274, 0.4274 }, offsetM = { -0.1048, 0.0001, 0 }, color = Color3.fromRGB(188, 190, 194), material = Enum.Material.Metal },
+			},
+		},
+	},
 }
 
 return {
