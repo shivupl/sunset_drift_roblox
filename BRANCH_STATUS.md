@@ -1,13 +1,19 @@
-# Branch status: INACTIVE (parked 2026-09-13)
+# Branch status
 
-`phase3-cars` is shelved, not merged. Active work continues on `phase2-rig-body`.
+**`main` is the only branch** (tidied 2026-09-22). Everything from `phase0-vehicle`,
+`phase2-rig-body`, `phase3-cars` and `mobile-perf` is on it; those branches were fully merged
+and deleted. Work happens on `main`, or on a short-lived branch merged back into it.
 
-What is here, for when it is picked back up:
-- The Kamri: a car body generated in the repo (`tools/carbody/kamri.py`), 10,108 triangles,
-  baked textures on SurfaceAppearance looks, and RIG_SPEC.md §7b describing the pipeline.
-- Bodies mounted per client (`src/client/CarBodies.luau`, `src/shared/BodyBuilder.luau`).
-- Wheel travel from the suspension compression, including cars the client is not driving
-  (`src/client/WheelVisuals.luau`).
+## Parked: the Kamri car body (uncommitted in the working tree)
 
-Why it was parked: generated meshes need the experience's "Allow Mesh / Image APIs" setting
+The Kamri is a car body generated in the repo (`tools/carbody/kamri.py`), 10,108 triangles,
+with baked textures on SurfaceAppearance looks and RIG_SPEC.md §7b describing the pipeline.
+Bodies are mounted per client (`src/client/CarBodies.luau`, `src/shared/BodyBuilder.luau`),
+and wheel travel comes from the suspension compression (`src/client/WheelVisuals.luau`).
+Those parts are committed.
+
+The latest car-rig changes (RIG_SPEC.md, RigBuilder, CarCatalog, VehicleRig, VehicleRig.spec,
+tools/carbody) are deliberately **left uncommitted** at the owner's direction.
+
+Why it is parked: generated meshes need the experience's "Allow Mesh / Image APIs" setting
 (ID-verified owner) or a manual 3D Importer upload of the OBJ files before they show in play.

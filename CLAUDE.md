@@ -9,7 +9,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 - **`DESIGN.md`:** the vehicle model (suspension, tyres).
 - **`RIG_SPEC.md`:** the car rig and body contract.
 - **Design docs:** `hajwala-game-design.md`, `hajwala-niche-thesis.md`, `hajwala-project-phases.md`.
-- **`BRANCH_STATUS.md`:** what is parked and why.
+- **`BRANCH_STATUS.md`:** branch layout, and what is parked and why.
 
 ## Layout
 | Path | Maps to | What is in it |
@@ -77,4 +77,4 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 - **Stage specific files only.** The working tree holds uncommitted car-rig changes that are not ours: RIG_SPEC.md, RigBuilder, CarCatalog, VehicleRig, VehicleRig.spec, tools/carbody (`kamri.py`, `meshkit.py`; `plate.py` and `apply_catalog.py` deleted). Do not commit or discard them without being asked.
 - **End commits** with the session's Co-Authored-By and Claude-Session trailers.
 - **Give the owner a link for every commit:** `https://github.com/shivupl/sunset_drift_roblox/commit/<sha>`. A link only works once the branch is pushed; ask before pushing.
-- **Branches:** `phase3-cars` is marked inactive for the Kamri car-body work (see BRANCH_STATUS.md), but world work since 2026-09-13 has been committed on it at the owner's direction.
+- **Branches:** `main` is the only branch (tidied 2026-09-22; see BRANCH_STATUS.md). Work on `main` or a short-lived branch merged back into it.
