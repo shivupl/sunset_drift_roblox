@@ -28,6 +28,9 @@ type BodyPiece = VehicleRig.BodyPiece
 local BodyBuilder = {}
 
 local assetTemplates: { [number]: MeshPart } = {}
+local LOAD_ATTEMPTS = 3
+-- How long a car waits for its meshes before building with boxes for the rest.
+local PRELOAD_TIMEOUT = 30
 local failed: { [string]: string } = {}
 
 local function assetTemplate(meshId: number): MeshPart?
@@ -38,15 +41,23 @@ local function assetTemplate(meshId: number): MeshPart?
 	if failed[key] then
 		return nil
 	end
-	local ok, result = pcall(function()
-		return AssetService:CreateMeshPartAsync(Content.fromAssetId(meshId), {
-			CollisionFidelity = Enum.CollisionFidelity.Box,
-			RenderFidelity = Enum.RenderFidelity.Automatic,
-		})
-	end)
-	if ok and result then
-		assetTemplates[meshId] = result
-		return result
+	-- A store car is dozens of meshes and the asset service drops the odd
+	-- fetch ("could not fetch"); a second try almost always gets it.
+	local ok, result
+	for attempt = 1, LOAD_ATTEMPTS do
+		ok, result = pcall(function()
+			return AssetService:CreateMeshPartAsync(Content.fromAssetId(meshId), {
+				CollisionFidelity = Enum.CollisionFidelity.Box,
+				RenderFidelity = Enum.RenderFidelity.Automatic,
+			})
+		end)
+		if ok and result then
+			assetTemplates[meshId] = result
+			return result
+		end
+		if attempt < LOAD_ATTEMPTS then
+			task.wait(attempt)
+		end
 	end
 	failed[key] = tostring(result)
 	warn(`[BodyBuilder] mesh {meshId} failed to load ({result}); a box stands in for it`)
@@ -105,8 +116,29 @@ local function template(piece: BodyPiece): MeshPart?
 end
 
 -- Loads (or decodes) every mesh a car needs, up front, so building never
--- yields halfway.
+-- yields halfway. Asset meshes are fetched all at once: one at a time, a
+-- store car's 90-odd meshes took most of a minute and the car sat there as
+-- a bare rig.
 function BodyBuilder.preload(entry: VehicleRig.CarEntry): number
+	local pending = 0
+	local wanted: { [number]: boolean } = {}
+	for _, list in { entry.body.pieces, entry.body.wheelPieces } do
+		for _, piece in list do
+			local id = piece.meshId
+			if id and not assetTemplates[id] and not failed[tostring(id)] and not wanted[id] then
+				wanted[id] = true
+				pending += 1
+				task.spawn(function()
+					assetTemplate(id)
+					pending -= 1
+				end)
+			end
+		end
+	end
+	local deadline = os.clock() + PRELOAD_TIMEOUT
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.05)
+	end
 	local n = 0
 	for _, list in { entry.body.pieces, entry.body.wheelPieces } do
 		for _, piece in list do
@@ -185,6 +217,7 @@ end
 -- right for the hubs (they carry the wheels wherever they sit) and for the
 -- chassis.
 function BodyBuilder.mount(model: Model, cfg: Config, entry: VehicleRig.CarEntry): Folder
+	BodyBuilder.preload(entry)
 	local handles = VehicleRig.handles(model)
 	local mps = cfg.units.metersPerStud
 	local k = VehicleRig.scaleOf(entry)
