@@ -131,6 +131,7 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **`Stats.SceneTriangleCount` ignores plain Parts.** Estimate parts by hand (a box is 12 triangles).
 - **Merge repeated geometry.** One long panel per straight run instead of one per bay; merge wherever the shape stays within a tolerance.
 - **Skip empty work before optimising busy work.** Culling chunks with nothing in them is usually the biggest win.
+- **A follow camera smooths by simulated time, not render time.** Physics moves a part by whole steps (a fixed quantum, usually one per frame) while RenderStepped's dt jitters by several milliseconds. Exponential smoothing on render dt makes the camera lag and lurch against a steadily moving car, and the whole world judders. Accumulate PreSimulation dt and smooth by that; a frame with no physics step moves the camera nothing.
 - **Measure frame rate with the Studio window focused.** Unfocused Studio throttles to about 15 fps and makes everything look slower.
 - **On phones, count see-through surface before triangles.** A few hundred draw calls and a few hundred thousand triangles are fine; thousands of semi-transparent parts are not, because each is sorted and drawn alone and phone GPUs are fill-rate bound. Never use Transparency for a cosmetic fade: mix the fade into the colour.
 - **Shadow stats read 0 in Edit.** `Stats.ShadowsDrawcallCount` and `ShadowsTriangleCount` only report in Play.

@@ -26,6 +26,14 @@ type Params = {
 }
 
 local conn: RBXScriptConnection? = nil
+-- Simulated time since the camera last updated. The camera smooths by this,
+-- not by the frame's render time: the car moves by whole physics steps (a
+-- fixed 1/60 s each, one per frame at 60 fps) while render dt jitters 9 to
+-- 25 ms, so smoothing by render time moved the camera 0.65 to 1.74 studs a
+-- frame behind a car moving a steady 1.25, and the world juddered. A frame
+-- with no physics step, where the car did not move, moves the camera nothing.
+local stepConn: RBXScriptConnection? = nil
+local simDt = 0
 local smoothedDir = Vector3.new(0, 0, -1)
 local smoothedPos = Vector3.zero
 local current: Params? = nil
@@ -85,7 +93,13 @@ function CameraRig.start(model: Model)
 	smoothedPos = chassis.Position - smoothedDir * (cfg.camera.profiles.normal.distance / mps)
 		+ Vector3.yAxis * (cfg.camera.profiles.normal.height / mps)
 
-	conn = RunService.RenderStepped:Connect(function(dt: number)
+	simDt = 0
+	stepConn = RunService.PreSimulation:Connect(function(dt: number)
+		simDt += dt
+	end)
+	conn = RunService.RenderStepped:Connect(function(_renderDt: number)
+		local dt = simDt
+		simDt = 0
 		local c = ConfigLoader.current()
 		local camCfg = c.camera
 		local metersPerStud = c.units.metersPerStud
@@ -160,6 +174,10 @@ function CameraRig.stop()
 	if conn then
 		conn:Disconnect()
 		conn = nil
+	end
+	if stepConn then
+		stepConn:Disconnect()
+		stepConn = nil
 	end
 	lastState = nil
 	local cam = workspace.CurrentCamera
