@@ -43,6 +43,7 @@ export type Config = {
 	-- In a slide, shift up by the engine's own rpm (spin included) and
 	-- never down. Off is the road-speed box everywhere.
 	slideShift: boolean?,
+	slideShiftMaxUpshifts: number?, -- per slide; nil is 1
 }
 
 export type State = {
@@ -52,6 +53,7 @@ export type State = {
 	shiftTimer: number,
 	reverseHold: number, -- seconds the brake has been held at a standstill
 	tc: number, -- traction control throttle multiplier, 0..1
+	slideGear: number?, -- the gear a slide started in, while one lasts
 }
 
 export type Output = {
@@ -161,9 +163,21 @@ function Drivetrain.step(
 	if state.shiftTimer > 0 then
 		state.shiftTimer -= dt
 	end
+	-- A capped number of upshifts per slide (slideShiftMaxUpshifts): at full
+	-- throttle the rears spin the engine to the upshift point in every gear,
+	-- and uncapped a held drift climbed 3>4>5.
 	local slideBox = cfg.slideShift == true and sliding == true
+	if slideBox then
+		if state.slideGear == nil then
+			state.slideGear = state.gear
+		end
+	else
+		state.slideGear = nil
+	end
 	if state.gear >= 1 and state.shiftTimer <= 0 and slideBox then
-		if rpm >= cfg.upshiftRpm and state.gear < #cfg.gearRatios then
+		local startGear = state.slideGear or state.gear
+		local cap = startGear + (cfg.slideShiftMaxUpshifts or 1)
+		if rpm >= cfg.upshiftRpm and state.gear < #cfg.gearRatios and state.gear < cap then
 			state.gear += 1
 			state.shiftTimer = cfg.shiftTime
 		end

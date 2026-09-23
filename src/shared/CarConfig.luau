@@ -231,6 +231,16 @@ local config = {
 		slideShift = true,
 		slideShiftFromDeg = 15,
 		slideShiftMinKmh = 40,
+		-- A slide lasts this long after the angle drops back under
+		-- slideShiftFromDeg (a transition swings through zero; the box hunted
+		-- 3>4>3>2 through a chain), and takes the box up at most
+		-- slideShiftMaxUpshifts gears (uncapped, a held drift at full
+		-- throttle climbed 3>4>5). With 1, strong wheelspin brushes the
+		-- limiter for part of a held slide (measured 16-42%, against 93%
+		-- with no slide shifting); 2 keeps the revs lower but lets the box
+		-- run up the gears. The owner's feel call.
+		slideShiftHoldSeconds = 0.6,
+		slideShiftMaxUpshifts = 1,
 		spinRpmRate = 6000, -- rpm/s the engine climbs while the rear spins
 		-- Lift-off is how a transition swings: engine braking loads the nose
 		-- and lightens the rear for the flick. 40 was too little to feel.

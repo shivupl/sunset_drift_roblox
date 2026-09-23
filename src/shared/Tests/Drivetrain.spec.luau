@@ -141,6 +141,23 @@ return function(t: T)
 	st = inSecond()
 	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 5, false, false, 5, true)
 	t.eq(out.gear, 2, "sliding: never shifts down")
+	-- One upshift per slide: once in 3rd, spin to the upshift rpm in 3rd
+	-- does not take it to 4th. Ending the slide re-arms it.
+	st = inSecond()
+	Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, true)
+	local spin3 = 6600 / (1.4 * 3.9 * 60 / (2 * math.pi)) * r
+	for _ = 1, 30 do
+		out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spin3, true)
+	end
+	t.eq(out.gear, 3, "sliding: one upshift per slide")
+	-- This box has three gears; a four-gear copy shows a new slide re-arms.
+	local cfg4 = table.clone(cfg)
+	cfg4.gearRatios = { 3.5, 2.1, 1.4, 1.0 }
+	out = Drivetrain.step(st, cfg4, r, dt, 1, 0, 30, false, false, 30, false)
+	for _ = 1, 30 do
+		out = Drivetrain.step(st, cfg4, r, dt, 1, 0, 30, true, false, spin3 * 1.1, true)
+	end
+	t.eq(out.gear, 4, "a new slide may shift up once more")
 	cfg.slideShift = false
 	st = inSecond()
 	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, true)

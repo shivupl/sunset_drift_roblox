@@ -73,6 +73,7 @@ export type Sim = typeof(setmetatable(
 		steerDeg: number,
 		comHeightM: number,
 		handbrakeLevel: number,
+		slideHold: number, -- seconds the gearbox still treats the car as sliding
 		throwTail: number,
 		flickSign: number, -- sign of the last strong steer input, 0 none
 		flickAge: number, -- seconds since that input
@@ -182,6 +183,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		steerDeg = 0,
 		comHeightM = 0.5,
 		handbrakeLevel = 0,
+		slideHold = 0,
 		throwTail = 0,
 		flickSign = 0,
 		flickAge = 0,
@@ -497,6 +499,14 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			throttle = math.min(throttle, crankCap / curveTorque)
 		end
 	end
+	-- The gearbox's idea of a slide. It holds for slideShiftHoldSeconds after
+	-- the angle drops, because a transition swings the angle through zero
+	-- and the box hunted 3>4>3>2 in a chain.
+	if math.abs(driftAngleDeg) >= cfg.drivetrain.slideShiftFromDeg and Units.mpsToKmh(speed) >= cfg.drivetrain.slideShiftMinKmh then
+		self.slideHold = cfg.drivetrain.slideShiftHoldSeconds
+	else
+		self.slideHold = math.max(0, self.slideHold - dt)
+	end
 	local drive = Drivetrain.step(
 		self.drivetrain,
 		cfg.drivetrain,
@@ -508,8 +518,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		rearSpinning,
 		tractionAllowed,
 		rearSpinSpeed,
-		math.abs(driftAngleDeg) >= cfg.drivetrain.slideShiftFromDeg
-			and Units.mpsToKmh(speed) >= cfg.drivetrain.slideShiftMinKmh
+		self.slideHold > 0
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
