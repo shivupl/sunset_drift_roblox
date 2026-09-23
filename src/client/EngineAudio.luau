@@ -63,6 +63,7 @@ local pops: { Sound } = {} -- a small pool so pops can overlap
 local nextPop = 1
 local popQueue: { number } = {} -- clock times of pops still to fire
 local punch = 0 -- rpm the note sits over it after the throttle goes on
+local heardLoad = 0 -- the throttle the layers hear, eased (lift tapers off)
 
 local function layersOf(cfg: ConfigLoader.Config): { [string]: Layer }
 	local layers = (cfg.effects.engineAudio.layers :: any) :: { [string]: Layer }
@@ -157,10 +158,14 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	punch *= math.exp(-dt / math.max(audio.punchDecaySeconds, 1e-3))
 	local rpm = math.clamp(simRpm + punch, drive.idleRpm, drive.redlineRpm)
 
+	-- Lifting tapers off; pressing comes in quickly.
+	local loadTau = if throttle > heardLoad then audio.loadAttackSeconds else audio.loadReleaseSeconds
+	heardLoad += (throttle - heardLoad) * (1 - math.exp(-dt / math.max(loadTau, 1e-3)))
+
 	-- Target weights, equal-power on each of the three axes.
 	local offIdle = math.clamp((rpm - drive.idleRpm) / audio.idleFadeRpm, 0, 1) * HALF_PI
 	local high = math.clamp((rpm - audio.loadBlendStartRpm) / (audio.loadBlendEndRpm - audio.loadBlendStartRpm), 0, 1) * HALF_PI
-	local load = throttle * HALF_PI
+	local load = heardLoad * HALF_PI
 	local running = math.sin(offIdle)
 	local target = {
 		idle = math.cos(offIdle),
@@ -276,6 +281,7 @@ function EngineAudio.detach()
 	dipUntil = -1
 	blipAt = -math.huge
 	punch = 0
+	heardLoad = 0
 	carId = nil
 end
 

@@ -692,29 +692,36 @@ local config = {
 		-- (rpm / refRpm) ^ pitchExponent, so a real recorded loop wants its
 		-- recorded rpm as refRpm and an exponent of 1.
 		--
-		-- For now (the owner's option 3, 2026-09-22) every layer is the one
-		-- free loop, Roblox Resources' "Car-Engine-Loop" (80317022777602,
-		-- 9.2 s). Layers that share an id share one Sound, and their EQ and
-		-- volume blend, so the layers are tone, not separate recordings.
-		-- The tone is a calm sedan four-cylinder to suit the Kamri: warm
-		-- and muffled at idle and off throttle, opening up under load. A
-		-- matched pack later only changes the ids, refRpm and exponent.
-		-- refRpm 2300 with exponent 0.55 keeps the old single-loop pitch
-		-- (0.6 at 900 rpm idle, 1.8 at the 6800 redline); one loop
-		-- stretched over the whole rev range at exponent 1 sounds sped up.
+		-- The owner picked the SR20 set (2026-09-23): RedfieldBSAA's free
+		-- "240sx" loops, a petrol four-cylinder recorded on and off throttle
+		-- at fixed rpms, each checked to load in this place. refRpm is the
+		-- rpm in each file's name. Other sets considered are listed on the
+		-- engine-loops page; any of them swaps in by id and refRpm alone.
+		-- Before this, all four layers were one free loop told apart by EQ
+		-- ("Car-Engine-Loop", 80317022777602) at exponent 0.55. Layers that
+		-- share an id still share one Sound and blend its EQ.
 		engineAudio = {
 			masterVolume = 0.5, -- the old single loop peaked at 0.5
-			pitchExponent = 0.55, -- 1 = pitch exactly proportional to rpm
+			pitchExponent = 1, -- 1 = pitch exactly proportional to rpm
 			idleFadeRpm = 700, -- idle is gone this far above idleRpm
 			loadBlendStartRpm = 2500, -- low load starts handing to high load
 			loadBlendEndRpm = 5000, -- and is gone by here
 			gainSmoothSeconds = 0.05, -- de-click only; longer lags throttle
+			-- The throttle the layers hear. Pressing blends to the on-load
+			-- layers over loadAttackSeconds; lifting hands to overrun over
+			-- loadReleaseSeconds, so the engine tapers off instead of
+			-- dropping to half volume in one frame (measured before: 0.50 to
+			-- 0.24 inside 50 ms; the owner, 2026-09-23: "the engine doesn't
+			-- just go mute immediately, there is a taper"). Pops, punch and
+			-- blips still read the pedal itself.
+			loadAttackSeconds = 0.08,
+			loadReleaseSeconds = 0.4,
 			-- volume is relative to masterVolume; eq is dB {low, mid, high}.
 			layers = {
-				idle = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.45, eq = { 2, -3, -12 } },
-				lowLoad = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.8, eq = { 3, 0, -6 } },
-				highLoad = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 1, eq = { 0, 2, 0 } },
-				overrun = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.5, eq = { 0, -6, -14 } },
+				idle = { soundId = "rbxassetid://18964098649", refRpm = 1000, volume = 0.45, eq = { 0, 0, 0 } },
+				lowLoad = { soundId = "rbxassetid://18964097758", refRpm = 2000, volume = 0.8, eq = { 0, 0, 0 } },
+				highLoad = { soundId = "rbxassetid://18964096622", refRpm = 5000, volume = 1, eq = { 0, 0, 0 } },
+				overrun = { soundId = "rbxassetid://18964097591", refRpm = 4000, volume = 0.5, eq = { 0, 0, 0 } },
 			},
 			-- One-shot events on top of the layers, each set off by the sim's
 			-- own gear, rpm and throttle (the owner picked these four,
