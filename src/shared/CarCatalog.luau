@@ -49,6 +49,9 @@ local cars: { [string]: CarEntry } = {
 	-- shared tuning, on its own (real) wheelbase, track and tyres.
 	kamri = {
 		displayName = "Kamri",
+		-- Replaced by kamri07 (the store body) as the Kamri and the default car.
+		-- Kept, off the menu, for the generated-body work; spawnable by id.
+		hidden = true,
 		blurb = "The big Japanese saloon. Planted, predictable, carries a slide.",
 		order = 1,
 		scale = 1.2,
@@ -283,58 +286,8 @@ local cars: { [string]: CarEntry } = {
 		},
 	},
 
-	-- THE KAMRI S. The owner's own sculpt of the same XV40-shape saloon
-	-- (white toyota car 3d model.fbx, 50,367 triangles, one fused mesh with
-	-- no UVs), cleaned by tools/carbody/fbx_body.py into 12,061 triangles
-	-- across eight pieces: badges pressed flat, glass cut out of the shell and
-	-- the side windows glazed, lamps and grille cut by outline, the front-left
-	-- wheel split into tyre and rim. tools/carbody/fbx_pieces.py writes the
-	-- meshes (src/shared/CarMeshes/KamriS). sizeM and offsetM below are its
-	-- numbers.
-	--
-	-- Scaled so its wheel centres land on the Kamri's real 2.775 m wheelbase
-	-- and 1.575 m track: 4.54 m long, 1.82 m wide without mirrors, roof at
-	-- 1.52 m. Same rig as the Kamri, so it drives the same; only the box is
-	-- shorter, to stay inside the shorter nose.
-	kamriS = {
-		displayName = "Kamri S",
-		blurb = "The Kamri, resculpted. Same planted chassis, sharper body.",
-		order = 5,
-		scale = 1.2,
-		rig = {
-			massKg = 1600,
-			-- Nose at -2.13 m, tail at +2.41 m: a 4.2 m box stays inside both.
-			collisionSizeM = { 1.8, 1.2, 4.2 },
-			centerOfMassM = { 0, -0.3, -0.2 },
-			shellMassFraction = 0.35,
-			wheelbaseM = 2.775,
-			trackWidthM = 1.575,
-			wheelRadiusM = 0.326,
-			wheelWidthM = 0.215,
-			-- Over the driver's cushion (-0.39 m across, -0.22 m along), 0.28 m
-			-- off the ground: a seated head tops out at 1.48 m, under the
-			-- 1.52 m roof.
-			seatM = { -0.39, -0.53, -0.22 },
-		},
-		body = {
-			paint = Color3.fromRGB(236, 236, 232),
-			pieces = {
-				{ name = "Body", mesh = "KamriS/Body", paint = true, sizeM = { 1.9708, 1.2824, 4.5358 }, offsetM = { 0, 0.878, 0.1407 } },
-				{ name = "Glass", mesh = "KamriS/Glass", sizeM = { 1.6398, 0.5162, 2.9061 }, offsetM = { 0, 1.1747, 0.3788 }, color = Color3.fromRGB(30, 40, 44), material = Enum.Material.Glass, transparency = 0.45, castShadow = false },
-				{ name = "HeadLamps", mesh = "KamriS/HeadLamps", sizeM = { 1.652, 0.2374, 0.3944 }, offsetM = { -0.0058, 0.7519, -1.8427 }, color = Color3.fromRGB(246, 242, 228), material = Enum.Material.Glass, castShadow = false },
-				{ name = "TailLamps", mesh = "KamriS/TailLamps", sizeM = { 1.6524, 0.1783, 0.3639 }, offsetM = { 0, 0.8785, 2.1343 }, color = Color3.fromRGB(205, 18, 22), material = Enum.Material.Glass, castShadow = false },
-				-- Grille, intakes, wipers, exhausts, antenna, underbody.
-				{ name = "Trim", mesh = "KamriS/Trim", sizeM = { 1.8178, 1.4217, 4.4484 }, offsetM = { 0.001, 0.8163, 0.1195 }, color = Color3.fromRGB(28, 28, 31), material = Enum.Material.Plastic, castShadow = false },
-				{ name = "Interior", mesh = "KamriS/Interior", sizeM = { 1.4765, 1.1097, 2.0316 }, offsetM = { 0, 0.9153, 0.4849 }, color = Color3.fromRGB(34, 34, 36), castShadow = false },
-			},
-			wheelPieces = {
-				{ name = "Tyre", mesh = "KamriS/Tyre", sizeM = { 0.2111, 0.6627, 0.6666 }, offsetM = { 0.0108, 0.0003, -0.0002 }, color = Color3.fromRGB(24, 24, 26), material = Enum.Material.Rubber },
-				{ name = "Rim", mesh = "KamriS/Rim", sizeM = { 0.2319, 0.4893, 0.4882 }, offsetM = { -0.0007, -0.0011, -0.0005 }, color = Color3.fromRGB(188, 190, 194), material = Enum.Material.Metal },
-			},
-		},
-	},
-
-	-- THE KAMRI '07. A mid-2000s Japanese saloon from the Creator Store
+	-- THE KAMRI (id kamri07; the default car since it replaced the
+	-- generated-body kamri above). A mid-2000s Japanese saloon from the Creator Store
 	-- (asset 876308553, an A-Chassis car). The body is the store model's own
 	-- meshes, untouched and referenced by id (no upload): 89 of its parts,
 	-- 143,632 triangles of the original 158,140, interior included. Removed
@@ -349,9 +302,9 @@ local cars: { [string]: CarEntry } = {
 	-- sit on the real 2.775 m wheelbase: 4.83 m long, 1.52 m track, 0.66 m
 	-- tyres. Same mass and handling as the Kamri.
 	kamri07 = {
-		displayName = "Kamri '07",
-		blurb = "The real-deal saloon. Same planted chassis as the Kamri.",
-		order = 6,
+		displayName = "Kamri",
+		blurb = "The big Japanese saloon. Planted, predictable, carries a slide.",
+		order = 1,
 		scale = 1.2,
 		rig = {
 			massKg = 1600,
@@ -469,6 +422,6 @@ local cars: { [string]: CarEntry } = {
 }
 
 return {
-	defaultCarId = "kamri",
+	defaultCarId = "kamri07",
 	cars = cars,
 }

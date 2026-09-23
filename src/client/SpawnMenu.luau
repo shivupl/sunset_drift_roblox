@@ -245,7 +245,11 @@ end
 local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
 	local out = {}
 	for id, entry in ConfigLoader.catalog().cars do
-		table.insert(out, { id = id, entry = entry })
+		-- A hidden entry stays spawnable by id but is off the menu (the
+		-- generated-body Kamri, since the store-body one replaced it).
+		if not (entry :: any).hidden then
+			table.insert(out, { id = id, entry = entry })
+		end
 	end
 	table.sort(out, function(a, b)
 		local oa, ob = a.entry.order or math.huge, b.entry.order or math.huge
