@@ -314,6 +314,13 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | engineAudio.loadBlendStartRpm / loadBlendEndRpm | Low load hands to high load across this range. Lower = the engine sounds strained earlier. |
 | engineAudio.gainSmoothSeconds | Smoothing on layer volumes, only to stop clicks. Longer makes throttle stabs sound late. |
 | engineAudio.layers.{idle, lowLoad, highLoad, overrun} | Per layer: `soundId`, `refRpm` (the rpm it was recorded at), `volume` (relative) and `eq` (dB low/mid/high). Layers sharing an id share one Sound and blend its EQ; for now all four are one loop, warm at idle and off throttle, brightest at high load. Overrun is what lifting off sounds like; in reverse the brake is the load. |
+| engineAudio.shiftDipGain / shiftDipSeconds | Upshift: the engine drops to this fraction of its volume for this long (the torque cut). Measured: 0.50 to 0.26 at each of the 1-2, 2-3 and 3-4 shifts. Lower or longer = a heavier shift. |
+| engineAudio.shiftSoundId / shiftSoundVolume | Optional mechanical thunk played on each upshift. Empty for now. |
+| engineAudio.blipPitch / blipRiseSeconds / blipFallSeconds | Off-throttle downshift: pitch rises by this fraction, then falls back, about 30% louder while it lasts. Braking from 200 km/h blips at 4-3, 3-2 and 2-1 (pitch peaks 1.58 to 1.72, volume 0.25 to 0.32). |
+| engineAudio.crackleSoundId / crackleVolume / crackleVolumeRange / cracklePitch | The exhaust pop and its loudness; each pop picks a random pitch and volume from these ranges. Empty id = no crackle. |
+| engineAudio.crackleMinRpm / crackleLiftFrom / crackleBurstPops / crackleBurstSeconds | Lifting from above crackleLiftFrom throttle at or over crackleMinRpm fires a burst of (min, max) pops over crackleBurstSeconds. Measured: 4 pops lifting at 6160 rpm. Throttle back on cancels the rest. |
+| engineAudio.crackleOverrunPerSecond | Odd pops while coasting off throttle above crackleMinRpm. Measured: 6 while braking from 200 km/h to a stop. Lower if it sounds busy. |
+| engineAudio.limiterBandRpm / limiterHz / limiterDipGain | On throttle within the band of redline, the engine cuts to limiterDipGain this many times a second. The gearbox upshifts at 6400, so in drive this is wheelspin and slides; reverse reaches it too (measured: 16 Hz, volume 0.17 to 0.50). |
 
 ## scoring
 A slide opens when the drift angle passes minAngleDeg while above minSpeedKmh, and accrues

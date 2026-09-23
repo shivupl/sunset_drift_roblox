@@ -8,6 +8,11 @@
 -- low against high load by rpm, and on-load against overrun by throttle.
 -- The squares sum to one, so the level never dips between layers.
 --
+-- On top of the layers, four events read off the same state: an upshift
+-- dips the engine (the torque cut), an off-throttle downshift blips the
+-- pitch, lifting at high rpm fires a crackle of exhaust pops, and sitting
+-- on the redline cuts the engine in and out like a limiter.
+--
 -- Layers that share a sound id share one Sound, whose volume and EQ blend
 -- from those layers. Several copies of one loop playing together would
 -- drift out of phase and comb; this way a placeholder set built from one
@@ -42,6 +47,18 @@ local HALF_PI = math.pi / 2
 local voices: { Voice } = {}
 local gains: { [string]: number } = {}
 local carId: string? = nil
+
+-- Event state.
+local rng = Random.new()
+local clock = 0 -- simulated seconds since attach
+local lastGear = 1
+local lastLoad = 0
+local dipUntil = -1
+local blipAt = -math.huge
+local shiftSound: Sound? = nil
+local pops: { Sound } = {} -- a small pool so pops can overlap
+local nextPop = 1
+local popQueue: { number } = {} -- clock times of pops still to fire
 
 local function layersOf(cfg: ConfigLoader.Config): { [string]: Layer }
 	local layers = (cfg.effects.engineAudio.layers :: any) :: { [string]: Layer }
@@ -83,6 +100,33 @@ function EngineAudio.attach(model: Model)
 			table.insert(voice.members, name)
 		end
 	end
+
+	local audio = cfg.effects.engineAudio
+	local function oneShot(name: string, id: string): Sound
+		local s = Instance.new("Sound")
+		s.Name = name
+		s.SoundId = id
+		s.RollOffMaxDistance = 120
+		s.Parent = chassis
+		return s
+	end
+	if audio.shiftSoundId ~= "" then
+		shiftSound = oneShot("Engine_shift", audio.shiftSoundId)
+	end
+	if audio.crackleSoundId ~= "" then
+		for i = 1, 3 do
+			table.insert(pops, oneShot("Engine_pop" .. i, audio.crackleSoundId))
+		end
+	end
+end
+
+local function pop(audio: typeof(ConfigLoader.current().effects.engineAudio))
+	local s = pops[nextPop]
+	nextPop = nextPop % #pops + 1
+	s.PlaybackSpeed = rng:NextNumber(audio.cracklePitch[1], audio.cracklePitch[2])
+	s.Volume = audio.crackleVolume * rng:NextNumber(audio.crackleVolumeRange[1], audio.crackleVolumeRange[2])
+	s.TimePosition = 0
+	s:Play()
 end
 
 function EngineAudio.update(state: VehicleState, dt: number)
@@ -109,6 +153,66 @@ function EngineAudio.update(state: VehicleState, dt: number)
 		highLoad = running * math.sin(load) * math.sin(high),
 		overrun = running * math.cos(load),
 	}
+	clock += dt
+
+	-- Events. Gear changes into or out of reverse are not shifts.
+	local gear = state.gear
+	if gear >= 1 and lastGear >= 1 and gear ~= lastGear then
+		if gear > lastGear then
+			dipUntil = clock + audio.shiftDipSeconds
+			if shiftSound then
+				shiftSound.Volume = audio.shiftSoundVolume
+				shiftSound.TimePosition = 0
+				shiftSound:Play()
+			end
+		elseif throttle < 0.1 then
+			blipAt = clock
+		end
+	end
+	lastGear = gear
+
+	if #pops > 0 then
+		local revving = rpm >= audio.crackleMinRpm
+		if revving and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 then
+			local n = rng:NextInteger(audio.crackleBurstPops[1], audio.crackleBurstPops[2])
+			for _ = 1, n do
+				table.insert(popQueue, clock + rng:NextNumber(0, audio.crackleBurstSeconds))
+			end
+		elseif revving and throttle < 0.1 and rng:NextNumber() < audio.crackleOverrunPerSecond * dt then
+			table.insert(popQueue, clock)
+		end
+		for i = #popQueue, 1, -1 do
+			if popQueue[i] <= clock then
+				table.remove(popQueue, i)
+				-- Back on the throttle cancels what is left of a burst.
+				if throttle < 0.1 then
+					pop(audio)
+				end
+			end
+		end
+	end
+	lastLoad = throttle
+
+	local gainMul, pitchMul = 1, 1
+	if clock < dipUntil then
+		gainMul = audio.shiftDipGain
+	end
+	local sinceBlip = clock - blipAt
+	if sinceBlip >= 0 and sinceBlip < audio.blipRiseSeconds + audio.blipFallSeconds then
+		local b = if sinceBlip < audio.blipRiseSeconds
+			then sinceBlip / audio.blipRiseSeconds
+			else 1 - (sinceBlip - audio.blipRiseSeconds) / audio.blipFallSeconds
+		pitchMul = 1 + audio.blipPitch * b
+		gainMul *= 1 + 0.3 * b
+	end
+	if rpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5 then
+		-- Square wave: on for half of each cycle, cut for the other half.
+		if (clock * audio.limiterHz) % 1 >= 0.5 then
+			gainMul *= audio.limiterDipGain
+			pitchMul *= 0.97
+		end
+	end
+
 	-- A few frames of smoothing so a stab of throttle does not click.
 	local k = 1 - math.exp(-dt / math.max(audio.gainSmoothSeconds, 1e-3))
 	for _, name in LAYER_NAMES do
@@ -127,13 +231,13 @@ function EngineAudio.update(state: VehicleState, dt: number)
 			mid += layer.eq[2] * p
 			hi += layer.eq[3] * p
 		end
-		v.sound.Volume = audio.masterVolume * math.sqrt(power)
+		v.sound.Volume = audio.masterVolume * math.sqrt(power) * gainMul
 		if power > 1e-6 then
 			v.eq.LowGain = low / power
 			v.eq.MidGain = mid / power
 			v.eq.HighGain = hi / power
 		end
-		v.sound.PlaybackSpeed = (rpm / v.refRpm) ^ audio.pitchExponent
+		v.sound.PlaybackSpeed = (rpm / v.refRpm) ^ audio.pitchExponent * pitchMul
 	end
 end
 
@@ -143,6 +247,21 @@ function EngineAudio.detach()
 	end
 	table.clear(voices)
 	table.clear(gains)
+	for _, s in pops do
+		s:Destroy()
+	end
+	table.clear(pops)
+	table.clear(popQueue)
+	if shiftSound then
+		shiftSound:Destroy()
+		shiftSound = nil
+	end
+	nextPop = 1
+	clock = 0
+	lastGear = 1
+	lastLoad = 0
+	dipUntil = -1
+	blipAt = -math.huge
 	carId = nil
 end
 

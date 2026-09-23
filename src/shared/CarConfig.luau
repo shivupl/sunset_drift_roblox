@@ -704,6 +704,49 @@ local config = {
 				highLoad = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 1, eq = { 0, 2, 0 } },
 				overrun = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.5, eq = { 0, -6, -14 } },
 			},
+			-- One-shot events on top of the layers, each set off by the sim's
+			-- own gear, rpm and throttle (the owner picked these four,
+			-- 2026-09-22). Multipliers apply to every layer at once.
+			--
+			-- Upshift: the engine drops to shiftDipGain for shiftDipSeconds,
+			-- the torque cut you hear on a real automatic. shiftSoundId adds
+			-- a mechanical thunk; empty for now, the store had nothing that
+			-- was not a metal crash.
+			shiftDipGain = 0.55,
+			shiftDipSeconds = 0.12,
+			shiftSoundId = "",
+			shiftSoundVolume = 0.4,
+			-- Downshift off throttle: a rev-match blip, pitch up by blipPitch
+			-- (a fraction) over blipRiseSeconds, back down over
+			-- blipFallSeconds, a little louder while it lasts.
+			blipPitch = 0.15,
+			blipRiseSeconds = 0.05,
+			blipFallSeconds = 0.3,
+			-- Overrun crackle: lifting from above crackleLiftFrom throttle
+			-- at or over crackleMinRpm fires a burst of crackleBurstPops
+			-- (min, max) pops spread over crackleBurstSeconds; staying off
+			-- throttle above crackleMinRpm pops now and then at
+			-- crackleOverrunPerSecond. Every pop gets a random pitch in
+			-- cracklePitch and volume in crackleVolumeRange (times
+			-- crackleVolume), so no two bursts match. The pop is Mor5464's
+			-- "Car Backfire Exhaust" (112720519011313, 0.44 s), checked to
+			-- load in this place.
+			crackleSoundId = "rbxassetid://112720519011313",
+			crackleVolume = 0.35,
+			crackleVolumeRange = { 0.55, 1 },
+			cracklePitch = { 0.85, 1.2 },
+			crackleMinRpm = 4000,
+			crackleLiftFrom = 0.6,
+			crackleBurstPops = { 2, 5 },
+			crackleBurstSeconds = 0.7,
+			crackleOverrunPerSecond = 1.2,
+			-- Rev limiter: on throttle within limiterBandRpm of redline the
+			-- engine cuts in and out limiterHz times a second, down to
+			-- limiterDipGain. The gearbox upshifts at 6400, so in drive this
+			-- is mostly wheelspin on a launch or in a slide, and reverse.
+			limiterBandRpm = 100,
+			limiterHz = 16,
+			limiterDipGain = 0.35,
 		},
 	},
 
