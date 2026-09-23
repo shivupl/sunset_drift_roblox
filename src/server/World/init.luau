@@ -197,6 +197,14 @@ function World.build(): Result
 	-- Lamp light settings come from the active time of day, so golden hour
 	-- ships dark lamps and night ships lit ones with no other change.
 	local tod = WorldLighting.timeOfDay(cfg)
+	-- One folder only. A world built in Edit (a preview) leaves its own
+	-- behind, the place can be saved with it, and the client reads the first
+	-- WorldSettings it finds; about a hundred stale ones had piled up.
+	for _, old in ReplicatedStorage:GetChildren() do
+		if old.Name == "WorldSettings" then
+			old:Destroy()
+		end
+	end
 	local settings = Instance.new("Folder")
 	settings.Name = "WorldSettings"
 	settings:SetAttribute("LampsLit", tod.lamps.enabled)
