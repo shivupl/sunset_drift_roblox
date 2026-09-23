@@ -1,56 +1,43 @@
 # Kamri '07
 
 A mid-2000s Japanese saloon from the Creator Store (asset 876308553, an
-A-Chassis car), debadged and cut down for the game. Catalog id `kamri07`.
+A-Chassis car). Catalog id `kamri07`.
 
-## How it was made
+## How it is built
 
-1. **Studio:** inserted into ServerStorage (scripts sandboxed), then stripped
-   of everything but geometry: 34 scripts, GUIs, sounds, lights, remotes,
-   seats, 18 invisible parts and the front badge. Placed facing world -Z with
-   its left on -X (car space), every part renamed `P<index>`, its colour,
-   material and transparency saved to `parts.csv`, and exported with Export
-   Selection to `camry_exp/camry_edit.obj` (30 MB, not in git).
-2. **Blender:** `tools/carbody/store_body.py -- kamri07`.
+The body is the store model's own meshes, untouched, referenced by mesh id
+(BodyBuilder loads them with `CreateMeshPartAsync`, like the Cruiser), so
+nothing is uploaded and it works in play and live. 73 of its parts:
+**91,618 triangles of the original 158,140.**
 
-| Step | Result |
-|---|---|
-| Parts no ray reaches, plus the engine bay | 34 parts, 15,119 triangles deleted |
-| Faces no ray reaches on outside parts (inner skins of panels) | 37,448 deleted |
-| Badge oval and script lettering on the boot strip | cut |
-| Small cabin pieces below the window line | deleted |
-| Front cabin / rear cabin | decimated separately, the rear far harder |
-| Paint | planar decimation only (5 degrees), area-weighted normals |
+Cut in Studio, whole parts only, each cut checked by screenshot from the
+outside and through the glass:
 
-Visibility is 400 directions x 150 x 150 rays through the car, glass letting
-them through. Inner skins had to go: decimating a panel with its inner skin
-welded to it folds the two together and creases the paint.
+| Cut | Parts | Triangles |
+|---|---|---|
+| Scripts, GUIs, sounds, lights, remotes, seats (not geometry) | 34 scripts and the rest | 0 |
+| Invisible parts (light toggles, hubs, sound emitters) | 18 | - |
+| Front badge | 2 | - |
+| No ray from outside reaches (engine bay, brackets, stacked duplicates) | 23 | about 14,600 |
+| Chrome boot strip carrying the maker's oval and lettering | P169 | 4,642 |
+| Rear cabin shells and rear door linings | P110, P130, P177 | 9,766 |
+| Full-length trim tub, cabin shells | P50, P111, P157 | 19,766 |
+| Centre console | P85 | 7,812 |
+| Seat set | P158 | 9,972 |
+| Sunroof glass and a bracket (plain blocks, no mesh id) | P126, P195 | 24 |
 
-| Piece | Triangles |
-|---|---|
-| Body (paint) | 10,477 |
-| Glass | 622 |
-| Lenses | 1,324 |
-| TailLamps | 80 |
-| Chrome | 1,291 |
-| Trim | 2,963 |
-| Grey | 770 |
-| InteriorDark | 3,387 |
-| InteriorLight | 1,890 |
-| Tyre x4 | 898 each |
-| Rim x4 | 514 each |
-| **Whole car** | **28,452** (from 158,140) |
+Visibility came from 2.4 million rays at the car from 300 directions,
+glass letting them through (`tools/carbody/store_body.py` has the ray code).
+`parts.csv` is every part's colour, material, transparency and position as
+exported.
 
-Scale: 0.2505 m a stud, so the wheel centres sit on the real 2.775 m
-wheelbase. 4.83 m long, 1.52 m track, 0.66 m tyres.
+The catalog entry was generated from the Studio model: each part's mesh id,
+size, centre and rotation relative to the car (origin on the ground under the
+wheelbase centre, 0.2505 m a stud so the wheel centres sit on the real 2.775 m
+wheelbase).
 
-3. `python3 tools/carbody/fbx_pieces.py kamri07 Kamri07` writes
-   `src/shared/CarMeshes/Kamri07`; `fbx_preview.py -- kamri07` renders
-   `preview_*.png`.
+## Tried and dropped
 
-## Live
-
-The meshes are generated data, which Studio play and live servers refuse
-without the Mesh API setting. Import `kamri07_all.obj` with Studio's 3D
-Importer (one import, one MeshPart per piece) and put each MeshPart's mesh id
-on its catalog piece as `meshId`.
+Decimating the whole car to 28,452 triangles with
+`tools/carbody/store_body.py`: the owner found it looked far worse than the
+original. Keep the store meshes and cut whole parts instead.
