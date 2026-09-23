@@ -109,6 +109,14 @@ function DriftEffects.attach(model: Model)
 	local rig = VehicleRig.handles(model)
 	local chassis = rig.chassis
 	screech = makeSound(chassis, "Screech", cfg.effects.screechSoundId, cfg.effects.screechMaxVolume)
+	if screech then
+		-- Take the shrill top off the skid loop.
+		local eq = Instance.new("EqualizerSoundEffect")
+		eq.LowGain = cfg.effects.screechEq[1]
+		eq.MidGain = cfg.effects.screechEq[2]
+		eq.HighGain = cfg.effects.screechEq[3]
+		eq.Parent = screech
+	end
 	local mps = cfg.units.metersPerStud
 	local f = Instance.new("Folder")
 	f.Name = "DriftEffects"
@@ -193,14 +201,14 @@ function DriftEffects.update(state: VehicleState)
 		local rl, rr = state.wheels[3], state.wheels[4]
 		local slip = math.max(math.abs(rl.slipAngleDeg), math.abs(rr.slipAngleDeg))
 		local target = if state.speedMps >= cfg.smokeMinSpeedMps
-			then math.clamp((slip - cfg.smokeSlipStartDeg) / (cfg.smokeSlipFullDeg - cfg.smokeSlipStartDeg), 0, 1)
+			then math.clamp((slip - cfg.screechSlipStartDeg) / (cfg.screechSlipFullDeg - cfg.screechSlipStartDeg), 0, 1)
 			else 0
 		if (rl.saturated or rr.saturated) and state.speedMps >= cfg.smokeMinSpeedMps then
-			target = math.max(target, 0.7)
+			target = math.max(target, cfg.screechSpinLevel)
 		end
 		screechLevel += (target - screechLevel) * 0.25
 		screech.Volume = cfg.screechMaxVolume * screechLevel
-		screech.PlaybackSpeed = 0.9 + 0.4 * screechLevel
+		screech.PlaybackSpeed = cfg.screechMinPitch + (cfg.screechMaxPitch - cfg.screechMinPitch) * screechLevel
 	end
 end
 

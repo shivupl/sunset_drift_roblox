@@ -672,7 +672,19 @@ local config = {
 		-- place: the screech is zdjack's "skid_loop_01" (4842084452, 1.7 s)
 		-- and follows rear slip. Empty ids play nothing.
 		screechSoundId = "rbxassetid://4842084452",
-		screechMaxVolume = 0.6,
+		-- Mellowed a lot at the owner's request (2026-09-22, "remove the
+		-- screechy tire noise or mellow it out a lot more"): a third of the
+		-- old 0.6 volume, pitched down (was 0.9 to 1.3), highs cut, and it
+		-- starts at 18 degrees of rear slip instead of smoke's 10, so a
+		-- brisk corner is quiet and only a real slide is heard. Wheelspin
+		-- alone holds it at screechSpinLevel (was 0.7).
+		screechMaxVolume = 0.2,
+		screechSlipStartDeg = 18,
+		screechSlipFullDeg = 45,
+		screechSpinLevel = 0.3,
+		screechMinPitch = 0.8,
+		screechMaxPitch = 0.95,
+		screechEq = { 0, -3, -12 }, -- dB low, mid, high
 		-- The engine: four layers crossfaded by rpm and throttle (client
 		-- EngineAudio). Idle fades out just above idle rpm; low load hands
 		-- to high load across loadBlendStartRpm..EndRpm; off throttle the

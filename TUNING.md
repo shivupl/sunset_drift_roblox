@@ -307,7 +307,10 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | skidLifetime | Seconds a mark stays on the road. |
 | skidTransparency | How dark the marks are. |
 | wheelSpinUpRate | How fast a driven wheel that has broken loose visually winds up to engine speed, and how fast a locked wheel stops. |
-| screechSoundId / screechMaxVolume | Looped tire screech, volume and pitch follow rear slip. Empty id = silent. Paste an asset id you own. |
+| screechSoundId / screechMaxVolume | Looped tire screech, volume and pitch follow rear slip. Empty id = silent. 0.2 since the owner asked for it much mellower (was 0.6); 0 silences it. |
+| screechSlipStartDeg / screechSlipFullDeg | Rear slip where the screech starts and where it is full. 18 / 45 so ordinary cornering is quiet (it used to share smoke's 10 / 35). |
+| screechSpinLevel | Level wheelspin alone holds the screech at (was 0.7). |
+| screechMinPitch / screechMaxPitch / screechEq | Pitch from a light slide to a full one, and EQ in dB (low, mid, high). Lower pitch and a deeper high cut are mellower. |
 | engineAudio.masterVolume | Engine loudness at full load. 0.5 matches the old single loop. |
 | engineAudio.pitchExponent | Each layer plays at (rpm / refRpm) ^ this. 1 is pitch exactly proportional to rpm, right for real loops recorded at refRpm. The placeholder uses 0.55 because one loop stretched over 900 to 6800 rpm at 1 sounds sped up. |
 | engineAudio.idleFadeRpm | Idle has faded out this far above idleRpm. Larger = the idle tone lingers into the first pull. |
