@@ -318,8 +318,8 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | engineAudio.shiftSoundId / shiftSoundVolume | Optional mechanical thunk played on each upshift. Empty for now. |
 | engineAudio.blipPitch / blipRiseSeconds / blipFallSeconds | Off-throttle downshift: pitch rises by this fraction, then falls back, about 30% louder while it lasts. Braking from 200 km/h blips at 4-3, 3-2 and 2-1 (pitch peaks 1.58 to 1.72, volume 0.25 to 0.32). |
 | engineAudio.crackleSoundId / crackleVolume / crackleVolumeRange / cracklePitch | The exhaust pop and its loudness; each pop picks a random pitch and volume from these ranges. Empty id = no crackle. |
-| engineAudio.crackleMinRpm / crackleLiftFrom / crackleBurstPops / crackleBurstSeconds | Lifting from above crackleLiftFrom throttle at or over crackleMinRpm fires a burst of (min, max) pops over crackleBurstSeconds. Measured: 4 pops lifting at 6160 rpm. Throttle back on cancels the rest. |
-| engineAudio.crackleOverrunPerSecond | Odd pops while coasting off throttle above crackleMinRpm. Measured: 6 while braking from 200 km/h to a stop. Lower if it sounds busy. |
+| engineAudio.crackleMinRpm / crackleMinKmh / crackleLiftFrom / crackleBurstPops / crackleBurstSeconds | Lifting from above crackleLiftFrom throttle while over both crackleMinKmh and crackleMinRpm fires a burst of (min, max) pops over crackleBurstSeconds; nothing else pops. Throttle back on cancels the rest. Raise the speed or rpm for rarer pops. |
+| engineAudio.punchRpm / punchDecaySeconds / punchFullKmh / punchFadeKmh / punchMinFactor | Sound only: pressing the throttle kicks the note up by punchRpm times the pedal travel, settling over punchDecaySeconds. Full kick up to punchFullKmh, tapering to punchMinFactor of it by punchFadeKmh. |
 | engineAudio.limiterBandRpm / limiterHz / limiterDipGain | On throttle within the band of redline, the engine cuts to limiterDipGain this many times a second. The gearbox upshifts at 6400, so in drive this is wheelspin and slides; reverse reaches it too (measured: 16 Hz, volume 0.17 to 0.50). |
 
 ## scoring

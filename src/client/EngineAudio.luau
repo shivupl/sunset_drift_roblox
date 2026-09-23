@@ -10,8 +10,11 @@
 --
 -- On top of the layers, four events read off the same state: an upshift
 -- dips the engine (the torque cut), an off-throttle downshift blips the
--- pitch, lifting at high rpm fires a crackle of exhaust pops, and sitting
--- on the redline cuts the engine in and out like a limiter.
+-- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
+-- redline cuts the engine in and out like a limiter. The note also kicks
+-- up when the throttle goes back on: an rpm offset for the audio only,
+-- since the sim's rpm follows the wheels. Lifting off has no offset; the
+-- note falls as the sim's rpm does.
 --
 -- Layers that share a sound id share one Sound, whose volume and EQ blend
 -- from those layers. Several copies of one loop playing together would
@@ -59,6 +62,7 @@ local shiftSound: Sound? = nil
 local pops: { Sound } = {} -- a small pool so pops can overlap
 local nextPop = 1
 local popQueue: { number } = {} -- clock times of pops still to fire
+local punch = 0 -- rpm the note sits over it after the throttle goes on
 
 local function layersOf(cfg: ConfigLoader.Config): { [string]: Layer }
 	local layers = (cfg.effects.engineAudio.layers :: any) :: { [string]: Layer }
@@ -137,10 +141,21 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	local audio = cfg.effects.engineAudio
 	local drive = cfg.drivetrain
 	local layers = layersOf(cfg)
-	local rpm = state.rpm
+	local simRpm = state.rpm
 	-- The pedals swap meaning in reverse (Drivetrain), so the brake is the
 	-- engine's load there; otherwise reversing sounds like lifting off.
 	local throttle = math.clamp(if state.gear == -1 then state.brake else state.throttle, 0, 1)
+
+	-- Punch: the note kicks over the sim's rpm when the throttle goes on.
+	local pressed = throttle - lastLoad
+	if pressed > 0 then
+		local kmh = math.abs(state.speedKmh)
+		local fade = math.clamp((kmh - audio.punchFullKmh) / (audio.punchFadeKmh - audio.punchFullKmh), 0, 1)
+		local factor = 1 - (1 - audio.punchMinFactor) * fade
+		punch = math.min(audio.punchRpm, punch + audio.punchRpm * pressed * factor)
+	end
+	punch *= math.exp(-dt / math.max(audio.punchDecaySeconds, 1e-3))
+	local rpm = math.clamp(simRpm + punch, drive.idleRpm, drive.redlineRpm)
 
 	-- Target weights, equal-power on each of the three axes.
 	local offIdle = math.clamp((rpm - drive.idleRpm) / audio.idleFadeRpm, 0, 1) * HALF_PI
@@ -172,14 +187,12 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	lastGear = gear
 
 	if #pops > 0 then
-		local revving = rpm >= audio.crackleMinRpm
-		if revving and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 then
+		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
+		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 then
 			local n = rng:NextInteger(audio.crackleBurstPops[1], audio.crackleBurstPops[2])
 			for _ = 1, n do
 				table.insert(popQueue, clock + rng:NextNumber(0, audio.crackleBurstSeconds))
 			end
-		elseif revving and throttle < 0.1 and rng:NextNumber() < audio.crackleOverrunPerSecond * dt then
-			table.insert(popQueue, clock)
 		end
 		for i = #popQueue, 1, -1 do
 			if popQueue[i] <= clock then
@@ -205,7 +218,7 @@ function EngineAudio.update(state: VehicleState, dt: number)
 		pitchMul = 1 + audio.blipPitch * b
 		gainMul *= 1 + 0.3 * b
 	end
-	if rpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5 then
+	if simRpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5 then
 		-- Square wave: on for half of each cycle, cut for the other half.
 		if (clock * audio.limiterHz) % 1 >= 0.5 then
 			gainMul *= audio.limiterDipGain
@@ -262,6 +275,7 @@ function EngineAudio.detach()
 	lastLoad = 0
 	dipUntil = -1
 	blipAt = -math.huge
+	punch = 0
 	carId = nil
 end
 

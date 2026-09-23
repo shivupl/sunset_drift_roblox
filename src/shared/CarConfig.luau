@@ -723,10 +723,11 @@ local config = {
 			blipRiseSeconds = 0.05,
 			blipFallSeconds = 0.3,
 			-- Overrun crackle: lifting from above crackleLiftFrom throttle
-			-- at or over crackleMinRpm fires a burst of crackleBurstPops
-			-- (min, max) pops spread over crackleBurstSeconds; staying off
-			-- throttle above crackleMinRpm pops now and then at
-			-- crackleOverrunPerSecond. Every pop gets a random pitch in
+			-- while over crackleMinKmh and crackleMinRpm fires a burst of
+			-- crackleBurstPops (min, max) pops over crackleBurstSeconds, and
+			-- nothing else pops. The owner (2026-09-22): only when going
+			-- fast and letting off, 1 to 3 times; the stray pops while
+			-- coasting and braking are gone. Every pop gets a random pitch in
 			-- cracklePitch and volume in crackleVolumeRange (times
 			-- crackleVolume), so no two bursts match. The pop is Mor5464's
 			-- "Car Backfire Exhaust" (112720519011313, 0.44 s), checked to
@@ -736,10 +737,26 @@ local config = {
 			crackleVolumeRange = { 0.55, 1 },
 			cracklePitch = { 0.85, 1.2 },
 			crackleMinRpm = 4000,
+			crackleMinKmh = 80,
 			crackleLiftFrom = 0.6,
-			crackleBurstPops = { 2, 5 },
-			crackleBurstSeconds = 0.7,
-			crackleOverrunPerSecond = 1.2,
+			crackleBurstPops = { 1, 3 },
+			crackleBurstSeconds = 0.5,
+			-- Punch, in sound only (the owner, 2026-09-22: getting back on
+			-- the gas should rev it back up, the punch depending on speed).
+			-- The sim's rpm is locked to the wheels, so this is an rpm offset
+			-- for the audio, like a torque converter's slip. Pressing the
+			-- throttle kicks the note up by punchRpm (times how far the pedal
+			-- moved), falling back over punchDecaySeconds. The kick is full
+			-- up to punchFullKmh and tapers to punchMinFactor by
+			-- punchFadeKmh, since a slipping converter flares most at low
+			-- speed. Lifting off has no offset: the owner wanted the
+			-- slowdown natural, so the note falls only as the sim's rpm does
+			-- (a 300 rpm artificial sag was tried and taken out).
+			punchRpm = 1100,
+			punchDecaySeconds = 0.5,
+			punchFullKmh = 40,
+			punchFadeKmh = 160,
+			punchMinFactor = 0.35,
 			-- Rev limiter: on throttle within limiterBandRpm of redline the
 			-- engine cuts in and out limiterHz times a second, down to
 			-- limiterDipGain. The gearbox upshifts at 6400, so in drive this
