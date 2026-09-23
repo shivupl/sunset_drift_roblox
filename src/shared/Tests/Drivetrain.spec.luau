@@ -31,6 +31,7 @@ return function(t: T)
 		tractionControlMin = 0.35,
 		tractionControlCutRate = 5,
 		tractionControlRecoverRate = 1.2,
+		slideShift = false,
 	}
 	local r = 0.33
 	local dt = 1 / 60
@@ -119,4 +120,29 @@ return function(t: T)
 	end
 	t.ok(out.rpm > 3000, "rpm climbs while spinning")
 	t.eq(out.gear, 1, "spin does not upshift")
+
+	-- In a slide the box goes by the engine's own rpm, spin included, and
+	-- only upward: 2nd at 16 m/s is about 3900 by road speed, but the rears
+	-- spin the engine to 6600. Driving straight the same spin stays put.
+	local function inSecond(): Drivetrain.State
+		local state = Drivetrain.new(cfg)
+		state.gear = 2
+		return state
+	end
+	local spinMps = 6600 / (2.1 * 3.9 * 60 / (2 * math.pi)) * r -- wheel surface speed for 6600 in 2nd
+	cfg.slideShift = true
+	st = inSecond()
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, true)
+	t.eq(out.gear, 3, "sliding: spin to the upshift rpm shifts up")
+	st = inSecond()
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, false)
+	t.eq(out.gear, 2, "straight: the same spin does not shift")
+	-- 2nd at 5 m/s is about 1200 by road speed, under downshiftRpm.
+	st = inSecond()
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 5, false, false, 5, true)
+	t.eq(out.gear, 2, "sliding: never shifts down")
+	cfg.slideShift = false
+	st = inSecond()
+	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, true)
+	t.eq(out.gear, 2, "slideShift off: the old box")
 end

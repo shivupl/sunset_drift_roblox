@@ -224,11 +224,11 @@ function EngineAudio.update(state: VehicleState, dt: number)
 		gainMul *= 1 + 0.3 * b
 	end
 	if simRpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5 then
-		-- Square wave: on for half of each cycle, cut for the other half.
-		if (clock * audio.limiterHz) % 1 >= 0.5 then
-			gainMul *= audio.limiterDipGain
-			pitchMul *= 0.97
-		end
+		-- Each cut eases in and out (a raised cosine) rather than switching:
+		-- the hard square wave buzzed.
+		local cut = 0.5 - 0.5 * math.cos(2 * math.pi * ((clock * audio.limiterHz) % 1))
+		gainMul *= 1 - (1 - audio.limiterDipGain) * cut
+		pitchMul *= 1 - audio.limiterPitchDip * cut
 	end
 
 	-- A few frames of smoothing so a stab of throttle does not click.

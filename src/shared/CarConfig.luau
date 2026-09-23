@@ -219,6 +219,18 @@ local config = {
 		upshiftRpm = 6400,
 		downshiftRpm = 3000,
 		shiftTime = 0.08, -- torque is cut for this long; 0.15 left a quarter-second flat spot at the 1-2
+		-- In a slide (drift angle past slideShiftFromDeg) the box shifts up by
+		-- the engine's own rpm, spin included, and never down. Measured
+		-- before (2026-09-23): a held drift in 2nd at 70 km/h sat at
+		-- 6720-6800 rpm on the limiter 94% of the time, because road speed
+		-- said 4400 and wheelspin never upshifted; a handbrake throw could
+		-- drop it to 1st mid-slide. Only above slideShiftMinKmh: a wheelspin
+		-- launch wags the tail past 15 degrees, and without the floor the box
+		-- shifted up under the spin (0-100 went from 3.6 s to 4.9 and 8.7).
+		-- false is the old road-speed box everywhere.
+		slideShift = true,
+		slideShiftFromDeg = 15,
+		slideShiftMinKmh = 40,
 		spinRpmRate = 6000, -- rpm/s the engine climbs while the rear spins
 		-- Lift-off is how a transition swings: engine braking loads the nose
 		-- and lightens the rear for the flick. 40 was too little to feel.
@@ -780,9 +792,14 @@ local config = {
 			-- engine cuts in and out limiterHz times a second, down to
 			-- limiterDipGain. The gearbox upshifts at 6400, so in drive this
 			-- is mostly wheelspin on a launch or in a slide, and reverse.
+			-- Softened on the slide-gearbox branch (2026-09-23): 16 Hz hard
+			-- cuts to 0.35 were a harsh buzz. Now each cut eases in and out
+			-- (a raised cosine), about 11 a second, down to 0.6, with the
+			-- pitch sagging limiterPitchDip at the bottom of each cut.
 			limiterBandRpm = 100,
-			limiterHz = 16,
-			limiterDipGain = 0.35,
+			limiterHz = 11,
+			limiterDipGain = 0.6,
+			limiterPitchDip = 0.04,
 		},
 	},
 

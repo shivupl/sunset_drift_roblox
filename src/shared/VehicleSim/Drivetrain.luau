@@ -40,6 +40,9 @@ export type Config = {
 	tractionControlMin: number,
 	tractionControlCutRate: number,
 	tractionControlRecoverRate: number,
+	-- In a slide, shift up by the engine's own rpm (spin included) and
+	-- never down. Off is the road-speed box everywhere.
+	slideShift: boolean?,
 }
 
 export type State = {
@@ -80,8 +83,11 @@ function Drivetrain.step(
 	-- The driven wheels' own surface speed, when the caller integrates wheel
 	-- spin (Wheel.luau). The engine then turns with the wheels, spin and
 	-- all, and the float-to-redline stand-in is off. Gear changes still go
-	-- by road speed, so wheelspin never upshifts.
-	spinSpeedMps: number?
+	-- by road speed, so wheelspin never upshifts, except in a slide.
+	spinSpeedMps: number?,
+	-- The car is sideways (the caller decides how far). With slideShift on
+	-- the box then goes by the engine's rpm and only upward.
+	sliding: boolean?
 ): Output
 	local speed = rearWheelSpeedMps
 	local throttle, brake = throttleIn, brakeIn
@@ -148,10 +154,20 @@ function Drivetrain.step(
 	state.rpm = rpm
 
 	-- Automatic gearbox on wheel-derived rpm (wheelspin never upshifts).
+	-- In a slide it goes by the engine's rpm instead, spin included, and only
+	-- up: held drifts sat on the limiter in 2nd (the rears spun the engine
+	-- to 6800 while road speed said 4400), and a handbrake throw that locked
+	-- the rears could knock it down to 1st mid-slide.
 	if state.shiftTimer > 0 then
 		state.shiftTimer -= dt
 	end
-	if state.gear >= 1 and state.shiftTimer <= 0 then
+	local slideBox = cfg.slideShift == true and sliding == true
+	if state.gear >= 1 and state.shiftTimer <= 0 and slideBox then
+		if rpm >= cfg.upshiftRpm and state.gear < #cfg.gearRatios then
+			state.gear += 1
+			state.shiftTimer = cfg.shiftTime
+		end
+	elseif state.gear >= 1 and state.shiftTimer <= 0 then
 		if rpmFromWheel >= cfg.upshiftRpm and state.gear < #cfg.gearRatios then
 			state.gear += 1
 			state.shiftTimer = cfg.shiftTime

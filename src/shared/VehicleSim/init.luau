@@ -507,7 +507,9 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		rearWheelSpeed,
 		rearSpinning,
 		tractionAllowed,
-		rearSpinSpeed
+		rearSpinSpeed,
+		math.abs(driftAngleDeg) >= cfg.drivetrain.slideShiftFromDeg
+			and Units.mpsToKmh(speed) >= cfg.drivetrain.slideShiftMinKmh
 	)
 
 	-- Rim dig-in: on two wheels past rimGripStartDeg the tires are on their
