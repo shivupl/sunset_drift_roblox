@@ -7,23 +7,22 @@ A-Chassis car). Catalog id `kamri07`.
 
 The body is the store model's own meshes, untouched, referenced by mesh id
 (BodyBuilder loads them with `CreateMeshPartAsync`, like the Cruiser), so
-nothing is uploaded and it works in play and live. 73 of its parts:
-**91,618 triangles of the original 158,140.**
+nothing is uploaded and it works in play and live. 89 of its parts:
+**143,632 triangles of the original 158,140**, interior included.
 
-Cut in Studio, whole parts only, each cut checked by screenshot from the
-outside and through the glass:
+Only what cannot be seen is removed (the owner's rule: below the car, the
+engine bay, the boot; never the interior):
 
 | Cut | Parts | Triangles |
 |---|---|---|
 | Scripts, GUIs, sounds, lights, remotes, seats (not geometry) | 34 scripts and the rest | 0 |
 | Invisible parts (light toggles, hubs, sound emitters) | 18 | - |
-| Front badge | 2 | - |
-| No ray from outside reaches (engine bay, brackets, stacked duplicates) | 23 | about 14,600 |
+| No ray from outside reaches (brackets, stacked duplicates) | P106, P109, P152, P186, P187, P188, P33, P67, P83, P84 | 1,344 |
+| Engine bay | P173, P191, P39, P171 | 4,900 |
+| Boot interior | P175 | 1,042 |
+| Under the car (floor pan, tray) | P31, P49 | 2,556 |
+| Front badge | 2 parts | - |
 | Chrome boot strip carrying the maker's oval and lettering | P169 | 4,642 |
-| Rear cabin shells and rear door linings | P110, P130, P177 | 9,766 |
-| Full-length trim tub, cabin shells | P50, P111, P157 | 19,766 |
-| Centre console | P85 | 7,812 |
-| Seat set | P158 | 9,972 |
 | Sunroof glass and a bracket (plain blocks, no mesh id) | P126, P195 | 24 |
 
 Visibility came from 2.4 million rays at the car from 300 directions,
@@ -38,6 +37,7 @@ wheelbase).
 
 ## Tried and dropped
 
-Decimating the whole car to 28,452 triangles with
-`tools/carbody/store_body.py`: the owner found it looked far worse than the
-original. Keep the store meshes and cut whole parts instead.
+- Decimating the whole car to 28,452 triangles with
+  `tools/carbody/store_body.py`: far worse than the original.
+- Cutting to 91,618 by also removing interior parts behind the glass (seats,
+  trim tub, console, cabin shells): the owner wants the interior kept.
