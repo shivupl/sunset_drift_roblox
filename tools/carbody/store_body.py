@@ -43,6 +43,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CARS = {
     "kamri07": {
         "title": "Kamri '07: a mid-2000s Japanese saloon from the Creator Store (asset 876308553), debadged and cut down for the game.",
+        # Studio's Export Selection, 30 MB: kept out of git (on the owner's
+        # Desktop). Put the folder back here to run this again.
         "export": "camry_exp/camry_edit.obj",
         "wheelbaseM": 2.775,
         # Parts deleted outright: the engine bay under the bonnet (seen by a
