@@ -28,7 +28,6 @@ local DriftEffects = {}
 local wheels: { WheelFx } = {}
 local folder: Folder? = nil
 local screech: Sound? = nil
-local engine: Sound? = nil
 local screechLevel = 0
 local carId: string? = nil -- the car attached, so a car's tuning overrides apply here too
 
@@ -110,10 +109,6 @@ function DriftEffects.attach(model: Model)
 	local rig = VehicleRig.handles(model)
 	local chassis = rig.chassis
 	screech = makeSound(chassis, "Screech", cfg.effects.screechSoundId, cfg.effects.screechMaxVolume)
-	engine = makeSound(chassis, "Engine", cfg.effects.engineSoundId, cfg.effects.engineMaxVolume)
-	if engine then
-		engine.Volume = cfg.effects.engineMaxVolume * 0.4
-	end
 	local mps = cfg.units.metersPerStud
 	local f = Instance.new("Folder")
 	f.Name = "DriftEffects"
@@ -207,12 +202,6 @@ function DriftEffects.update(state: VehicleState)
 		screech.Volume = cfg.screechMaxVolume * screechLevel
 		screech.PlaybackSpeed = 0.9 + 0.4 * screechLevel
 	end
-	if engine then
-		local redline = carCfg.drivetrain.redlineRpm
-		local t = math.clamp(state.rpm / redline, 0, 1)
-		engine.PlaybackSpeed = cfg.engineMinPitch + (cfg.engineMaxPitch - cfg.engineMinPitch) * t
-		engine.Volume = cfg.engineMaxVolume * (0.4 + 0.6 * state.throttle)
-	end
 end
 
 function DriftEffects.detach()
@@ -224,10 +213,6 @@ function DriftEffects.detach()
 	if screech then
 		screech:Destroy()
 		screech = nil
-	end
-	if engine then
-		engine:Destroy()
-		engine = nil
 	end
 	screechLevel = 0
 	if folder then

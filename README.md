@@ -106,9 +106,11 @@ whose load failed is never saved over.
 ## Drift feedback
 Smoke off the rear tires, skid marks, and wheels that spin up or lock, all driven by the
 sim's per-wheel slip and saturation. Tunables live under `effects` in CarConfig; set
-`effects.enabled = false` on a weak phone. Sound uses two free Creator Store loops (a Roblox
-Resources engine loop and a skid loop); swap the ids in `effects.screechSoundId` and
-`effects.engineSoundId` for your own.
+`effects.enabled = false` on a weak phone. The tyre screech is a free Creator Store skid
+loop (`effects.screechSoundId`). The engine (client `EngineAudio`) is four layers, idle, low
+load, high load and overrun, crossfaded by the sim's rpm and throttle; for now all four are
+one free engine loop told apart by EQ. Paste a matched loop pack's ids and recorded rpm into
+`effects.engineAudio.layers`.
 
 ## Debug panel
 Top-left while driving on PC; hidden on phones until you tap DBG (`debug.showOnTouch` flips

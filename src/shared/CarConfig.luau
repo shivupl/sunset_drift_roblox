@@ -669,16 +669,42 @@ local config = {
 		skidTransparency = 0.45,
 		wheelSpinUpRate = 6, -- 1/s, how quickly a spinning wheel model winds up to engine speed
 		-- Audio. Free Creator Store loops, checked to load and play in this
-		-- place: the engine is Roblox Resources' "Car-Engine-Loop"
-		-- (80317022777602, 9.2 s), the screech is zdjack's "skid_loop_01"
-		-- (4842084452, 1.7 s). Screech follows rear slip, engine follows rpm
-		-- and throttle. Empty ids play nothing.
+		-- place: the screech is zdjack's "skid_loop_01" (4842084452, 1.7 s)
+		-- and follows rear slip. Empty ids play nothing.
 		screechSoundId = "rbxassetid://4842084452",
 		screechMaxVolume = 0.6,
-		engineSoundId = "rbxassetid://80317022777602",
-		engineMaxVolume = 0.5,
-		engineMinPitch = 0.6, -- playback speed at idle
-		engineMaxPitch = 1.8, -- playback speed at redline
+		-- The engine: four layers crossfaded by rpm and throttle (client
+		-- EngineAudio). Idle fades out just above idle rpm; low load hands
+		-- to high load across loadBlendStartRpm..EndRpm; off throttle the
+		-- two load layers hand to overrun. Each layer plays at
+		-- (rpm / refRpm) ^ pitchExponent, so a real recorded loop wants its
+		-- recorded rpm as refRpm and an exponent of 1.
+		--
+		-- For now (the owner's option 3, 2026-09-22) every layer is the one
+		-- free loop, Roblox Resources' "Car-Engine-Loop" (80317022777602,
+		-- 9.2 s). Layers that share an id share one Sound, and their EQ and
+		-- volume blend, so the layers are tone, not separate recordings.
+		-- The tone is a calm sedan four-cylinder to suit the Kamri: warm
+		-- and muffled at idle and off throttle, opening up under load. A
+		-- matched pack later only changes the ids, refRpm and exponent.
+		-- refRpm 2300 with exponent 0.55 keeps the old single-loop pitch
+		-- (0.6 at 900 rpm idle, 1.8 at the 6800 redline); one loop
+		-- stretched over the whole rev range at exponent 1 sounds sped up.
+		engineAudio = {
+			masterVolume = 0.5, -- the old single loop peaked at 0.5
+			pitchExponent = 0.55, -- 1 = pitch exactly proportional to rpm
+			idleFadeRpm = 700, -- idle is gone this far above idleRpm
+			loadBlendStartRpm = 2500, -- low load starts handing to high load
+			loadBlendEndRpm = 5000, -- and is gone by here
+			gainSmoothSeconds = 0.05, -- de-click only; longer lags throttle
+			-- volume is relative to masterVolume; eq is dB {low, mid, high}.
+			layers = {
+				idle = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.45, eq = { 2, -3, -12 } },
+				lowLoad = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.8, eq = { 3, 0, -6 } },
+				highLoad = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 1, eq = { 0, 2, 0 } },
+				overrun = { soundId = "rbxassetid://80317022777602", refRpm = 2300, volume = 0.5, eq = { 0, -6, -14 } },
+			},
+		},
 	},
 
 	-- Drift scoring. A slide opens past minAngleDeg above minSpeedKmh and

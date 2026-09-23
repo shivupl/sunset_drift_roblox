@@ -308,7 +308,12 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | skidTransparency | How dark the marks are. |
 | wheelSpinUpRate | How fast a driven wheel that has broken loose visually winds up to engine speed, and how fast a locked wheel stops. |
 | screechSoundId / screechMaxVolume | Looped tire screech, volume and pitch follow rear slip. Empty id = silent. Paste an asset id you own. |
-| engineSoundId / engineMaxVolume / engineMinPitch / engineMaxPitch | Looped engine sample, playback speed from idle pitch at idle to max pitch at redline, volume with throttle. Empty id = silent. |
+| engineAudio.masterVolume | Engine loudness at full load. 0.5 matches the old single loop. |
+| engineAudio.pitchExponent | Each layer plays at (rpm / refRpm) ^ this. 1 is pitch exactly proportional to rpm, right for real loops recorded at refRpm. The placeholder uses 0.55 because one loop stretched over 900 to 6800 rpm at 1 sounds sped up. |
+| engineAudio.idleFadeRpm | Idle has faded out this far above idleRpm. Larger = the idle tone lingers into the first pull. |
+| engineAudio.loadBlendStartRpm / loadBlendEndRpm | Low load hands to high load across this range. Lower = the engine sounds strained earlier. |
+| engineAudio.gainSmoothSeconds | Smoothing on layer volumes, only to stop clicks. Longer makes throttle stabs sound late. |
+| engineAudio.layers.{idle, lowLoad, highLoad, overrun} | Per layer: `soundId`, `refRpm` (the rpm it was recorded at), `volume` (relative) and `eq` (dB low/mid/high). Layers sharing an id share one Sound and blend its EQ; for now all four are one loop, warm at idle and off throttle, brightest at high load. Overrun is what lifting off sounds like; in reverse the brake is the load. |
 
 ## scoring
 A slide opens when the drift angle passes minAngleDeg while above minSpeedKmh, and accrues
