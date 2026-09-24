@@ -548,6 +548,38 @@ local config = {
 		-- without it, a held E got the car to 4 degrees and the spring then
 		-- lifted it back to 11.
 		landHoldSeconds = 0.5,
+		-- The launch, the hang, the keep-up taps and the drop (the owner,
+		-- 2026-09-24: "the first tap launches it into the tilt angle, later
+		-- ones help keep it, and when it drops the bounce"). Measured before
+		-- at 100 km/h: one tap reached 30 degrees in 0.49 s, overshot to 40.5
+		-- at 0.79 and sank straight back, landing at 2.7 s; a tap every
+		-- 1.5 s hovered at 9-15; the landing was lowered in and settled in
+		-- 0.35 s with no rebound (0.95 degrees past level).
+		-- Tried and taken out: easing the lift off near the target (the
+		-- 39.6 peak is momentum, the easing moved it 0.9 degrees) and a
+		-- full-spring hang after the handover (0.91 s above 28 against
+		-- 0.75; the sag is the model error, not the spring winding down).
+		-- A fresh tap toward the lifted side adds tapBoost of liftTorque,
+		-- full once the car has sagged tapBoostFullDeg below the target and
+		-- less the closer it is, fading over tapBoostSeconds. Nothing above
+		-- the target, so tapping cannot flip it. At 0.5 sized by the sag as
+		-- a fraction of the whole target, a tap at 25 degrees was 2,000 Nm
+		-- and the car sagged 20 degrees a second between taps anyway.
+		tapBoost = 1,
+		tapBoostFullDeg = 15,
+		tapBoostSeconds = 0.3,
+		-- Sagged under this with nothing pushing it up, the controller lets
+		-- go and gravity drops the car, so it lands with speed (measured
+		-- 66 deg/s at touchdown, against 20 when lowered all the way in).
+		-- 0 lowers it all the way in, as before.
+		dropReleaseDeg = 10,
+		-- For touchdownSeconds after a two-wheel landing the suspension
+		-- damping runs at touchdownDampingScale, so the drop rocks the car
+		-- on its springs. With full damping it stopped dead: 1 degree past
+		-- level, settled in 0.3 s. Only after a natl landing; ordinary
+		-- driving never sees it.
+		touchdownSeconds = 0.6,
+		touchdownDampingScale = 0.35,
 		-- Steering is the strongest balance lever there is on two wheels: a
 		-- turn toward the low side drops the car, away lifts it, and at 80 km/h
 		-- a 0.3 s tap of 0.2 steer was enough to flip it. Scale the lock while

@@ -74,6 +74,11 @@ export type Config = {
 	balanceSpringFloor: number, -- fraction of balanceSpring left once it has wound down
 	balanceCancelFloor: number, -- fraction of gravityCancel left once the spring has wound down
 	landHoldSeconds: number, -- the opposite key held this long means "land", not "tap"
+	tapBoost: number, -- a fresh tap toward the lifted side adds this fraction of liftTorque at full sag
+	tapBoostFullDeg: number, -- sagged this far below the target or more is full sag
+	tapBoostSeconds: number, -- and the boost fades over this long
+	dropReleaseDeg: number, -- sagged under this with no in-key held, the controller lets go and the car drops; 0 never
+	touchdownSeconds: number, -- after a two-wheel landing the suspension runs soft this long (see touchdown)
 }
 
 export type Body = {
@@ -97,6 +102,8 @@ export type State = {
 	outHeld: number, -- seconds the key toward the grounded side has been held
 	prevHeld: boolean, -- last step's toggle, to land when it goes off
 	springEnv: number, -- 0..1 how much of balanceSpring is live right now
+	boost: number, -- 0..1 what is left of the last tap's boost
+	touchdown: number, -- seconds left of the soft suspension after a landing
 }
 
 function TwoWheel.new(): State
@@ -114,6 +121,8 @@ function TwoWheel.new(): State
 		outHeld = 0,
 		prevHeld = false,
 		springEnv = 1,
+		boost = 0,
+		touchdown = 0,
 	}
 end
 
@@ -143,6 +152,7 @@ function TwoWheel.step(
 	speedKmh: number
 ): number
 	state.rollDeg = rollDeg
+	state.touchdown = math.max(0, state.touchdown - dt)
 
 	-- Lift authority by speed: none at parking speed, full from fullLiftSpeedKmh.
 	local liftAuthority = math.clamp(
@@ -257,8 +267,20 @@ function TwoWheel.step(
 		if roll < cfg.landedRollDeg then
 			-- Came back down while still held: allow a fresh lift next press.
 			state.mode = "idle"
+			state.touchdown = cfg.touchdownSeconds
 			return 0
 		end
+		-- Sagged low with no tap toward the lifted side: let go and let
+		-- gravity drop it, so the lifted wheels land with speed and the
+		-- suspension takes the hit. Lowered by the controller all the way,
+		-- the car touched down at a crawl and did not move afterwards.
+		local inHeld = if s > 0 then leanRight ~= 0 else leanLeft ~= 0
+		if cfg.dropReleaseDeg > 0 and roll < cfg.dropReleaseDeg and not inHeld then
+			state.mode = "landing"
+		end
+	end
+
+	if state.mode == "balanced" then
 		-- Cancel (most of) gravity's restoring torque, then lean outward so
 		-- the player has to keep balancing. One-sided on purpose: below the
 		-- target this must not turn into a restoring spring.
@@ -276,6 +298,7 @@ function TwoWheel.step(
 		local inFresh = if s > 0 then freshRight else freshLeft
 		if inFresh then
 			state.springEnv = 1
+			state.boost = 1
 		end
 		state.springEnv = math.max(cfg.balanceSpringFloor, state.springEnv - dt / math.max(cfg.balanceSpringDecaySeconds, 1e-3))
 		-- Symmetric by default: the spring lifts a sagging car and pulls a
@@ -295,7 +318,15 @@ function TwoWheel.step(
 		-- what brings it home.
 		local cancelScale = cfg.balanceCancelFloor + (1 - cfg.balanceCancelFloor) * state.springEnv
 		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel * cancelScale
-		torque = (cancel + spring + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
+		-- The tap boost: a short lift back toward the target, full once the
+		-- car has sagged tapBoostFullDeg and less the closer it is, so a tap
+		-- at 15 degrees puts it back up and a tap at the target adds nothing
+		-- (tapping cannot flip the car). Measured without it: a tap every
+		-- 1.5 s hovered the car at 9-15.
+		local sag = if cfg.tapBoostFullDeg > 0 then math.clamp((cfg.targetRollDeg - roll) / cfg.tapBoostFullDeg, 0, 1) else 0
+		local boost = cfg.liftTorque * cfg.tapBoost * sag * state.boost
+		state.boost = math.max(0, state.boost - dt / math.max(cfg.tapBoostSeconds, 1e-3))
+		torque = (cancel + spring + boost + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
 			- cfg.rollDamping * rate
 	end
 
@@ -322,6 +353,7 @@ function TwoWheel.step(
 		torque = -cfg.landingDamping * rate
 		if groundedLeft + groundedRight >= 4 or roll < cfg.landedRollDeg then
 			state.mode = "idle"
+			state.touchdown = cfg.touchdownSeconds
 		end
 	elseif state.mode == "tipped" then
 		torque = 0

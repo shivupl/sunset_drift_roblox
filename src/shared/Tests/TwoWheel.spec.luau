@@ -32,6 +32,13 @@ return function(t: T)
 		balanceSpringFloor = 0.3,
 		balanceCancelFloor = 1, -- and never let gravity back in
 		landHoldSeconds = 99, -- and never auto-land
+		-- The tap boost and the drop are off in the base config so every
+		-- older case means what it did; each gets its own case below.
+		tapBoost = 0,
+		tapBoostFullDeg = 15,
+		tapBoostSeconds = 0.3,
+		dropReleaseDeg = 0,
+		touchdownSeconds = 0.6,
 	}
 	local FAST = 100 -- km/h, full authority everywhere
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }
@@ -238,4 +245,42 @@ return function(t: T)
 	TwoWheel.step(st, cfg, body, true, 1, 0, 0, 0, 2, 2, dt, FAST)
 	t.eq(st.mode, "lifting", "re-lifts after the lean is released and pressed again")
 	t.eq(st.side, -1, "lean left picks the left side")
+
+	-- A tap toward the lifted side boosts the car back toward the target,
+	-- more the further it has sagged, and adds nothing above the target.
+	do
+		local function tapAt(boost: number, rollDeg: number): number
+			local c = table.clone(cfg)
+			c.tapBoost = boost
+			local st7 = TwoWheel.new()
+			TwoWheel.step(st7, c, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+			TwoWheel.step(st7, c, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
+			return TwoWheel.step(st7, c, body, false, 0, 1, rollDeg, 0, 0, 2, dt, FAST)
+		end
+		t.near(tapAt(0.5, 12) - tapAt(0, 12), 12000 * 0.5, 1e-6, "tap boost: full once sagged tapBoostFullDeg")
+		t.near(tapAt(0.5, 35) - tapAt(0, 35), 12000 * 0.5 * (42 - 35) / 15, 1e-6, "tap boost: less the closer to the target")
+		t.near(tapAt(0.5, 45) - tapAt(0, 45), 0, 1e-6, "tap boost: nothing above the target")
+	end
+
+	-- Sagged under dropReleaseDeg with no tap, the controller lets go and
+	-- gravity drops the car, so it lands with speed instead of being lowered.
+	do
+		local dropping = table.clone(cfg)
+		dropping.dropReleaseDeg = 10
+		local st8 = TwoWheel.new()
+		TwoWheel.step(st8, dropping, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+		TwoWheel.step(st8, dropping, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
+		TwoWheel.step(st8, dropping, body, false, 0, 0, 12, 0, 0, 2, dt, FAST)
+		t.eq(st8.mode, "balanced", "drop: still held above the release angle")
+		local out = TwoWheel.step(st8, dropping, body, false, 0, 0, 8, -20, 0, 2, dt, FAST)
+		t.eq(st8.mode, "landing", "drop: released below it")
+		t.near(out, 60 * 20, 1e-6, "drop: only landing damping acts")
+		TwoWheel.step(st8, dropping, body, false, 0, 0, 1, -20, 2, 2, dt, FAST)
+		t.eq(st8.mode, "idle", "drop: down on four wheels")
+		t.near(st8.touchdown, 0.6, 1e-9, "touchdown: the soft window opens on landing")
+		for _ = 1, 60 do
+			TwoWheel.step(st8, dropping, body, false, 0, 0, 0, 0, 2, 2, dt, FAST)
+		end
+		t.near(st8.touchdown, 0, 1e-9, "touchdown: and closes after touchdownSeconds")
+	end
 end

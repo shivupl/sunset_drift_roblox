@@ -38,7 +38,10 @@ function Suspension.step(
 	cfg: Config,
 	wheelRadius: number,
 	stiffnessMult: number,
-	dt: number
+	dt: number,
+	-- Scales the damper. 1 normally; below 1 for a moment after a two-wheel
+	-- landing so the car rocks on its springs instead of stopping dead.
+	dampingMult: number?
 ): Result
 	if hitDistanceM == nil then
 		return { compression = 0, force = 0, grounded = false }
@@ -52,7 +55,7 @@ function Suspension.step(
 	local dx = if dt > 0 then (x - prevCompression) / dt else 0
 	-- Spring + damper. Damping on compression velocity is what makes the
 	-- body "load up and settle" instead of bouncing; ~0.35 damping ratio.
-	local force = cfg.stiffness * stiffnessMult * x + cfg.damping * dx
+	local force = cfg.stiffness * stiffnessMult * x + cfg.damping * (dampingMult or 1) * dx
 	if raw > cfg.travel then
 		-- Bump stop: stiff extra spring past full travel so the body cannot
 		-- sink through the wheels under two-wheel loads or hard landings.

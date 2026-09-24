@@ -396,7 +396,11 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		if twoWheelActive and ((self.twoWheel.side > 0) == (not wheel.left)) then
 			stiffnessMult = cfg.twoWheel.suspensionBias
 		end
-		local susp = Suspension.step(wheel.compression, hitDistM, cfg.suspension, cfg.body.wheelRadius, stiffnessMult, dt)
+		-- Just after a two-wheel landing the dampers run soft, so the drop
+		-- rocks the car on its springs (measured with full damping: 1 degree
+		-- past level and dead in 0.3 s).
+		local dampingMult = if self.twoWheel.touchdown > 0 then cfg.twoWheel.touchdownDampingScale else 1
+		local susp = Suspension.step(wheel.compression, hitDistM, cfg.suspension, cfg.body.wheelRadius, stiffnessMult, dt, dampingMult)
 		wheel.compression = susp.compression
 		local hpM = hpStuds * mps
 		local contactM = if hit then hit.Position * mps else hpM - up * rayLenM
