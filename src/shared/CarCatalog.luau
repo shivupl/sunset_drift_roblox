@@ -419,6 +419,79 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 	},
+	-- THE BATROL (the Gulf's own name for it). A late-90s Japanese full-size
+	-- 4x4, the long five-door: tall, boxy, heavy, the desert car. Body: the
+	-- Creator Store model 8941542327 (IamNobody7, no scripts), one MeshPart
+	-- per material, referenced by mesh id like the Kamri. Removed: the
+	-- lettering inside the cabin, and the maker's grille and tailgate badges,
+	-- which are geometry inside the chrome mesh, so the chrome is rebuilt
+	-- without them (CarMeshes/Batrol, tools/carbody/batrol.py): 2,435
+	-- triangles to 995.
+	--
+	-- Placed at 0.2442 m a model stud, so its wheel centres sit on the real
+	-- 2.97 m wheelbase: 5.06 m long, 1.87 m tall, 0.86 m tyres. Piece names
+	-- follow the body standard (tools/carbody/README.md).
+	--
+	-- Handling: the pickup's mass, so its measured springs and natl torques
+	-- carry over; the rest is shared.
+	batrol = {
+		displayName = "Batrol",
+		blurb = "Tall, heavy, built for the sand. Made to ride on two wheels.",
+		order = 5,
+		scale = 1.2,
+		rig = {
+			massKg = 2200,
+			-- Nose at -2.39 m, tail lamps at +2.50 m (the spare wheel to +2.67).
+			collisionSizeM = { 1.85, 1.3, 4.7 },
+			-- A tall body: the mass sits higher than the saloons'.
+			centerOfMassM = { 0, -0.2, -0.1 },
+			shellMassFraction = 0.55,
+			wheelbaseM = 2.97,
+			trackWidthM = 1.6643,
+			wheelRadiusM = 0.428,
+			wheelWidthM = 0.2888,
+			-- Driver's side, high: the seat 0.7 m off the ground at rest.
+			seatM = { -0.4, -0.26, -0.1 },
+		},
+		body = {
+			paint = Color3.fromRGB(236, 236, 232),
+			pieces = {
+				{ name = "HeadLamps", meshId = 8941430640, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.2836, 0.1954, 1.7227 }, offsetM = { -0.0007, 0.9785, -2.1075 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Interior_Wood", meshId = 8941497189, textureId = 8941497327, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.3343, 0.4511, 0.9112 }, offsetM = { -0.2354, 1.1356, -0.4157 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Body_Caps", meshId = 8941371341, paint = true, sizeM = { 3.2937, 1.4583, 2.1754 }, offsetM = { 0, 1.066, 1.0192 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Underbody_Shocks", meshId = 8941415688, color = Color3.fromRGB(239, 184, 56), material = Enum.Material.SmoothPlastic, sizeM = { 3.0067, 0.4035, 1.3356 }, offsetM = { 0, 0.6417, 0.0148 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim", meshId = 8941396835, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 4.8889, 1.5194, 2.0573 }, offsetM = { -0.051, 1.0687, 0.0554 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Interior", meshId = 8941480817, color = Color3.fromRGB(43, 43, 43), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 3.4388, 1.3505, 1.7656 }, offsetM = { 0, 1.1363, 0.6884 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Underbody_Floor", meshId = 8941383056, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 3.3718, 1.3049, 1.7656 }, offsetM = { 0, 1.1223, 0.655 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Indicators", meshId = 8941435381, color = Color3.fromRGB(170, 85, 0), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.1107, 0.0771, 1.6913 }, offsetM = { 0, 0.9862, -2.0211 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim_LowerGrille", meshId = 8941445129, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.1139, 0.2811, 0.6574 }, offsetM = { -0.001, 0.6489, -2.3044 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Underbody", meshId = 8941378347, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 4.7287, 1.5528, 2.0445 }, offsetM = { -0.0447, 1.0823, 0.1355 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Body_Scoop", meshId = 8941458917, paint = true, sizeM = { 3.4768, 0.5091, 2.054 }, offsetM = { -0.0494, 1.0646, 0.1332 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "TailLamps", meshId = 8941465426, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.Glass, transparency = 0.5, castShadow = false, sizeM = { 0.1865, 0.6899, 1.8138 }, offsetM = { 0, 0.893, 2.4066 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Body", meshId = 8941363995, paint = true, sizeM = { 4.8848, 1.5366, 1.9589 }, offsetM = { 0, 1.1044, 0.0512 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim_Windows", meshId = 8941387847, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.9503, 0.4599, 1.7527 }, offsetM = { 0, 1.5099, 1.6278 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim_Housings", meshId = 8941366429, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 3.1926, 0.9081, 1.2589 }, offsetM = { -0.0869, 0.7916, -0.6214 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Interior_Dash", meshId = 8941493309, textureId = 8941493447, color = Color3.fromRGB(231, 231, 236), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.1015, 0.2915, 0.2651 }, offsetM = { 0, 1.0783, -0.4835 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Chrome_Upper", meshId = 8941439338, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 1.8667, 0.8366, 2.1469 }, offsetM = { 0, 1.2779, -1.2045 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim_Grille", meshId = 8941421362, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.8232, 0.6167, 0.9392 }, offsetM = { 0, 0.9902, -1.957 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "ReverseLamps", meshId = 8941470873, color = Color3.fromRGB(231, 231, 236), material = Enum.Material.Glass, transparency = 0.5, castShadow = false, sizeM = { 0.1191, 0.0891, 1.8051 }, offsetM = { 0, 1.0489, 2.3729 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Interior_Red", meshId = 8941488774, color = Color3.fromRGB(196, 40, 28), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.6501, 0.4298, 0.9096 }, offsetM = { -0.2187, 1.0254, -0.3073 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Glass", meshId = 8941426631, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Glass, transparency = 0.7, castShadow = false, sizeM = { 4.684, 1.1716, 1.7897 }, offsetM = { 0.012, 1.2426, 0.0927 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "FogLamps", meshId = 8941450998, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6448, 0.6409, 1.6278 }, offsetM = { 0, 0.9531, -1.4546 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Chrome", mesh = "Batrol/Chrome", color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Metal, sizeM = { 1.905, 1.1262, 4.7811 }, offsetM = { 0.0246, 0.8758, 0.0436 } },
+			},
+			wheelPieces = {
+				{ name = "Rim_Face", meshId = 8941522368, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 0.5341, 0.508, 0.0382 }, offsetM = { -0.1366, 0.022, -0.0005 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Rim", meshId = 8941509678, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.5656, 0.5675, 0.3144 }, offsetM = { -0.0011, 0.0038, -0.0005 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Tyre", meshId = 8941514489, color = Color3.fromRGB(25, 25, 25), material = Enum.Material.Rubber, sizeM = { 0.8555, 0.856, 0.2888 }, offsetM = { 0, 0, 0 }, rotationDeg = { 0, 90, 0 } },
+			},
+		},
+		tuning = {
+			-- The pickup's, measured at the same 2.2 t: it sits at the sedan's sag.
+			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
+			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
+		},
+	},
 }
 
 return {
