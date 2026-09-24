@@ -41,6 +41,11 @@ return function(t: T)
 		dropFadeSeconds = 0,
 		touchdownSeconds = 0.6,
 		leanAttackSeconds = 0, -- a press lands at once in the older cases
+		carrySeconds = 0, -- and there is no carry
+		carryTapSeconds = 0,
+		carrySpring = 0,
+		carryFadeSeconds = 1,
+		carryMaxTorque = 1e9,
 	}
 	local FAST = 100 -- km/h, full authority everywhere
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }
@@ -335,5 +340,59 @@ return function(t: T)
 			TwoWheel.step(st11, fading, body, false, 0, 0, 8, 0, 0, 2, dt, FAST)
 		end
 		t.eq(st11.mode, "balanced", "drop fade: a tap mid-fade catches it")
+	end
+
+	-- The carry: after the launch the balance holds firmer for carrySeconds
+	-- (all of gravity cancelled, an extra spring), at full strength until its
+	-- last carryFadeSeconds and then fading back to normal. A tap toward the lifted side opens a shorter carry; a
+	-- press of the catch key ends it.
+	do
+		local carried = table.clone(cfg)
+		carried.gravityCancel = 0.9
+		carried.balanceSpring = 100
+		carried.balanceSpringOneSided = false
+		carried.carrySeconds = 2
+		carried.carryTapSeconds = 1
+		carried.carrySpring = 2
+		local function lifted(): TwoWheel.State
+			local st = TwoWheel.new()
+			TwoWheel.step(st, carried, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+			TwoWheel.step(st, carried, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
+			return st
+		end
+		local st12 = lifted()
+		t.near(st12.carry, 2 - dt, 1e-9, "carry: the launch opens it")
+		local out = TwoWheel.step(st12, carried, body, false, 0, 0, 32, 0, 0, 2, dt, FAST)
+		local cancel = TwoWheel.gravityRestoringTorque(body, 32)
+		local spring = 100 * (st12.springEnv + 2) * 10
+		t.near(out, cancel + spring + 300, 1e-6, "carry: full cancel and the extra spring while it runs")
+		for _ = 1, 59 do -- to 1.5 s left: half way through the last second
+			TwoWheel.step(st12, carried, body, false, 0, 0, 32, 0, 0, 2, dt, FAST)
+		end
+		out = TwoWheel.step(st12, carried, body, false, 0, 0, 32, 0, 0, 2, dt, FAST)
+		t.near(st12.carry, 2 - 62 * dt, 1e-9, "carry: 62 frames in")
+		local frac = st12.carry / 1 -- inside the last second: fading
+		cancel = TwoWheel.gravityRestoringTorque(body, 32) * (0.9 + 0.1 * frac)
+		spring = 100 * (st12.springEnv + 2 * frac) * 10
+		t.near(out, cancel + spring + 300, 1e-6, "carry: fading over its last carryFadeSeconds")
+		for _ = 1, 90 do
+			TwoWheel.step(st12, carried, body, false, 0, 0, 32, 0, 0, 2, dt, FAST)
+		end
+		t.near(st12.carry, 0, 1e-9, "carry: over after carrySeconds")
+		TwoWheel.step(st12, carried, body, false, 0, 1, 32, 0, 0, 2, dt, FAST)
+		t.near(st12.carry, 1 - dt, 1e-9, "carry: a tap toward the lifted side opens a shorter one")
+		TwoWheel.step(st12, carried, body, false, 1, 0, 32, 0, 0, 2, dt, FAST)
+		t.near(st12.carry, 0, 1e-9, "carry: the catch key ends it")
+
+		-- Capped: far below the target the carry spring gives carryMaxTorque,
+		-- not twelve springs' worth.
+		local capped = table.clone(carried)
+		capped.carryMaxTorque = 500
+		local st13 = TwoWheel.new()
+		TwoWheel.step(st13, capped, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+		TwoWheel.step(st13, capped, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
+		local low = TwoWheel.step(st13, capped, body, false, 0, 0, 20, 0, 0, 2, dt, FAST)
+		local expect = TwoWheel.gravityRestoringTorque(body, 20) + 100 * st13.springEnv * 22 + 500 + 300
+		t.near(low, expect, 1e-6, "carry: capped at carryMaxTorque")
 	end
 end

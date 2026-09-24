@@ -80,6 +80,11 @@ export type Config = {
 	dropReleaseDeg: number, -- sagged under this with no in-key held, the controller lets go and the car drops; 0 never
 	dropFadeSeconds: number, -- and it lets go over this long rather than on one frame
 	leanAttackSeconds: number, -- a fresh lean press ramps to full over this long rather than landing on one frame
+	carrySeconds: number, -- after the launch the balance holds firmer for this long, fading back to normal
+	carryTapSeconds: number, -- a tap toward the lifted side opens a carry this long (unless a longer one is running)
+	carrySpring: number, -- extra spring during a carry, in balanceSprings (12 = twelve more on top of the normal one)
+	carryFadeSeconds: number, -- a carry is at full strength until this long before its end, then fades out
+	carryMaxTorque: number, -- the carry spring's torque is capped at this, so it holds near the angle but never snatches from far off it
 	touchdownSeconds: number, -- after a two-wheel landing the suspension runs soft this long (see touchdown)
 }
 
@@ -109,6 +114,7 @@ export type State = {
 	rampLeft: boolean, -- the left key's press is still ramping in
 	rampRight: boolean,
 	touchdown: number, -- seconds left of the soft suspension after a landing
+	carry: number, -- seconds left of the firmer hold
 }
 
 function TwoWheel.new(): State
@@ -131,6 +137,7 @@ function TwoWheel.new(): State
 		hold = 1,
 		rampLeft = false,
 		rampRight = false,
+		carry = 0,
 	}
 end
 
@@ -274,6 +281,7 @@ function TwoWheel.step(
 		if roll >= cfg.targetRollDeg - cfg.balancedEntryMarginDeg then
 			state.mode = "balanced"
 			state.hold = 1
+			state.carry = cfg.carrySeconds
 		end
 	end
 
@@ -323,10 +331,27 @@ function TwoWheel.step(
 		-- winds it back up: that is the "keep tapping to keep it up" of a
 		-- real sidewall ride, and with nothing pressed the car comes home.
 		local inFresh = if s > 0 then freshRight else freshLeft
+		local outFresh = if s > 0 then freshLeft else freshRight
 		if inFresh then
 			state.springEnv = 1
 			state.boost = 1
+			state.carry = math.max(state.carry, cfg.carryTapSeconds)
 		end
+		-- The carry: the launch, and each tap toward the lifted side, hold
+		-- the car firmer for a while (all of gravity cancelled and the
+		-- spring stronger), at full strength until its last carryFadeSeconds
+		-- and then fading back to normal, so the car lingers at the angle
+		-- and then sags. The carry spring adds to the normal one rather than
+		-- multiplying it: multiplied, it wound down with the spring's own
+		-- envelope and a carry of 3x held for well under a second. Measured without it: one
+		-- tap was above 25 degrees for 1.17 s and down at 2.6 s; a tap every
+		-- 2 s spent 3 of 9 s above 25 and landed between taps. The catch key
+		-- ends it at once, so a deliberate landing is never fought.
+		if outFresh then
+			state.carry = 0
+		end
+		state.carry = math.max(0, state.carry - dt)
+		local carryFrac = if cfg.carryFadeSeconds > 0 then math.clamp(state.carry / cfg.carryFadeSeconds, 0, 1) elseif state.carry > 0 then 1 else 0
 		state.springEnv = math.max(cfg.balanceSpringFloor, state.springEnv - dt / math.max(cfg.balanceSpringDecaySeconds, 1e-3))
 		-- Symmetric by default: the spring lifts a sagging car and pulls a
 		-- high one back down, so the car settles to a hover near the target
@@ -337,14 +362,21 @@ function TwoWheel.step(
 		if cfg.balanceSpringOneSided then
 			err = math.max(err, 0)
 		end
-		local spring = cfg.balanceSpring * state.springEnv * err
+		-- The carry spring is capped: it is there to hold the car near the
+		-- angle. Uncapped, a tap with the car sagged to 15 degrees met a
+		-- 20 degree error times twelve springs and snatched it up (a 214
+		-- deg/s jolt in one step).
+		local carryTorque = math.clamp(cfg.balanceSpring * cfg.carrySpring * carryFrac * err, -cfg.carryMaxTorque, cfg.carryMaxTorque)
+		local spring = cfg.balanceSpring * state.springEnv * err + carryTorque
 		-- The gravity cancel winds down with the same envelope, to
 		-- balanceCancelFloor of itself. A fully cancelled pendulum is
 		-- neutral at every angle, so with the spring gone the car just
 		-- hovered at 9 degrees; leaving a little of gravity uncancelled is
 		-- what brings it home.
 		local cancelScale = cfg.balanceCancelFloor + (1 - cfg.balanceCancelFloor) * state.springEnv
-		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cfg.gravityCancel * cancelScale
+		local cancelFrac = cfg.gravityCancel * cancelScale
+		cancelFrac += (1 - cancelFrac) * carryFrac
+		local cancel = math.max(TwoWheel.gravityRestoringTorque(body, roll), 0) * cancelFrac
 		-- The tap boost: a short lift back toward the target, full once the
 		-- car has sagged tapBoostFullDeg and less the closer it is, so a tap
 		-- at 15 degrees puts it back up and a tap at the target adds nothing

@@ -569,9 +569,31 @@ local config = {
 		-- the target, so tapping cannot flip it. At 0.5 sized by the sag as
 		-- a fraction of the whole target, a tap at 25 degrees was 2,000 Nm
 		-- and the car sagged 20 degrees a second between taps anyway.
-		tapBoost = 1,
+		-- 0.6 over 0.5 s from 1 over 0.3 s (2026-09-24, the owner: taps
+		-- "less jerky"); the carry below does the lingering now, so the
+		-- boost only has to lift, not hold.
+		tapBoost = 0.6,
 		tapBoostFullDeg = 15,
-		tapBoostSeconds = 0.3,
+		tapBoostSeconds = 0.5,
+		-- The carry (the owner, 2026-09-24: "let the initial one carry out
+		-- for a good amount, subsequent taps help it linger a bit more").
+		-- After the launch the balance holds firmer for carrySeconds: all of
+		-- gravity cancelled and carrySpring extra balanceSprings on top of
+		-- the normal one, at full until the last carryFadeSeconds and then
+		-- fading back to normal. A tap toward the lifted side opens a carry
+		-- of carryTapSeconds. The catch key ends it. Measured before: one
+		-- tap was above 25 degrees for 1.17 s and down at 2.6 s; a tap every
+		-- 2 s was above 25 for 3 of 9 s. A spring that multiplied the normal
+		-- one and faded over the whole carry barely helped (3x: 1.34 s above
+		-- 25; 7x: 1.58; 21x: 2.1, holding 33 for a second and a half).
+		carrySeconds = 2.5,
+		carryTapSeconds = 1.2,
+		carrySpring = 12,
+		carryFadeSeconds = 1,
+		-- The carry spring's torque is capped, so it holds near the angle but
+		-- does not snatch a sagging car up (uncapped, a tap at 15 degrees
+		-- jolted 214 deg/s in one step). The tap boost does the lifting.
+		carryMaxTorque = 3000,
 		-- Sagged under this with nothing pushing it up, the controller lets
 		-- go and gravity drops the car, so it lands with speed (measured
 		-- 66 deg/s at touchdown, against 20 when lowered all the way in).
