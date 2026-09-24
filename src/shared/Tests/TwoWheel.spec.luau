@@ -38,7 +38,9 @@ return function(t: T)
 		tapBoostFullDeg = 15,
 		tapBoostSeconds = 0.3,
 		dropReleaseDeg = 0,
+		dropFadeSeconds = 0,
 		touchdownSeconds = 0.6,
+		leanAttackSeconds = 0, -- a press lands at once in the older cases
 	}
 	local FAST = 100 -- km/h, full authority everywhere
 	local body = { massKg = 1600, gravity = 9.81, comHeightM = 0.52, halfTrackM = 0.775 }
@@ -246,20 +248,41 @@ return function(t: T)
 	t.eq(st.mode, "lifting", "re-lifts after the lean is released and pressed again")
 	t.eq(st.side, -1, "lean left picks the left side")
 
-	-- A tap toward the lifted side boosts the car back toward the target,
-	-- more the further it has sagged, and adds nothing above the target.
+	-- A tap toward the lifted side boosts the car back toward the target:
+	-- a pulse that starts from nothing (no jolt on the tap frame), peaks
+	-- halfway through tapBoostSeconds, and is sized by the sag.
 	do
-		local function tapAt(boost: number, rollDeg: number): number
+		local function tapAt(boost: number, rollDeg: number, after: number): number
 			local c = table.clone(cfg)
 			c.tapBoost = boost
 			local st7 = TwoWheel.new()
 			TwoWheel.step(st7, c, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
 			TwoWheel.step(st7, c, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
-			return TwoWheel.step(st7, c, body, false, 0, 1, rollDeg, 0, 0, 2, dt, FAST)
+			local out = TwoWheel.step(st7, c, body, false, 0, 1, rollDeg, 0, 0, 2, dt, FAST)
+			for _ = 1, after do
+				out = TwoWheel.step(st7, c, body, false, 0, 1, rollDeg, 0, 0, 2, dt, FAST)
+			end
+			return out
 		end
-		t.near(tapAt(0.5, 12) - tapAt(0, 12), 12000 * 0.5, 1e-6, "tap boost: full once sagged tapBoostFullDeg")
-		t.near(tapAt(0.5, 35) - tapAt(0, 35), 12000 * 0.5 * (42 - 35) / 15, 1e-6, "tap boost: less the closer to the target")
-		t.near(tapAt(0.5, 45) - tapAt(0, 45), 0, 1e-6, "tap boost: nothing above the target")
+		local mid = 9 -- 9 steps of 1/60 is half of tapBoostSeconds (0.3)
+		t.near(tapAt(0.5, 12, 0) - tapAt(0, 12, 0), 0, 1e-6, "tap boost: nothing on the tap frame")
+		t.near(tapAt(0.5, 12, mid) - tapAt(0, 12, mid), 12000 * 0.5, 1e-6, "tap boost: full mid-pulse once sagged tapBoostFullDeg")
+		t.near(tapAt(0.5, 35, mid) - tapAt(0, 35, mid), 12000 * 0.5 * (42 - 35) / 15, 1e-6, "tap boost: less the closer to the target")
+		t.near(tapAt(0.5, 45, mid) - tapAt(0, 45, mid), 0, 1e-6, "tap boost: nothing above the target")
+	end
+
+	-- A lean press ramps in over leanAttackSeconds instead of landing whole
+	-- on one frame.
+	do
+		local soft = table.clone(cfg)
+		soft.leanAttackSeconds = 0.06
+		local st9 = TwoWheel.new()
+		TwoWheel.step(st9, soft, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+		t.near(st9.envRight, dt / 0.06, 1e-9, "lean attack: a fresh press starts part way")
+		for _ = 1, 3 do
+			TwoWheel.step(st9, soft, body, false, 0, 1, 20, 0, 0, 2, dt, FAST)
+		end
+		t.near(st9.envRight, 1, 1e-9, "lean attack: full after leanAttackSeconds")
 	end
 
 	-- Sagged under dropReleaseDeg with no tap, the controller lets go and
@@ -273,7 +296,7 @@ return function(t: T)
 		TwoWheel.step(st8, dropping, body, false, 0, 0, 12, 0, 0, 2, dt, FAST)
 		t.eq(st8.mode, "balanced", "drop: still held above the release angle")
 		local out = TwoWheel.step(st8, dropping, body, false, 0, 0, 8, -20, 0, 2, dt, FAST)
-		t.eq(st8.mode, "landing", "drop: released below it")
+		t.eq(st8.mode, "landing", "drop: released below it (no fade)")
 		t.near(out, 60 * 20, 1e-6, "drop: only landing damping acts")
 		TwoWheel.step(st8, dropping, body, false, 0, 0, 1, -20, 2, 2, dt, FAST)
 		t.eq(st8.mode, "idle", "drop: down on four wheels")
@@ -282,5 +305,35 @@ return function(t: T)
 			TwoWheel.step(st8, dropping, body, false, 0, 0, 0, 0, 2, 2, dt, FAST)
 		end
 		t.near(st8.touchdown, 0, 1e-9, "touchdown: and closes after touchdownSeconds")
+	end
+
+	-- With dropFadeSeconds the controller lets go over that time rather than
+	-- all at once, and a tap during the fade catches the car.
+	do
+		local fading = table.clone(cfg)
+		fading.dropReleaseDeg = 10
+		fading.dropFadeSeconds = 0.3
+		local function lifted(): TwoWheel.State
+			local st = TwoWheel.new()
+			TwoWheel.step(st, fading, body, false, 0, 1, 0, 0, 2, 2, dt, FAST)
+			TwoWheel.step(st, fading, body, false, 0, 0, 40, 0, 0, 2, dt, FAST)
+			return st
+		end
+		local st10 = lifted()
+		TwoWheel.step(st10, fading, body, false, 0, 0, 8, 0, 0, 2, dt, FAST)
+		t.eq(st10.mode, "balanced", "drop fade: still held on the first frame under")
+		for _ = 1, 18 do
+			TwoWheel.step(st10, fading, body, false, 0, 0, 8, 0, 0, 2, dt, FAST)
+		end
+		t.eq(st10.mode, "landing", "drop fade: let go after dropFadeSeconds")
+		local st11 = lifted()
+		for _ = 1, 9 do
+			TwoWheel.step(st11, fading, body, false, 0, 0, 8, 0, 0, 2, dt, FAST)
+		end
+		TwoWheel.step(st11, fading, body, false, 0, 1, 8, 0, 0, 2, dt, FAST)
+		for _ = 1, 12 do -- under a fresh full fade
+			TwoWheel.step(st11, fading, body, false, 0, 0, 8, 0, 0, 2, dt, FAST)
+		end
+		t.eq(st11.mode, "balanced", "drop fade: a tap mid-fade catches it")
 	end
 end

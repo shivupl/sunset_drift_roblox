@@ -538,6 +538,10 @@ local config = {
 		-- toward leanHoldFloor over leanHoldDecaySeconds while held.
 		-- Stabilise by tapping against the lean, not by holding.
 		leanHoldDecaySeconds = 0.45,
+		-- A fresh press ramps to full over this long rather than landing on
+		-- one frame (with the tap boost, a tap jolted the roll rate by up to
+		-- 106 deg/s in a step). Short enough that a tap still reads as a tap.
+		leanAttackSeconds = 0.06,
 		leanHoldFloor = 0.3,
 		-- Same floor as the catch key: the in-key decays when held, so
 		-- leaning on it stops pushing rather than carrying the car over.
@@ -573,13 +577,22 @@ local config = {
 		-- 66 deg/s at touchdown, against 20 when lowered all the way in).
 		-- 0 lowers it all the way in, as before.
 		dropReleaseDeg = 10,
+		-- ...over this long, so the release is a fade, not a jolt (cut on one
+		-- frame: 28 deg/s of roll-rate change in a step). A tap toward the
+		-- lifted side during the fade catches it.
+		dropFadeSeconds = 0.3,
 		-- For touchdownSeconds after a two-wheel landing the suspension
 		-- damping runs at touchdownDampingScale, so the drop rocks the car
 		-- on its springs. With full damping it stopped dead: 1 degree past
 		-- level, settled in 0.3 s. Only after a natl landing; ordinary
 		-- driving never sees it.
-		touchdownSeconds = 0.6,
-		touchdownDampingScale = 0.35,
+		-- Smoothed (the owner, 2026-09-24: "smoothen out the jerk and the
+		-- drop/post stop"): at 0.35 for 0.6 s and then snapping back, the
+		-- touchdown hit 91 deg/s in a step and bounced the car back up to
+		-- 11.8 degrees at 214 deg/s; now it starts at 0.6 and eases back to
+		-- full damping across the window.
+		touchdownSeconds = 0.8,
+		touchdownDampingScale = 0.6,
 		-- Steering is the strongest balance lever there is on two wheels: a
 		-- turn toward the low side drops the car, away lifts it, and at 80 km/h
 		-- a 0.3 s tap of 0.2 steer was enough to flip it. Scale the lock while

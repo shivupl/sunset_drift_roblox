@@ -78,6 +78,8 @@ export type Config = {
 	tapBoostFullDeg: number, -- sagged this far below the target or more is full sag
 	tapBoostSeconds: number, -- and the boost fades over this long
 	dropReleaseDeg: number, -- sagged under this with no in-key held, the controller lets go and the car drops; 0 never
+	dropFadeSeconds: number, -- and it lets go over this long rather than on one frame
+	leanAttackSeconds: number, -- a fresh lean press ramps to full over this long rather than landing on one frame
 	touchdownSeconds: number, -- after a two-wheel landing the suspension runs soft this long (see touchdown)
 }
 
@@ -103,6 +105,9 @@ export type State = {
 	prevHeld: boolean, -- last step's toggle, to land when it goes off
 	springEnv: number, -- 0..1 how much of balanceSpring is live right now
 	boost: number, -- 0..1 what is left of the last tap's boost
+	hold: number, -- 0..1 how much of the controller is still holding the car up (1 until a drop starts)
+	rampLeft: boolean, -- the left key's press is still ramping in
+	rampRight: boolean,
 	touchdown: number, -- seconds left of the soft suspension after a landing
 }
 
@@ -123,6 +128,9 @@ function TwoWheel.new(): State
 		springEnv = 1,
 		boost = 0,
 		touchdown = 0,
+		hold = 1,
+		rampLeft = false,
+		rampRight = false,
 	}
 end
 
@@ -173,23 +181,33 @@ function TwoWheel.step(
 	local freshLeft = leanLeft ~= 0 and state.prevLeft == 0
 	local freshRight = leanRight ~= 0 and state.prevRight == 0
 
-	-- Tap envelopes, one per key: a fresh press starts at 1 and decays
-	-- toward leanHoldFloor while the key stays down; released is 0.
-	local function envelope(env: number, now: number, prev: number, floor: number): number
-		if now ~= 0 and prev == 0 then
-			return 1
-		elseif now ~= 0 then
-			local k = 1 - math.exp(-dt / math.max(cfg.leanHoldDecaySeconds, 1e-3))
-			return env + (floor - env) * k
+	-- Tap envelopes, one per key: a fresh press ramps to 1 over
+	-- leanAttackSeconds (a press that landed whole on one frame was a
+	-- visible jolt), then decays toward the floor while the key stays down;
+	-- released is 0.
+	local function envelope(env: number, ramping: boolean, now: number, prev: number, floor: number): (number, boolean)
+		if now == 0 then
+			return 0, false
 		end
-		return 0
+		if prev == 0 then
+			env, ramping = 0, true
+		end
+		if ramping then
+			env += if cfg.leanAttackSeconds > 0 then dt / cfg.leanAttackSeconds else 1
+			if env >= 1 - 1e-9 then
+				return 1, false
+			end
+			return env, true
+		end
+		local k = 1 - math.exp(-dt / math.max(cfg.leanHoldDecaySeconds, 1e-3))
+		return env + (floor - env) * k, false
 	end
 	-- The key toward the lifted side keeps its own floor: held, it goes on
 	-- pushing, and a car pushed past the tip goes over. That is the price
 	-- of leaning on the key instead of tapping it.
 	local inIsLeft = state.side < 0
-	state.envLeft = envelope(state.envLeft, leanLeft, state.prevLeft, if inIsLeft then cfg.leanInHoldFloor else cfg.leanHoldFloor)
-	state.envRight = envelope(state.envRight, leanRight, state.prevRight, if inIsLeft then cfg.leanHoldFloor else cfg.leanInHoldFloor)
+	state.envLeft, state.rampLeft = envelope(state.envLeft, state.rampLeft, leanLeft, state.prevLeft, if inIsLeft then cfg.leanInHoldFloor else cfg.leanHoldFloor)
+	state.envRight, state.rampRight = envelope(state.envRight, state.rampRight, leanRight, state.prevRight, if inIsLeft then cfg.leanHoldFloor else cfg.leanInHoldFloor)
 	state.prevLeft, state.prevRight = leanLeft, leanRight
 	local lean = leanRight - leanLeft -- for side picking
 
@@ -255,6 +273,7 @@ function TwoWheel.step(
 		torque = cfg.liftTorque * liftAuthority
 		if roll >= cfg.targetRollDeg - cfg.balancedEntryMarginDeg then
 			state.mode = "balanced"
+			state.hold = 1
 		end
 	end
 
@@ -274,9 +293,17 @@ function TwoWheel.step(
 		-- gravity drop it, so the lifted wheels land with speed and the
 		-- suspension takes the hit. Lowered by the controller all the way,
 		-- the car touched down at a crawl and did not move afterwards.
+		-- It lets go over dropFadeSeconds (cut on one frame, the release was
+		-- a jolt), and a tap toward the lifted side during the fade catches it.
 		local inHeld = if s > 0 then leanRight ~= 0 else leanLeft ~= 0
 		if cfg.dropReleaseDeg > 0 and roll < cfg.dropReleaseDeg and not inHeld then
-			state.mode = "landing"
+			state.hold -= if cfg.dropFadeSeconds > 0 then dt / cfg.dropFadeSeconds else 1
+			if state.hold <= 1e-9 then
+				state.hold = 1
+				state.mode = "landing"
+			end
+		else
+			state.hold = 1
 		end
 	end
 
@@ -324,9 +351,13 @@ function TwoWheel.step(
 		-- (tapping cannot flip the car). Measured without it: a tap every
 		-- 1.5 s hovered the car at 9-15.
 		local sag = if cfg.tapBoostFullDeg > 0 then math.clamp((cfg.targetRollDeg - roll) / cfg.tapBoostFullDeg, 0, 1) else 0
-		local boost = cfg.liftTorque * cfg.tapBoost * sag * state.boost
+		-- A pulse, not a step: it swells from nothing to full halfway through
+		-- tapBoostSeconds and back (at full on the tap frame it jolted the
+		-- roll rate 46-106 deg/s in one step).
+		local pulse = if state.boost > 0 then math.sin(math.pi * (1 - state.boost)) else 0
+		local boost = cfg.liftTorque * cfg.tapBoost * sag * pulse
 		state.boost = math.max(0, state.boost - dt / math.max(cfg.tapBoostSeconds, 1e-3))
-		torque = (cancel + spring + boost + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority
+		torque = (cancel + spring + boost + cfg.leanTorque + cfg.instability * math.max(roll - cfg.targetRollDeg, 0)) * holdAuthority * state.hold
 			- cfg.rollDamping * rate
 	end
 
