@@ -47,9 +47,16 @@ colours and materials are kept.
 3. If a badge is inside a mesh, get that mesh from Studio's asset cache:
    `rbxcache.py <Size x y z>` finds it by proportions. Save it as
    `assets/cars/<car>/<piece>_source.obj`.
-4. Write `tools/carbody/<car>.py` (copy `batrol.py`): the role of every store
-   part, the badge boxes to cut, the real wheelbase. It writes the generated
-   pieces, an OBJ of each for upload, and the catalog lines.
+4. Add the car to `CARS` in `storecar.py`: the role of every part, what to
+   drop (roof gear, badges, lettering, plain parts and unions), textures to
+   drop or parts to make plain, the four tyres, a part at the front, the
+   real wheelbase. It levels and turns the model from its wheel centres and
+   writes the catalog lines with the triangle count. (`batrol.py` is the
+   older one-car version, kept because its chrome is rebuilt.)
+   Then look at every side in Studio for branding the part list missed:
+   lettering is often a thin strip of its own, or in a shared texture.
+   Heavy meshes that must stay (wheels) are simplified with `simplify.py`
+   into OBJs for upload; until then the store mesh is used.
 5. Add the catalog entry, check `VehicleRig.validate`, spawn it, and measure
    it with the harness.
 
@@ -69,3 +76,4 @@ is needed.
 |---|---|---|---|
 | Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: its pieces are still named `P<n>` |
 | Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome |
+| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, tailgate spare, badges and lettering dropped; 163,478 to 122,363 triangles, about 82,000 once the simplified rim and hub are uploaded |
