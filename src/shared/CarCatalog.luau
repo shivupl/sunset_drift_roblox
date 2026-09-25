@@ -425,8 +425,8 @@ local cars: { [string]: CarEntry } = {
 	-- per material, referenced by mesh id like the Kamri. Removed: the
 	-- lettering inside the cabin, and the maker's grille and tailgate badges,
 	-- which are geometry inside the chrome mesh, so the chrome is rebuilt
-	-- without them (CarMeshes/Batrol, tools/carbody/batrol.py): 2,435
-	-- triangles to 995.
+	-- without them (CarMeshes/Batrol, tools/carbody/batrol.py): 1,306
+	-- triangles to 384.
 	--
 	-- Placed at 0.2442 m a model stud, so its wheel centres sit on the real
 	-- 2.97 m wheelbase: 5.06 m long, 1.87 m tall, 0.86 m tyres. Piece names

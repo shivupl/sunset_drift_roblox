@@ -11,10 +11,10 @@
 -- per corner. MeshData decodes them.
 return {
 	Chrome = {
-		triangleCount = 995,
+		triangleCount = 384,
 		sizeM = { 1.9050, 1.1262, 4.7811 },
 		offsetM = { 0.0246, 0.8758, 0.0436 },
-		counts = { 951, 995, 1 },
+		counts = { 948, 384, 1 },
 		positions = require(script.Chrome_positions) :: string,
 		normals = require(script.Chrome_normals) :: string,
 		uvs = require(script.Chrome_uvs) :: string,

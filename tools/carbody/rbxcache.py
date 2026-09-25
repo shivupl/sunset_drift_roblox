@@ -10,9 +10,9 @@ edited (a badge cut out) without an Export Selection round trip.
 
 finds the cached mesh whose proportions match a MeshPart's Size (render the
 model in Studio first so its meshes are cached). Cache entries have an
-"RBXH" HTTP header, then the mesh file. Mesh format 7.00 is chunked:
-COREMESH holds a Draco bitstream (positions and UVs; faces are flat, three
-unshared vertices each), LODS the level-of-detail table.
+"RBXH" HTTP header, then the mesh file. Formats 2.00 to 4.01 are a header,
+vertices and faces (and from 3.00 level-of-detail ranges); 7.00 is chunked:
+COREMESH holds a Draco bitstream, LODS the level-of-detail table.
 """
 import glob
 import os
@@ -22,10 +22,36 @@ import sys
 import numpy as np
 
 CACHE = os.path.join(os.environ.get("TMPDIR", "/tmp"), "Roblox", "rbx-storage")
+# Small entries live inline in this SQLite file instead of the folder.
+CACHE_DB = os.path.expanduser("~/Library/Roblox/rbx-storage.db")
+
+
+def entries(cache=CACHE, db=CACHE_DB):
+    """Every cached entry: file paths, then "db:<hex id>" for inline ones."""
+    for path in glob.glob(os.path.join(cache, "*", "*")):
+        yield path
+    if os.path.exists(db):
+        import sqlite3
+
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        for (key,) in con.execute("SELECT hex(id) FROM files WHERE content IS NOT NULL"):
+            yield "db:" + key
+        con.close()
+
+
+def read(path, db=CACHE_DB):
+    if path.startswith("db:"):
+        import sqlite3
+
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        row = con.execute("SELECT content FROM files WHERE hex(id) = ?", (path[3:],)).fetchone()
+        con.close()
+        return bytes(row[0]) if row else b""
+    return open(path, "rb").read()
 
 
 def mesh_body(path):
-    data = open(path, "rb").read()
+    data = read(path)
     i = data.find(b"version ")
     return data[i:] if i >= 0 else None
 
@@ -42,13 +68,9 @@ def chunks(b):
     return out
 
 
-def decode(path):
-    """(points (v,3), faces (f,3)) in mesh space, or None if not a v7 mesh."""
+def decode_v7(b):
     import DracoPy
 
-    b = mesh_body(path)
-    if b is None or not b.startswith(b"version 7"):
-        return None
     ch = chunks(b)
     if "COREMESH" not in ch:
         return None
@@ -56,7 +78,61 @@ def decode(path):
     m = DracoPy.decode(data[data.find(b"DRACO"):])
     points = np.asarray(m.points, dtype=float).reshape(-1, 3)
     faces = np.asarray(m.faces, dtype=np.int64).reshape(-1, 3)
+    # LODS: u16 type, u8 high-quality count, u32 n, then n face offsets. The
+    # faces hold every level of detail back to back; the first is full detail.
+    if "LODS" in ch:
+        lods = ch["LODS"][1]
+        _, _, n = struct.unpack_from("<HBI", lods, 0)
+        offs = struct.unpack_from(f"<{n}I", lods, 7)
+        if n >= 2 and 0 < offs[1] <= len(faces):
+            faces = faces[offs[0]:offs[1]]
     return points, faces
+
+
+def decode_v2_v4(b):
+    """Formats 2.00, 3.00 and 4.0x: a header, vertices, faces, and (from 3.00)
+    a table of level-of-detail face ranges; the first range is full detail."""
+    ver = b[8:12]
+    p = b.index(b"\n") + 1
+    if ver == b"2.00":
+        _, vsize, _, nv, nf = struct.unpack_from("<HBBII", b, p)
+        p += 12
+        lods = None
+    elif ver == b"3.00":
+        hsize, vsize, _, _, nlods, nv, nf = struct.unpack_from("<HBBHHII", b, p)
+        p += hsize
+        lods = nlods
+    elif ver.startswith(b"4.0"):
+        hsize, _, nv, nf, nlods, nbones = struct.unpack_from("<HHIIHH", b, p)
+        p += hsize
+        vsize = 40
+        lods = nlods
+    else:
+        return None
+    raw = np.frombuffer(b, dtype=np.uint8, count=nv * vsize, offset=p).reshape(nv, vsize)
+    points = raw[:, :12].copy().view("<f4").reshape(nv, 3).astype(float)
+    p += nv * vsize
+    if ver.startswith(b"4.0") and nbones:
+        p += nv * 8
+    faces = np.frombuffer(b, dtype="<u4", count=nf * 3, offset=p).reshape(nf, 3).astype(np.int64)
+    p += nf * 12
+    if lods:
+        offs = np.frombuffer(b, dtype="<u4", count=lods, offset=p)
+        if lods >= 2 and 0 < offs[1] <= nf:
+            faces = faces[offs[0]:offs[1]]
+    return points, faces
+
+
+def decode(path):
+    """(points (v,3), faces (f,3)) in mesh space, or None if not a mesh."""
+    b = mesh_body(path)
+    if b is None:
+        return None
+    if b.startswith(b"version 7"):
+        return decode_v7(b)
+    if b[:12] in (b"version 2.00", b"version 3.00", b"version 4.00", b"version 4.01"):
+        return decode_v2_v4(b)
+    return None
 
 
 def find(size, cache=CACHE):
@@ -64,7 +140,7 @@ def find(size, cache=CACHE):
     up to one uniform scale: [(error, path, triangles, scale)]."""
     size = np.asarray(size, dtype=float)
     ranked = []
-    for path in glob.glob(os.path.join(cache, "*", "*")):
+    for path in entries(cache):
         try:
             r = decode(path)
         except Exception:
