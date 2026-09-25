@@ -8,6 +8,10 @@
 -- low against high load by rpm, and on-load against overrun by throttle.
 -- The squares sum to one, so the level never dips between layers.
 --
+-- Getting in starts the engine: a chime, the starter, and the layers fading
+-- in once it has cranked; getting out plays the engine stopping (the store
+-- Camry's own ignition sounds, CarConfig.effects.engineAudio).
+--
 -- On top of the layers, four events read off the same state: an upshift
 -- dips the engine (the torque cut), an off-throttle downshift blips the
 -- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
@@ -64,6 +68,8 @@ local nextPop = 1
 local popQueue: { number } = {} -- clock times of pops still to fire
 local punch = 0 -- rpm the note sits over it after the throttle goes on
 local heardLoad = 0 -- the throttle the layers hear, eased (lift tapers off)
+local ignition = 0 -- 0 before the engine has started, 1 once it runs (fades in)
+local chassisPart: BasePart? = nil
 
 local function layersOf(cfg: ConfigLoader.Config): { [string]: Layer }
 	local layers = (cfg.effects.engineAudio.layers :: any) :: { [string]: Layer }
@@ -79,6 +85,7 @@ function EngineAudio.attach(model: Model)
 		return
 	end
 	local chassis = VehicleRig.handles(model).chassis
+	chassisPart = chassis
 	local layers = layersOf(cfg)
 	local byId: { [string]: Voice } = {}
 	for _, name in LAYER_NAMES do
@@ -123,6 +130,32 @@ function EngineAudio.attach(model: Model)
 			table.insert(pops, oneShot("Engine_pop" .. i, audio.crackleSoundId))
 		end
 	end
+
+	-- Ignition: the chime now, the starter a moment later; the layers stay
+	-- silent until it has cranked (update fades them in).
+	ignition = 0
+	if audio.chimeSoundId ~= "" then
+		local chime = oneShot("Engine_chime", audio.chimeSoundId)
+		chime.Volume = audio.chimeVolume
+		chime:Play()
+		task.delay(audio.chimeSeconds, function()
+			if chime.Parent then
+				chime:Destroy()
+			end
+		end)
+	end
+	if audio.startSoundId ~= "" then
+		local start = oneShot("Engine_start", audio.startSoundId)
+		start.Volume = audio.startVolume
+		task.delay(audio.startDelaySeconds, function()
+			if start.Parent then
+				start:Play()
+			end
+		end)
+		start.Ended:Once(function()
+			start:Destroy()
+		end)
+	end
 end
 
 local function pop(audio: typeof(ConfigLoader.current().effects.engineAudio))
@@ -156,6 +189,10 @@ function EngineAudio.update(state: VehicleState, dt: number)
 		punch = math.min(audio.punchRpm, punch + audio.punchRpm * pressed * factor)
 	end
 	punch *= math.exp(-dt / math.max(audio.punchDecaySeconds, 1e-3))
+	-- The engine catches after the starter has cranked, then fades in.
+	if clock >= audio.startDelaySeconds + audio.crankSeconds then
+		ignition = math.min(1, ignition + dt / math.max(audio.fadeSeconds, 1e-3))
+	end
 	local rpm = math.clamp(simRpm + punch, drive.idleRpm, drive.redlineRpm)
 
 	-- Lifting tapers off; pressing comes in quickly.
@@ -211,7 +248,7 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	end
 	lastLoad = throttle
 
-	local gainMul, pitchMul = 1, 1
+	local gainMul, pitchMul = ignition, 1
 	if clock < dipUntil then
 		gainMul = audio.shiftDipGain
 	end
@@ -260,6 +297,25 @@ function EngineAudio.update(state: VehicleState, dt: number)
 end
 
 function EngineAudio.detach()
+	-- The engine stopping, left on the car to finish playing.
+	local chassis = chassisPart
+	if chassis and chassis.Parent and #voices > 0 then
+		local audio = ConfigLoader.forCar(carId).effects.engineAudio
+		if audio.offSoundId ~= "" then
+			local off = Instance.new("Sound")
+			off.Name = "Engine_off"
+			off.SoundId = audio.offSoundId
+			off.Volume = audio.offVolume
+			off.RollOffMaxDistance = 120
+			off.Parent = chassis
+			off:Play()
+			off.Ended:Once(function()
+				off:Destroy()
+			end)
+		end
+	end
+	chassisPart = nil
+	ignition = 0
 	for _, v in voices do
 		v.sound:Destroy()
 	end

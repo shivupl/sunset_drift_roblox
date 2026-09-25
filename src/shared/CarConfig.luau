@@ -877,6 +877,55 @@ local config = {
 			limiterHz = 11,
 			limiterDipGain = 0.6,
 			limiterPitchDip = 0.04,
+			-- Ignition, from the store Camry's own A-Chassis sounds (the owner,
+			-- 2026-09-25: keep the engine sets, ignition, horn and start
+			-- chime from the store cars' scripts). Getting in plays the chime
+			-- for chimeSeconds (the file is a 5.5 s sequence; its first chime
+			-- is enough), the starter startDelaySeconds later, and the engine
+			-- layers fade in over fadeSeconds once crankSeconds have passed,
+			-- so the car is heard starting rather than already running.
+			-- Getting out plays offSoundId. Empty ids skip that sound.
+			chimeSoundId = "rbxassetid://6183854229",
+			chimeVolume = 0.35,
+			chimeSeconds = 1.1,
+			startSoundId = "rbxassetid://1235894410",
+			startVolume = 0.8,
+			startDelaySeconds = 0.35,
+			crankSeconds = 0.9,
+			fadeSeconds = 0.5,
+			offSoundId = "rbxassetid://203785492",
+			offVolume = 0.5,
+		},
+		-- The horn: H held (ButtonL3 on a pad). Played on the server so every
+		-- player hears it, looped while held. From the store Camry's scripts;
+		-- a car overrides the id in its tuning (the Kruzer 80 has its own).
+		horn = {
+			soundId = "rbxassetid://4896498829",
+			volume = 0.8,
+			rollOffMaxDistance = 300, -- studs
+		},
+		-- Lamps (CarLamps). G toggles the headlights (DPad up on a pad); the
+		-- brake lights follow the brakes and the reverse lights the gear, and
+		-- every player sees them (the server copies them onto the car).
+		-- Plain lamp pieces (named by role: HeadLamps, TailLamps,
+		-- ReverseLamps) turn Neon in these colours; a textured lamp cannot
+		-- glow, so a car lists glow panels for it in CarLampSpots instead.
+		-- Tail lamps sit at tailColor with the headlights on and brighten to
+		-- brakeColor under braking.
+		lamps = {
+			headlightsOnAtStart = true, -- the world is at sunset
+			headColor = Color3.fromRGB(255, 244, 222),
+			tailColor = Color3.fromRGB(130, 8, 10),
+			brakeColor = Color3.fromRGB(255, 26, 26),
+			reverseColor = Color3.fromRGB(245, 245, 240),
+			-- The beams: one SpotLight per headlamp, forward and a little down.
+			beamBrightness = 3,
+			beamRangeStuds = 80,
+			beamAngleDeg = 55,
+			beamDropDeg = 6,
+			-- A small red glow behind the car under braking.
+			brakeGlowBrightness = 2,
+			brakeGlowRangeStuds = 8,
 		},
 	},
 

@@ -329,7 +329,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P31", meshId = 1578441700, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 1.2788, 0.2059, 3.9089 }, offsetM = { -0.0018, 0.2693, 0.2753 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P32", meshId = 1579913008, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 0.415, 1.0496, 1.1716 }, offsetM = { -0.8055, 0.8594, -0.3354 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P34", meshId = 1579917137, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.2, castShadow = false, sizeM = { 0.1758, 0.366, 1.0286 }, offsetM = { -0.7133, 1.2102, 0.8177 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P35", meshId = 1579962001, color = Color3.fromRGB(208, 142, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.693, 0.1134, 0.2075 }, offsetM = { -0.0018, 0.7415, -1.8222 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "Indicators_P35", meshId = 1579962001, color = Color3.fromRGB(208, 142, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.693, 0.1134, 0.2075 }, offsetM = { -0.0018, 0.7415, -1.8222 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P37", meshId = 1579933123, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.35, castShadow = false, sizeM = { 1.476, 0.433, 0.9045 }, offsetM = { -0.0018, 1.1649, -0.765 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P38", meshId = 1578419470, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.4564, 0.154, 0.0946 }, offsetM = { -0.002, 0.6511, -2.2573 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P40", meshId = 1578410642, paint = true, sizeM = { 1.8057, 0.5801, 0.8856 }, offsetM = { -0.0018, 0.5514, 2.0372 }, rotationDeg = { 0, -180, 0 } },
@@ -341,10 +341,10 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P61", meshId = 2056494859, paint = true, sizeM = { 1.7685, 0.1848, 0.7016 }, offsetM = { 0.0017, 0.3835, 2.1116 } },
 				{ name = "P62", meshId = 2056494443, paint = true, sizeM = { 1.7882, 0.1661, 2.02 }, offsetM = { -0.0007, 0.2911, 0.0108 } },
 				{ name = "P63", meshId = 2056493341, paint = true, sizeM = { 1.8126, 0.2043, 0.5946 }, offsetM = { -0.0013, 0.3175, -2.0692 } },
-				{ name = "P64", meshId = 1579955059, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, transparency = 0.75, castShadow = false, sizeM = { 1.6954, 0.2012, 0.4798 }, offsetM = { -0.0018, 0.6999, -1.9544 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "HeadLamps_P64", meshId = 1579955059, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, transparency = 0.75, castShadow = false, sizeM = { 1.6954, 0.2012, 0.4798 }, offsetM = { -0.0018, 0.6999, -1.9544 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P65", meshId = 1579914286, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 0.0131, 0.1688, 0.2779 }, offsetM = { -0.7242, 0.5924, -0.6367 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P66", meshId = 1579906934, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.2078, 0.6908, 1.1326 }, offsetM = { 0.7156, 1.0629, 0.7963 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P68", meshId = 1579949728, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.2099, 0.1673, 0.077 }, offsetM = { -0.0018, 0.8723, 2.3135 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P68", meshId = 1579949728, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.2099, 0.1673, 0.077 }, offsetM = { -0.0018, 0.8723, 2.3135 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P69", meshId = 1578584236, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2779, 0.1158, 0.0716 }, offsetM = { -0.3838, 0.8581, -0.3959 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P70", meshId = 1578606330, paint = true, sizeM = { 1.3631, 0.4036, 0.5204 }, offsetM = { -0.0018, 0.9229, 2.1291 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P71", meshId = 1578607620, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 1.233, 0.1707, 0.124 }, offsetM = { -0.0018, 0.8927, 2.3165 }, rotationDeg = { 0, -180, 0 } },
@@ -352,7 +352,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P73", meshId = 1579872296, color = Color3.fromRGB(0, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 0.3646, 0.1088, 0.0295 }, offsetM = { -0.3779, 0.9058, -0.7621 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P74", meshId = 1579929445, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.286, 0.2978, 0.8048 }, offsetM = { -0.0016, 1.272, 1.538 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P75", meshId = 1579913505, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1212, 0.7485, 1.0468 }, offsetM = { -0.7389, 0.7465, -0.3742 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P82", meshId = 1579944508, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.6128, 0.1662, 0.3835 }, offsetM = { -0.0018, 0.8897, 2.1495 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P82", meshId = 1579944508, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.6128, 0.1662, 0.3835 }, offsetM = { -0.0018, 0.8897, 2.1495 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P85", meshId = 1578582244, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.Plastic, sizeM = { 0.3417, 0.3212, 0.1629 }, offsetM = { -0.3838, 0.8907, -0.4086 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P92", meshId = 1579885532, paint = true, sizeM = { 1.1392, 0.1148, 1.5376 }, offsetM = { -0.0018, 1.423, 0.3834 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P93", meshId = 1579897436, paint = true, sizeM = { 0.4131, 1.1313, 1.2562 }, offsetM = { 0.8088, 0.8414, -0.3399 }, rotationDeg = { 0, -180, 0 } },
@@ -375,7 +375,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P124", meshId = 1579887662, paint = true, sizeM = { 0.3831, 1.2735, 4.1733 }, offsetM = { -0.7202, 0.8151, 0.1885 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P125", meshId = 1579896612, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 0.415, 1.0496, 1.1716 }, offsetM = { 0.802, 0.8594, -0.3354 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P127", meshId = 1579887453, paint = true, sizeM = { 0.3831, 1.2735, 4.1733 }, offsetM = { 0.7167, 0.8151, 0.1885 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P128", meshId = 1579938672, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.233, 0.1851, 0.0933 }, offsetM = { -0.0018, 0.8757, 2.3185 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P128", meshId = 1579938672, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.233, 0.1851, 0.0933 }, offsetM = { -0.0018, 0.8757, 2.3185 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P129", meshId = 1579878795, color = Color3.fromRGB(25, 25, 25), material = Enum.Material.SmoothPlastic, sizeM = { 0.4281, 0.2142, 0.146 }, offsetM = { -0.3786, 0.9227, -0.7007 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P130", meshId = 1579904325, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1241, 0.6803, 1.0443 }, offsetM = { -0.7289, 0.7228, 0.774 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P137", meshId = 1579905387, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 0.2086, 0.3939, 1.0903 }, offsetM = { 0.7103, 1.1964, 0.776 }, rotationDeg = { 0, -180, 0 } },
@@ -396,26 +396,44 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P177", meshId = 1579904429, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1241, 0.6803, 1.0443 }, offsetM = { 0.7253, 0.7228, 0.774 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P184", meshId = 1578586121, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.0535, 0.032, 0.018 }, offsetM = { -0.3842, 0.8928, -0.3809 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P185", meshId = 1579906867, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.2078, 0.6908, 1.1326 }, offsetM = { -0.7191, 1.0629, 0.7963 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P189", meshId = 1579940451, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.1574, 0.0989, 0.0371 }, offsetM = { -0.0022, 0.8463, 2.3464 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P189", meshId = 1579940451, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.1574, 0.0989, 0.0371 }, offsetM = { -0.0022, 0.8463, 2.3464 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P190", meshId = 1578413350, paint = true, sizeM = { 0.8899, 0.1815, 0.1946 }, offsetM = { -0.002, 0.647, -2.2294 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P192", meshId = 1578422540, paint = true, sizeM = { 1.6012, 0.2558, 1.1741 }, offsetM = { -0.0018, 0.8798, -1.6389 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P193", meshId = 1578419078, color = Color3.fromRGB(0, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 0.9316, 0.5092, 0.2183 }, offsetM = { -0.002, 0.5271, -2.2085 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P194", meshId = 1578508163, color = Color3.fromRGB(100, 100, 100), material = Enum.Material.SmoothPlastic, sizeM = { 1.2357, 0.9511, 2.6699 }, offsetM = { -0.0563, 0.8604, 0.3476 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P197", meshId = 1579871681, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.554, 0.0856, 0.1335 }, offsetM = { -0.0018, 0.8705, 2.2375 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P197", meshId = 1579871681, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.554, 0.0856, 0.1335 }, offsetM = { -0.0018, 0.8705, 2.2375 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P198", meshId = 1579956134, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, transparency = 0.85, castShadow = false, sizeM = { 1.6168, 0.1883, 0.4114 }, offsetM = { -0.0018, 0.8787, 2.1635 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P199", meshId = 1578565887, color = Color3.fromRGB(66, 66, 66), material = Enum.Material.SmoothPlastic, sizeM = { 1.3872, 0.0746, 0.0196 }, offsetM = { -0.0018, 0.7017, -2.0181 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P200", meshId = 1578569802, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.0778, 0.0778, 0.0131 }, offsetM = { 0.7668, 0.7281, -1.8991 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P201", meshId = 1578569560, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.0778, 0.0778, 0.0131 }, offsetM = { -0.7703, 0.7281, -1.8991 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P202", meshId = 1579947012, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1565, 0.0598, 0.1344 }, offsetM = { 0.681, 0.9317, 2.2468 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P203", meshId = 1579947133, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1565, 0.0598, 0.1344 }, offsetM = { -0.6845, 0.9317, 2.2468 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P204", meshId = 1579882681, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.3167, 0.0828, 0.0256 }, offsetM = { -0.0018, 0.8613, 2.3155 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "ReverseLamps_P202", meshId = 1579947012, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1565, 0.0598, 0.1344 }, offsetM = { 0.681, 0.9317, 2.2468 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "ReverseLamps_P203", meshId = 1579947133, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1565, 0.0598, 0.1344 }, offsetM = { -0.6845, 0.9317, 2.2468 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "TailLamps_P204", meshId = 1579882681, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.3167, 0.0828, 0.0256 }, offsetM = { -0.0018, 0.8613, 2.3155 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P205", meshId = 1578573312, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 0.2514, 0.0166, 0.0131 }, offsetM = { -0.002, 1.1704, 1.8257 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P206", meshId = 1579939714, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1363, 0.0609, 0.0558 }, offsetM = { 0.5337, 0.9253, 2.323 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P207", meshId = 1579939828, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1363, 0.0609, 0.0558 }, offsetM = { -0.5372, 0.9253, 2.323 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "ReverseLamps_P206", meshId = 1579939714, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1363, 0.0609, 0.0558 }, offsetM = { 0.5337, 0.9253, 2.323 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "ReverseLamps_P207", meshId = 1579939828, color = Color3.fromRGB(180, 180, 180), material = Enum.Material.SmoothPlastic, sizeM = { 0.1363, 0.0609, 0.0558 }, offsetM = { -0.5372, 0.9253, 2.323 }, rotationDeg = { 0, -180, 0 } },
 			},
 			wheelPieces = {
 				{ name = "Tyre", meshId = 1547269887, color = Color3.fromRGB(25, 25, 25), material = Enum.Material.Rubber, sizeM = { 0.2505, 0.6598, 0.6598 }, offsetM = { 0, 0, 0 } },
 				{ name = "Rim", meshId = 1547270813, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Metal, sizeM = { 0.0511, 0.4274, 0.4274 }, offsetM = { -0.1048, 0.0001, 0 } },
+			},
+		},
+		tuning = {
+			effects = {
+				-- The store Camry's own engine: its A-Chassis "AdvancedEngineSound"
+				-- set, low and high rpm each on and off throttle (low on and off
+				-- are one file). The owner (2026-09-25) liked these sets; the
+				-- shared SR20 loops are what every other car uses. refRpm is a
+				-- first guess, not measured (the plugin's own pitch rule sits in
+				-- its script): tune by ear, lower plays higher.
+				engineAudio = {
+					layers = {
+						idle = { soundId = "rbxassetid://4723793582", refRpm = 2200, volume = 0.5, eq = { 0, 0, -2 } },
+						lowLoad = { soundId = "rbxassetid://4723793582", refRpm = 2200, volume = 0.8, eq = { 1, 0, 0 } },
+						highLoad = { soundId = "rbxassetid://2813604037", refRpm = 5200, volume = 1, eq = { 0, 0, 0 } },
+						overrun = { soundId = "rbxassetid://2813595665", refRpm = 5200, volume = 0.55, eq = { 0, 0, 0 } },
+					},
+				},
 			},
 		},
 	},
@@ -490,6 +508,8 @@ local cars: { [string]: CarEntry } = {
 			-- The pickup's, measured at the same 2.2 t: it sits at the sedan's sag.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
+			-- Its store model had no sounds: the Kruzer 80's horn, the 4x4 one.
+			effects = { horn = { soundId = "rbxassetid://948464506" } },
 		},
 	},
 	-- THE KRUZER 80. The early-90s Japanese full-size 4x4, the boxy one: the
@@ -624,6 +644,21 @@ local cars: { [string]: CarEntry } = {
 			-- The pickup's, measured at the same 2.2 t.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
+			effects = {
+				-- The store model's own horn.
+				horn = { soundId = "rbxassetid://948464506" },
+				-- Its A-Chassis stock "Rev" loop, one file for every layer (it
+				-- shares one Sound; the layers differ by EQ). refRpm is a first
+				-- guess to tune by ear.
+				engineAudio = {
+					layers = {
+						idle = { soundId = "rbxassetid://358130654", refRpm = 3500, volume = 0.5, eq = { 0, 0, -6 } },
+						lowLoad = { soundId = "rbxassetid://358130654", refRpm = 3500, volume = 0.8, eq = { 3, 0, -3 } },
+						highLoad = { soundId = "rbxassetid://358130654", refRpm = 3500, volume = 1, eq = { 0, 2, 2 } },
+						overrun = { soundId = "rbxassetid://358130654", refRpm = 3500, volume = 0.5, eq = { 0, -2, -8 } },
+					},
+				},
+			},
 		},
 	},
 

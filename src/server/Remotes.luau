@@ -9,6 +9,8 @@ export type RemoteTable = {
 	ReloadConfig: RemoteEvent, -- client -> server
 	SubmitSlide: RemoteEvent, -- client -> server (points claimed for a finished slide)
 	SlideResult: RemoteEvent, -- server -> client (points banked, cash earned; 0,0 = dropped)
+	CarLamps: RemoteEvent, -- client -> server (head, brake, reverse: booleans for the car I drive)
+	Horn: RemoteEvent, -- client -> server (true while held)
 }
 
 local Remotes = {}
@@ -34,6 +36,8 @@ function Remotes.create(): RemoteTable
 		ReloadConfig = ev("ReloadConfig"),
 		SubmitSlide = ev("SubmitSlide"),
 		SlideResult = ev("SlideResult"),
+		CarLamps = ev("CarLamps"),
+		Horn = ev("Horn"),
 	}
 	folder.Parent = ReplicatedStorage
 	return t

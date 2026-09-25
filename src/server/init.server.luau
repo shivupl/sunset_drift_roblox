@@ -7,6 +7,7 @@ local World = require(script.World)
 local Remotes = require(script.Remotes)
 local CarSpawner = require(script.CarSpawner)
 local ScoreService = require(script.ScoreService)
+local CarControls = require(script.CarControls)
 
 print("[Hajwala] server boot")
 local config = ConfigLoader.current()
@@ -26,5 +27,6 @@ CarSpawner.driverChanged = ScoreService.setDriving
 CarSpawner.configChanged = ScoreService.setConfig
 ScoreService.start(config, remotes)
 CarSpawner.start(config, road, remotes)
+CarControls.start(remotes)
 ReplicatedStorage:SetAttribute("WorldReady", true)
 print("[Hajwala] ready")

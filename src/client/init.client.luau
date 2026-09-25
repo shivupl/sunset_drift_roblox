@@ -15,6 +15,7 @@ local Touch = require(script.Input.Touch)
 local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
 local CarBodies = require(script.CarBodies)
+local CarLights = require(script.CarLights)
 local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 
@@ -27,6 +28,7 @@ LoadCover.whenReady(WorldLights.start)
 -- Every car's body is built here, and every car not driven by this client
 -- gets its wheel travel here.
 CarBodies.start()
+CarLights.start()
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
 ScoreController.onSpin = function(bonus: number, spins: number)

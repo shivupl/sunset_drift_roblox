@@ -16,6 +16,7 @@ local Touch = require(script.Parent.Input.Touch)
 local CameraRig = require(script.Parent.CameraRig)
 local DriftEffects = require(script.Parent.DriftEffects)
 local EngineAudio = require(script.Parent.EngineAudio)
+local CarControls = require(script.Parent.CarControls)
 
 type VehicleState = Types.VehicleState
 
@@ -118,6 +119,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 	CameraRig.start(model)
 	DriftEffects.attach(model)
 	EngineAudio.attach(model)
+	CarControls.start(model, remotes)
 	conn = RunService.PreSimulation:Connect(function(dt: number)
 		local cfg = ConfigLoader.current()
 		local input = Input.get(dt, cfg)
@@ -136,6 +138,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		Touch.setLeanVisible(input.twoWheel)
 		DriftEffects.update(state)
 		EngineAudio.update(state, dt)
+		CarControls.update(state)
 		CameraRig.setState(state)
 		Players.LocalPlayer:SetAttribute("DbgCamera", CameraRig.currentProfile())
 		if VehicleController.onState then
@@ -172,6 +175,7 @@ function VehicleController.stop()
 	CameraRig.stop()
 	DriftEffects.detach()
 	EngineAudio.detach()
+	CarControls.stop()
 	setJumpEnabled(true)
 	UserInputService.ModalEnabled = false
 	sim = nil
