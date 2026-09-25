@@ -78,6 +78,7 @@ def decode_v7(b):
     m = DracoPy.decode(data[data.find(b"DRACO"):])
     points = np.asarray(m.points, dtype=float).reshape(-1, 3)
     faces = np.asarray(m.faces, dtype=np.int64).reshape(-1, 3)
+    uvs = None if m.tex_coord is None else np.asarray(m.tex_coord, dtype=float).reshape(-1, 2)
     # LODS: u16 type, u8 high-quality count, u32 n, then n face offsets. The
     # faces hold every level of detail back to back; the first is full detail.
     if "LODS" in ch:
@@ -86,7 +87,7 @@ def decode_v7(b):
         offs = struct.unpack_from(f"<{n}I", lods, 7)
         if n >= 2 and 0 < offs[1] <= len(faces):
             faces = faces[offs[0]:offs[1]]
-    return points, faces
+    return points, faces, uvs
 
 
 def decode_v2_v4(b):
@@ -111,6 +112,7 @@ def decode_v2_v4(b):
         return None
     raw = np.frombuffer(b, dtype=np.uint8, count=nv * vsize, offset=p).reshape(nv, vsize)
     points = raw[:, :12].copy().view("<f4").reshape(nv, 3).astype(float)
+    uvs = raw[:, 24:32].copy().view("<f4").reshape(nv, 2).astype(float)
     p += nv * vsize
     if ver.startswith(b"4.0") and nbones:
         p += nv * 8
@@ -120,19 +122,24 @@ def decode_v2_v4(b):
         offs = np.frombuffer(b, dtype="<u4", count=lods, offset=p)
         if lods >= 2 and 0 < offs[1] <= nf:
             faces = faces[offs[0]:offs[1]]
-    return points, faces
+    return points, faces, uvs
 
 
-def decode(path):
-    """(points (v,3), faces (f,3)) in mesh space, or None if not a mesh."""
+def decode(path, with_uvs=False):
+    """(points (v,3), faces (f,3)) in mesh space, or None if not a mesh.
+    with_uvs: (points, faces, uvs (v,2)); uvs as stored, v down."""
     b = mesh_body(path)
     if b is None:
         return None
     if b.startswith(b"version 7"):
-        return decode_v7(b)
-    if b[:12] in (b"version 2.00", b"version 3.00", b"version 4.00", b"version 4.01"):
-        return decode_v2_v4(b)
-    return None
+        r = decode_v7(b)
+    elif b[:12] in (b"version 2.00", b"version 3.00", b"version 4.00", b"version 4.01"):
+        r = decode_v2_v4(b)
+    else:
+        return None
+    if r is None:
+        return None
+    return r if with_uvs else r[:2]
 
 
 def find(size, cache=CACHE):
@@ -155,14 +162,21 @@ def find(size, cache=CACHE):
     return sorted(ranked)
 
 
-def write_obj(path, points, faces, header=""):
+def write_obj(path, points, faces, header="", uvs=None):
+    """uvs as decode stores them (v down); OBJ's vt has v up."""
     with open(path, "w") as fh:
         for line in header.splitlines():
             fh.write("# " + line + "\n")
         for p in points:
             fh.write(f"v {p[0]:.5f} {p[1]:.5f} {p[2]:.5f}\n")
-        for a, b, c in faces:
-            fh.write(f"f {a + 1} {b + 1} {c + 1}\n")
+        if uvs is not None:
+            for u in uvs:
+                fh.write(f"vt {u[0]:.6f} {1 - u[1]:.6f}\n")
+            for a, b, c in faces:
+                fh.write(f"f {a + 1}/{a + 1} {b + 1}/{b + 1} {c + 1}/{c + 1}\n")
+        else:
+            for a, b, c in faces:
+                fh.write(f"f {a + 1} {b + 1} {c + 1}\n")
 
 
 if __name__ == "__main__":
