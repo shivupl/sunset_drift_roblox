@@ -45,6 +45,8 @@ BATROL_WHEEL = [
 
 def role_kruzer80(p):
     col, tr, tex = tuple(p["col"]), p["tr"], p.get("tex")
+    if p["p"] == "Shut":
+        return "Spare", {}
     if 0 < tr < 1:
         return "Glass", {"castShadow": False}
     if tex in (7179126327, 2972069630) or col == (139, 131, 112) or p["p"] == "SW":
@@ -56,14 +58,38 @@ def role_kruzer80(p):
     return "Chrome", {}
 
 
+def role_kruzer100(p):
+    n, tr = p["n"].lower(), p["tr"]
+    if n == "primary":
+        return "Body", {"paint": True}
+    if n == "krasnoesteklo":
+        return "TailLamps", {"castShadow": False}
+    if 0 < tr < 1 or n.startswith("vehicle_generic_glass") or n == "gredazadstdlt":
+        return "Glass", {"castShadow": False}
+    if "front light" in n:
+        return "HeadLamps", {"castShadow": False}
+    if "rear light" in n:
+        return "TailLamps", {"castShadow": False}
+    if n.startswith("foglight"):
+        return "FogLamps", {"castShadow": False}
+    if n == "vehiclelights":
+        return "Indicators", {"castShadow": False}
+    if n.startswith("lcx100") or n == "lcx100dolmattxt" or p["p"] in ("movsteer_0.5", "brake", "throttle", "handbrake", "shifter", "chassis"):
+        return "Interior", {"castShadow": False}
+    if n == "silver2":
+        return "Chrome", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
         "wheelbaseM": 2.85,
-        # Roof: rack, storage box, jerry cans, spare, light bar and LEDs. The
-        # tailgate spare wheel (15,521 triangles). "h": a cluster of plain
-        # parts and unions on the dash, which the builder cannot use.
-        "dropGroups": {"Offroader Roof Rack", "Jerry Cans", "Spare Tire", "Light Bar", "LED Lights", "Shut", "h"},
+        # Roof: rack, storage box, jerry cans, spare, light bar and LEDs. "h":
+        # a cluster of plain parts and unions on the dash, which the builder
+        # cannot use. The tailgate spare wheel ("Shut", 15,521 triangles)
+        # stays: the owner wants it.
+        "dropGroups": {"Offroader Roof Rack", "Jerry Cans", "Spare Tire", "Light Bar", "LED Lights", "h"},
         # The wheels (body pieces no more: one of them becomes wheelPieces),
         # the grille badge (95), the tailgate emblem (45), the lettering strip
         # over the plate (37), the 4WD and grade badges beside it (39), and
@@ -80,6 +106,21 @@ CARS = {
         "frontPart": 90,  # the front bumper
         "role": role_kruzer80,
         "paint": (236, 236, 232),
+    },
+    "kruzer100": {
+        "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
+        "wheelbaseM": 2.85,
+        "dropGroups": set(),
+        # The plate (99); the wheels (one becomes wheelPieces); the fixed
+        # brake parts behind them, which would spin as wheel pieces (64, 67,
+        # 69, 70).
+        "dropParts": {99, 65, 66, 68, 71, 64, 67, 69, 70},
+        "dropTextures": set(),
+        "tyres": [65, 66, 68, 71],
+        "frontPart": 104,  # the front bumper
+        "wheelParts": {65: "Tyre"},
+        "role": role_kruzer100,
+        "paint": (40, 52, 60),
     },
 }
 

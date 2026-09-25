@@ -76,4 +76,4 @@ is needed.
 |---|---|---|---|
 | Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: its pieces are still named `P<n>` |
 | Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome |
-| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, tailgate spare, badges and lettering dropped; 163,478 to 122,363 triangles, about 82,000 once the simplified rim and hub are uploaded |
+| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, tailgate spare, badges and lettering dropped; tailgate spare kept; 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |

@@ -496,12 +496,13 @@ local cars: { [string]: CarEntry } = {
 	-- Gulf's nostalgia car. Body: Creator Store model 13118106368, chosen for
 	-- its full interior (dash, gauges, seats), by mesh id like the Kamri
 	-- (tools/carbody/storecar.py). Removed: the roof rack, storage box,
-	-- jerry cans, roof spare, light bar, the tailgate spare wheel, the
+	-- jerry cans, roof spare, light bar (the tailgate spare stays), the
 	-- grille badge, the tailgate emblem, lettering and grade badges, the
 	-- mudflap lettering, the flame stripes, the lettering on the door
 	-- mouldings (now plain black) and a cluster of plain parts on the dash.
-	-- 163,478 triangles in the store model, 122,363 here, 59,768 of them the
-	-- four wheels (simplified meshes for upload: assets/cars/kruzer80).
+	-- 163,478 triangles in the store model, 137,884 here: 59,768 of them the
+	-- four wheels and 15,521 the tailgate spare (simplified rim and hub for
+	-- upload in assets/cars/kruzer80 bring the lot to about 87,500).
 	--
 	-- Placed at 0.2658 m a model stud on the real 2.85 m wheelbase; it sits
 	-- lifted on 0.95 m tyres, as the store built it.
@@ -607,6 +608,10 @@ local cars: { [string]: CarEntry } = {
 				{ name = "Body_16", meshId = 7183448044, paint = true, sizeM = { 1.8895, 0.6648, 1.1962 }, offsetM = { 0.0028, 0.9464, -1.3742 }, rotationDeg = { 0.095, 179.743, 0.02 } },
 				{ name = "Chrome_23", meshId = 7183465515, textureId = 7178421786, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 1.7594, 0.3332, 0.0862 }, offsetM = { -0.0138, 1.2054, 2.3571 }, rotationDeg = { 0.095, 179.743, 0.02 } },
 				{ name = "Interior_13", meshId = 7179423875, color = Color3.fromRGB(139, 131, 112), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.458, 0.8132, 0.7608 }, offsetM = { -0.01, 1.4962, -0.6883 }, rotationDeg = { 0.095, 179.743, 0.02 } },
+				{ name = "Spare", meshId = 6906932103, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.8748, 0.5354, 0.4626 }, offsetM = { 0.4285, 1.2165, 2.367 }, rotationDeg = { 0.095, 179.743, 0.02 } },
+				{ name = "Spare_2", meshId = 7170792043, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.0548, 0.1838, 0.1922 }, offsetM = { 0.3727, 1.2347, 2.7026 }, rotationDeg = { 0.02, 89.743, -0.095 } },
+				{ name = "Spare_3", meshId = 7158532335, textureId = 7158522363, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.3167, 0.9295, 0.9274 }, offsetM = { 0.373, 1.2346, 2.6367 }, rotationDeg = { 0.02, 89.743, -0.095 } },
+				{ name = "Spare_4", meshId = 7170793054, color = Color3.fromRGB(237, 234, 234), material = Enum.Material.SmoothPlastic, sizeM = { 0.1442, 0.4655, 0.4655 }, offsetM = { 0.3727, 1.2347, 2.7026 }, rotationDeg = { 0.02, 89.743, -0.095 } },
 				{ name = "Interior_14", meshId = 2972069424, textureId = 2972069630, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.1853, 0.0985, 0.0755 }, offsetM = { 0.1683, 1.4654, -0.6894 }, rotationDeg = { 0.095, 179.743, 0.02 } },
 			},
 			wheelPieces = {
