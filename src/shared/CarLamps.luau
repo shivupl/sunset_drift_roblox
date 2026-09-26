@@ -13,14 +13,15 @@
 --   * pieces named HeadLamps*, TailLamps*, ReverseLamps* turn Neon in the
 --     lamp's colour (their own material, colour and transparency come back
 --     when off);
---   * a car listed in CarLampSpots gets thin Neon panels over lamps that
---     cannot glow (a textured mesh shows its texture whatever the material).
+--   * a textured lamp piece (the Kruzer 80's lenses carry photos of its
+--     lamps) drops its texture while lit, since a textured mesh shows its
+--     texture whatever the material, and gets it back when off. No overlays:
+--     the car's own lenses light (owner, 2026-09-25).
 -- Nothing lights the ground: no beams and no brake glow (owner, 2026-09-25).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared.VehicleRig)
 local ConfigLoader = require(Shared.ConfigLoader)
-local CarLampSpots = require(Shared.CarLampSpots)
 
 local CarLamps = {}
 
@@ -30,11 +31,9 @@ CarLamps.BRAKE = "LampBrake"
 CarLamps.REVERSE = "LampReverse"
 
 local KIND_OF_PREFIX: { { string } } = { { "HeadLamps", "head" }, { "TailLamps", "tail" }, { "ReverseLamps", "reverse" } }
-local LAMPS = "Lamps" -- folder in Body for the panels and lights
 
 type Built = {
-	lenses: { { part: BasePart, kind: string, color: Color3, material: Enum.Material, transparency: number } },
-	panels: { { part: BasePart, kind: string } },
+	lenses: { { part: BasePart, kind: string, color: Color3, material: Enum.Material, transparency: number, texture: string? } },
 }
 
 local built: { [Model]: Built } = {}
@@ -48,19 +47,12 @@ local function kindOf(name: string): string?
 	return nil
 end
 
-local function weldTo(part: BasePart, to: BasePart)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = to
-	weld.Part1 = part
-	weld.Parent = part
-end
-
 -- Builds the lamps on a car whose body is mounted. Safe to call again.
 function CarLamps.build(model: Model): boolean
 	if built[model] then
 		return true
 	end
-	local ok, handles = pcall(VehicleRig.handles, model)
+	local ok = pcall(VehicleRig.handles, model)
 	if not ok then
 		return false
 	end
@@ -68,54 +60,19 @@ function CarLamps.build(model: Model): boolean
 	if not body then
 		return false
 	end
-	local carId = handles.carId
-	local cfg = ConfigLoader.forCar(carId)
-	local entry = ConfigLoader.entry(carId)
-	local k = VehicleRig.scaleOf(entry)
-	local mps = cfg.units.metersPerStud
-	local origin = handles.bodyMount.WorldCFrame
-	local chassis = handles.chassis
-
-	local b: Built = { lenses = {}, panels = {} }
-	local folder = Instance.new("Folder")
-	folder.Name = LAMPS
+	local b: Built = { lenses = {} }
 
 	-- Lens pieces.
 	for _, part in body:GetChildren() do
 		if part:IsA("BasePart") then
 			local kind = kindOf(part.Name)
 			if kind then
-				table.insert(b.lenses, { part = part, kind = kind, color = part.Color, material = part.Material, transparency = part.Transparency })
+				local texture = if part:IsA("MeshPart") and part.TextureID ~= "" then part.TextureID else nil
+				table.insert(b.lenses, { part = part, kind = kind, color = part.Color, material = part.Material, transparency = part.Transparency, texture = texture })
 			end
 		end
 	end
 
-	-- Glow panels for lamps that cannot glow (CarLampSpots).
-	local spots = CarLampSpots[ConfigLoader.resolveCarId(carId)]
-	if spots then
-		for kindKey, list in spots :: any do
-			local kind: string = tostring(kindKey)
-			for _, spot in list :: { CarLampSpots.Spot } do
-				local p = Vector3.new(spot.pos[1], spot.pos[2], spot.pos[3]) * (k / mps)
-				local front = spot.pos[3] < 0
-				local panel = Instance.new("Part")
-				panel.Name = `{kind}Panel`
-				panel.Size = Vector3.new(spot.size[1] * k / mps, spot.size[2] * k / mps, 0.02)
-				panel.CFrame = origin * CFrame.new(p) * (if front then CFrame.identity else CFrame.Angles(0, math.pi, 0))
-				panel.Material = Enum.Material.Neon
-				panel.Transparency = 1
-				panel.CastShadow = false
-				panel.CanCollide, panel.CanQuery, panel.CanTouch = false, false, false
-				panel.Massless = true
-				panel.Anchored = false
-				weldTo(panel, chassis)
-				panel.Parent = folder
-				table.insert(b.panels, { part = panel :: BasePart, kind = kind })
-			end
-		end
-	end
-
-	folder.Parent = body
 	built[model] = b
 	model.Destroying:Once(function()
 		built[model] = nil
@@ -149,12 +106,10 @@ function CarLamps.apply(model: Model)
 			lens.part.Material = if on then Enum.Material.Neon else lens.material
 			lens.part.Color = if on then color else lens.color
 			lens.part.Transparency = if on then math.min(lens.transparency, 0.2) else lens.transparency
+			if lens.texture then
+				(lens.part :: MeshPart).TextureID = if on then "" else lens.texture
+			end
 		end
-	end
-	for _, panel in b.panels do
-		local on, color = look(panel.kind)
-		panel.part.Transparency = if on then 0 else 1
-		panel.part.Color = color
 	end
 end
 

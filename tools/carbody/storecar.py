@@ -47,6 +47,13 @@ def role_kruzer80(p):
     col, tr, tex = tuple(p["col"]), p["tr"], p.get("tex")
     if p["p"] == "Shut":
         return "Spare", {}
+    # The real lamp lenses, textured with photos of the lamps: all of part 74
+    # is the two headlamps, all of part 97 the two tail clusters (CarLamps
+    # lights them by clearing the texture).
+    if p["i"] == 74:
+        return "HeadLamps", {"castShadow": False}
+    if p["i"] == 97:
+        return "TailLamps", {"castShadow": False}
     if 0 < tr < 1:
         return "Glass", {"castShadow": False}
     if tex in (7179126327, 2972069630) or col == (139, 131, 112) or p["p"] == "SW":

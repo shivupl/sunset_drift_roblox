@@ -908,8 +908,8 @@ local config = {
 		-- brake lights follow the brakes and the reverse lights the gear, and
 		-- every player sees them (the server copies them onto the car).
 		-- Plain lamp pieces (named by role: HeadLamps, TailLamps,
-		-- ReverseLamps) turn Neon in these colours; a textured lamp cannot
-		-- glow, so a car lists glow panels for it in CarLampSpots instead.
+		-- ReverseLamps) turn Neon in these colours; a textured lamp piece
+		-- drops its texture while lit (a texture hides the glow).
 		-- Tail lamps sit at tailColor with the headlights on and brighten to
 		-- brakeColor under braking. Only the lamps themselves light: no beams
 		-- or glow on the ground (owner, 2026-09-25).
