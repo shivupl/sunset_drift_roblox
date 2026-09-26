@@ -98,11 +98,11 @@ local function dataTemplate(path: string): MeshPart?
 				"[BodyBuilder] generated car meshes need EditableMesh, which this experience has off. Turn on"
 					.. " 'Allow Mesh / Image APIs' (Studio: File > Game Settings > Security; published: Creator"
 					.. " Dashboard), or import assets/cars/<car>/*.obj with the 3D Importer and give each piece"
-					.. " its meshId (RIG_SPEC.md 7). Boxes stand in until then."
+					.. " its meshId (RIG_SPEC.md 7). Those pieces are left off until then."
 			)
 		end
 	else
-		warn(`[BodyBuilder] generated mesh {path} failed ({result}); a box stands in for it`)
+		warn(`[BodyBuilder] generated mesh {path} failed ({result}); the piece is left off`)
 	end
 	return nil
 end
@@ -224,12 +224,22 @@ function BodyBuilder.mount(model: Model, cfg: Config, entry: VehicleRig.CarEntry
 	local folder = Instance.new("Folder")
 	folder.Name = VehicleRig.BODY
 	for _, piece in entry.body.pieces do
+		-- A generated piece that cannot load (EditableMesh off, no uploaded
+		-- meshId yet) is left off: a stand-in box the size of a whole-car
+		-- chrome piece covered the Batrol (the owner, 2026-09-25: no chrome
+		-- until the upload rather than a box).
+		if not piece.meshId and piece.mesh and not template(piece) then
+			continue
+		end
 		local part = makePiece(piece, entry.body, mps, k, piece.name)
 		mount(part, handles.bodyMount, VehicleRig.pieceCFrame(piece, mps, false, k), folder)
 	end
 	for _, w in VehicleRig.WHEELS do
 		local hub = handles.hubs[w.name]
 		for _, piece in entry.body.wheelPieces do
+			if not piece.meshId and piece.mesh and not template(piece) then
+				continue
+			end
 			local part = makePiece(piece, entry.body, mps, k, `{piece.name}_{w.name}`)
 			mount(part, hub.mount, VehicleRig.pieceCFrame(piece, mps, not w.left, k), folder)
 		end

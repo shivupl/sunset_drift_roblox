@@ -99,7 +99,10 @@ model, never an overlay added on top. `CarLamps` finds them by role name
 2. Look for badges: colour one part at a time and take screen captures.
 3. If a badge is inside a mesh, get that mesh from Studio's asset cache:
    `rbxcache.py <Size x y z>` finds it by proportions. Save it as
-   `assets/cars/<car>/<piece>_source.obj`.
+   `assets/cars/<car>/<piece>_source.obj`, split it into connected islands to
+   find the badge ones, and list a box around each under `cuts` in
+   `storecar.py`: whole islands inside a box are removed, and the rest ships as
+   a generated piece plus `<piece>.obj` for upload (the Lekzas chrome).
 4. Add the car to `CARS` in `storecar.py`: the role of every part (lamp
    lenses included), what to drop (roof gear, badges, lettering, plain parts
    and unions), textures to drop or parts to make plain, the four tyres, a
@@ -121,8 +124,8 @@ model, never an overlay added on top. `CarLamps` finds them by role name
 A generated piece is decoded into an EditableMesh on each client. That needs
 "Allow Mesh / Image APIs" on (Studio: File > Game Settings > Security), and a
 published game only gets it with the owner ID verified. Without it the piece
-is a grey box. So each generated piece also gets an OBJ
-(`assets/cars/<car>/<piece>.obj`). Import that with Studio's 3D Importer and
+is left off the car (it used to be a grey box, which covered the Batrol). So
+each generated piece also gets an OBJ (`assets/cars/<car>/<piece>.obj`). Import that with Studio's 3D Importer and
 put the new mesh id on the piece (`meshId` wins over `mesh`), and no setting
 is needed.
 
@@ -133,3 +136,4 @@ is needed.
 | Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own |
 | Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn |
 | Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
+| Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles |

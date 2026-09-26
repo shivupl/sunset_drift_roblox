@@ -286,6 +286,103 @@ local cars: { [string]: CarEntry } = {
 		},
 	},
 
+	-- THE LEKZAS. The early-2000s Japanese luxury saloon: the long, quiet
+	-- one the Gulf drifts in a thobe. Body: Creator Store model 5405292580 by
+	-- mesh id (tools/carbody/storecar.py), interior kept. Removed: the
+	-- maker's grille emblem, boot emblem and the two boot scripts, all cut
+	-- out of the one chrome mesh (8,447 to 4,532 triangles). That chrome is a
+	-- generated piece, so it is left off until assets/cars/lekzas/Chrome_3.obj
+	-- is uploaded and its meshId goes on the piece (the owner, 2026-09-25: no
+	-- chrome rather than a grey box). 51,081 triangles in the store model,
+	-- 47,070 here. The wheel caps and steering wheel carry no logo.
+	--
+	-- Placed at 0.2514 m a model stud on the real 2.925 m wheelbase.
+	--
+	-- Handling: the shared saloon set, like the Kamri, at its real 1.8 t.
+	lekzas = {
+		displayName = "Lekzas",
+		blurb = "Long, heavy and silent. Floats through a slide like it owns the road.",
+		order = 7,
+		scale = 1.2,
+		rig = {
+			massKg = 1800,
+			-- Nose at -2.28 m, tail at +2.67 m.
+			collisionSizeM = { 1.85, 1.2, 4.7 },
+			centerOfMassM = { 0, -0.3, -0.2 },
+			shellMassFraction = 0.35,
+			wheelbaseM = 2.925,
+			trackWidthM = 1.5462,
+			wheelRadiusM = 0.3459,
+			wheelWidthM = 0.2271,
+			-- The store model's driver seat (0.31 m left of centre), 0.30 m off
+			-- the ground so a seated head clears the 1.60 m roof.
+			seatM = { -0.31, -0.54, -0.1 },
+		},
+		body = {
+			paint = Color3.fromRGB(211, 190, 150),
+			pieces = {
+				{ name = "Trim", meshId = 4719876638, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1557, 0.0516, 0.1574 }, offsetM = { 0.747, 0.7014, -1.9891 } },
+				{ name = "Trim_2", meshId = 4719876924, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1386, 0.1386, 0.0753 }, offsetM = { 0.7275, 0.7913, -1.8703 } },
+				{ name = "Trim_3", meshId = 4719876785, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1039, 0.1039, 0.071 }, offsetM = { 0.584, 0.7517, -2.015 } },
+				{ name = "HeadLamps", meshId = 4719875291, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Glass, transparency = 0.9, castShadow = false, sizeM = { 1.6726, 0.5338, 0.3898 }, offsetM = { 0, 0.6222, -1.9797 } },
+				{ name = "Body", meshId = 4719886987, paint = true, sizeM = { 1.7799, 0.8003, 1.5183 }, offsetM = { 0, 0.6188, -1.519 } },
+				{ name = "Body_2", meshId = 4719887184, paint = true, sizeM = { 2.0297, 0.807, 3.5225 }, offsetM = { 0, 0.7118, 0.9015 } },
+				{ name = "Underbody", meshId = 4719875050, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.758, 0.5556, 4.7636 }, offsetM = { 0, 0.464, 0.1915 } },
+				{ name = "Chrome", meshId = 4719874909, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 1.6743, 0.4108, 0.6216 }, offsetM = { 0, 0.8877, 2.248 } },
+				{ name = "Chrome_2", meshId = 4719872556, color = Color3.fromRGB(166, 166, 166), material = Enum.Material.SmoothPlastic, sizeM = { 1.2769, 0.1926, 0.5904 }, offsetM = { 0, 0.3282, 2.2411 } },
+				{ name = "Trim_4", meshId = 4719872314, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.6185, 1.2515, 4.2052 }, offsetM = { 0, 0.9766, -0.1419 } },
+				{ name = "Chrome_3", mesh = "Lekzas/Chrome_3", color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 1.8031, 0.9497, 4.9353 }, offsetM = { 0, 0.9439, 0.1946 } },
+				{ name = "Interior", meshId = 4719874133, color = Color3.fromRGB(196, 190, 185), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.564, 0.8563, 1.8664 }, offsetM = { 0, 0.829, 0.529 } },
+				{ name = "Trim_5", meshId = 4719873524, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.7543, 1.0752, 4.7963 }, offsetM = { 0, 0.8409, 0.1715 } },
+				{ name = "Trim_6", meshId = 4719873364, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.5231, 0.4078, 3.1297 }, offsetM = { 0, 1.1821, 0.5044 } },
+				{ name = "Interior_2", meshId = 4719874301, color = Color3.fromRGB(196, 190, 185), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6056, 1.1565, 3.1147 }, offsetM = { 0, 0.8602, 0.5119 } },
+				{ name = "Trim_7", meshId = 4719877150, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1039, 0.1039, 0.071 }, offsetM = { -0.584, 0.7517, -2.015 } },
+				{ name = "Trim_8", meshId = 4719877042, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1557, 0.0516, 0.1574 }, offsetM = { -0.747, 0.7014, -1.9891 } },
+				{ name = "Trim_9", meshId = 4719877295, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.1386, 0.1386, 0.0753 }, offsetM = { -0.7275, 0.7913, -1.8703 } },
+				{ name = "FogLamps", meshId = 4719877575, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.2345, 0.0767, 0.1471 }, offsetM = { 0.7191, 0.3936, -2.101 } },
+				{ name = "Indicators", meshId = 4719877704, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Glass, transparency = 0.1, castShadow = false, sizeM = { 0.2336, 0.0549, 0.2106 }, offsetM = { -0.703, 0.7985, 2.4379 } },
+				{ name = "FogLamps_2", meshId = 4719877425, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.2345, 0.0767, 0.1469 }, offsetM = { -0.7191, 0.3936, -2.1009 } },
+				{ name = "TailLamps", meshId = 4719878008, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Glass, transparency = 0.2, castShadow = false, sizeM = { 0.2384, 0.2332, 0.0442 }, offsetM = { -0.5195, 0.799, 2.5367 } },
+				{ name = "TailLamps_2", meshId = 4719878224, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Glass, transparency = 0.2, castShadow = false, sizeM = { 0.2384, 0.2332, 0.0442 }, offsetM = { 0.5195, 0.799, 2.5367 } },
+				{ name = "Indicators_2", meshId = 4719877800, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Glass, transparency = 0.1, castShadow = false, sizeM = { 0.2336, 0.0549, 0.2106 }, offsetM = { 0.703, 0.7985, 2.4379 } },
+				{ name = "TailLamps_3", meshId = 4719877910, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Glass, transparency = 0.2, castShadow = false, sizeM = { 0.2922, 0.2362, 0.292 }, offsetM = { -0.691, 0.8004, 2.4034 } },
+				{ name = "TailLamps_4", meshId = 4719878124, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Glass, transparency = 0.2, castShadow = false, sizeM = { 0.2922, 0.2362, 0.292 }, offsetM = { 0.691, 0.8004, 2.4034 } },
+				{ name = "Body_3", meshId = 4719878876, paint = true, sizeM = { 1.8177, 1.2919, 3.7322 }, offsetM = { 0, 0.8321, 0.8003 } },
+				{ name = "TailLamps_5", meshId = 4719878328, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Glass, transparency = 0.2, castShadow = false, sizeM = { 0.2368, 0.0285, 0.0272 }, offsetM = { 0, 1.0789, 1.9644 } },
+				{ name = "ReverseLamps", meshId = 4719878442, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Glass, transparency = 0.1, castShadow = false, sizeM = { 1.2116, 0.0546, 0.0272 }, offsetM = { 0, 0.7987, 2.5419 } },
+				{ name = "Trim_10", meshId = 4719878599, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 2.006, 0.3351, 0.2774 }, offsetM = { 0, 1.1511, -0.451 } },
+				{ name = "Glass", meshId = 4719880211, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.8, castShadow = false, sizeM = { 1.6133, 0.4409, 3.03 }, offsetM = { 0, 1.1842, 0.5206 } },
+				{ name = "Glass_2", meshId = 4719880088, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.5, castShadow = false, sizeM = { 1.1597, 0.057, 0.1192 }, offsetM = { 0, 1.344, -0.3583 } },
+				{ name = "Interior_3", meshId = 4719875583, color = Color3.fromRGB(34, 0, 0), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.4885, 0.3479, 1.7492 }, offsetM = { 0, 0.4581, -0.1454 } },
+				{ name = "Indicators_3", meshId = 4719876344, color = Color3.fromRGB(200, 174, 102), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6497, 0.0516, 0.1574 }, offsetM = { 0, 0.7014, -1.9891 } },
+				{ name = "Interior_4", meshId = 4719875427, color = Color3.fromRGB(53, 53, 53), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.615, 0.5852, 2.4264 }, offsetM = { 0, 0.8255, 0.1528 } },
+				{ name = "Indicators_4", meshId = 4719876485, color = Color3.fromRGB(200, 174, 102), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.7906, 0.0317, 0.0693 }, offsetM = { 0, 0.7468, -1.0171 } },
+			},
+			wheelPieces = {
+				{ name = "Tyre", meshId = 4719879990, color = Color3.fromRGB(23, 23, 23), material = Enum.Material.SmoothPlastic, sizeM = { 0.2271, 0.6917, 0.6918 }, offsetM = { 0, 0, 0 }, rotationDeg = { 0, 0, 0 } },
+				{ name = "Rim", meshId = 4719876196, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.2054, 0.4603, 0.4603 }, offsetM = { -0.0027, 0, 0 }, rotationDeg = { 0, 0, 0 } },
+				{ name = "Rim_Cap", meshId = 4719873069, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.0258, 0.1271, 0.1364 }, offsetM = { -0.0792, 0.0056, 0 }, rotationDeg = { 0, 0, 0 } },
+				{ name = "Rim_Nuts", meshId = 4719873885, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.037, 0.1393, 0.1464 }, offsetM = { -0.0478, 0.0056, 0 }, rotationDeg = { 0, 0, 0 } },
+				{ name = "Rim_Disc", meshId = 4719879363, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Metal, sizeM = { 0.0126, 0.3168, 0.3167 }, offsetM = { 0.0283, 0, 0 }, rotationDeg = { 0, 0, 0 } },
+			},
+		},
+		tuning = {
+			effects = {
+				-- Its A-Chassis "Rev" loop, one file for every layer (the layers
+				-- differ by EQ). The plugin plays it at pitch 0.05 + 1.1 x rpm /
+				-- 7250, which is 1 at 6260 rpm: that is refRpm. No horn or
+				-- ignition sounds in the model, so it keeps the shared ones.
+				engineAudio = {
+					layers = {
+						idle = { soundId = "rbxassetid://1489232045", refRpm = 6260, volume = 0.5, eq = { 0, 0, -6 } },
+						lowLoad = { soundId = "rbxassetid://1489232045", refRpm = 6260, volume = 0.8, eq = { 3, 0, -3 } },
+						highLoad = { soundId = "rbxassetid://1489232045", refRpm = 6260, volume = 1, eq = { 0, 2, 2 } },
+						overrun = { soundId = "rbxassetid://1489232045", refRpm = 6260, volume = 0.5, eq = { 0, -2, -8 } },
+					},
+				},
+			},
+		},
+	},
 	-- THE KAMRI (id kamri07; the default car since it replaced the
 	-- generated-body kamri above). A mid-2000s Japanese saloon from the Creator Store
 	-- (asset 876308553, an A-Chassis car). The body is the store model's own

@@ -21,7 +21,12 @@ parts are the tyres, and the real wheelbase. The script then:
   3. writes every kept part as a body piece referencing its store mesh id,
      and the Batrol's wheel (the store wheels are far heavier), scaled to
      this car's tyre;
-  4. writes assets/cars/<car>/catalog.luau with the pieces and the rig
+  4. cuts badges out of meshes that must stay (CARS "cuts"): the store mesh
+     is saved as assets/cars/<car>/<piece>_source.obj (rbxcache.py), the
+     connected islands inside a badge box are removed, and the rest ships as
+     a generated piece (src/shared/CarMeshes/<Car>) plus <piece>.obj for
+     Studio's 3D Importer (README.md);
+  5. writes assets/cars/<car>/catalog.luau with the pieces and the rig
      numbers, and prints the triangle count before and after.
 """
 import json
@@ -88,6 +93,32 @@ def role_kruzer100(p):
     return "Trim", {}
 
 
+def role_lekzas(p):
+    n, tr = p["n"].replace("Meshes/", ""), p["tr"]
+    if n.startswith("Paint"):
+        return "Body", {"paint": True}
+    lamp = {"F Glass (1)": "HeadLamps", "Light(s) CDCBCB": "ReverseLamps"}
+    if n in lamp:
+        return lamp[n], {"castShadow": False}
+    if n.startswith("Light(s) C44747"):  # the tail lamps and the high brake light
+        return "TailLamps", {"castShadow": False}
+    if n.startswith("Light(s) C8AA6E") or n.startswith("L C8AA6E"):  # indicators and side markers
+        return "Indicators", {"castShadow": False}
+    if n in ("Light(s) 6A6A6A", "Light(s) 6A6A6A.007"):  # the two low in the bumper
+        return "FogLamps", {"castShadow": False}
+    if n.startswith("Light(s) 6A6A6A"):  # headlamp reflectors behind the lens
+        return "Trim", {}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    if n.startswith("Interieur") or n.startswith("C4BEB9"):
+        return "Interior", {"castShadow": False}
+    if n.startswith("Dessous"):
+        return "Underbody", {}
+    if "Chrome" in n or n == "A6A6A6":
+        return "Chrome", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -121,6 +152,35 @@ CARS = {
         "paintParts": {36},
         "role": role_kruzer80,
         "paint": (236, 236, 232),
+    },
+    "lekzas": {
+        "title": "The early-2000s Japanese luxury saloon (store 5405292580), with its interior",
+        "wheelbaseM": 2.925,
+        "dropGroups": set(),
+        # The wheels (one becomes wheelPieces) and the brake calipers, which
+        # are fixed to the hub and would spin as wheel pieces.
+        "dropParts": {3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 2, 14, 16, 28},
+        "dropTextures": set(),
+        "tyres": [6, 12, 20, 26],
+        # The front-left wheel: tyre, rim, centre cap (plain), nuts, disc.
+        "wheelParts": {6: "Tyre", 7: "Rim", 3: "Rim_Cap", 4: "Rim_Nuts", 5: "Rim_Disc"},
+        "frontPart": 63,  # the amber strip across the front bumper
+        # The chrome (part 40: grille slats, window trim, door handles, bumper
+        # strips) carries the maker's grille emblem, boot emblem and the two
+        # boot scripts as islands of their own. Boxes in the mesh's space.
+        "cuts": {
+            40: {
+                "source": "chrome_source.obj",
+                "badges": [
+                    ((-0.25, -0.80, -7.95), (0.25, -0.45, -7.65)),  # grille emblem, 652 triangles
+                    ((-2.05, -0.10, 7.60), (-1.30, 0.06, 7.85)),  # maker's name, left of the boot
+                    ((1.40, -0.10, 7.60), (2.02, 0.06, 7.85)),  # model name, right of the boot
+                    ((-0.15, -0.05, 7.75), (0.15, 0.20, 7.90)),  # boot emblem
+                ],
+            },
+        },
+        "role": role_lekzas,
+        "paint": (211, 190, 150),
     },
     "kruzer100": {
         "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
@@ -159,6 +219,72 @@ def vec(v, n=4):
 
 def colour(rgb):
     return f"Color3.fromRGB({rgb[0]}, {rgb[1]}, {rgb[2]})"
+
+
+def read_obj(path):
+    P, F = [], []
+    for line in open(path):
+        if line.startswith("v "):
+            P.append([float(v) for v in line.split()[1:4]])
+        elif line.startswith("f "):
+            F.append([int(v.split("/")[0]) - 1 for v in line.split()[1:4]])
+    return np.array(P), np.array(F, dtype=np.int64)
+
+
+def cut_piece(folder, p, name, cut, B, origin, mps):
+    """The part's store mesh without its badge islands, in car space."""
+    import meshkit
+
+    P, F = read_obj(os.path.join(folder, cut["source"]))
+    before_n = len(F)
+    # Islands: faces joined through shared positions (store meshes split
+    # vertices at seams, so weld by position first).
+    _, weld = np.unique(np.round(P, 4), axis=0, return_inverse=True)
+    weld = weld.ravel()
+    parent = np.arange(weld.max() + 1)
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for a, b, c in weld[F]:
+        for x, y in ((a, b), (b, c)):
+            rx, ry = find(x), find(y)
+            if rx != ry:
+                parent[rx] = ry
+    island = np.array([find(a) for a in weld[F[:, 0]]])
+    cut_faces = np.zeros(len(F), dtype=bool)
+    for isl in np.unique(island):
+        pts = P[F[island == isl].ravel()]
+        lo, hi = pts.min(0), pts.max(0)
+        for blo, bhi in cut["badges"]:
+            if np.all(lo >= np.array(blo)) and np.all(hi <= np.array(bhi)):
+                cut_faces |= island == isl
+    F = F[~cut_faces]
+    # Mesh space to world (the part's CFrame, mesh scaled to its Size) to car space.
+    scale = np.array(p["s"], dtype=float) / np.array(p["ms"], dtype=float)
+    Rw = np.array(p["cf"][3:], dtype=float).reshape(3, 3)
+    world = (P * scale) @ Rw.T + np.array(p["cf"][:3], dtype=float)
+    car = (world - origin) @ B * mps
+    used = np.unique(F)
+    remap = -np.ones(len(car), dtype=np.int64)
+    remap[used] = np.arange(len(used))
+    car, F = car[used], remap[F]
+    # Smooth normals, area weighted, shared across split seams.
+    fn = np.cross(car[F[:, 1]] - car[F[:, 0]], car[F[:, 2]] - car[F[:, 0]])
+    _, w2 = np.unique(np.round(car, 5), axis=0, return_inverse=True)
+    w2 = w2.ravel()
+    acc = np.zeros((w2.max() + 1, 3))
+    for k in range(3):
+        np.add.at(acc, w2[F[:, k]], fn)
+    N = acc[w2]
+    N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
+    lo, hi = car.min(0), car.max(0)
+    centre = (lo + hi) / 2
+    tris = np.stack([np.stack([F[:, k], F[:, k], np.zeros(len(F), dtype=np.int64)], axis=1) for k in range(3)], axis=1)
+    return meshkit.Piece(name, car - centre, N, np.zeros((1, 2)), tris, hi - lo, centre), before_n
 
 
 def build(key):
@@ -217,11 +343,23 @@ def build(key):
     tris_after = 0
     lo = np.full(3, np.inf)
     hi = np.full(3, -np.inf)
+    generated = []
     for p in kept:
         role, opts = car["role"](p)
         names[role] = names.get(role, 0) + 1
         name = role if names[role] == 1 else f"{role}_{names[role]}"
         R, pos = place(p)
+        if p["i"] in car.get("cuts", {}):
+            piece, before_n = cut_piece(folder, p, name, car["cuts"][p["i"]], B, origin, mps)
+            generated.append(piece)
+            lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
+            lines.append(
+                "{ " + f'name = "{piece.name}", mesh = "{key.capitalize()}/{piece.name}", color = {colour(p["col"])}, '
+                f"material = Enum.Material.{p['mat']}, sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
+            )
+            tris_after += piece.triangles
+            print(f"{piece.name}: {before_n:,} -> {piece.triangles:,} triangles (badges cut)")
+            continue
         size = np.array(p["s"], dtype=float) * mps
         if spare and p["i"] in spare["parts"]:
             pos = pivot + (pos - pivot) * spare["scale"] + np.array(spare["shiftM"])
@@ -255,6 +393,20 @@ def build(key):
             f.append(f"rotationDeg = {vec(rot, 3)}")
         lines.append("{ " + ", ".join(f) + " },")
         tris_after += p.get("tris", 0)
+
+    if generated:
+        import meshkit
+
+        meshkit.write_luau(
+            os.path.join(ROOT, "src", "shared", "CarMeshes", key.capitalize()),
+            "storecar",
+            [f"{car['title']}: store meshes with the badges cut out.", "Car space, metres."],
+            generated,
+        )
+        # The same pieces for Studio's 3D Importer: an uploaded mesh id needs no
+        # EditableMesh (which a live game only gets with the owner ID verified).
+        for piece in generated:
+            meshkit.write_obj(os.path.join(folder, piece.name + ".obj"), [piece], offsets=False)
 
     k = radius_st * mps / BATROL_RADIUS
     wlines = []
