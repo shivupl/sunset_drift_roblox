@@ -34,8 +34,59 @@ blank for the game's own plates.
 origin on the ground under the wheelbase centre. Scale the store model so its
 wheel centres sit on the real car's wheelbase.
 
-**No store scripts, sounds or lights** ever enter the game: only mesh ids,
-colours and materials are kept.
+**Triangles.** Keep the interior whole (the owner's rule). Drop what is
+never seen: internals hidden inside the body (as on the Kamri), roof gear
+(racks, boxes, jerry cans, roof spares, light bars), and plain parts and
+unions the body builder cannot use. Keep the car's own wheels, simplified
+with `simplify.py` into OBJs for upload so they still look right and fit.
+Record the triangle count before and after in the catalog comment.
+
+**The plate spot.** Every car keeps its plate mount or recess, blank. A bare
+black block that reads as a hole is painted body colour (`paintParts` in
+`storecar.py`) until the game's own plates go on it. Nothing may cover it:
+a tailgate spare that hides a lamp or the plate is shrunk and moved
+(`spare` in `storecar.py`), not left overlapping.
+
+## Store scripts: what we keep
+
+Store cars come with A-Chassis scripts. We never run them; we read them for
+their sound ids and settings and rebuild what is worth having on our own
+systems (the owner's call, 2026-09-25). Record every id you take in the
+car's catalog entry, next to where it is used.
+
+| Keep | Where it goes |
+|---|---|
+| Engine sound set (the loops and the rpm they were recorded at) | the car's `tuning.effects.engineAudio`: layer ids and `refRpm` |
+| Ignition: start chime, starter, engine off | `effects.engineAudio` (`chimeSoundId`, `startSoundId`, `offSoundId`); the defaults are the store Camry's |
+| Horn | the car's `tuning.effects.horn.soundId` (server `CarControls`, H to hold) |
+| Lights | not their script: our `CarLamps` lights the car's own lens pieces (below) |
+
+| Leave | Why |
+|---|---|
+| A-Chassis itself: drive, tune, gauges, control plugins | our sim and HUD do these |
+| Spotlights and beams at the lamps or exhausts | nothing lights the ground (the owner, 2026-09-25) |
+| Backfire | tried on the Kruzer 80 and parked: the flame looked poor (`car-backfire`, BRANCH_STATUS.md) |
+| Anything else (screens, decals, sirens) | not wanted so far; ask first |
+
+## Lamps
+
+`CarLamps` finds lamp pieces by name (`HeadLamps*`, `TailLamps*`,
+`ReverseLamps*`) and lights the car's **own lenses**, never an overlay:
+
+- A plain lens turns Neon in the lamp colour (`CarConfig` `effects.lamps`)
+  and gets its own material, colour and transparency back when off.
+- A textured lens (lamps painted into a shared texture, like the Kruzer
+  80's) drops its texture while lit, since a texture hides the glow. Find
+  which mesh carries the lamp photos by the faces' texture coordinates
+  (`rbxcache.decode(..., with_uvs=True)` against the texture's lamp region)
+  and give that part the lamp role.
+- Tail lamps sit dim with the headlights on and jump to bright under
+  braking. An opaque lens looks brighter than a glass one, so such a car
+  takes a darker `tailColor` in its tuning (the Kruzer 80: 105, 5, 7).
+- One mesh holding several lamps (the Kruzer 80's tail cluster: amber,
+  reverse and red in one) glows as one until it is split into separate
+  pieces, which means an upload.
+- Nothing lights the ground: no headlight beams, no brake glow.
 
 ## Steps for a new car
 
@@ -47,18 +98,21 @@ colours and materials are kept.
 3. If a badge is inside a mesh, get that mesh from Studio's asset cache:
    `rbxcache.py <Size x y z>` finds it by proportions. Save it as
    `assets/cars/<car>/<piece>_source.obj`.
-4. Add the car to `CARS` in `storecar.py`: the role of every part, what to
-   drop (roof gear, badges, lettering, plain parts and unions), textures to
-   drop or parts to make plain, the four tyres, a part at the front, the
-   real wheelbase. It levels and turns the model from its wheel centres and
+4. Add the car to `CARS` in `storecar.py`: the role of every part (lamp
+   lenses included), what to drop (roof gear, badges, lettering, plain parts
+   and unions), textures to drop or parts to make plain, the four tyres, a
+   part at the front, the real wheelbase. It levels and turns the model from its wheel centres and
    writes the catalog lines with the triangle count. (`batrol.py` is the
    older one-car version, kept because its chrome is rebuilt.)
    Then look at every side in Studio for branding the part list missed:
    lettering is often a thin strip of its own, or in a shared texture.
    Heavy meshes that must stay (wheels) are simplified with `simplify.py`
    into OBJs for upload; until then the store mesh is used.
-5. Add the catalog entry, check `VehicleRig.validate`, spawn it, and measure
-   it with the harness.
+5. Read its scripts (above) and take the engine set, horn and ignition ids
+   into the entry's `tuning.effects`.
+6. Add the catalog entry, check `VehicleRig.validate`, spawn it, and measure
+   it with the harness. Check the lamps lit, braking and reversing from
+   behind and in front, and the plate spot, before calling it done.
 
 ## Generated pieces and EditableMesh
 
@@ -74,6 +128,6 @@ is needed.
 
 | Car | Store asset | Script | Notes |
 |---|---|---|---|
-| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: its pieces are still named `P<n>` |
-| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome |
-| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, tailgate spare, badges and lettering dropped; tailgate spare kept; 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
+| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own |
+| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn |
+| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
