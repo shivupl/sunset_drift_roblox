@@ -59,7 +59,7 @@ car's catalog entry, next to where it is used.
 | Engine sound set (the loops and the rpm they were recorded at) | the car's `tuning.effects.engineAudio`: layer ids and `refRpm` |
 | Ignition: start chime, starter, engine off | `effects.engineAudio` (`chimeSoundId`, `startSoundId`, `offSoundId`); the defaults are the store Camry's |
 | Horn | the car's `tuning.effects.horn.soundId` (server `CarControls`, H to hold) |
-| Lights | not their script: our `CarLamps` lights the car's own lens pieces (below) |
+| Lights | replaced, never run: our `CarLamps` lights the car's own lens pieces (below). A store light script is still the best guide to which parts are the lamps (the parts it switches) and their lit colours, so read it to assign the lamp roles |
 
 | Leave | Why |
 |---|---|
