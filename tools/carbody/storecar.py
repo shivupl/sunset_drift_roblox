@@ -111,6 +111,14 @@ CARS = {
         # The front-left wheel (tyre, rim, hub), mirrored to all four.
         "wheelParts": {46: "Tyre", 47: "Rim", 48: "Rim_Hub"},
         "frontPart": 90,  # the front bumper
+        # The tailgate spare is a full road tyre (0.93 m) and hid most of the
+        # right tail lamp. Shrunk to 0.8 about its centre, drawn in towards
+        # the door (pivotZ, the door face) and moved 6.3 cm inboard, it fits
+        # between the plate mount and the lamp (owner, 2026-09-25).
+        "spare": {"parts": {112, 113, 114, 115}, "tyre": 114, "scale": 0.8, "pivotZ": 2.40, "shiftM": (-0.063, 0, 0)},
+        # The plate mount, a bare black block that read as a hole: body
+        # colour until the game's own plates go on it.
+        "paintParts": {36},
         "role": role_kruzer80,
         "paint": (236, 236, 232),
     },
@@ -188,6 +196,16 @@ def build(key):
     origin = centre - up * radius_st
     track_m = float(np.mean([abs((g[0] - g[1]) @ right) for g in (front, rear)])) * mps
 
+    def place(p):
+        R = B.T @ np.array(p["cf"][3:], dtype=float).reshape(3, 3)
+        pos = B.T @ (np.array(p["cf"][:3], dtype=float) - origin) * mps
+        return R, pos
+
+    spare = car.get("spare")
+    if spare:
+        pivot = place(by[spare["tyre"]])[1].copy()
+        pivot[2] = spare["pivotZ"]
+
     kept, dropped = [], []
     before = sum(p.get("tris", 0) for p in parts)
     for p in parts:
@@ -203,10 +221,13 @@ def build(key):
         role, opts = car["role"](p)
         names[role] = names.get(role, 0) + 1
         name = role if names[role] == 1 else f"{role}_{names[role]}"
-        cf = p["cf"]
-        R = B.T @ np.array(cf[3:], dtype=float).reshape(3, 3)
-        pos = B.T @ (np.array(cf[:3], dtype=float) - origin) * mps
+        R, pos = place(p)
         size = np.array(p["s"], dtype=float) * mps
+        if spare and p["i"] in spare["parts"]:
+            pos = pivot + (pos - pivot) * spare["scale"] + np.array(spare["shiftM"])
+            size = size * spare["scale"]
+        if p["i"] in car.get("paintParts", ()):
+            opts = {"paint": True}
         corners = np.array([[sx, sy, sz] for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]) * size / 2
         w = corners @ R.T + pos
         lo, hi = np.minimum(lo, w.min(0)), np.maximum(hi, w.max(0))
