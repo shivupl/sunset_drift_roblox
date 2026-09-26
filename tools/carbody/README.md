@@ -123,9 +123,10 @@ model, never an overlay added on top. `CarLamps` finds them by role name
 
 A generated piece is decoded into an EditableMesh on each client. That needs
 "Allow Mesh / Image APIs" on (Studio: File > Game Settings > Security), and a
-published game only gets it with the owner ID verified. Without it the piece
-is left off the car (it used to be a grey box, which covered the Batrol). So
-each generated piece also gets an OBJ (`assets/cars/<car>/<piece>.obj`). Import that with Studio's 3D Importer and
+published game only gets it with the owner ID verified. The owner turned it
+on for this experience on 2026-09-26. Without it the piece is left off the car
+(it used to be a grey box, which covered the Batrol). Each generated piece also
+gets an OBJ (`assets/cars/<car>/<piece>.obj`) as a fallback. Import that with Studio's 3D Importer and
 put the new mesh id on the piece (`meshId` wins over `mesh`), and no setting
 is needed.
 

@@ -29,5 +29,6 @@ Those parts are committed.
 The latest car-rig changes (RIG_SPEC.md, RigBuilder, CarCatalog, VehicleRig, VehicleRig.spec,
 tools/carbody) are deliberately **left uncommitted** at the owner's direction.
 
-Why it is parked: generated meshes need the experience's "Allow Mesh / Image APIs" setting
-(ID-verified owner) or a manual 3D Importer upload of the OBJ files before they show in play.
+Why it is parked: the owner is making car models externally (2026-09-22) and the store cars
+replaced it. Generated meshes no longer block it: the owner turned on "Allow Mesh / Image APIs"
+on 2026-09-26, so generated pieces (the Batrol and Lekzas chrome) show in play without uploads.
