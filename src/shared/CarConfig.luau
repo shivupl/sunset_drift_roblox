@@ -911,21 +911,14 @@ local config = {
 		-- ReverseLamps) turn Neon in these colours; a textured lamp cannot
 		-- glow, so a car lists glow panels for it in CarLampSpots instead.
 		-- Tail lamps sit at tailColor with the headlights on and brighten to
-		-- brakeColor under braking.
+		-- brakeColor under braking. Only the lamps themselves light: no beams
+		-- or glow on the ground (owner, 2026-09-25).
 		lamps = {
 			headlightsOnAtStart = true, -- the world is at sunset
 			headColor = Color3.fromRGB(255, 244, 222),
 			tailColor = Color3.fromRGB(130, 8, 10),
 			brakeColor = Color3.fromRGB(255, 26, 26),
 			reverseColor = Color3.fromRGB(245, 245, 240),
-			-- The beams: one SpotLight per headlamp, forward and a little down.
-			beamBrightness = 3,
-			beamRangeStuds = 80,
-			beamAngleDeg = 55,
-			beamDropDeg = 6,
-			-- A small red glow behind the car under braking.
-			brakeGlowBrightness = 2,
-			brakeGlowRangeStuds = 8,
 		},
 	},
 

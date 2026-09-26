@@ -14,9 +14,8 @@
 --     lamp's colour (their own material, colour and transparency come back
 --     when off);
 --   * a car listed in CarLampSpots gets thin Neon panels over lamps that
---     cannot glow (a textured mesh shows its texture whatever the material);
---   * every car gets a SpotLight per headlamp for the beams, and a small red
---     PointLight behind it under braking.
+--     cannot glow (a textured mesh shows its texture whatever the material).
+-- Nothing lights the ground: no beams and no brake glow (owner, 2026-09-25).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared.VehicleRig)
@@ -36,8 +35,6 @@ local LAMPS = "Lamps" -- folder in Body for the panels and lights
 type Built = {
 	lenses: { { part: BasePart, kind: string, color: Color3, material: Enum.Material, transparency: number } },
 	panels: { { part: BasePart, kind: string } },
-	beams: { SpotLight },
-	brakeGlow: { PointLight },
 }
 
 local built: { [Model]: Built } = {}
@@ -49,22 +46,6 @@ local function kindOf(name: string): string?
 		end
 	end
 	return nil
-end
-
--- The corners of a part's box in another CFrame's space.
-local function boxIn(space: CFrame, part: BasePart): (Vector3, Vector3)
-	local h = part.Size / 2
-	local lo = Vector3.new(math.huge, math.huge, math.huge)
-	local hi = -lo
-	for _, sx in { -1, 1 } do
-		for _, sy in { -1, 1 } do
-			for _, sz in { -1, 1 } do
-				local p = space:PointToObjectSpace(part.CFrame:PointToWorldSpace(Vector3.new(h.X * sx, h.Y * sy, h.Z * sz)))
-				lo, hi = lo:Min(p), hi:Max(p)
-			end
-		end
-	end
-	return lo, hi
 end
 
 local function weldTo(part: BasePart, to: BasePart)
@@ -89,27 +70,22 @@ function CarLamps.build(model: Model): boolean
 	end
 	local carId = handles.carId
 	local cfg = ConfigLoader.forCar(carId)
-	local lampsCfg = cfg.effects.lamps
 	local entry = ConfigLoader.entry(carId)
 	local k = VehicleRig.scaleOf(entry)
 	local mps = cfg.units.metersPerStud
 	local origin = handles.bodyMount.WorldCFrame
 	local chassis = handles.chassis
 
-	local b: Built = { lenses = {}, panels = {}, beams = {}, brakeGlow = {} }
+	local b: Built = { lenses = {}, panels = {} }
 	local folder = Instance.new("Folder")
 	folder.Name = LAMPS
 
-	-- Lens pieces, and the extent of the head and tail lamps for the lights.
-	local extent: { [string]: { Vector3 } } = {}
+	-- Lens pieces.
 	for _, part in body:GetChildren() do
 		if part:IsA("BasePart") then
 			local kind = kindOf(part.Name)
 			if kind then
 				table.insert(b.lenses, { part = part, kind = kind, color = part.Color, material = part.Material, transparency = part.Transparency })
-				local lo, hi = boxIn(origin, part)
-				local e = extent[kind]
-				extent[kind] = if e then { e[1]:Min(lo), e[2]:Max(hi) } else { lo, hi }
 			end
 		end
 	end
@@ -135,51 +111,8 @@ function CarLamps.build(model: Model): boolean
 				weldTo(panel, chassis)
 				panel.Parent = folder
 				table.insert(b.panels, { part = panel :: BasePart, kind = kind })
-				local lo, hi = p - panel.Size / 2, p + panel.Size / 2
-				local e = extent[kind]
-				extent[kind] = if e then { e[1]:Min(lo), e[2]:Max(hi) } else { lo, hi }
 			end
 		end
-	end
-
-	-- Beams: two SpotLights, a fifth of the way in from each end of the
-	-- headlamps, facing forward (-Z) and dropped a little.
-	local head = extent.head
-	if head then
-		local lo, hi = head[1], head[2]
-		local w = hi.X - lo.X
-		for _, x in { lo.X + w * 0.2, hi.X - w * 0.2 } do
-			local at = Instance.new("Attachment")
-			at.Name = "HeadBeam"
-			at.CFrame = chassis.CFrame:ToObjectSpace(origin * CFrame.new(x, (lo.Y + hi.Y) / 2, lo.Z)) * CFrame.Angles(math.rad(-lampsCfg.beamDropDeg), 0, 0)
-			at.Parent = chassis
-			local light = Instance.new("SpotLight")
-			light.Face = Enum.NormalId.Front
-			light.Brightness = lampsCfg.beamBrightness
-			light.Range = lampsCfg.beamRangeStuds
-			light.Angle = lampsCfg.beamAngleDeg
-			light.Color = lampsCfg.headColor
-			light.Shadows = false
-			light.Enabled = false
-			light.Parent = at
-			table.insert(b.beams, light)
-		end
-	end
-	local tail = extent.tail
-	if tail then
-		local lo, hi = tail[1], tail[2]
-		local at = Instance.new("Attachment")
-		at.Name = "BrakeGlow"
-		at.CFrame = chassis.CFrame:ToObjectSpace(origin * CFrame.new((lo.X + hi.X) / 2, (lo.Y + hi.Y) / 2, hi.Z + 0.5))
-		at.Parent = chassis
-		local glow = Instance.new("PointLight")
-		glow.Brightness = lampsCfg.brakeGlowBrightness
-		glow.Range = lampsCfg.brakeGlowRangeStuds
-		glow.Color = lampsCfg.brakeColor
-		glow.Shadows = false
-		glow.Enabled = false
-		glow.Parent = at
-		table.insert(b.brakeGlow, glow)
 	end
 
 	folder.Parent = body
@@ -222,12 +155,6 @@ function CarLamps.apply(model: Model)
 		local on, color = look(panel.kind)
 		panel.part.Transparency = if on then 0 else 1
 		panel.part.Color = color
-	end
-	for _, beam in b.beams do
-		beam.Enabled = head
-	end
-	for _, glow in b.brakeGlow do
-		glow.Enabled = brake
 	end
 end
 
