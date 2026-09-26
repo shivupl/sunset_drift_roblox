@@ -647,6 +647,11 @@ local cars: { [string]: CarEntry } = {
 			effects = {
 				-- The store model's own horn.
 				horn = { soundId = "rbxassetid://948464506" },
+				-- Its tail lenses are opaque (the Batrol's are half-see-through
+				-- glass), so the shared tail colour lit them nearly as bright as
+				-- the brake. Darker, so braking jumps like the Batrol's (owner,
+				-- 2026-09-25: "darken the tail lights a bit").
+				lamps = { tailColor = Color3.fromRGB(105, 5, 7) },
 				-- Its A-Chassis stock "Rev" loop, one file for every layer (it
 				-- shares one Sound; the layers differ by EQ). refRpm is a first
 				-- guess to tune by ear.
