@@ -5,6 +5,7 @@
 and deleted. Work happens on `main`, or on a short-lived branch merged back into it.
 `car-lights-sounds` (lamps, horn, ignition, the store engine sets, the Batrol and Kruzer 80)
 was merged into `main` and deleted on 2026-09-25.
+`car-ls430` (the Lekzas) was merged into `main` and deleted on 2026-09-26.
 
 ## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 
