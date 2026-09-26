@@ -50,16 +50,17 @@ a tailgate spare that hides a lamp or the plate is shrunk and moved
 ## Store scripts: what we keep
 
 Store cars come with A-Chassis scripts. We never run them; we read them for
-their sound ids and settings and rebuild what is worth having on our own
-systems (the owner's call, 2026-09-25). Record every id you take in the
-car's catalog entry, next to where it is used.
+their sound ids, settings and which parts do what, and rebuild what is worth
+having on our own systems (the owner's call, 2026-09-25). Record every id you
+take in the car's catalog entry, next to where it is used. Keep this file
+current: when the standard changes, change it here in the same commit.
 
 | Keep | Where it goes |
 |---|---|
 | Engine sound set (the loops and the rpm they were recorded at) | the car's `tuning.effects.engineAudio`: layer ids and `refRpm` |
 | Ignition: start chime, starter, engine off | `effects.engineAudio` (`chimeSoundId`, `startSoundId`, `offSoundId`); the defaults are the store Camry's |
 | Horn | the car's `tuning.effects.horn.soundId` (server `CarControls`, H to hold) |
-| Lights | replaced, never run: our `CarLamps` lights the car's own lens pieces (below). A store light script is still the best guide to which parts are the lamps (the parts it switches) and their lit colours, so read it to assign the lamp roles |
+| Lights | **the car's own lamp parts, our script.** The store model's built-in lamp meshes are kept and given the lamp roles; our `CarLamps` switches them (below). The store's light script is not run, but it is the best guide to which parts are the lamps (the parts it switches) and their colours, so read it to assign the roles. The Kamri and Batrol lamps are their store lamps this way |
 
 | Leave | Why |
 |---|---|
@@ -70,8 +71,9 @@ car's catalog entry, next to where it is used.
 
 ## Lamps
 
-`CarLamps` finds lamp pieces by name (`HeadLamps*`, `TailLamps*`,
-`ReverseLamps*`) and lights the car's **own lenses**, never an overlay:
+The lamps are always the car's **own built-in lamp parts** from the store
+model, never an overlay added on top. `CarLamps` finds them by role name
+(`HeadLamps*`, `TailLamps*`, `ReverseLamps*`) and lights them:
 
 - A plain lens turns Neon in the lamp colour (`CarConfig` `effects.lamps`)
   and gets its own material, colour and transparency back when off.

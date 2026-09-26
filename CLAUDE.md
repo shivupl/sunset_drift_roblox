@@ -8,6 +8,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 - **`TUNING.md`:** every config field, what it does and which way to move it.
 - **`DESIGN.md`:** the vehicle model (suspension, tyres).
 - **`RIG_SPEC.md`:** the car rig and body contract.
+- **`tools/carbody/README.md`:** the store-car standard: how every car is split, named and debadged, which store-script features we keep (engine sounds, ignition, horn; the car's own lamp parts driven by our `CarLamps`), and the steps to add a car. Keep it current when the standard changes.
 - **Design docs:** `hajwala-game-design.md`, `hajwala-niche-thesis.md`, `hajwala-project-phases.md`.
 - **`BRANCH_STATUS.md`:** branch layout, and what is parked and why.
 
@@ -77,4 +78,5 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 - **Stage specific files only.** The working tree holds uncommitted car-rig changes that are not ours: RIG_SPEC.md, RigBuilder, CarCatalog, VehicleRig, VehicleRig.spec, tools/carbody (`kamri.py`, `meshkit.py`; `plate.py` and `apply_catalog.py` deleted). Do not commit or discard them without being asked.
 - **End commits** with the session's Co-Authored-By and Claude-Session trailers.
 - **Give the owner a link for every commit:** `https://github.com/shivupl/sunset_drift_roblox/commit/<sha>`. A link only works once the branch is pushed; ask before pushing.
-- **Branches:** `main` is the only branch (tidied 2026-09-22; see BRANCH_STATUS.md). Work on `main` or a short-lived branch merged back into it.
+- **Branches:** `main`, plus parked local branches listed in BRANCH_STATUS.md (the exhaust backfire). Work on `main` or a short-lived branch merged back into it, and record a parked branch there.
+- **Switching branches with the owner's uncommitted CarCatalog:** back the file up, `git stash push -- src/shared/CarCatalog.luau`, switch or merge, `git stash pop`, then `cmp` against the backup. To commit our own CarCatalog lines, stage only our hunks (`git apply --cached --unidiff-zero` with a patch of just those hunks).
