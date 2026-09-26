@@ -3,6 +3,20 @@
 **`main` is the only branch** (tidied 2026-09-22). Everything from `phase0-vehicle`,
 `phase2-rig-body`, `phase3-cars` and `mobile-perf` is on it; those branches were fully merged
 and deleted. Work happens on `main`, or on a short-lived branch merged back into it.
+`car-lights-sounds` (lamps, horn, ignition, the store engine sets, the Batrol and Kruzer 80)
+was merged into `main` and deleted on 2026-09-25.
+
+## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
+
+Pops and a flame burst at the exhaust tips, from the Kruzer 80 store model's A-Chassis
+Backfire plugin, rebuilt on our sim (`src/client/Backfire.luau`, relayed by the server
+`CarControls`, `effects.backfire` in CarConfig, on for the Kruzer only). The triggers worked
+in a harness drive: a burst of 2-4 pops on lift-off above 4500 rpm and one on an upshift from
+above 5500 rpm.
+
+Why it is parked: the owner judged the flame animation poor (2026-09-25) and left it for now.
+The store emitter (0.09 s puffs of one texture) is the weak part; the triggers and relay can
+be kept if it is picked up again with a better flame.
 
 ## Parked: the Kamri car body (uncommitted in the working tree)
 
