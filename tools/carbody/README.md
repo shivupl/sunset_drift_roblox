@@ -102,7 +102,14 @@ model, never an overlay added on top. `CarLamps` finds them by role name
    `assets/cars/<car>/<piece>_source.obj`, split it into connected islands to
    find the badge ones, and list a box around each under `cuts` in
    `storecar.py`: whole islands inside a box are removed, and the rest ships as
-   a generated piece plus `<piece>.obj` for upload (the Lekzas chrome).
+   a generated piece plus `<piece>.obj` for upload (the Lekzas chrome). A badge
+   painted into a shared texture is cut by texture coordinates instead
+   (`uvBoxes`, u and v from the top left of the texture; save the source with
+   its texture coordinates), and the piece keeps its texture (the Krown Vik
+   grille). Raised lettering is often a tiny part with hundreds of triangles:
+   drop it. Decals and `Texture` objects never reach the game (the body
+   builder takes mesh and texture ids only), so plates and stickers drawn as
+   decals go by themselves.
 4. Add the car to `CARS` in `storecar.py`: the role of every part (lamp
    lenses included), what to drop (roof gear, badges, lettering, plain parts
    and unions), textures to drop or parts to make plain, the four tyres, a
@@ -114,7 +121,9 @@ model, never an overlay added on top. `CarLamps` finds them by role name
    Heavy meshes that must stay (wheels) are simplified with `simplify.py`
    into OBJs for upload; until then the store mesh is used.
 5. Read its scripts (above) and take the engine set, horn and ignition ids
-   into the entry's `tuning.effects`.
+   into the entry's `tuning.effects`. Work `refRpm` out from the kit's own
+   pitch rule. Check each id loads in Play: store sounds can be private
+   ("not authorized"), and then the car keeps the shared sound.
 6. Add the catalog entry, check `VehicleRig.validate`, spawn it, and measure
    it with the harness. Check the lamps lit, braking and reversing from
    behind and in front, and the plate spot, before calling it done.
@@ -138,3 +147,4 @@ is needed.
 | Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn |
 | Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
 | Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles |
+| Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Its own lamp parts (`F`, `FLI`/`FRI`, `R`, `RLI`/`RRI`, `RV` beside the plate). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles |

@@ -119,6 +119,27 @@ def role_lekzas(p):
     return "Trim", {}
 
 
+KROWNVIK_INTERIOR = {9, 33, 36, 49, 54, 57, 65, 66, 77, 100, 101, 102, 103, 104, 106, 107, 108, 109, 111, 112, 113, 114, 115, 116}
+
+
+def role_krownvik(p):
+    n, tr, col, mat = p["n"], p["tr"], tuple(p["col"]), p["mat"]
+    lamp = {"F": "HeadLamps", "FLI": "Indicators", "FRI": "Indicators", "R": "TailLamps", "RLI": "TailLamps", "RRI": "TailLamps", "RV": "ReverseLamps"}
+    if n in lamp:
+        return lamp[n], {"castShadow": False}
+    if n == "Color":
+        return "Body", {"paint": True}
+    if 0 < tr < 1:  # windows, and the clear covers over the lamps
+        return "Glass", {"castShadow": False}
+    if p["i"] in KROWNVIK_INTERIOR:
+        return "Interior", {"castShadow": False}
+    if n == "Chrome" or col == (202, 203, 209):
+        return "Chrome", {}
+    if mat == "Fabric" and p["i"] == 97:  # the floor pan and arches, one mesh
+        return "Underbody", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -182,6 +203,31 @@ CARS = {
         "role": role_lekzas,
         "paint": (211, 190, 150),
     },
+    "krownvik": {
+        "title": "The mid-2000s American full-size V8 saloon (store 2930898738), with its interior",
+        "wheelbaseM": 2.913,
+        "dropGroups": set(),
+        # The wheels (the front-left becomes wheelPieces), their centre caps
+        # (the maker's oval, all of each cap), the tiny badge in the middle
+        # of the steering wheel (38), and parts that are invisible in the
+        # store model (plate lamps and a plate backing, fully transparent),
+        # and the model name in raised letters on the boot panel (35: 672
+        # triangles in a part 15 cm wide).
+        "dropParts": {130, 131, 132, 133, 135, 136, 137, 138, 140, 141, 142, 143, 145, 146, 147, 148, 38, 31, 88, 123, 35},
+        "dropTextures": set(),
+        "tyres": [133, 136, 140, 147],
+        "wheelParts": {133: "Tyre", 132: "Rim", 131: "Rim_Disc"},
+        "frontPart": 83,  # the headlamps
+        # The maker's oval is painted into the shared texture 1079416334
+        # (u 0.147-0.426, v 0.626-0.742 from the top left): on the grille
+        # (part 12, 52 of 200 faces) and the boot badge (part 30, 14 of 50).
+        "cuts": {
+            12: {"source": "grille_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},
+            30: {"source": "bootbadge_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},
+        },
+        "role": role_krownvik,
+        "paint": (240, 240, 236),
+    },
     "kruzer100": {
         "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
         "wheelbaseM": 2.85,
@@ -222,20 +268,25 @@ def colour(rgb):
 
 
 def read_obj(path):
-    P, F = [], []
+    """(points, faces, uvs or None). uvs per point, v down like the cache
+    (rbxcache.write_obj writes one texture coordinate per point)."""
+    P, F, T = [], [], []
     for line in open(path):
         if line.startswith("v "):
             P.append([float(v) for v in line.split()[1:4]])
+        elif line.startswith("vt "):
+            u, v = (float(x) for x in line.split()[1:3])
+            T.append([u, 1 - v])
         elif line.startswith("f "):
             F.append([int(v.split("/")[0]) - 1 for v in line.split()[1:4]])
-    return np.array(P), np.array(F, dtype=np.int64)
+    return np.array(P), np.array(F, dtype=np.int64), (np.array(T) if len(T) == len(P) else None)
 
 
 def cut_piece(folder, p, name, cut, B, origin, mps):
     """The part's store mesh without its badge islands, in car space."""
     import meshkit
 
-    P, F = read_obj(os.path.join(folder, cut["source"]))
+    P, F, T = read_obj(os.path.join(folder, cut["source"]))
     before_n = len(F)
     # Islands: faces joined through shared positions (store meshes split
     # vertices at seams, so weld by position first).
@@ -259,9 +310,15 @@ def cut_piece(folder, p, name, cut, B, origin, mps):
     for isl in np.unique(island):
         pts = P[F[island == isl].ravel()]
         lo, hi = pts.min(0), pts.max(0)
-        for blo, bhi in cut["badges"]:
+        for blo, bhi in cut.get("badges", []):
             if np.all(lo >= np.array(blo)) and np.all(hi <= np.array(bhi)):
                 cut_faces |= island == isl
+    # Badges painted into a shared texture: the faces whose texture
+    # coordinates fall inside a box of the texture (u, v from the top left).
+    if T is not None:
+        c = T[F].mean(axis=1)
+        for u0, v0, u1, v1 in cut.get("uvBoxes", []):
+            cut_faces |= (c[:, 0] >= u0) & (c[:, 0] <= u1) & (c[:, 1] >= v0) & (c[:, 1] <= v1)
     F = F[~cut_faces]
     # Mesh space to world (the part's CFrame, mesh scaled to its Size) to car space.
     scale = np.array(p["s"], dtype=float) / np.array(p["ms"], dtype=float)
@@ -272,6 +329,7 @@ def cut_piece(folder, p, name, cut, B, origin, mps):
     remap = -np.ones(len(car), dtype=np.int64)
     remap[used] = np.arange(len(used))
     car, F = car[used], remap[F]
+    uvs = T[used] if T is not None else np.zeros((1, 2))
     # Smooth normals, area weighted, shared across split seams.
     fn = np.cross(car[F[:, 1]] - car[F[:, 0]], car[F[:, 2]] - car[F[:, 0]])
     _, w2 = np.unique(np.round(car, 5), axis=0, return_inverse=True)
@@ -283,8 +341,9 @@ def cut_piece(folder, p, name, cut, B, origin, mps):
     N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
     lo, hi = car.min(0), car.max(0)
     centre = (lo + hi) / 2
-    tris = np.stack([np.stack([F[:, k], F[:, k], np.zeros(len(F), dtype=np.int64)], axis=1) for k in range(3)], axis=1)
-    return meshkit.Piece(name, car - centre, N, np.zeros((1, 2)), tris, hi - lo, centre), before_n
+    uv_index = (lambda k: F[:, k]) if T is not None else (lambda k: np.zeros(len(F), dtype=np.int64))
+    tris = np.stack([np.stack([F[:, k], F[:, k], uv_index(k)], axis=1) for k in range(3)], axis=1)
+    return meshkit.Piece(name, car - centre, N, uvs, tris, hi - lo, centre), before_n
 
 
 def build(key):
@@ -353,9 +412,11 @@ def build(key):
             piece, before_n = cut_piece(folder, p, name, car["cuts"][p["i"]], B, origin, mps)
             generated.append(piece)
             lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
+            tex = f"textureId = {p['tex']}, " if p.get("tex") and p["tex"] not in car["dropTextures"] else ""
+            shadow = "castShadow = false, " if opts.get("castShadow") is False else ""
             lines.append(
-                "{ " + f'name = "{piece.name}", mesh = "{key.capitalize()}/{piece.name}", color = {colour(p["col"])}, '
-                f"material = Enum.Material.{p['mat']}, sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
+                "{ " + f'name = "{piece.name}", mesh = "{key.capitalize()}/{piece.name}", {tex}color = {colour(p["col"])}, '
+                f"material = Enum.Material.{p['mat']}, {shadow}sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
             )
             tris_after += piece.triangles
             print(f"{piece.name}: {before_n:,} -> {piece.triangles:,} triangles (badges cut)")
