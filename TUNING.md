@@ -735,3 +735,22 @@ Not live-reloadable either; restart the server.
 | technology | The intended `Lighting.Technology`. A script can neither write nor read it, so this is a record and a reminder; set it by hand. `ShadowMap` is what the shadows are tuned for, `Voxel` is the mobile fallback and makes them blobby. |
 | fogEnabled | Legacy distance fog. Off: Atmosphere does the fade, and fog thick enough to sell distance hides the road edge. |
 | debug.report | Prints the per-system part and triangle report at build. |
+
+# Plates (`src/shared/PlateConfig.luau`)
+
+Number plates (docs/superpowers/specs/2026-09-26-number-plates-design.md).
+
+| Field | What it does | Which way |
+|---|---|---|
+| `prices[1..4]` | Cash price by number of digits (500,000 / 200,000 / 75,000 / 20,000) | First guesses; the owner sets them against how fast cash is earned |
+| `repeatMultiplier` | Price multiplier for AAA letters or all-identical digits (2) | Up to make those rarer |
+| `pendingSeconds` | How long a purchase holds a plate while cash is taken (120) | Down frees abandoned claims sooner; never below a slow profile write (~10 s) |
+| `availabilityCacheSeconds` | How long a server trusts a "free" answer (30) | Down shows sold plates sooner, at a read per plate per search |
+| `historyLength` | Owner history lines kept on a plate key (5) | |
+| `maxInputBytes` | Longest plate text accepted (64) | |
+| `queriesPerSecond`, `actionsPerSecond` | Remote rate limits per player (4, 1) | Down if the DataStore budget runs short |
+| `defaultPicks` | Tries to find a default plate nobody owns (3) | |
+| `retrySeconds` | Retry period for an unfinished purchase or release (30) | |
+| `studioCash` | Starting cash in Studio's fake store (2,000,000) | Studio only |
+| `standoffM`, `thicknessM` | Plate offset from its spot and thickness (0.006, 0.01 m) | Up `standoffM` if a plate flickers against the body |
+| `drawDistanceStuds` | Plates beyond this are not drawn (150) | Down for phone performance |
