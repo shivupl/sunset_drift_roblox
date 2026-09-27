@@ -7,6 +7,8 @@ and deleted. Work happens on `main`, or on a short-lived branch merged back into
 was merged into `main` and deleted on 2026-09-25.
 `car-ls430` (the Lekzas) was merged into `main` and deleted on 2026-09-26.
 `car-crownvic` (the Krown Vik and Krown Vik Fleet) was merged into `main` and deleted on 2026-09-26.
+`plates` (number plates: Saudi, cash, unique registry; spec and plan in docs/superpowers) is
+the current short-lived branch, to merge into `main` when the owner has checked it.
 
 ## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 
