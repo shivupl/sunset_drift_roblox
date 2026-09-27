@@ -150,6 +150,29 @@ def role_krownvik(p):
     return "Trim", {}
 
 
+def role_krownvikfleet(p):
+    n, tr, tex = p["n"].split("_Meshpart")[0], p["tr"], p.get("tex")
+    # Its lamps are parts of their own: the headlamp and its lens with the
+    # corner parking lamps light as the whole front lamp (the owner's rule on
+    # the Krown Vik); the brake light and the rear lamp face are the tail;
+    # the small amber lamps front and rear stay as indicators.
+    lamp = {"HeadLight": "HeadLamps", "Lens": "HeadLamps", "ParkingLight1": "HeadLamps", "ParkingLight2": "HeadLamps",
+            "LightGlass1": "HeadLamps", "LightGlass2": "HeadLamps",  # the tinted covers: the whole lamp face
+            "BrakeLight": "TailLamps", "RearLight": "TailLamps", "ReverseLight": "ReverseLamps",
+            "Left1": "Indicators", "Right1": "Indicators", "Left2": "Indicators", "Right2": "Indicators"}
+    if n in lamp:
+        return lamp[n], {"castShadow": False}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    if p["p"] in ("Interior", "Wheel") or n.endswith("interior") or n in ("RRinterior", "RLinterior", "FRinterior", "FLinterior"):
+        return "Interior", {"castShadow": False}
+    if p["p"] == "Chassis" or n == "UnderBody":
+        return "Underbody", {}
+    if tex is None and tuple(p["col"]) == (163, 162, 165):
+        return "Body", {"paint": True}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -250,6 +273,26 @@ CARS = {
             30: {"source": "bootbadge_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},
         },
         "role": role_krownvik,
+        "paint": (240, 240, 236),
+    },
+    "krownvikfleet": {
+        "title": "The mid-2000s American full-size V8 saloon in fleet trim (store 14407499990), with its interior",
+        "wheelbaseM": 2.913,
+        "dropGroups": set(),
+        # The wheels (the front-left becomes wheelPieces), the grille and boot
+        # badges (105, 24: parts of their own), both plates (17, 126) and the
+        # engine under the bonnet (42), which is never seen.
+        "dropParts": {25, 26, 27, 38, 39, 40, 110, 111, 112, 123, 124, 125, 105, 24, 17, 126, 42},
+        "dropTextures": set(),
+        "tyres": [123, 110, 38, 25],
+        "wheelParts": {123: "Tyre", 125: "Rim", 124: "Rim_Cap"},
+        "frontPart": 128,  # the front bumper
+        # The maker's oval on the airbag, painted in the middle of the pad:
+        # the pad's faces sample a plain spot of it instead.
+        "cuts": {
+            29: {"source": "steering_source.obj", "uvFlatten": [((0.07, 0.72, 0.14, 0.78), (0.066, 0.787))]},
+        },
+        "role": role_krownvikfleet,
         "paint": (240, 240, 236),
     },
     "kruzer100": {
@@ -356,11 +399,19 @@ def cut_faces(folder, cut):
         m = in_boxes(sp["uvBoxes"]) & ~taken
         taken |= m
         splits.append((sp["role"], F[m]))
-    return P, T, F[~taken], splits, before_n
+    # A badge painted in the middle of a surface that must stay (the logo on
+    # an airbag): those faces all sample one plain spot of the texture
+    # instead, so the surface keeps its colour and loses the badge.
+    flat = np.full((len(F), 2), np.nan)
+    for box, uv in cut.get("uvFlatten", []):
+        flat[in_boxes([box])] = uv
+    keep = ~taken
+    return P, T, F[keep], splits, before_n, flat[keep]
 
 
-def make_piece(name, P, T, F, p, B, origin, mps):
-    """A generated piece from store mesh faces, in car space."""
+def make_piece(name, P, T, F, p, B, origin, mps, flat=None):
+    """A generated piece from store mesh faces, in car space. flat: per face,
+    a texture point every corner of that face samples instead (NaN: keep)."""
     import meshkit
 
     # Mesh space to world (the part's CFrame, mesh scaled to its Size) to car space.
@@ -384,8 +435,16 @@ def make_piece(name, P, T, F, p, B, origin, mps):
     N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
     lo, hi = car.min(0), car.max(0)
     centre = (lo + hi) / 2
-    uv_index = (lambda k: F[:, k]) if T is not None else (lambda k: np.zeros(len(F), dtype=np.int64))
-    tris = np.stack([np.stack([F[:, k], F[:, k], uv_index(k)], axis=1) for k in range(3)], axis=1)
+    uv_face = np.stack([F[:, k] for k in range(3)], axis=1) if T is not None else np.zeros((len(F), 3), dtype=np.int64)
+    if T is not None and flat is not None and not np.isnan(flat).all():
+        points = {}
+        for f in np.where(~np.isnan(flat[:, 0]))[0]:
+            key = (float(flat[f, 0]), float(flat[f, 1]))
+            if key not in points:
+                points[key] = len(uvs)
+                uvs = np.vstack([uvs, [key]])
+            uv_face[f] = points[key]
+    tris = np.stack([np.stack([F[:, k], F[:, k], uv_face[:, k]], axis=1) for k in range(3)], axis=1)
     return meshkit.Piece(name, car - centre, N, uvs, tris, hi - lo, centre)
 
 
@@ -452,14 +511,14 @@ def build(key):
         name = role if names[role] == 1 else f"{role}_{names[role]}"
         R, pos = place(p)
         if p["i"] in car.get("cuts", {}):
-            P, T, keep, splits, before_n = cut_faces(folder, car["cuts"][p["i"]])
+            P, T, keep, splits, before_n, flat = cut_faces(folder, car["cuts"][p["i"]])
             parts_out = [(name, keep, opts)]
             for srole, sfaces in splits:
                 names[srole] = names.get(srole, 0) + 1
                 sname = srole if names[srole] == 1 else f"{srole}_{names[srole]}"
                 parts_out.append((sname, sfaces, {"castShadow": False}))
             for pname, pfaces, popts in parts_out:
-                piece = make_piece(pname, P, T, pfaces, p, B, origin, mps)
+                piece = make_piece(pname, P, T, pfaces, p, B, origin, mps, flat if pfaces is keep else None)
                 generated.append(piece)
                 lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
                 tex = f"textureId = {p['tex']}, " if p.get("tex") and p["tex"] not in car["dropTextures"] else ""

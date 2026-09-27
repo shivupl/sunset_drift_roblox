@@ -111,7 +111,10 @@ model, never an overlay added on top. `CarLamps` finds them by role name
    painted into a shared texture is cut by texture coordinates instead
    (`uvBoxes`, u and v from the top left of the texture; save the source with
    its texture coordinates), and the piece keeps its texture (the Krown Vik
-   grille). Raised lettering is often a tiny part with hundreds of triangles:
+   grille). A badge painted in the middle of a surface that must stay (a logo
+   on an airbag pad) is painted out instead: `uvFlatten` points those faces at
+   one plain spot of the texture (the Krown Vik Fleet's steering wheel).
+   Raised lettering is often a tiny part with hundreds of triangles:
    drop it. Decals and `Texture` objects never reach the game (the body
    builder takes mesh and texture ids only), so plates and stickers drawn as
    decals go by themselves.
@@ -153,3 +156,4 @@ is needed.
 | Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
 | Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles |
 | Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles |
+| Krown Vik Fleet (`krownvikfleet`) | 14407499990 | `storecar.py` | The fleet-trim Crown Vic (black grille, steel wheels); the owner asked for both. Store meshes by id, interior kept; grille and boot badges and both plates are parts of their own and dropped; the airbag's oval painted out (`uvFlatten`); the engine under the bonnet dropped. Its lamps are parts of their own: headlamp, lens, corner parking lamps and tinted covers light as the whole front lamp. No scripts or sounds in the model: the Krown Vik's engine, startup and horn. Wheel SurfaceAppearances do not carry over. 27,355 to 27,017 triangles |
