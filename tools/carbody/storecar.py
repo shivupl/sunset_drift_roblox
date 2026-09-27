@@ -451,12 +451,13 @@ def make_piece(name, P, T, F, p, B, origin, mps, flat=None):
     return meshkit.Piece(name, car - centre, N, uvs, tris, hi - lo, centre)
 
 
-def build(key):
-    car = CARS[key]
-    folder = os.path.join(ROOT, "assets", "cars", key)
-    parts = json.load(open(os.path.join(folder, "parts.json")))
-    by = {p["i"]: p for p in parts}
+def car_frame(car, by):
+    """The car's frame from its wheels (docstring steps 1 and 2).
 
+    Returns B (columns: right, up, back), the origin, metres per model
+    stud, the tyre centres, the tyre radius in studs, and the front and
+    rear axle groups.
+    """
     # Wheel centres, and the car's axes from them.
     C = np.array([by[i]["cf"][:3] for i in car["tyres"]], dtype=float)
     radius_st = float(np.mean([max(by[i]["s"]) / 2 for i in car["tyres"]]))
@@ -484,6 +485,17 @@ def build(key):
     B = np.stack([right, up, -fwd], axis=1)
     mps = car["wheelbaseM"] / wheelbase_st
     origin = centre - up * radius_st
+    return B, origin, mps, C, radius_st, front, rear
+
+
+def build(key):
+    car = CARS[key]
+    folder = os.path.join(ROOT, "assets", "cars", key)
+    parts = json.load(open(os.path.join(folder, "parts.json")))
+    by = {p["i"]: p for p in parts}
+
+    B, origin, mps, C, radius_st, front, rear = car_frame(car, by)
+    right = B[:, 0]
     track_m = float(np.mean([abs((g[0] - g[1]) @ right) for g in (front, rear)])) * mps
 
     def place(p):
@@ -636,6 +648,34 @@ def build(key):
     print("\n".join(out[:4]))
 
 
+def spots(key, indices):
+    """Prints store parts' centres in car space (metres, before the car's
+    scale) and the facing of their thinnest side: the numbers for
+    CarPlateMounts (README.md, "Plates")."""
+    car = CARS[key]
+    parts = json.load(open(os.path.join(ROOT, "assets", "cars", key, "parts.json")))
+    by = {p["i"]: p for p in parts}
+    B, origin, mps, *_ = car_frame(car, by)
+    for i in indices:
+        p = by[i]
+        R = B.T @ np.array(p["cf"][3:], dtype=float).reshape(3, 3)
+        pos = B.T @ (np.array(p["cf"][:3], dtype=float) - origin) * mps
+        size = np.array(p["s"], dtype=float) * mps
+        thin = int(np.argmin(size))
+        normal = R[:, thin]
+        if normal[2] * pos[2] < 0:
+            normal = -normal  # point out of the car
+        # Positive when the face looks up, its top leaning in toward the car:
+        # CarPlateMounts' tiltDeg.
+        tilt = math.degrees(math.atan2(normal[1], abs(normal[2])))
+        print(f"{key} part {i} {p['n']!r}: posM = {{ {pos[0]:.3f}, {pos[1]:.3f}, {pos[2]:.3f} }}, "
+              f"size {size[0]:.3f} x {size[1]:.3f} x {size[2]:.3f} m, "
+              f"tiltDeg = {tilt:.1f}")
+
+
 if __name__ == "__main__":
-    for key in sys.argv[1:] or list(CARS):
-        build(key)
+    if len(sys.argv) > 2 and sys.argv[2] == "--spots":
+        spots(sys.argv[1], [int(x) for x in sys.argv[3].split(",")])
+    else:
+        for key in sys.argv[1:] or list(CARS):
+            build(key)

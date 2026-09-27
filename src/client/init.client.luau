@@ -16,6 +16,7 @@ local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
 local CarBodies = require(script.CarBodies)
 local CarLights = require(script.CarLights)
+local CarPlates = require(script.CarPlates)
 local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 
@@ -29,6 +30,7 @@ LoadCover.whenReady(WorldLights.start)
 -- gets its wheel travel here.
 CarBodies.start()
 CarLights.start()
+CarPlates.start()
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
 ScoreController.onSpin = function(bonus: number, spins: number)
