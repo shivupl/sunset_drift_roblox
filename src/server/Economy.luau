@@ -109,7 +109,8 @@ local function readProfile(raw: any): Profile
 			if type(t) == "table" and type(t.txn) == "string" and type(t.key) == "string" and (t.kind == "buy" or t.kind == "release") then
 				local price = tonumber(t.price)
 				if price then
-					table.insert(p.pendingTxns, { txn = t.txn, kind = t.kind, key = t.key, price = price })
+					-- Never negative: a refund credits this amount to cash.
+					table.insert(p.pendingTxns, { txn = t.txn, kind = t.kind, key = t.key, price = math.max(price, 0) })
 				end
 			end
 		end
@@ -242,7 +243,13 @@ function Economy.transact(player: Player, mutate: (p: Profile) -> boolean): Plat
 		return "error"
 	end
 	local draft = copyProfile(live)
-	if not mutate(draft) then
+	local mutateOk, wantsWrite = pcall(mutate, draft)
+	if not mutateOk then
+		unlock(player)
+		warn(`[Hajwala] transact mutate failed for {player.Name}: {tostring(wantsWrite)}`)
+		return "error"
+	end
+	if not wantsWrite then
 		unlock(player)
 		return "refused"
 	end
@@ -256,7 +263,14 @@ function Economy.transact(player: Player, mutate: (p: Profile) -> boolean): Plat
 		warn(`[Hajwala] profile write failed for {player.Name}: {tostring(err)}`)
 		return "error"
 	end
-	mutate(live)
+	-- The write already landed: if this second call to mutate fails, the live
+	-- profile is now out of step with what was just saved. That is worse than
+	-- the write failing outright, so it gets a loud warning rather than the
+	-- ordinary one above.
+	local liveOk, liveErr = pcall(mutate, live)
+	if not liveOk then
+		warn(`[Hajwala] transact wrote {player.Name}'s profile but could not apply the same change live: {tostring(liveErr)}`)
+	end
 	publish(player)
 	return "ok"
 end
