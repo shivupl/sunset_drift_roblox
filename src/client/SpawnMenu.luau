@@ -40,6 +40,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
+local PlatesPanel = require(script.Parent.PlatesPanel)
 
 local SpawnMenu = {}
 
@@ -91,6 +92,9 @@ local press: Press? = nil
 local remote: RemoteEvent? = nil
 local currentCarId: string? = nil
 local waitingUntil = 0
+local tabs: Frame? = nil
+local tabButtons: { [string]: TextButton } = {}
+local showing: "cars" | "plates" = "cars"
 -- ModalEnabled hides Roblox's own touch controls. VehicleController holds it
 -- on for the whole drive (its thumbstick would sit under our steer pad), so
 -- the menu remembers what it found and puts that back: closing the menu in a
@@ -136,6 +140,7 @@ type Metrics = {
 	titleSize: number,
 	subSize: number,
 	headerH: number,
+	tabH: number,
 	closeSize: number,
 	footerH: number,
 	footerSize: number,
@@ -167,6 +172,7 @@ local function metrics(): Metrics
 			titleSize = 24,
 			subSize = 15,
 			headerH = 44,
+			tabH = 34,
 			closeSize = 40,
 			footerH = 18,
 			footerSize = 13,
@@ -192,6 +198,7 @@ local function metrics(): Metrics
 		titleSize = math.clamp(unit * 0.055, 20, 34),
 		subSize = math.clamp(unit * 0.035, 13, 22),
 		headerH = math.clamp(unit * 0.12, 44, 72),
+		tabH = math.clamp(unit * 0.08, 40, 56),
 		closeSize = math.clamp(unit * 0.095, 44, 60),
 		footerH = math.clamp(unit * 0.05, 18, 30),
 		footerSize = math.clamp(unit * 0.032, 12, 19),
@@ -520,11 +527,19 @@ local function fit()
 	-- indicator.
 	local topMargin = if m.touch then 10 else 8
 	local bottomMargin = if m.touch then 18 else 8
-	local chrome = m.pad * 2 + m.headerH + m.gap * 2 + m.footerH
+	local chrome = m.pad * 2 + m.headerH + m.tabH + m.gap * 3 + m.footerH
 	local room = math.max(vp.Y - topMargin - bottomMargin - chrome, math.floor(m.cardH * 0.6))
 	local want = #cards * (m.cardH + m.gap) - m.gap
-	local listH = math.min(want, room)
+	-- The plates tab takes all the room; the car list only what it needs.
+	local listH = if showing == "plates" then room else math.min(want, room)
 	scroll.Size = UDim2.new(1, 0, 0, listH)
+	PlatesPanel.fit(listH, m.touch)
+	if tabs then
+		(tabs :: Frame).Size = UDim2.new(1, 0, 0, m.tabH)
+		for _, b in tabButtons do
+			b.TextSize = math.floor(m.tabH * 0.42)
+		end
+	end
 	p.Size = UDim2.new(m.panelWidth, 0, 0, chrome + listH)
 
 	local ob = openButton
@@ -536,6 +551,36 @@ local function fit()
 		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35) - (if m.touch then 10 else 0))
 	end
 	refreshButtons()
+end
+
+local function paintTabs()
+	for name, b in tabButtons do
+		local on = name == showing
+		b.BackgroundColor3 = if on then HOT else CARD
+		b.TextColor3 = if on then INK else MUTED
+	end
+end
+
+local function show(which: "cars" | "plates")
+	showing = which
+	if list then
+		(list :: ScrollingFrame).Visible = which == "cars"
+	end
+	PlatesPanel.setVisible(which == "plates")
+	if title then
+		(title :: TextLabel).Text = if which == "cars" then "CHOOSE YOUR CAR" else "NUMBER PLATES"
+	end
+	if subtitle then
+		(subtitle :: TextLabel).Text = if which == "cars" then "اختر سيارتك" else "لوحات"
+	end
+	if status then
+		(status :: TextLabel).Text = if which == "plates"
+			then "Plates are yours alone: nobody else can own the same one"
+			elseif isTouch() then "Tap a car to spawn it   ·   CARS reopens this"
+			else "Click a car to spawn it   ·   M reopens this"
+	end
+	paintTabs()
+	fit()
 end
 
 local function build()
@@ -630,11 +675,41 @@ local function build()
 		SpawnMenu.close()
 	end)
 
+	local tabRow = Instance.new("Frame")
+	tabRow.Name = "Tabs"
+	tabRow.BackgroundTransparency = 1
+	tabRow.LayoutOrder = 2
+	tabRow.Size = UDim2.new(1, 0, 0, 34)
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.Padding = UDim.new(0, 8)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Parent = tabRow
+	for i, pair in { { "cars", "CARS" }, { "plates", "PLATES" } } do
+		local b = Instance.new("TextButton")
+		b.Name = pair[2]
+		b.AutoButtonColor = false
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBlack
+		b.Text = pair[2]
+		b.TextSize = 14
+		b.LayoutOrder = i
+		b.Size = UDim2.new(0.5, -4, 1, 0)
+		corner(b, 8)
+		b.Parent = tabRow
+		tabButtons[pair[1]] = b
+		b.Activated:Connect(function()
+			show(pair[1] :: any)
+		end)
+	end
+	tabRow.Parent = p
+	tabs = tabRow
+
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Cars"
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
-	scroll.LayoutOrder = 2
+	scroll.LayoutOrder = 3
 	scroll.ScrollBarThickness = 4
 	scroll.ScrollBarImageColor3 = MUTED
 	scroll.CanvasSize = UDim2.fromOffset(0, 0)
@@ -647,6 +722,7 @@ local function build()
 	cardList.Parent = scroll
 	scroll.Parent = p
 	list = scroll
+	PlatesPanel.build(p, { card = CARD, white = WHITE, muted = MUTED, hot = HOT, hotDim = HOT_DIM }, 3)
 
 	for i, car in sortedCars() do
 		buildCard(scroll, car.id, car.entry, i)
@@ -655,7 +731,7 @@ local function build()
 
 	local footer = label(p, "", Enum.Font.GothamMedium, 13, MUTED)
 	footer.Name = "Footer"
-	footer.LayoutOrder = 3
+	footer.LayoutOrder = 4
 	footer.Size = UDim2.new(1, 0, 0, 18)
 	footer.TextXAlignment = Enum.TextXAlignment.Center
 	status = footer
@@ -719,9 +795,7 @@ function SpawnMenu.open()
 	if list then
 		(list :: ScrollingFrame).CanvasPosition = Vector2.zero
 	end
-	if status then
-		(status :: TextLabel).Text = if isTouch() then "Tap a car to spawn it   ·   CARS reopens this" else "Click a car to spawn it   ·   M reopens this"
-	end
+	show(showing)
 	local ob = openButton
 	if ob then
 		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
@@ -760,11 +834,13 @@ function SpawnMenu.setCurrent(carId: string?)
 	if carId then
 		currentCarId = carId
 	end
+	PlatesPanel.setCar(carId)
 	refreshButtons()
 end
 
 function SpawnMenu.start(remotes: Folder)
 	remote = remotes:WaitForChild("SpawnCar") :: RemoteEvent
+	PlatesPanel.start(remotes)
 	build()
 	ContextActionService:BindAction(ACTION, function(_, state: Enum.UserInputState)
 		if state == Enum.UserInputState.Begin then
