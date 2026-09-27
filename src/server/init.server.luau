@@ -8,6 +8,7 @@ local Remotes = require(script.Remotes)
 local CarSpawner = require(script.CarSpawner)
 local ScoreService = require(script.ScoreService)
 local CarControls = require(script.CarControls)
+local PlateService = require(script.PlateService)
 
 print("[Hajwala] server boot")
 local config = ConfigLoader.current()
@@ -25,6 +26,8 @@ CarSpawner.setSimFactory(function(model: Model, cfg: ConfigLoader.Config): CarSp
 end)
 CarSpawner.driverChanged = ScoreService.setDriving
 CarSpawner.configChanged = ScoreService.setConfig
+-- Before ScoreService.start, which starts Economy: plates hook its profile loads.
+PlateService.start(remotes)
 ScoreService.start(config, remotes)
 CarSpawner.start(config, road, remotes)
 CarControls.start(remotes)

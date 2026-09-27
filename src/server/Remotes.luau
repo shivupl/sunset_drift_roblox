@@ -11,6 +11,8 @@ export type RemoteTable = {
 	SlideResult: RemoteEvent, -- server -> client (points banked, cash earned; 0,0 = dropped)
 	CarLamps: RemoteEvent, -- client -> server (head, brake, reverse: booleans for the car I drive)
 	Horn: RemoteEvent, -- client -> server (true while held)
+	PlateQuery: RemoteFunction, -- client -> server (typed plate text) -> { status, key, price, available, reason } (PlateService)
+	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text) -> { status, reason } (PlateService)
 }
 
 local Remotes = {}
@@ -28,6 +30,12 @@ function Remotes.create(): RemoteTable
 		e.Parent = folder
 		return e
 	end
+	local function fn(name: string): RemoteFunction
+		local f = Instance.new("RemoteFunction")
+		f.Name = name
+		f.Parent = folder
+		return f
+	end
 	local t: RemoteTable = {
 		DriveStart = ev("DriveStart"),
 		DriveStop = ev("DriveStop"),
@@ -38,6 +46,8 @@ function Remotes.create(): RemoteTable
 		SlideResult = ev("SlideResult"),
 		CarLamps = ev("CarLamps"),
 		Horn = ev("Horn"),
+		PlateQuery = fn("PlateQuery"),
+		PlateAction = fn("PlateAction"),
 	}
 	folder.Parent = ReplicatedStorage
 	return t
