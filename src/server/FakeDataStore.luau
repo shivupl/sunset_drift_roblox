@@ -24,7 +24,7 @@ export type Fake = {
 	ops: number, -- calls started so far
 	hook: ((op: string, key: string, phase: Phase) -> ())?,
 	beforeCommit: ((key: string) -> ())?,
-	GetAsync: (self: Fake, key: string) -> any,
+	GetAsync: (self: Fake, key: string, options: any?) -> any,
 	UpdateAsync: (self: Fake, key: string, transform: (old: any, info: any) -> (any, { number }?)) -> any,
 }
 
@@ -43,7 +43,7 @@ FakeDataStore.copy = copy
 function FakeDataStore.new(): Fake
 	local self: any = { data = {}, userIds = {}, ops = 0 }
 
-	function self.GetAsync(_: any, key: string): any
+	function self.GetAsync(_: any, key: string, _options: any?): any
 		self.ops += 1
 		local hook = self.hook
 		if hook then

@@ -53,7 +53,7 @@ export type Wallet = {
 	transact: (mutate: (p: PlateProfile) -> boolean) -> Outcome,
 }
 export type Store = {
-	GetAsync: (self: any, key: string) -> any,
+	GetAsync: (self: any, key: string, options: DataStoreGetOptions?) -> any,
 	UpdateAsync: (self: any, key: string, transform: (old: any, info: any) -> (any, { number }?)) -> any,
 }
 export type Options = {
@@ -157,6 +157,9 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 		return HttpService:GenerateGUID(false)
 	end
 	local cache: { [string]: { at: number, free: boolean } } = {}
+	-- GetAsync caches per server for ~4 s; settle and checkEquipped must see the key as it is now.
+	local noCache = Instance.new("DataStoreGetOptions")
+	noCache.UseCache = false
 
 	-- One conditional write. decide gets the key as it is now and changes
 	-- it, or returns false to leave it alone. Returns the record written
@@ -187,7 +190,7 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 
 	local function read(key: string): (Record, boolean)
 		local ok, raw = pcall(function()
-			return store:GetAsync(key)
+			return store:GetAsync(key, noCache)
 		end)
 		if not ok then
 			warn(`[Plates] read of {key} failed: {tostring(raw)}`)
@@ -401,7 +404,10 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 		end)
 		if charged ~= "ok" then
 			-- Nothing is charged in this session. If the write landed
-			-- anyway, the next load finds the key free and refunds.
+			-- anyway, the next load settles it from the key: if cancel
+			-- freed the claim, it refunds; if cancel failed too, the key is
+			-- still pending with this txn, so it confirms (charged once,
+			-- plate owned).
 			cancel(key, txn)
 			return if charged == "refused" then "cash" else "unavailable"
 		end
