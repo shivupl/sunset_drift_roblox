@@ -288,3 +288,21 @@ changing them.
 `RIG_SPEC.md` is not changed: it is part of the owner's uncommitted rig
 rework. The plates contract is documented in `tools/carbody/README.md` until
 that rework lands.
+
+## Checked (2026-09-26, build Task 1)
+
+| Question | Finding | Source |
+|---|---|---|
+| Arabic letters and digits render in a Roblox font | Yes. All 17 letters and the 10 Arabic-Indic digits rendered with no tofu boxes in every one of 5 fonts tried (GothamBold, GothamBlack, Arial, SourceSansBold, Roboto); "السعودية" rendered correctly joined. The Arabic glyph shapes were pixel-identical across all 5 fonts — Roblox substitutes one fixed fallback face for Arabic regardless of the chosen `Enum.Font`, so there is no real per-font choice for Arabic. Best Latin: GothamBold — it already carries the game's HUD/menu convention (`Hud.luau`, `SpawnMenu.luau` use GothamBold/GothamBlack throughout, and `SpawnMenu.luau:613` already puts Arabic ("اختر سيارتك") through a Gotham weight without issue) | Studio screenshot, `execute_luau` render of a `PlateGlyphCheck` SurfaceGui in Edit, 2026-09-27 (not saved to disk; described here) |
+| Long plate size | 550 × 110 mm = 55 × 11 cm (the "EU size") | https://en.wikipedia.org/wiki/Vehicle_registration_plates_of_Saudi_Arabia |
+| Short plate size | 335 × 155 mm = 33.5 × 15.5 cm (the "US size" — this one, not the EU size, is the standard plate actually used in Saudi Arabia) | https://en.wikipedia.org/wiki/Vehicle_registration_plates_of_Saudi_Arabia |
+| KSA strip | Long/EU plate: centre, between the digit and letter blocks. Short/US plate: right-hand side, a full-height column. White background for private cars (yellow = taxi/public transport, blue = commercial/trucks — colour follows vehicle type, not format); shows the Saudi coat of arms, "السعودية", "KSA", and a small type symbol (circle for private, triangle up for taxi, triangle down for commercial) at the strip's bottom | https://en.wikipedia.org/wiki/Vehicle_registration_plates_of_Saudi_Arabia; reference images below |
+| Row layout | Same on both formats: digits on the left, letters on the right, each its own two-row block with Arabic on top and Latin below. Long/EU plate arranges digit-block / KSA-strip / letter-block side by side across the full width. Short/US plate puts the digit-block and letter-block side by side on the left two-thirds, with the KSA strip as a separate full-height column on the right. (This corrects §2's "Latin below (short) or side by side (long)" — both formats stack Arabic-over-Latin for both digits and letters; what actually differs between formats is the strip's position and the plate's proportions, not row-vs-side-by-side.) | Reference images below, pixel-cropped and inspected |
+| Arabic letter order vs Latin | Same column order, not mirrored. On both reference photos the Arabic top-row letters sit directly above their Latin equivalents in the same left-to-right position — e.g. on a "TNJ" plate, ط sits above T, ن above N, ح above J, left to right in both rows. Reading the Arabic row in Arabic's own right-to-left direction therefore yields the letters in the reverse sequence of the Latin canonical (left-to-right) reading, but nothing is drawn left-right mirrored | Same two reference images, pixel-cropped and inspected |
+| Letter table | Matches spec §3 exactly, letter for letter: ا/أ→A, ب→B, ح→J, د→D, ر→R, س→S, ص→X, ط→T, ع→E, ق→G, ك→K, ل→L, م→Z, ن→N, هـ→H, و→U, ى→V. No correction needed | https://en.wikipedia.org/wiki/Vehicle_registration_plates_of_Saudi_Arabia (Overview section table, checked against page wikitext) |
+
+Reference images (Wikimedia Commons, CC BY-SA 4.0, Nima Farid):
+long plate `https://commons.wikimedia.org/wiki/File:Saudi_Arabia_KSA_-_License_Plate_-_Private_-_550x110mm.png`,
+short plate `https://commons.wikimedia.org/wiki/File:Saudi_Arabia_-_License_Plate_-_Private.png`.
+Saved locally under `.superpowers/sdd/2026-09-26-number-plates/` as `plate_ref_long.png`,
+`plate_ref_short.png`, `long_letters_zoom.png` and `short_letters_zoom2.png`.
