@@ -35,4 +35,12 @@ return function(t: T)
 		end
 		t.ok(m.rear ~= nil, `{id}: has a rear plate`)
 	end
+
+	-- Every car on the menu carries plates
+	local ConfigLoader = require(script.Parent.Parent.ConfigLoader)
+	for id, entry in ConfigLoader.catalog().cars do
+		if not (entry :: any).hidden then
+			t.ok(CarPlateMounts.cars[id] ~= nil, `{id}: has plate spots`)
+		end
+	end
 end

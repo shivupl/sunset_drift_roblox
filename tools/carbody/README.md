@@ -95,6 +95,31 @@ model, never an overlay added on top. `CarLamps` finds them by role name
   cover over a lamp lights with it, since it is the whole lamp face.
 - Nothing lights the ground: no headlight beams, no brake glow.
 
+## Plates
+
+Every playable car carries a front and a rear number plate spot
+(`src/shared/CarPlateMounts.luau`, keyed by car id), and every client draws
+the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
+`src/shared/PlateStyles.luau`; design in
+`docs/superpowers/specs/2026-09-26-number-plates-design.md`).
+
+- **Frame:** car space in metres before the car's scale, the same as the
+  catalog's `offsetM`. A front plate faces -Z, a rear plate +Z; `tiltDeg`
+  leans the top in toward the car.
+- **Format:** `short` (33.5 × 15.5 cm) or `long` (55 × 11 cm),
+  whichever fills the recess. The plate is that size times the car's scale.
+- **Plate spot on the body:** keep the recess or bracket bare and
+  uncovered (the body standard above). The plate goes on it.
+- **Measuring, exact:** when the store model has a plate part, run
+  `python3 tools/carbody/storecar.py <car> --spots <part>,<part>` for its
+  centre, size and tilt. It prints `tiltDeg` with the sign CarPlateMounts
+  uses (positive leans the top in toward the car), so enter it as printed.
+- **Measuring, by eye:** spawn the car and call `CarPlates.place(car, mounts)`
+  from the Client datamodel with trial numbers; screenshot front and
+  behind; adjust.
+- The contract lives here until the owner's rig rework lands in
+  `RIG_SPEC.md`.
+
 ## Steps for a new car
 
 1. Render the model in Studio (Edit, loaded with `game:GetObjects`, never
@@ -136,7 +161,8 @@ model, never an overlay added on top. `CarLamps` finds them by role name
    it with the harness. Look at the wheels from both sides next to the store
    model: a store model can have its wheel faces pointing into the car
    (`wheelFlip` in `storecar.py`). Check the lamps lit, braking and reversing from
-   behind and in front, and the plate spot, before calling it done.
+   behind and in front, and add its plate spots to CarPlateMounts
+   ("Plates" above) and check them front and behind, before calling it done.
 
 ## Generated pieces and EditableMesh
 
@@ -153,9 +179,15 @@ is needed.
 
 | Car | Store asset | Script | Notes |
 |---|---|---|---|
-| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own |
-| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn |
-| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
-| Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles |
-| Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles |
-| Krown Vik Fleet (`krownvikfleet`) | 14407499990 | `storecar.py` | The fleet-trim Crown Vic (black grille, steel wheels); the owner asked for both. Store meshes by id, interior kept; grille and boot badges and both plates are parts of their own and dropped; the airbag's oval painted out (`uvFlatten`); the engine under the bonnet dropped. Its lamps are parts of their own: headlamp, lens, corner parking lamps and tinted covers light as the whole front lamp. No scripts or sounds in the model: the Krown Vik's engine, startup and horn. Its left rims and caps face into the car in the store model, so they are turned to face out (`wheelFlip`). Wheel SurfaceAppearances do not carry over. 27,355 to 27,017 triangles |
+| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own. Plate spots by eye (boot-lid recess, front bumper band) |
+| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn. Plate spots by eye (tailgate recess left of the spare, front over the intake slot) |
+| Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded. Plate spots: rear exact (`--spots`, the store mount), front by eye |
+| Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles. Plate spots by eye (boot recess, front bumper band) |
+| Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles. Plate spots exact (`--spots`, the store plate parts) |
+| Krown Vik Fleet (`krownvikfleet`) | 14407499990 | `storecar.py` | The fleet-trim Crown Vic (black grille, steel wheels); the owner asked for both. Store meshes by id, interior kept; grille and boot badges and both plates are parts of their own and dropped; the airbag's oval painted out (`uvFlatten`); the engine under the bonnet dropped. Its lamps are parts of their own: headlamp, lens, corner parking lamps and tinted covers light as the whole front lamp. No scripts or sounds in the model: the Krown Vik's engine, startup and horn. Its left rims and caps face into the car in the store model, so they are turned to face out (`wheelFlip`). Wheel SurfaceAppearances do not carry over. 27,355 to 27,017 triangles. Plate spots exact (`--spots`, the store plate brackets) |
+
+The pack cars (Hatch `hatch`, Pickup `pickup`, Cruiser `cruiser`) are older
+single-mesh bodies, not store cars, so they are not in the table. Their plate
+spots were measured by eye too: the Cruiser's painted boot recess, the
+Pickup's rear bumper notch and the Hatch's rear panel, each with a front on
+the bumper.
