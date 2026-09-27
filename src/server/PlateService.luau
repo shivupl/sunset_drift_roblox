@@ -125,6 +125,21 @@ local function pickDefault(): string
 	return key
 end
 
+-- Controller's ruling: a typing player can burst PlateQuery faster than the
+-- availability cache alone protects the store, so also check the server's
+-- actual GetAsync budget and back off before it runs out — keep the rest for
+-- profile loads and plate settlement (buy/release/recover), which cannot
+-- simply wait for a search box. Buy and equip reach the store the same way
+-- (reserve/confirm/recover all read the key first), so they share this guard
+-- rather than each carrying their own copy of it (fix 1, 2026-09-27 review).
+local function readBudgetLow(): boolean
+	if not liveStore then
+		return false
+	end
+	local budget = DataStoreService:GetRequestBudgetForRequestType(Enum.DataStoreRequestType.GetAsync)
+	return budget < PlateConfig.minReadBudget
+end
+
 local function query(player: Player, input: any): Reply
 	if not allowed("query", player, PlateConfig.queriesPerSecond) then
 		return { status = "busy" }
@@ -138,16 +153,8 @@ local function query(player: Player, input: any): Reply
 	end
 	local price = PlateText.price(key)
 	local reg = registry
-	if reg and liveStore then
-		-- Controller's ruling: a typing player can burst PlateQuery faster
-		-- than the availability cache alone protects the store, so also
-		-- check the server's actual GetAsync budget and back off before it
-		-- runs out — keep the rest for profile loads and plate settlement
-		-- (buy/release/recover), which cannot simply wait for a search box.
-		local budget = DataStoreService:GetRequestBudgetForRequestType(Enum.DataStoreRequestType.GetAsync)
-		if budget < PlateConfig.minReadBudget then
-			return { status = "busy" }
-		end
+	if reg and readBudgetLow() then
+		return { status = "busy" }
 	end
 	local free = if reg then reg.available(key) else nil
 	if free == nil then
@@ -185,6 +192,9 @@ local function action(player: Player, what: any, input: any): Reply
 	if not reg then
 		return { status = "unavailable" }
 	end
+	if readBudgetLow() then
+		return { status = "busy" }
+	end
 	local reply: Reply = { status = "busy" }
 	local ran, ok = exclusive(player, function()
 		local wallet = Economy.wallet(player)
@@ -210,7 +220,12 @@ local function action(player: Player, what: any, input: any): Reply
 end
 
 local function onLoaded(player: Player, canSave: boolean)
-	ready[player] = canSave
+	-- ready is set only once join recovery has run (fix 3, 2026-09-27
+	-- review): pickDefault (a GetAsync per try) and the recover/checkEquipped
+	-- pair below all yield, so setting it up front let an early buy or equip
+	-- slip in and take `exclusive` while this join check was still pending,
+	-- silently skipping it. Until ready flips, action() replies
+	-- "unavailable" instead.
 	player:SetAttribute("PlateDefault", pickDefault())
 	refreshCar(player)
 	local reg = registry
@@ -221,6 +236,7 @@ local function onLoaded(player: Player, canSave: boolean)
 			reg.checkEquipped(wallet, player.UserId)
 		end)
 	end
+	ready[player] = canSave
 end
 
 function PlateService.start(remotes: Remotes.RemoteTable)

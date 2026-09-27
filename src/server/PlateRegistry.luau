@@ -157,9 +157,22 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 		return HttpService:GenerateGUID(false)
 	end
 	local cache: { [string]: { at: number, free: boolean } } = {}
+	-- Entries currently in cache, kept alongside it so growth can be checked
+	-- in O(1) rather than counting the table on every insert (fix 2,
+	-- 2026-09-27 review).
+	local cacheCount = 0
 	-- GetAsync caches per server for ~4 s; settle and checkEquipped must see the key as it is now.
 	local noCache = Instance.new("DataStoreGetOptions")
 	noCache.UseCache = false
+
+	-- Drops a key's cached availability (a write just changed it, or it is
+	-- being re-read fresh). A no-op if it was not cached.
+	local function invalidate(key: string)
+		if cache[key] then
+			cache[key] = nil
+			cacheCount -= 1
+		end
+	end
 
 	-- One conditional write. decide gets the key as it is now and changes
 	-- it, or returns false to leave it alone. Returns the record written
@@ -180,7 +193,7 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 				return r, if userId then { userId } else nil
 			end)
 		end)
-		cache[key] = nil
+		invalidate(key)
 		if not ok then
 			warn(`[Plates] write to {key} failed: {tostring(err)}`)
 			return nil, false
@@ -211,6 +224,17 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 			return nil
 		end
 		local free = isOpen(r, now)
+		if not cache[key] then
+			-- A player cycling plate strings while searching would otherwise
+			-- grow this table for the life of the server (fix 2, 2026-09-27
+			-- review): clear it before it gets big rather than evicting one
+			-- entry at a time, so this stays O(1) per insert.
+			if cacheCount >= PlateConfig.availabilityCacheMax then
+				table.clear(cache)
+				cacheCount = 0
+			end
+			cacheCount += 1
+		end
 		cache[key] = { at = now, free = free }
 		return free
 	end

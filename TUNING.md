@@ -744,8 +744,9 @@ Number plates (docs/superpowers/specs/2026-09-26-number-plates-design.md).
 |---|---|---|
 | `prices[1..4]` | Cash price by number of digits (500,000 / 200,000 / 75,000 / 20,000) | First guesses; the owner sets them against how fast cash is earned |
 | `repeatMultiplier` | Price multiplier for AAA letters or all-identical digits (2) | Up to make those rarer |
-| `pendingSeconds` | How long a purchase holds a plate while cash is taken (120) | Down frees abandoned claims sooner; never below a slow profile write (~10 s) |
+| `pendingSeconds` | How long a purchase holds a plate while cash is taken (120) | Down frees abandoned claims sooner; never below about 20 s — a purchase can queue behind the 6 s per-key write limit twice plus the lock |
 | `availabilityCacheSeconds` | How long a server trusts a "free" answer (30) | Down shows sold plates sooner, at a read per plate per search |
+| `availabilityCacheMax` | Entries the availability cache holds before it is cleared (2000) | Up if legitimate searches are clearing it early; a player cycling plate strings would otherwise grow it for the life of the server |
 | `historyLength` | Owner history lines kept on a plate key (5) | |
 | `maxInputBytes` | Longest plate text accepted (64) | |
 | `queriesPerSecond`, `actionsPerSecond` | Remote rate limits per player (2, 1) | Down if the DataStore budget runs short |

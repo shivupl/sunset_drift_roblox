@@ -14,6 +14,11 @@ local PlateConfig = {
 	-- A server remembers whether a plate is free for this long, so typing
 	-- in the search box does not read the store on every key (spec §4).
 	availabilityCacheSeconds = 30,
+	-- The availability cache is cleared once it holds this many entries
+	-- (fix 2, 2026-09-27 review): a player cycling through plate strings
+	-- while searching would otherwise grow it for the life of the server,
+	-- since entries only expire on the next read of that same key.
+	availabilityCacheMax = 2000,
 	-- Lines of ownership history kept on a plate key.
 	historyLength = 5,
 	-- Longest plate text a player may send, in bytes (Arabic is 2 per letter).

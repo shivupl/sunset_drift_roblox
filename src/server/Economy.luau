@@ -26,8 +26,10 @@
 -- Not implemented: cross-server session locking. Roblox keeps a player in
 -- one server at a time, so the exposure is a rejoin racing the old server's
 -- save. Rule 2 keeps the best score safe through that; cash could lose the
--- last few seconds. Plates are safe: the key is the truth and recovery
--- re-reads it. Worth revisiting when teleports arrive (Phase 2).
+-- last few seconds. A plate never gets two owners even so: the key is the
+-- truth and recovery re-reads it; the cash side shares the rejoin-race
+-- exposure described above (fix 6, 2026-09-27 review: "plates are safe"
+-- overclaimed this). Worth revisiting when teleports arrive (Phase 2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -357,7 +359,13 @@ function Economy.step(dt: number, autosaveSeconds: number)
 	end
 	autosaveTimer = 0
 	for _, player in Players:GetPlayers() do
-		if savable[player] then
+		-- A write already in flight (most likely a plate transaction) has
+		-- the lock; queuing this autosave behind it would just make it wait
+		-- on Economy.save's own lock() (fix 4, 2026-09-27 review) instead of
+		-- being skipped this cycle as before. The leave-save and shutdown
+		-- save still go through Economy.save and wait on the lock as they
+		-- always have — only the periodic autosave skips a busy player.
+		if savable[player] and not writing[player] then
 			task.spawn(Economy.save, player)
 		end
 	end
