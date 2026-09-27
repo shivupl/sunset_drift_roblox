@@ -129,11 +129,11 @@ def role_krownvik(p):
     # kit's own lamp parts (F, FLI, FRI, R, RLI, RRI) are plain boxes it hid
     # inside them to carry its lights: trim here. RV, beside the plate, is
     # the reverse lamp's own shape.
-    # The clear covers over the headlamps (124) and the reverse lamps (37)
-    # are the whole lamp face: they light with them.
+    # The clear covers over the headlamps (124), the corner lamps (92, 93)
+    # and the reverse lamps (37) are the whole lamp face: they light with them.
     if p["i"] == 91:
         return "TailLamps", {"castShadow": False}
-    if p["i"] == 124:
+    if p["i"] in (124, 92, 93):  # over the headlamps and the two corner lamps
         return "HeadLamps", {"castShadow": False}
     if n == "RV" or p["i"] == 37:
         return "ReverseLamps", {"castShadow": False}
@@ -240,7 +240,11 @@ CARS = {
                 "uvBoxes": [(0.147, 0.626, 0.426, 0.742)],
                 "split": [
                     {"role": "HeadLamps", "uvBoxes": [(0.40, 0.60, 0.73, 0.76)]},
-                    {"role": "Indicators", "uvBoxes": [(0.0, 0.49, 0.345, 0.625)]},
+                    # The corner lamps light with the headlamps: the owner
+                    # wanted the whole front lamp lit (2026-09-26). Their
+                    # amber is in the same faces' texture, so it shows only
+                    # with the lamps off.
+                    {"role": "HeadLamps", "uvBoxes": [(0.0, 0.49, 0.345, 0.625)]},
                 ],
             },
             30: {"source": "bootbadge_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},

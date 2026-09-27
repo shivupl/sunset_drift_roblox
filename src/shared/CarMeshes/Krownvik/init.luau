@@ -30,15 +30,15 @@ return {
 		uvs = require(script.HeadLamps_uvs) :: string,
 		triangles = require(script.HeadLamps_triangles) :: string,
 	},
-	Indicators = {
+	HeadLamps_2 = {
 		triangleCount = 86,
 		sizeM = { 1.7554, 0.1399, 0.3728 },
 		offsetM = { -0.0002, 0.6509, -2.1138 },
 		counts = { 100, 100, 100 },
-		positions = require(script.Indicators_positions) :: string,
-		normals = require(script.Indicators_normals) :: string,
-		uvs = require(script.Indicators_uvs) :: string,
-		triangles = require(script.Indicators_triangles) :: string,
+		positions = require(script.HeadLamps_2_positions) :: string,
+		normals = require(script.HeadLamps_2_normals) :: string,
+		uvs = require(script.HeadLamps_2_uvs) :: string,
+		triangles = require(script.HeadLamps_2_triangles) :: string,
 	},
 	Trim_5 = {
 		triangleCount = 36,
