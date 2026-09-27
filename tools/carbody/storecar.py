@@ -286,6 +286,9 @@ CARS = {
         "dropTextures": set(),
         "tyres": [123, 110, 38, 25],
         "wheelParts": {123: "Tyre", 125: "Rim", 124: "Rim_Cap"},
+        # The store model's left rims and caps face into the car (its right
+        # ones face out): turned, the steel wheel and its centre cap show.
+        "wheelFlip": {125, 124},
         "frontPart": 128,  # the front bumper
         # The maker's oval on the airbag, painted in the middle of the pad:
         # the pad's faces sample a plain spot of it instead.
@@ -588,6 +591,10 @@ def build(key):
         for i, wname in car["wheelParts"].items():
             p = by[i]
             R = B.T @ np.array(p["cf"][3:], dtype=float).reshape(3, 3)
+            if i in car.get("wheelFlip", ()):
+                # A wheel face the store model has pointing into the car:
+                # turned about the vertical to face out.
+                R = np.diag([-1.0, 1.0, -1.0]) @ R
             pos = B.T @ (np.array(p["cf"][:3], dtype=float) - hub) * mps
             f = [f'name = "{wname}"', f"meshId = {p['mesh']}"]
             if p.get("tex") and p["tex"] not in car["dropTextures"]:

@@ -461,8 +461,10 @@ local cars: { [string]: CarEntry } = {
 	-- (2026-09-26). Removed: the grille and boot badges and both plates
 	-- (parts of their own) and the engine under the bonnet; the maker's oval
 	-- on the airbag is painted out (its pad samples a plain spot of the
-	-- texture, generated piece Interior_2). Its wheel SurfaceAppearances do
-	-- not carry over (their textures do). 27,355 triangles in the store
+	-- texture, generated piece Interior_2). Its left rims and caps face into
+	-- the car in the store model and are turned to face out (storecar.py
+	-- wheelFlip); its wheel SurfaceAppearances do not carry over (their
+	-- textures do). 27,355 triangles in the store
 	-- model, 27,017 here.
 	--
 	-- Its lamps are parts of their own: the headlamp, lens, corner parking
@@ -593,8 +595,8 @@ local cars: { [string]: CarEntry } = {
 			},
 			wheelPieces = {
 				{ name = "Tyre", meshId = 2176361415, textureId = 2176366836, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2979, 0.6785, 0.6777 }, offsetM = { 0, 0, 0 }, rotationDeg = { 0, 0, 0 } },
-				{ name = "Rim", meshId = 14229223888, textureId = 14229417264, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.5776, 0.5776, 0.0461 }, offsetM = { -0.1226, 0, -0.0001 }, rotationDeg = { 0, -90.006, 0 } },
-				{ name = "Rim_Cap", meshId = 14229226343, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2093, 0.2091, 0.0278 }, offsetM = { -0.1128, 0.0001, -0.0001 }, rotationDeg = { 0, -90.006, 0 } },
+				{ name = "Rim", meshId = 14229223888, textureId = 14229417264, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.5776, 0.5776, 0.0461 }, offsetM = { -0.1226, 0, -0.0001 }, rotationDeg = { 0, 89.994, 0 } },
+				{ name = "Rim_Cap", meshId = 14229226343, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2093, 0.2091, 0.0278 }, offsetM = { -0.1128, 0.0001, -0.0001 }, rotationDeg = { 0, 89.994, 0 } },
 			},
 		},
 		tuning = {

@@ -102,6 +102,6 @@ pieces = {
 },
 wheelPieces = {
 	{ name = "Tyre", meshId = 2176361415, textureId = 2176366836, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2979, 0.6785, 0.6777 }, offsetM = { 0, 0, 0 }, rotationDeg = { 0, 0, 0 } },
-	{ name = "Rim", meshId = 14229223888, textureId = 14229417264, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.5776, 0.5776, 0.0461 }, offsetM = { -0.1226, 0, -0.0001 }, rotationDeg = { 0, -90.006, 0 } },
-	{ name = "Rim_Cap", meshId = 14229226343, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2093, 0.2091, 0.0278 }, offsetM = { -0.1128, 0.0001, -0.0001 }, rotationDeg = { 0, -90.006, 0 } },
+	{ name = "Rim", meshId = 14229223888, textureId = 14229417264, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.5776, 0.5776, 0.0461 }, offsetM = { -0.1226, 0, -0.0001 }, rotationDeg = { 0, 89.994, 0 } },
+	{ name = "Rim_Cap", meshId = 14229226343, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2093, 0.2091, 0.0278 }, offsetM = { -0.1128, 0.0001, -0.0001 }, rotationDeg = { 0, 89.994, 0 } },
 },
