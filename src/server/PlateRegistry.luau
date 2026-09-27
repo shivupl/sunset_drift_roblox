@@ -119,6 +119,38 @@ local function isOpen(r: Record, now: number): boolean
 	return r.status == "free" or (r.status == "pending" and (r.pendingUntil or 0) < now)
 end
 
+local function findPlate(p: PlateProfile, key: string): OwnedPlate?
+	for _, plate in p.plates do
+		if plate.key == key then
+			return plate
+		end
+	end
+	return nil
+end
+
+local function dropPlate(p: PlateProfile, key: string)
+	for i = #p.plates, 1, -1 do
+		if p.plates[i].key == key then
+			table.remove(p.plates, i)
+		end
+	end
+	if p.equipped == key then
+		p.equipped = nil
+	end
+end
+
+-- Takes a transaction off the profile. False if it was not there: it is
+-- already finished, so nothing more is done and nothing is paid twice.
+local function dropTxn(p: PlateProfile, txn: string): boolean
+	for i, t in p.pendingTxns do
+		if t.txn == txn then
+			table.remove(p.pendingTxns, i)
+			return true
+		end
+	end
+	return false
+end
+
 function PlateRegistry.new(store: Store, options: Options): Registry
 	local clock = options.clock
 	local newTxn = options.newTxn or function(): string
@@ -256,7 +288,185 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 		return if written then "ok" else "notmine"
 	end
 
-	-- FLOWS (Task 4)
+	-- The profile side of a finished purchase: the plate is owned and fitted.
+	local function finishBuy(wallet: Wallet, t: PendingTxn): boolean
+		return wallet.transact(function(p)
+			if not dropTxn(p, t.txn) then
+				return false
+			end
+			local plate = findPlate(p, t.key)
+			if plate then
+				plate.state = "owned"
+			else
+				table.insert(p.plates, { key = t.key, state = "owned" })
+			end
+			p.equipped = t.key
+			return true
+		end) ~= "error"
+	end
+
+	-- The profile side of a refunded purchase or a finished release: the
+	-- plate goes and t.price (the price, or the release's refund) comes
+	-- back, in the same write that takes the transaction off.
+	local function dropAndCredit(wallet: Wallet, t: PendingTxn): boolean
+		return wallet.transact(function(p)
+			if not dropTxn(p, t.txn) then
+				return false
+			end
+			dropPlate(p, t.key)
+			p.cash += t.price
+			return true
+		end) ~= "error"
+	end
+
+	-- Brings one transaction to its end from what the plate key says now
+	-- (the recovery table, spec §4):
+	--   buying,    key pending with this txn  -> confirm, then finish
+	--   buying,    key owned by me, this txn   -> finish
+	--   buying,    anything else               -> refund
+	--   releasing, key owned by me             -> free it, then finish
+	--   releasing, free or not mine            -> finish
+	-- "pending" means the store could not be reached; try again later.
+	local function settle(wallet: Wallet, userId: number, t: PendingTxn, depth: number?): "done" | "refunded" | "pending"
+		local d = depth or 0
+		if d > 3 then
+			return "pending"
+		end
+		local rec, ok = read(t.key)
+		if not ok then
+			return "pending"
+		end
+		if t.kind == "buy" then
+			if rec.status == "pending" and rec.txn == t.txn then
+				local c = confirm(t.key, userId, t.txn, t.price)
+				if c == "error" then
+					return "pending"
+				elseif c == "lost" then
+					return settle(wallet, userId, t, d + 1)
+				end
+				return if finishBuy(wallet, t) then "done" else "pending"
+			elseif rec.status == "owned" and rec.owner == userId and rec.txn == t.txn then
+				return if finishBuy(wallet, t) then "done" else "pending"
+			end
+			return if dropAndCredit(wallet, t) then "refunded" else "pending"
+		end
+		if rec.status == "owned" and rec.owner == userId then
+			local f = free(t.key, userId, rec.version, t.txn)
+			if f == "error" then
+				return "pending"
+			elseif f == "notmine" then
+				return settle(wallet, userId, t, d + 1)
+			end
+		end
+		return if dropAndCredit(wallet, t) then "done" else "pending"
+	end
+
+	-- Every unfinished transaction on the profile, brought to its end.
+	local function recover(wallet: Wallet, userId: number)
+		for _, t in table.clone(wallet.view().pendingTxns) do
+			settle(wallet, userId, t)
+		end
+	end
+
+	-- Reserve, charge, confirm (spec §4, buying).
+	local function buy(wallet: Wallet, userId: number, key: string, price: number): BuyResult
+		recover(wallet, userId)
+		local p = wallet.view()
+		if #p.pendingTxns > 0 then
+			return "pending"
+		end
+		if findPlate(p, key) then
+			return "owned"
+		end
+		if p.cash < price then
+			return "cash"
+		end
+		local txn = newTxn()
+		local r = reserve(key, userId, txn)
+		if r == "taken" then
+			return "taken"
+		elseif r == "error" then
+			cancel(key, txn) -- the claim may have landed
+			return "unavailable"
+		end
+		local t: PendingTxn = { txn = txn, kind = "buy", key = key, price = price }
+		local charged = wallet.transact(function(q)
+			if q.cash < price then
+				return false
+			end
+			q.cash -= price
+			table.insert(q.pendingTxns, table.clone(t))
+			table.insert(q.plates, { key = key, state = "pending" })
+			return true
+		end)
+		if charged ~= "ok" then
+			-- Nothing is charged in this session. If the write landed
+			-- anyway, the next load finds the key free and refunds.
+			cancel(key, txn)
+			return if charged == "refused" then "cash" else "unavailable"
+		end
+		local s = settle(wallet, userId, t)
+		return if s == "done" then "done" elseif s == "refunded" then "taken" else "pending"
+	end
+
+	-- Mark, free, credit (spec §4, releasing). Built and tested now; no
+	-- button sells or trades a plate yet.
+	local function release(wallet: Wallet, userId: number, key: string, refund: number): ReleaseResult
+		recover(wallet, userId)
+		local p = wallet.view()
+		if #p.pendingTxns > 0 then
+			return "pending"
+		end
+		local plate = findPlate(p, key)
+		if not plate or plate.state ~= "owned" then
+			return "notowned"
+		end
+		local t: PendingTxn = { txn = newTxn(), kind = "release", key = key, price = refund }
+		local marked = wallet.transact(function(q)
+			local mine = findPlate(q, key)
+			if not mine or mine.state ~= "owned" then
+				return false
+			end
+			mine.state = "releasing"
+			if q.equipped == key then
+				q.equipped = nil
+			end
+			table.insert(q.pendingTxns, table.clone(t))
+			return true
+		end)
+		if marked == "refused" then
+			return "notowned"
+		elseif marked == "error" then
+			return "unavailable"
+		end
+		return if settle(wallet, userId, t) == "done" then "done" else "pending"
+	end
+
+	-- The equipped plate against its key (at join and on equip, spec §4):
+	-- if the key says it is not this player's, it leaves the profile.
+	local function checkEquipped(wallet: Wallet, userId: number)
+		local key = wallet.view().equipped
+		if not key then
+			return
+		end
+		local plate = findPlate(wallet.view(), key)
+		if plate and plate.state ~= "owned" then
+			return -- mid-transaction: settle deals with it
+		end
+		if plate then
+			local rec, ok = read(key)
+			if not ok or (rec.status == "owned" and rec.owner == userId) then
+				return
+			end
+		end
+		wallet.transact(function(q)
+			if q.equipped ~= key then
+				return false
+			end
+			dropPlate(q, key)
+			return true
+		end)
+	end
 
 	return {
 		read = read,
@@ -265,15 +475,11 @@ function PlateRegistry.new(store: Store, options: Options): Registry
 		confirm = confirm,
 		cancel = cancel,
 		free = free,
-		buy = function(): BuyResult
-			return "unavailable"
-		end,
-		release = function(): ReleaseResult
-			return "unavailable"
-		end,
-		recover = function() end,
-		checkEquipped = function() end,
-	} :: any
+		buy = buy,
+		release = release,
+		recover = recover,
+		checkEquipped = checkEquipped,
+	}
 end
 
 return PlateRegistry
