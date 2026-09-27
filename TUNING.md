@@ -748,7 +748,8 @@ Number plates (docs/superpowers/specs/2026-09-26-number-plates-design.md).
 | `availabilityCacheSeconds` | How long a server trusts a "free" answer (30) | Down shows sold plates sooner, at a read per plate per search |
 | `historyLength` | Owner history lines kept on a plate key (5) | |
 | `maxInputBytes` | Longest plate text accepted (64) | |
-| `queriesPerSecond`, `actionsPerSecond` | Remote rate limits per player (4, 1) | Down if the DataStore budget runs short |
+| `queriesPerSecond`, `actionsPerSecond` | Remote rate limits per player (2, 1) | Down if the DataStore budget runs short |
+| `minReadBudget` | PlateQuery backs off to "busy" below this `GetRequestBudgetForRequestType(GetAsync)`, live store only (30) | Up to protect profile loads and plate settlement harder; down if searches feel throttled with budget to spare |
 | `defaultPicks` | Tries to find a default plate nobody owns (3) | |
 | `retrySeconds` | Retry period for an unfinished purchase or release (30) | |
 | `studioCash` | Starting cash in Studio's fake store (2,000,000) | Studio only |

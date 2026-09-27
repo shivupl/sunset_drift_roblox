@@ -15,6 +15,7 @@
 -- store was down) is retried every retrySeconds and at the next join.
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlateText = require(Shared:WaitForChild("PlateText"))
@@ -31,7 +32,17 @@ type Reply = { status: string, key: string?, price: number?, available: boolean?
 local PlateService = {}
 
 local registry: PlateRegistry.Registry? = nil
+-- True once the registry was opened on a live DataStore (not Studio's fake,
+-- not "none"): only then is there a real GetAsync budget to protect (fix 3).
+local liveStore = false
 local busy: { [Player]: boolean } = {}
+-- True once a player's profile load has finished and it can be saved
+-- (Economy.onLoaded's canSave). Buying or equipping before this, or after a
+-- failed load, would write plate keys for a profile that is not being kept:
+-- reserve/cancel would still touch the shared registry for a wallet nothing
+-- here is really tracking, and the player would see a balance that is not
+-- theirs to spend against.
+local ready: { [Player]: boolean } = {}
 local budgets: { [string]: { [Player]: { at: number, n: number } } } = { query = {}, action = {} }
 
 local function allowed(kind: string, player: Player, perSecond: number): boolean
@@ -75,10 +86,13 @@ local function refreshCar(player: Player)
 	end
 end
 
--- Runs fn as this player's only plate transaction. False if one is running.
-local function exclusive(player: Player, fn: () -> ()): boolean
+-- Runs fn as this player's only plate transaction. First return is false if
+-- one is already running (fn did not run at all, busy[player] untouched).
+-- When it did run, the second return is false if fn raised (also logged
+-- here), so a caller can tell "busy" apart from "ran but failed".
+local function exclusive(player: Player, fn: () -> ()): (boolean, boolean)
 	if busy[player] then
-		return false
+		return false, false
 	end
 	busy[player] = true
 	-- Wrapped rather than passed directly: pcall of a bare `() -> ()` value
@@ -91,7 +105,7 @@ local function exclusive(player: Player, fn: () -> ()): boolean
 	if not ok then
 		warn(`[Plates] {player.Name}: {tostring(err)}`)
 	end
-	return true
+	return true, ok
 end
 
 -- A default plate nobody owns (spec §5). Never registered.
@@ -124,6 +138,17 @@ local function query(player: Player, input: any): Reply
 	end
 	local price = PlateText.price(key)
 	local reg = registry
+	if reg and liveStore then
+		-- Controller's ruling: a typing player can burst PlateQuery faster
+		-- than the availability cache alone protects the store, so also
+		-- check the server's actual GetAsync budget and back off before it
+		-- runs out — keep the rest for profile loads and plate settlement
+		-- (buy/release/recover), which cannot simply wait for a search box.
+		local budget = DataStoreService:GetRequestBudgetForRequestType(Enum.DataStoreRequestType.GetAsync)
+		if budget < PlateConfig.minReadBudget then
+			return { status = "busy" }
+		end
+	end
 	local free = if reg then reg.available(key) else nil
 	if free == nil then
 		return { status = "unavailable", key = key, price = price }
@@ -142,6 +167,13 @@ local function action(player: Player, what: any, input: any): Reply
 	if what ~= "buy" and what ~= "equip" then
 		return { status = "invalid", reason = "Unknown action" }
 	end
+	-- No profile to charge or fit a plate on yet, or its load failed
+	-- (nothing here will be saved this session): query and unequip still
+	-- work, but buying or equipping would touch the shared registry for a
+	-- wallet that is not really being kept.
+	if not ready[player] then
+		return { status = "unavailable" }
+	end
 	if type(input) ~= "string" then
 		return { status = "invalid", reason = "Type a plate" }
 	end
@@ -154,7 +186,7 @@ local function action(player: Player, what: any, input: any): Reply
 		return { status = "unavailable" }
 	end
 	local reply: Reply = { status = "busy" }
-	exclusive(player, function()
+	local ran, ok = exclusive(player, function()
 		local wallet = Economy.wallet(player)
 		if what == "equip" then
 			if not Economy.setEquipped(player, key) then
@@ -169,10 +201,16 @@ local function action(player: Player, what: any, input: any): Reply
 			reply = { status = reg.buy(wallet, player.UserId, key, price), key = key, price = price }
 		end
 	end)
+	if ran and not ok then
+		-- fn threw partway through: reply must not be left at the "busy"
+		-- default, which would misreport a genuinely running transaction.
+		reply = { status = "unavailable" }
+	end
 	return reply
 end
 
 local function onLoaded(player: Player, canSave: boolean)
+	ready[player] = canSave
 	player:SetAttribute("PlateDefault", pickDefault())
 	refreshCar(player)
 	local reg = registry
@@ -186,7 +224,8 @@ local function onLoaded(player: Player, canSave: boolean)
 end
 
 function PlateService.start(remotes: Remotes.RemoteTable)
-	local store = Stores.open(STORE_NAME)
+	local store, kind = Stores.open(STORE_NAME)
+	liveStore = kind == "live"
 	if store then
 		registry = PlateRegistry.new(store, { clock = os.time })
 	end
@@ -213,21 +252,30 @@ function PlateService.start(remotes: Remotes.RemoteTable)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		busy[player] = nil
+		ready[player] = nil
 		budgets.query[player] = nil
 		budgets.action[player] = nil
 	end)
 
 	-- A new car takes its owner's plate (CarSpawner sets OwnerUserId before
-	-- parenting it).
+	-- parenting it). ChildAdded is connected before the folder's existing
+	-- children are stamped: CarSpawner can create workspace.Cars and parent
+	-- the very first car into it in the same, unyielding call, so by the
+	-- time WaitForChild below returns that car may already be there and
+	-- would never fire ChildAdded if it were connected after the loop.
+	local function stamp(child: Instance)
+		local uid = child:GetAttribute("OwnerUserId")
+		local owner = if type(uid) == "number" then Players:GetPlayerByUserId(uid) else nil
+		if owner and child:IsA("Model") then
+			child:SetAttribute("Plate", plateFor(owner))
+		end
+	end
 	task.spawn(function()
 		local cars = Workspace:WaitForChild("Cars", math.huge)
-		cars.ChildAdded:Connect(function(child)
-			local uid = child:GetAttribute("OwnerUserId")
-			local owner = if type(uid) == "number" then Players:GetPlayerByUserId(uid) else nil
-			if owner and child:IsA("Model") then
-				child:SetAttribute("Plate", plateFor(owner))
-			end
-		end)
+		cars.ChildAdded:Connect(stamp)
+		for _, child in cars:GetChildren() do
+			stamp(child)
+		end
 	end)
 
 	-- Unfinished transactions, retried.

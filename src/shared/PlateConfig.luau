@@ -18,9 +18,16 @@ local PlateConfig = {
 	historyLength = 5,
 	-- Longest plate text a player may send, in bytes (Arabic is 2 per letter).
 	maxInputBytes = 64,
-	-- Remote calls a player may make per second; more get "busy".
-	queriesPerSecond = 4,
+	-- Remote calls a player may make per second; more get "busy". The client
+	-- only asks PlateQuery after typing pauses, so 2/s is plenty (down from
+	-- 4/s, controller's ruling 2026-09-27: pair with minReadBudget below).
+	queriesPerSecond = 2,
 	actionsPerSecond = 1,
+	-- PlateQuery backs off to "busy" below this GetRequestBudgetForRequestType
+	-- (GetAsync), on a live store only: keeps read budget for profile loads
+	-- and plate settlement (buy/release/recover), which cannot wait for a
+	-- search box (controller's ruling, 2026-09-27).
+	minReadBudget = 30,
 	-- Tries at a default plate nobody owns before keeping the last one
 	-- (a default is never registered, so a clash is only cosmetic).
 	defaultPicks = 3,
