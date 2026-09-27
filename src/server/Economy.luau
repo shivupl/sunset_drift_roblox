@@ -1,25 +1,39 @@
 --!strict
--- Cash and the all-time best, persisted per player.
+-- Cash, the all-time best and number plates, persisted per player.
 --
 -- Everything the client can see is an attribute on the Player (Cash,
--- SessionBest, BestScore): attributes replicate server to client on their
--- own, and a client writing one locally changes nothing on the server. No
--- remote carries a balance, so there is nothing to forge.
+-- SessionBest, BestScore, Plates, PlateEquipped): attributes replicate
+-- server to client on their own, and a client writing one locally changes
+-- nothing on the server. No remote carries a balance, so there is nothing
+-- to forge.
 --
 -- Data safety rules, in order of how much they matter:
 --   1. A profile whose load failed is never saved. Overwriting a real
 --      balance with a fresh zero is the one unrecoverable mistake here.
 --   2. Writes go through UpdateAsync, so the all-time best merges with
 --      whatever is already stored rather than clobbering it.
---   3. Autosave on a timer, save on leave, and save everyone on shutdown.
+--   3. One write per player at a time: a save holding an older copy must
+--      never land after a plate transaction's write.
+--   4. Autosave on a timer, save on leave, and save everyone on shutdown.
+--
+-- Plates (docs/superpowers/specs/2026-09-26-number-plates-design.md §4, §5):
+-- the profile holds a copy of the plates a player owns, the one equipped,
+-- and any plate transaction not yet finished (pendingTxns). The plate's own
+-- key (PlateRegistry) is the truth. Money that moves with a plate moves in
+-- one write with the transaction's record (transact), so it is charged once
+-- and refunded at most once.
 --
 -- Not implemented: cross-server session locking. Roblox keeps a player in
 -- one server at a time, so the exposure is a rejoin racing the old server's
 -- save. Rule 2 keeps the best score safe through that; cash could lose the
--- last few seconds. Worth revisiting when teleports arrive (Phase 2).
-local DataStoreService = game:GetService("DataStoreService")
+-- last few seconds. Plates are safe: the key is the truth and recovery
+-- re-reads it. Worth revisiting when teleports arrive (Phase 2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PlateConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlateConfig"))
+local PlateRegistry = require(script.Parent.PlateRegistry)
+local Stores = require(script.Parent.Stores)
 
 local STORE_NAME = "HajwalaPlayer_v1"
 local KEY_PREFIX = "p_"
@@ -28,19 +42,30 @@ local LOAD_ATTEMPTS = 4
 export type Profile = {
 	cash: number,
 	bestScore: number,
+	plates: { PlateRegistry.OwnedPlate },
+	equipped: string?,
+	pendingTxns: { PlateRegistry.PendingTxn },
 }
 
 local Economy = {}
 
-local store: DataStore? = nil
-local storeError: string? = nil
+-- Called when a player's profile load has finished. savable is false when
+-- it failed or there is no store: nothing will be saved this session.
+Economy.onLoaded = nil :: ((player: Player, savable: boolean) -> ())?
+
+local store: any = nil
+local storeKind: Stores.Kind = "none"
 local profiles: { [Player]: Profile } = {}
 local savable: { [Player]: boolean } = {}
-local saving: { [Player]: boolean } = {}
+local writing: { [Player]: boolean } = {}
 local autosaveTimer = 0
 
 local function key(player: Player): string
 	return KEY_PREFIX .. player.UserId
+end
+
+local function fresh(): Profile
+	return { cash = 0, bestScore = 0, plates = {}, equipped = nil, pendingTxns = {} }
 end
 
 local function publish(player: Player)
@@ -50,15 +75,86 @@ local function publish(player: Player)
 	end
 	player:SetAttribute("Cash", p.cash)
 	player:SetAttribute("BestScore", p.bestScore)
+	local owned: { string } = {}
+	for _, plate in p.plates do
+		if plate.state == "owned" then
+			table.insert(owned, plate.key)
+		end
+	end
+	player:SetAttribute("Plates", table.concat(owned, ","))
+	player:SetAttribute("PlateEquipped", p.equipped)
 end
 
+-- A stored profile read defensively. The plate fields are new (2026-09-26):
+-- an older profile has none and reads them as empty, so nothing migrates.
 local function readProfile(raw: any): Profile
-	local p: Profile = { cash = 0, bestScore = 0 }
-	if type(raw) == "table" then
-		p.cash = math.max(tonumber(raw.cash) or 0, 0)
-		p.bestScore = math.max(tonumber(raw.bestScore) or 0, 0)
+	local p = fresh()
+	if type(raw) ~= "table" then
+		return p
+	end
+	p.cash = math.max(tonumber(raw.cash) or 0, 0)
+	p.bestScore = math.max(tonumber(raw.bestScore) or 0, 0)
+	if type(raw.plates) == "table" then
+		for _, e in raw.plates do
+			if type(e) == "table" and type(e.key) == "string" and (e.state == "pending" or e.state == "owned" or e.state == "releasing") then
+				table.insert(p.plates, { key = e.key, state = e.state })
+			end
+		end
+	end
+	if type(raw.equipped) == "string" then
+		p.equipped = raw.equipped
+	end
+	if type(raw.pendingTxns) == "table" then
+		for _, t in raw.pendingTxns do
+			if type(t) == "table" and type(t.txn) == "string" and type(t.key) == "string" and (t.kind == "buy" or t.kind == "release") then
+				local price = tonumber(t.price)
+				if price then
+					table.insert(p.pendingTxns, { txn = t.txn, kind = t.kind, key = t.key, price = price })
+				end
+			end
+		end
 	end
 	return p
+end
+
+local function copyProfile(p: Profile): Profile
+	local out = fresh()
+	out.cash = p.cash
+	out.bestScore = p.bestScore
+	out.equipped = p.equipped
+	for _, plate in p.plates do
+		table.insert(out.plates, table.clone(plate))
+	end
+	for _, t in p.pendingTxns do
+		table.insert(out.pendingTxns, table.clone(t))
+	end
+	return out
+end
+
+-- What is written: this session's profile, with the all-time best merged
+-- rather than overwritten (another session may have set a higher best).
+local function encode(p: Profile, old: any): any
+	local out = copyProfile(p)
+	out.bestScore = math.max(p.bestScore, readProfile(old).bestScore)
+	return out
+end
+
+local function lock(player: Player)
+	while writing[player] do
+		task.wait()
+	end
+	writing[player] = true
+end
+
+local function unlock(player: Player)
+	writing[player] = nil
+end
+
+local function loaded(player: Player, ok: boolean)
+	local cb = Economy.onLoaded
+	if cb and player.Parent then
+		task.spawn(cb, player, ok)
+	end
 end
 
 function Economy.load(player: Player)
@@ -67,13 +163,14 @@ function Economy.load(player: Player)
 	end
 	-- Start the session at zero so the HUD has numbers immediately; the
 	-- stored values replace them when the read lands.
-	profiles[player] = { cash = 0, bestScore = 0 }
+	profiles[player] = fresh()
 	savable[player] = false
 	player:SetAttribute("SessionBest", 0)
 	publish(player)
 
 	local s = store
 	if not s then
+		loaded(player, false)
 		return
 	end
 	local ok, result
@@ -94,42 +191,116 @@ function Economy.load(player: Player)
 	end
 	if not ok then
 		warn(`[Hajwala] profile load failed for {player.Name}, playing without saving: {tostring(result)}`)
+		loaded(player, false)
 		return
 	end
-	profiles[player] = readProfile(result)
+	local p = readProfile(result)
+	if storeKind == "fake" and result == nil then
+		p.cash = PlateConfig.studioCash
+	end
+	profiles[player] = p
 	savable[player] = true
 	publish(player)
+	loaded(player, true)
 end
 
 function Economy.save(player: Player)
 	local s = store
-	local p = profiles[player]
-	if not s or not p or not savable[player] or saving[player] then
+	if not s or not profiles[player] or not savable[player] then
 		return
 	end
-	saving[player] = true
+	lock(player)
+	local p = profiles[player]
+	if p then
+		local ok, err = pcall(function()
+			s:UpdateAsync(key(player), function(old: any)
+				return encode(p, old)
+			end)
+		end)
+		if not ok then
+			warn(`[Hajwala] profile save failed for {player.Name}: {tostring(err)}`)
+		end
+	end
+	unlock(player)
+end
+
+-- Changes the profile in one durable write (PlateRegistry.Wallet): mutate
+-- gets a copy and returns false to change nothing ("refused"). On "ok" the
+-- copy has been written and the same change made to the live profile. It is
+-- made again rather than the copy kept, because cash earned while the write
+-- was in flight is on the live profile. On "error" the live profile is
+-- unchanged.
+function Economy.transact(player: Player, mutate: (p: Profile) -> boolean): PlateRegistry.Outcome
+	local s = store
+	if not s or not profiles[player] or not savable[player] then
+		return "error"
+	end
+	lock(player)
+	local live = profiles[player]
+	if not live then
+		unlock(player)
+		return "error"
+	end
+	local draft = copyProfile(live)
+	if not mutate(draft) then
+		unlock(player)
+		return "refused"
+	end
 	local ok, err = pcall(function()
 		s:UpdateAsync(key(player), function(old: any)
-			local stored = readProfile(old)
-			return {
-				cash = p.cash,
-				-- Merge rather than overwrite: another session may have set a
-				-- higher best since this one loaded.
-				bestScore = math.max(p.bestScore, stored.bestScore),
-			}
+			return encode(draft, old)
 		end)
 	end)
-	saving[player] = false
+	unlock(player)
 	if not ok then
-		warn(`[Hajwala] profile save failed for {player.Name}: {tostring(err)}`)
+		warn(`[Hajwala] profile write failed for {player.Name}: {tostring(err)}`)
+		return "error"
 	end
+	mutate(live)
+	publish(player)
+	return "ok"
+end
+
+-- The profile side of the plate flows, for PlateRegistry.
+function Economy.wallet(player: Player): PlateRegistry.Wallet
+	return {
+		view = function(): PlateRegistry.PlateProfile
+			return (profiles[player] or fresh()) :: any
+		end,
+		transact = function(mutate: (p: PlateRegistry.PlateProfile) -> boolean): PlateRegistry.Outcome
+			return Economy.transact(player, mutate :: any)
+		end,
+	}
+end
+
+-- Equips a plate the player owns, or nil for the session's default plate.
+-- Kept in memory; the next save writes it. False if not owned.
+function Economy.setEquipped(player: Player, plateKey: string?): boolean
+	local p = profiles[player]
+	if not p then
+		return false
+	end
+	if plateKey then
+		local owned = false
+		for _, plate in p.plates do
+			if plate.key == plateKey and plate.state == "owned" then
+				owned = true
+			end
+		end
+		if not owned then
+			return false
+		end
+	end
+	p.equipped = plateKey
+	publish(player)
+	return true
 end
 
 function Economy.release(player: Player)
 	Economy.save(player)
 	profiles[player] = nil
 	savable[player] = nil
-	saving[player] = nil
+	writing[player] = nil
 end
 
 function Economy.profile(player: Player): Profile?
@@ -179,14 +350,9 @@ function Economy.step(dt: number, autosaveSeconds: number)
 end
 
 function Economy.start()
-	local ok, result = pcall(function()
-		return DataStoreService:GetDataStore(STORE_NAME)
-	end)
-	if ok then
-		store = result
-	else
-		storeError = tostring(result)
-		warn(`[Hajwala] no DataStore, cash will not persist: {storeError}`)
+	store, storeKind = Stores.open(STORE_NAME)
+	if storeKind == "none" then
+		warn("[Hajwala] no DataStore, cash will not persist")
 	end
 
 	Players.PlayerAdded:Connect(function(player)
