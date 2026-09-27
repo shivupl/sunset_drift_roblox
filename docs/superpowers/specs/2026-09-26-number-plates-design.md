@@ -82,11 +82,14 @@ krownvik = {
   text labels. No uploaded images.
 - It reads one attribute on the car Model, `Plate` (the plate key, for example
   `SA:ABJ-7`), and redraws when it changes. No attribute: no plate.
-- **Saudi layouts** (`src/shared/PlateStyles.luau`): a white plate with the
-  blue KSA strip; Arabic digits and letters above, Latin below (short) or side
-  by side (long). Each Arabic letter and digit is its own label: Saudi plates
-  show letters separate, never joined, so there is no right-to-left shaping.
-  Arabic letters are drawn right to left from the canonical form.
+- **Saudi layouts** (`src/shared/PlateStyles.luau`, corrected after the
+  reference check below): a white plate with a white KSA strip (private
+  cars); a digits block on the left and a letters block on the right, each
+  with Arabic above Latin, in both formats. The strip is a column on the
+  right of the short plate and sits between the two blocks on the long one.
+  Each Arabic letter and digit is its own label: Saudi plates show letters
+  separate, never joined, so there is no right-to-left shaping. Each Arabic
+  letter is drawn directly above its Latin letter.
 - **Open check, first task of the build:** that a Roblox font renders the 17
   Arabic plate letters and the Arabic-Indic digits. If not, the fallback is one
   uploaded sheet of 27 glyphs drawn with image labels.
@@ -111,6 +114,10 @@ hyphen, the number without leading zeros. ASCII only. Example: `SA:ABJ-7`.
    (U+06F0–06F9) become `0`–`9`.
 3. Letters: Latin is uppercased. Arabic letters map one to one to their
    official Latin letter. The hamza forms أ إ آ and bare ا all become `A`.
+   Arabic letters are typed in Arabic reading order (right to left); since
+   each sits above its Latin letter on the plate, an Arabic group is reversed
+   to get the Latin order (`حبأ` is `ABJ`). Letters mixing the two scripts
+   are rejected.
 4. Split into letters and digits. Saudi: exactly 3 letters and 1 to 4 digits.
    Leading zeros are dropped (`٠٠٧` = `007` = `7`). All zeros is rejected.
 5. Any letter outside the 17 is rejected with a message; nothing is silently

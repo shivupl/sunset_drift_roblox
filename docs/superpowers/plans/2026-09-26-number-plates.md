@@ -60,9 +60,10 @@
    - `src/server/Stores.luau`: picks a real or fake store.
 2. **A new client file for the Plates tab.** `src/client/PlatesPanel.luau` holds the tab's contents, because `SpawnMenu.luau` is already 779 lines. SpawnMenu only gains the tab bar and the swap.
 3. **Release checks the version it just read.** The profile's plate entries carry no version. A release frees the key conditionally on "owned by me at the version I just read" (in `settle`), which is the same compare-and-set.
-4. **Both Saudi formats start as two rows** (Arabic above Latin; digits left, letters right; strip on the right). The spec said "side by side" for the long format as a guess. Task 1's reference check decides, and the layout is data in `PlateStyles`.
+4. **Both Saudi formats are two rows** (Arabic above Latin; digits left, letters right). The strip is on the right of the short plate and in the centre of the long one. Task 1's reference check found this, correcting the spec's "side by side" guess for the long format. The layout is data in `PlateStyles`.
 5. **The flows take a `Wallet` interface.** `Economy` provides one per player; the tests provide one over the fake store. This lets every failure point be tested without Players.
 6. **Buying equips the plate** (spec §5: "Buy: charges, reserves and equips"), recovery included.
+7. **Arabic input is in reading order.** Arabic letters typed by a player are in Arabic reading order (right to left), and each Arabic letter sits above its Latin letter on the plate. So `PlateText` reverses an Arabic letter group to get the Latin order (`حبأ` is `ABJ`), and refuses letters mixing the two scripts.
 
 ## File map
 
@@ -253,12 +254,15 @@ return function(t: T)
 	for _, l in PlateText.SA_LETTERS do
 		t.eq(key(l.arabic .. l.arabic .. l.arabic .. "5"), `SA:{string.rep(l.latin, 3)}-5`, `arabic {l.latin}`)
 	end
-	t.eq(key("أبح٧"), "SA:ABJ-7", "arabic letters and digit")
-	t.eq(key("أبح ٠٠٧"), "SA:ABJ-7", "arabic leading zeros")
+	-- Arabic letters are typed in Arabic reading order (right to left): ح ب أ
+	-- is the plate that reads ABJ in Latin (spec "Checked": each Arabic letter
+	-- sits above its Latin letter, so the Arabic row reads the other way).
+	t.eq(key("حبأ٧"), "SA:ABJ-7", "arabic letters, reading order, and digit")
+	t.eq(key("حبأ ٠٠٧"), "SA:ABJ-7", "arabic leading zeros")
 
 	-- The hamza forms and bare alef are all A
 	for _, a in { "أ", "إ", "آ", "ا" } do
-		t.eq(key(a .. "بح7"), "SA:ABJ-7", "alef form " .. a)
+		t.eq(key("حب" .. a .. "7"), "SA:ABJ-7", "alef form " .. a)
 	end
 
 	-- Hidden marks and tatweel change nothing
@@ -267,7 +271,7 @@ return function(t: T)
 	end
 
 	-- Rejected, each with a reason
-	for _, bad in { "ABJ 0000", "ABC 7", "أبج 7", "AB 7", "ABJD 7", "ABJ 12345", "ABJ", "A7BJ", string.rep("A", 100) } do
+	for _, bad in { "ABJ 0000", "ABC 7", "أبج 7", "AB 7", "ABJD 7", "ABJ 12345", "ABJ", "A7BJ", "Aبح 7", string.rep("A", 100) } do
 		t.eq(key(bad), nil, "rejected: " .. bad)
 		t.ok(reason(bad) ~= nil, "a reason for: " .. bad)
 	end
@@ -285,7 +289,11 @@ return function(t: T)
 	t.eq(PlateText.parts("garbage"), nil, "not a key")
 	for _, k in { "SA:ABJ-7", "SA:HUV-9999", "SA:XTE-10" } do
 		local q = PlateText.parts(k) :: PlateText.Parts
-		t.eq(key(table.concat(q.arabic) .. table.concat(q.arabicDigits)), k, "arabic round trip " .. k)
+		local typed: { string } = {}
+		for i = #q.arabic, 1, -1 do
+			table.insert(typed, q.arabic[i]) -- typed in reading order, right to left
+		end
+		t.eq(key(table.concat(typed) .. table.concat(q.arabicDigits)), k, "arabic round trip " .. k)
 	end
 
 	-- Random default plates are canonical, with 3 letters and 4 digits
@@ -381,7 +389,7 @@ local PlateText = {}
 export type Parts = {
 	style: string,
 	latin: { string }, -- the letters in reading order
-	arabic: { string }, -- the same letters in Arabic: arabic[i] is latin[i]
+	arabic: { string }, -- the same letters in Arabic: arabic[i] is latin[i] and is drawn above it
 	digits: string, -- "7"
 	arabicDigits: { string }, -- one per digit, same order as digits
 }
@@ -455,6 +463,7 @@ function PlateText.normalise(style: string, input: string): (string?, string?)
 	local digits: { string } = {}
 	local groups = 0
 	local last = ""
+	local scripts: { [string]: boolean } = {} -- which scripts the letters came in
 	for _, cp in utf8.codes(input) do
 		if DROP[cp] then
 			continue
@@ -472,8 +481,10 @@ function PlateText.normalise(style: string, input: string): (string?, string?)
 				return nil, `{up} is not a Saudi plate letter`
 			end
 			kind, ch = "letter", up
+			scripts.latin = true
 		elseif FROM_ARABIC[cp] then
 			kind, ch = "letter", FROM_ARABIC[cp]
+			scripts.arabic = true
 		else
 			return nil, `{utf8.char(cp)} is not a Saudi plate letter or digit`
 		end
@@ -486,8 +497,17 @@ function PlateText.normalise(style: string, input: string): (string?, string?)
 	if groups > 2 then
 		return nil, "Put the letters together and the number together"
 	end
+	if scripts.latin and scripts.arabic then
+		return nil, "Type the letters in one script, Arabic or English"
+	end
 	if #letters ~= 3 then
 		return nil, "A Saudi plate has 3 letters"
+	end
+	if scripts.arabic then
+		-- Arabic is typed in reading order, right to left, and each Arabic
+		-- letter sits above its Latin letter on the plate, so the Latin
+		-- reading order is the reverse (spec "Checked", 2026-09-27).
+		letters = { letters[3], letters[2], letters[1] }
 	end
 	if #digits < 1 or #digits > 4 then
 		return nil, "A Saudi plate has a number of 1 to 4 digits"
@@ -2547,10 +2567,10 @@ local function show(label, r)
 end
 table.insert(out, "default " .. tostring(lp:GetAttribute("PlateDefault")) .. ", cash " .. tostring(lp:GetAttribute("Cash")))
 show("query ABJ 7", R.PlateQuery:InvokeServer("ABJ 7"))
-show("query arabic", R.PlateQuery:InvokeServer("أبح ٤٥٦٧"))
+show("query arabic", R.PlateQuery:InvokeServer("حبأ ٤٥٦٧"))
 show("query bad", R.PlateQuery:InvokeServer("ABC 7"))
 task.wait(1.1)
-show("buy", R.PlateAction:InvokeServer("buy", "أبح ٤٥٦٧"))
+show("buy", R.PlateAction:InvokeServer("buy", "حبأ ٤٥٦٧"))
 task.wait(1.1)
 local car = workspace.Cars:FindFirstChild("Car_" .. lp.Name)
 table.insert(out, "after: cash " .. tostring(lp:GetAttribute("Cash")) .. ", Plates " .. tostring(lp:GetAttribute("Plates")) .. ", equipped " .. tostring(lp:GetAttribute("PlateEquipped")) .. ", car Plate " .. tostring(car and car:GetAttribute("Plate")))
@@ -2599,7 +2619,7 @@ Claude-Session: https://claude.ai/code/session_01PWSgvAKV3x1En9iuoQun7D"
   - `Cell = { text, role, rect, font, color }`, where `role` is one of `"arabicLetter" | "arabicDigit" | "latinLetter" | "latinDigit" | "strip"` and `rect` is `{x,y,w,h}` in 0..1 of the plate from the top left.
   - `PlateStyles.draw(parent: Instance, key: string?, format: Format): Frame?` creates or replaces a child `PlateArt` and returns nil (drawing nothing) for no key or a bad key.
 
-Before writing, set these from the Task 1 findings: the two `SIZE_M` values, `COLORS.strip`, the `LAYOUT` rects, `arabicMirrored`, and `FONTS`. The values below are the starting point (two rows, strip on the right, Arabic mirrored). Change them if Task 1 found otherwise, and change the test expectations to match.
+The values below already carry the Task 1 findings (spec "Checked" section): real sizes, a white strip (private plates), the strip on the right of the short plate and in the centre of the long one, and each Arabic letter drawn directly above its Latin letter (no mirroring). Tune the `LAYOUT` numbers against the reference images in `.superpowers/sdd/2026-09-26-number-plates/plate_ref_*.png` if the screenshot in Step 5 reads wrong.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2637,7 +2657,7 @@ return function(t: T)
 			continue
 		end
 		t.eq(row(art, "latinLetter"), "A,B,J", format .. ": latin letters read left to right")
-		t.eq(row(art, "arabicLetter"), "ح,ب,أ", format .. ": arabic letters read right to left")
+		t.eq(row(art, "arabicLetter"), "أ,ب,ح", format .. ": each arabic letter above its latin letter")
 		t.eq(row(art, "latinDigit"), "4,7", format .. ": latin digits")
 		t.eq(row(art, "arabicDigit"), "٤,٧", format .. ": arabic digits, same order")
 		for _, c in art.cells do
@@ -2671,11 +2691,12 @@ Create `src/shared/PlateStyles.luau`:
 -- draw() turns it into instances inside any GUI container, a car's
 -- SurfaceGui or the menu's preview alike.
 --
--- Saudi plate, both formats (checked in build Task 1, see the spec's
--- "Checked" section): white, the KSA strip on the right, two rows (Arabic
--- above Latin), digits on the left and letters on the right of each row.
--- The Arabic letters are the Latin ones mirrored, so each row reads in its
--- own direction.
+-- Saudi private plate (checked in build Task 1, the spec's "Checked"
+-- section): white, a digits block on the left and a letters block on the
+-- right, each with Arabic above Latin. Each Arabic letter sits directly
+-- above its Latin letter, so the Arabic row reads (right to left) in the
+-- reverse order of the Latin. The KSA strip is a column on the right of
+-- the short plate and between the two blocks on the long one.
 local PlateText = require(script.Parent.PlateText)
 
 export type Format = "short" | "long"
@@ -2689,22 +2710,23 @@ local PlateStyles = {}
 
 -- Real plate sizes in metres (spec §2; build Task 1).
 PlateStyles.SIZE_M = {
-	short = Vector2.new(0.32, 0.16),
-	long = Vector2.new(0.52, 0.11),
+	short = Vector2.new(0.335, 0.155), -- the "US size", the one most used in Saudi Arabia
+	long = Vector2.new(0.55, 0.11), -- the "EU size"
 } :: { [Format]: Vector2 }
 
--- SurfaceGui canvas pixels per metre of plate: a long plate is 520 px wide.
+-- SurfaceGui canvas pixels per metre of plate: a long plate is 550 px wide.
 PlateStyles.PIXELS_PER_M = 1000
 
 local COLORS = {
 	plate = Color3.fromRGB(246, 246, 242),
 	ink = Color3.fromRGB(18, 18, 20),
-	strip = Color3.fromRGB(28, 78, 160),
-	stripInk = Color3.fromRGB(255, 255, 255),
+	strip = Color3.fromRGB(246, 246, 242), -- white on private plates (yellow taxi, blue commercial)
+	stripInk = Color3.fromRGB(18, 18, 20),
 }
 PlateStyles.COLORS = COLORS
 
--- Build Task 1 picks these from the glyph check.
+-- Roblox draws Arabic in one fallback face whatever the font (build Task
+-- 1), so only the Latin choice matters; GothamBold matches the HUD.
 local FONTS = {
 	latin = Enum.Font.GothamBold,
 	arabic = Enum.Font.GothamBold,
@@ -2718,29 +2740,40 @@ type Layout = {
 	latinLetters: Rect,
 	lines: { Rect }, -- the thin rules between the four fields
 	border: number, -- border thickness, fraction of the plate's height
-	arabicMirrored: boolean, -- arabic[1] drawn rightmost
+	arabicMirrored: boolean, -- arabic[1] drawn rightmost (false on Saudi plates: each Arabic letter above its Latin one)
 }
 
 local LAYOUT: { [Format]: Layout } = {
+	-- Digits | letters | strip.
 	short = {
 		strip = { x = 0.85, y = 0, w = 0.15, h = 1 },
 		arabicDigits = { x = 0.04, y = 0.07, w = 0.40, h = 0.40 },
 		arabicLetters = { x = 0.47, y = 0.07, w = 0.36, h = 0.40 },
 		latinDigits = { x = 0.04, y = 0.53, w = 0.40, h = 0.40 },
 		latinLetters = { x = 0.47, y = 0.53, w = 0.36, h = 0.40 },
-		lines = { { x = 0.452, y = 0.06, w = 0.008, h = 0.88 }, { x = 0.03, y = 0.495, w = 0.81, h = 0.01 } },
+		lines = {
+			{ x = 0.452, y = 0.06, w = 0.008, h = 0.88 },
+			{ x = 0.846, y = 0, w = 0.008, h = 1 },
+			{ x = 0.03, y = 0.495, w = 0.81, h = 0.01 },
+		},
 		border = 0.03,
-		arabicMirrored = true,
+		arabicMirrored = false,
 	},
+	-- Digits | strip | letters.
 	long = {
-		strip = { x = 0.9, y = 0, w = 0.1, h = 1 },
-		arabicDigits = { x = 0.03, y = 0.08, w = 0.42, h = 0.39 },
-		arabicLetters = { x = 0.48, y = 0.08, w = 0.40, h = 0.39 },
-		latinDigits = { x = 0.03, y = 0.53, w = 0.42, h = 0.39 },
-		latinLetters = { x = 0.48, y = 0.53, w = 0.40, h = 0.39 },
-		lines = { { x = 0.462, y = 0.06, w = 0.005, h = 0.88 }, { x = 0.02, y = 0.495, w = 0.87, h = 0.01 } },
+		strip = { x = 0.43, y = 0, w = 0.14, h = 1 },
+		arabicDigits = { x = 0.03, y = 0.08, w = 0.38, h = 0.39 },
+		arabicLetters = { x = 0.59, y = 0.08, w = 0.38, h = 0.39 },
+		latinDigits = { x = 0.03, y = 0.53, w = 0.38, h = 0.39 },
+		latinLetters = { x = 0.59, y = 0.53, w = 0.38, h = 0.39 },
+		lines = {
+			{ x = 0.425, y = 0, w = 0.005, h = 1 },
+			{ x = 0.57, y = 0, w = 0.005, h = 1 },
+			{ x = 0.02, y = 0.495, w = 0.4, h = 0.01 },
+			{ x = 0.58, y = 0.495, w = 0.4, h = 0.01 },
+		},
 		border = 0.035,
-		arabicMirrored = true,
+		arabicMirrored = false,
 	},
 }
 
@@ -3232,7 +3265,7 @@ python3 tools/carbody/storecar.py krownvikfleet --spots 126,17
 python3 tools/carbody/storecar.py kruzer80 --spots 36
 ```
 
-(Krown Vik: 16 front, 82 rear. Fleet: 126 front, 17 rear. Kruzer 80: 36 is the rear mount.) Pick `format` from each part's size: nearer 32 × 16 cm is `short`, nearer 52 × 11 cm is `long`. The Kruzer 80 has a front spot too: take its position by eye in Step 10.
+(Krown Vik: 16 front, 82 rear. Fleet: 126 front, 17 rear. Kruzer 80: 36 is the rear mount.) Pick `format` from each part's size: nearer 33.5 × 15.5 cm is `short`, nearer 55 × 11 cm is `long`. The Kruzer 80 has a front spot too: take its position by eye in Step 10.
 
 - [ ] **Step 9: Enter them**
 
@@ -3374,7 +3407,7 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
 - **Frame:** car space in metres before the car's scale, the same as the
   catalog's `offsetM`. A front plate faces -Z, a rear plate +Z; `tiltDeg`
   leans the top in toward the car.
-- **Format:** `short` (about 32 × 16 cm) or `long` (about 52 × 11 cm),
+- **Format:** `short` (33.5 × 15.5 cm) or `long` (55 × 11 cm),
   whichever fills the recess. The plate is that size times the car's scale.
 - **Plate spot on the body:** keep the recess or bracket bare and
   uncovered (the body standard above). The plate goes on it.
@@ -3749,7 +3782,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 20
 	box.TextColor3 = th.white
-	box.PlaceholderText = "ABJ 7   ·   أبح ٧"
+	box.PlaceholderText = "ABJ 7   ·   حبأ ٧"
 	box.PlaceholderColor3 = th.muted
 	box.Text = ""
 	box.TextXAlignment = Enum.TextXAlignment.Left
@@ -3999,7 +4032,7 @@ Run `bash scripts/analyze.sh 2>&1 | grep -E "SpawnMenu|PlatesPanel"`. Expected: 
 
 Stop and start Play, spawn a car, press M, and tap PLATES. Do each of these, taking a `screen_capture` after each, and use MCP `user_mouse_input` / `user_keyboard_input` for real input:
 1. Type `ABJ 7`. Expected: a preview of SA:ABJ-7 in the car's rear format, and the price `500,000 cash · available`.
-2. Type `أبح ٤٥٦٧`. Expected: the preview shows ABJ 4567 and the price is 20,000.
+2. Type `حبأ ٤٥٦٧`. Expected: the preview shows ABJ 4567 and the price is 20,000.
 3. Type `ABC 7`. Expected: the reason shows in orange and Buy is dimmed.
 4. Press Buy on a 4-digit plate. Expected: "Done". The plate is listed as FITTED, the cash drops, and the car's plate changes (screenshot from behind the car).
 5. Press EQUIP on the default row. Expected: the car goes back to the default plate.
