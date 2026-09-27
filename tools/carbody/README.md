@@ -88,6 +88,11 @@ model, never an overlay added on top. `CarLamps` finds them by role name
 - One mesh holding several lamps (the Kruzer 80's tail cluster: amber,
   reverse and red in one) glows as one until it is split into separate
   pieces, which means an upload.
+- Light the part that has the lamp's visible shape. Some kits hide plain
+  boxes inside the lamps to carry their lights (the Krown Vik's `F`, `R`):
+  those stay trim. A lamp photo painted into a shared mesh is split out by
+  texture coordinates (`split` under `cuts` in `storecar.py`), and a clear
+  cover over a lamp lights with it, since it is the whole lamp face.
 - Nothing lights the ground: no headlight beams, no brake glow.
 
 ## Steps for a new car
@@ -147,4 +152,4 @@ is needed.
 | Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn |
 | Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded |
 | Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles |
-| Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Its own lamp parts (`F`, `FLI`/`FRI`, `R`, `RLI`/`RRI`, `RV` beside the plate). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles |
+| Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles |

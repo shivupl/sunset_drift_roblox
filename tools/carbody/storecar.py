@@ -124,9 +124,19 @@ KROWNVIK_INTERIOR = {9, 33, 36, 49, 54, 57, 65, 66, 77, 100, 101, 102, 103, 104,
 
 def role_krownvik(p):
     n, tr, col, mat = p["n"], p["tr"], tuple(p["col"]), p["mat"]
-    lamp = {"F": "HeadLamps", "FLI": "Indicators", "FRI": "Indicators", "R": "TailLamps", "RLI": "TailLamps", "RRI": "TailLamps", "RV": "ReverseLamps"}
-    if n in lamp:
-        return lamp[n], {"castShadow": False}
+    # The lamps are the textured lamp faces (the tail-light mesh, 91, and the
+    # headlamp and corner-lamp faces split out of the grille, "cuts"). The
+    # kit's own lamp parts (F, FLI, FRI, R, RLI, RRI) are plain boxes it hid
+    # inside them to carry its lights: trim here. RV, beside the plate, is
+    # the reverse lamp's own shape.
+    # The clear covers over the headlamps (124) and the reverse lamps (37)
+    # are the whole lamp face: they light with them.
+    if p["i"] == 91:
+        return "TailLamps", {"castShadow": False}
+    if p["i"] == 124:
+        return "HeadLamps", {"castShadow": False}
+    if n == "RV" or p["i"] == 37:
+        return "ReverseLamps", {"castShadow": False}
     if n == "Color":
         return "Body", {"paint": True}
     if 0 < tr < 1:  # windows, and the clear covers over the lamps
@@ -222,7 +232,17 @@ CARS = {
         # (u 0.147-0.426, v 0.626-0.742 from the top left): on the grille
         # (part 12, 52 of 200 faces) and the boot badge (part 30, 14 of 50).
         "cuts": {
-            12: {"source": "grille_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},
+            # The headlamps and the corner lamps are photos in the same
+            # texture and in the same mesh as the grille: their faces become
+            # the HeadLamps and Indicators pieces (the real lamp shapes).
+            12: {
+                "source": "grille_source.obj",
+                "uvBoxes": [(0.147, 0.626, 0.426, 0.742)],
+                "split": [
+                    {"role": "HeadLamps", "uvBoxes": [(0.40, 0.60, 0.73, 0.76)]},
+                    {"role": "Indicators", "uvBoxes": [(0.0, 0.49, 0.345, 0.625)]},
+                ],
+            },
             30: {"source": "bootbadge_source.obj", "uvBoxes": [(0.147, 0.626, 0.426, 0.742)]},
         },
         "role": role_krownvik,
@@ -282,10 +302,13 @@ def read_obj(path):
     return np.array(P), np.array(F, dtype=np.int64), (np.array(T) if len(T) == len(P) else None)
 
 
-def cut_piece(folder, p, name, cut, B, origin, mps):
-    """The part's store mesh without its badge islands, in car space."""
-    import meshkit
-
+def cut_faces(folder, cut):
+    """The source mesh of a CARS "cuts" entry, split: (points, texture
+    coordinates or None, faces to keep, [(role, faces)] for each "split",
+    faces before). Badge islands inside a "badges" box and faces textured
+    from a "uvBoxes" box of the texture (u, v from the top left) are cut;
+    faces textured from a "split" entry's boxes become pieces of their own
+    (lamps painted into the same mesh as the grille, the Krown Vik)."""
     P, F, T = read_obj(os.path.join(folder, cut["source"]))
     before_n = len(F)
     # Islands: faces joined through shared positions (store meshes split
@@ -306,20 +329,36 @@ def cut_piece(folder, p, name, cut, B, origin, mps):
             if rx != ry:
                 parent[rx] = ry
     island = np.array([find(a) for a in weld[F[:, 0]]])
-    cut_faces = np.zeros(len(F), dtype=bool)
+    gone = np.zeros(len(F), dtype=bool)
     for isl in np.unique(island):
         pts = P[F[island == isl].ravel()]
         lo, hi = pts.min(0), pts.max(0)
         for blo, bhi in cut.get("badges", []):
             if np.all(lo >= np.array(blo)) and np.all(hi <= np.array(bhi)):
-                cut_faces |= island == isl
-    # Badges painted into a shared texture: the faces whose texture
-    # coordinates fall inside a box of the texture (u, v from the top left).
-    if T is not None:
-        c = T[F].mean(axis=1)
-        for u0, v0, u1, v1 in cut.get("uvBoxes", []):
-            cut_faces |= (c[:, 0] >= u0) & (c[:, 0] <= u1) & (c[:, 1] >= v0) & (c[:, 1] <= v1)
-    F = F[~cut_faces]
+                gone |= island == isl
+
+    def in_boxes(boxes):
+        m = np.zeros(len(F), dtype=bool)
+        if T is not None:
+            c = T[F].mean(axis=1)
+            for u0, v0, u1, v1 in boxes:
+                m |= (c[:, 0] >= u0) & (c[:, 0] <= u1) & (c[:, 1] >= v0) & (c[:, 1] <= v1)
+        return m
+
+    gone |= in_boxes(cut.get("uvBoxes", []))
+    taken = gone.copy()
+    splits = []
+    for sp in cut.get("split", []):
+        m = in_boxes(sp["uvBoxes"]) & ~taken
+        taken |= m
+        splits.append((sp["role"], F[m]))
+    return P, T, F[~taken], splits, before_n
+
+
+def make_piece(name, P, T, F, p, B, origin, mps):
+    """A generated piece from store mesh faces, in car space."""
+    import meshkit
+
     # Mesh space to world (the part's CFrame, mesh scaled to its Size) to car space.
     scale = np.array(p["s"], dtype=float) / np.array(p["ms"], dtype=float)
     Rw = np.array(p["cf"][3:], dtype=float).reshape(3, 3)
@@ -343,7 +382,7 @@ def cut_piece(folder, p, name, cut, B, origin, mps):
     centre = (lo + hi) / 2
     uv_index = (lambda k: F[:, k]) if T is not None else (lambda k: np.zeros(len(F), dtype=np.int64))
     tris = np.stack([np.stack([F[:, k], F[:, k], uv_index(k)], axis=1) for k in range(3)], axis=1)
-    return meshkit.Piece(name, car - centre, N, uvs, tris, hi - lo, centre), before_n
+    return meshkit.Piece(name, car - centre, N, uvs, tris, hi - lo, centre)
 
 
 def build(key):
@@ -409,17 +448,24 @@ def build(key):
         name = role if names[role] == 1 else f"{role}_{names[role]}"
         R, pos = place(p)
         if p["i"] in car.get("cuts", {}):
-            piece, before_n = cut_piece(folder, p, name, car["cuts"][p["i"]], B, origin, mps)
-            generated.append(piece)
-            lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
-            tex = f"textureId = {p['tex']}, " if p.get("tex") and p["tex"] not in car["dropTextures"] else ""
-            shadow = "castShadow = false, " if opts.get("castShadow") is False else ""
-            lines.append(
-                "{ " + f'name = "{piece.name}", mesh = "{key.capitalize()}/{piece.name}", {tex}color = {colour(p["col"])}, '
-                f"material = Enum.Material.{p['mat']}, {shadow}sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
-            )
-            tris_after += piece.triangles
-            print(f"{piece.name}: {before_n:,} -> {piece.triangles:,} triangles (badges cut)")
+            P, T, keep, splits, before_n = cut_faces(folder, car["cuts"][p["i"]])
+            parts_out = [(name, keep, opts)]
+            for srole, sfaces in splits:
+                names[srole] = names.get(srole, 0) + 1
+                sname = srole if names[srole] == 1 else f"{srole}_{names[srole]}"
+                parts_out.append((sname, sfaces, {"castShadow": False}))
+            for pname, pfaces, popts in parts_out:
+                piece = make_piece(pname, P, T, pfaces, p, B, origin, mps)
+                generated.append(piece)
+                lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
+                tex = f"textureId = {p['tex']}, " if p.get("tex") and p["tex"] not in car["dropTextures"] else ""
+                shadow = "castShadow = false, " if popts.get("castShadow") is False else ""
+                lines.append(
+                    "{ " + f'name = "{pname}", mesh = "{key.capitalize()}/{pname}", {tex}color = {colour(p["col"])}, '
+                    f"material = Enum.Material.{p['mat']}, {shadow}sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
+                )
+                tris_after += piece.triangles
+            print(f"{name}: {before_n:,} faces -> " + ", ".join(f"{n} {len(f):,}" for n, f, _ in parts_out))
             continue
         size = np.array(p["s"], dtype=float) * mps
         if spare and p["i"] in spare["parts"]:

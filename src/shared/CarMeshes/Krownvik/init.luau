@@ -10,24 +10,44 @@
 -- size, normals int8, uvs uint16, triangles uint16 (position, normal, uv)
 -- per corner. MeshData decodes them.
 return {
-	Trim_2 = {
-		triangleCount = 148,
-		sizeM = { 1.7554, 0.1406, 0.4937 },
-		offsetM = { -0.0002, 0.6512, -2.1742 },
-		counts = { 174, 174, 174 },
-		positions = require(script.Trim_2_positions) :: string,
-		normals = require(script.Trim_2_normals) :: string,
-		uvs = require(script.Trim_2_uvs) :: string,
-		triangles = require(script.Trim_2_triangles) :: string,
+	Trim_3 = {
+		triangleCount = 36,
+		sizeM = { 0.1227, 0.0548, 0.0310 },
+		offsetM = { -0.0002, 0.6645, -2.4056 },
+		counts = { 36, 36, 36 },
+		positions = require(script.Trim_3_positions) :: string,
+		normals = require(script.Trim_3_normals) :: string,
+		uvs = require(script.Trim_3_uvs) :: string,
+		triangles = require(script.Trim_3_triangles) :: string,
 	},
-	Trim_4 = {
+	HeadLamps = {
+		triangleCount = 26,
+		sizeM = { 1.3976, 0.1361, 0.1107 },
+		offsetM = { -0.0002, 0.6534, -2.2899 },
+		counts = { 38, 38, 38 },
+		positions = require(script.HeadLamps_positions) :: string,
+		normals = require(script.HeadLamps_normals) :: string,
+		uvs = require(script.HeadLamps_uvs) :: string,
+		triangles = require(script.HeadLamps_triangles) :: string,
+	},
+	Indicators = {
+		triangleCount = 86,
+		sizeM = { 1.7554, 0.1399, 0.3728 },
+		offsetM = { -0.0002, 0.6509, -2.1138 },
+		counts = { 100, 100, 100 },
+		positions = require(script.Indicators_positions) :: string,
+		normals = require(script.Indicators_normals) :: string,
+		uvs = require(script.Indicators_uvs) :: string,
+		triangles = require(script.Indicators_triangles) :: string,
+	},
+	Trim_5 = {
 		triangleCount = 36,
 		sizeM = { 0.4384, 0.1896, 0.0306 },
 		offsetM = { 0.1686, 0.8343, 2.6518 },
 		counts = { 37, 37, 37 },
-		positions = require(script.Trim_4_positions) :: string,
-		normals = require(script.Trim_4_normals) :: string,
-		uvs = require(script.Trim_4_uvs) :: string,
-		triangles = require(script.Trim_4_triangles) :: string,
+		positions = require(script.Trim_5_positions) :: string,
+		normals = require(script.Trim_5_normals) :: string,
+		uvs = require(script.Trim_5_uvs) :: string,
+		triangles = require(script.Trim_5_triangles) :: string,
 	},
 }
