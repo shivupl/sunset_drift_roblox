@@ -81,15 +81,26 @@ local function spotFrame(zone: BasePart): CFrame
 	return CFrame.lookAt(at, at + out)
 end
 
--- True when a part of any other car sits in the spot's footprint.
-local function spotTaken(spot: CFrame, mine: Model): boolean
+-- True when a part of any other car, or any other player's character,
+-- sits in the spot's footprint: an anchored car pivoted onto someone
+-- standing there would fling them (review, 2026-09-28).
+local function spotTaken(spot: CFrame, mine: Model, me: Player): boolean
+	local include: { Instance } = {}
 	local cars = Workspace:FindFirstChild("Cars")
-	if not cars then
+	if cars then
+		table.insert(include, cars)
+	end
+	for _, p in Players:GetPlayers() do
+		if p ~= me and p.Character then
+			table.insert(include, p.Character)
+		end
+	end
+	if #include == 0 then
 		return false
 	end
 	local params = OverlapParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { cars }
+	params.FilterDescendantsInstances = include
 	local c = GarageConfig.driveIn.clearM
 	local size = Vector3.new(s(c.X), s(3), s(c.Y))
 	for _, part in Workspace:GetPartBoundsInBox(spot * CFrame.new(0, s(1.5), 0), size, params) do
@@ -149,13 +160,20 @@ local function driveIn(player: Player): string
 		return "refused"
 	end
 	local spot = spotFrame(zone)
-	if spotTaken(spot, model) then
+	if spotTaken(spot, model, player) then
 		return "blocked"
 	end
 	-- The car's ride height: the chassis's height over the floor it is on,
-	-- kept on the apron so the anchored car neither floats nor sinks.
+	-- kept on the apron so the anchored car neither floats nor sinks. One
+	-- sample can catch the suspension mid-bounce, so it is clamped between
+	-- half the body's height and CarSpawner.bayPose's spawn height (half
+	-- the body plus spawn.spawnHeightM, the most a fresh car is ever
+	-- dropped from).
 	local below = groundY(chassis.Position, s(6)) or (zone.Position.Y - half.Y)
-	local ride = chassis.Position.Y - below
+	local carId = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+	local carConfig = ConfigLoader.forCar(if type(carId) == "string" then carId else nil)
+	local halfBody = carConfig.body.bodySize[2] / 2
+	local ride = math.clamp(chassis.Position.Y - below, s(halfBody), s(halfBody + carConfig.spawn.spawnHeightM))
 	local spotGround = groundY(spot.Position + Vector3.new(0, s(4), 0), s(10)) or spot.Position.Y
 	local target = CFrame.new(spot.Position.X, spotGround + ride, spot.Position.Z) * spot.Rotation
 
@@ -168,15 +186,27 @@ local function driveIn(player: Player): string
 	if weld then
 		weld:Destroy()
 	end
+	local from = model:GetPivot()
 	chassis.Anchored = true
 	chassis.AssemblyLinearVelocity = Vector3.zero
 	chassis.AssemblyAngularVelocity = Vector3.zero
-	model:PivotTo(target * chassis.CFrame:ToObjectSpace(model:GetPivot()))
+	model:PivotTo(target * chassis.CFrame:ToObjectSpace(from))
 	parked[player] = { model = model, prompt = handles.prompt }
 	-- CarSpawner turns the prompt back on as the seat empties; off after it.
 	local deadline = os.clock() + 1
 	while seat.Occupant and os.clock() < deadline do
 		task.wait()
+	end
+	if seat.Occupant then
+		-- The seat never let go: undo the park where the car was, so the
+		-- player is not left driving an anchored car on the apron.
+		parked[player] = nil
+		if model.Parent then
+			model:PivotTo(from)
+			chassis.Anchored = false
+			handles.prompt.Enabled = not seat.Occupant
+		end
+		return "failed"
 	end
 	task.wait()
 	local p = parked[player]
@@ -200,6 +230,20 @@ local function driveOut(player: Player): string
 	if handles.seat.Occupant then
 		p.prompt.Enabled = true
 		return "gone"
+	end
+	-- Only from the garage: the player (hidden in the view) stands by the
+	-- door; a request from anywhere else would pull them across the map.
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local zone = door()
+	if
+		not root
+		or not root:IsA("BasePart")
+		or not zone
+		or (root.Position - zone.Position).Magnitude > s(GarageConfig.driveIn.leaveRangeM)
+	then
+		p.prompt.Enabled = true
+		return "refused"
 	end
 	-- CarSpawner's seating: un-anchors, sits them, and the seat hands them
 	-- the car (network ownership, DriveStart) as any seat does.

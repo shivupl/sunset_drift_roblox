@@ -73,12 +73,24 @@ GarageConfig.exitCamera = { backM = 4, upM = 1.6 }
 --     of ExitSpot (3.15 m from the zone's centre) with room to stand, and
 --     the nose short of the painted arrow (8.4 m out) - the car sits on the
 --     keep-clear hatch in front of the open door.
---   clearM: a car of anyone else's within this box (the parking spot's
---     footprint, width x length, metres) refuses the drive-in, so two
---     parked cars never overlap there.
-GarageConfig.driveIn = { maxKmh = 20, serverSlack = 1.25, zoneMarginM = 3, outM = 7, clearM = Vector2.new(3, 6) }
--- Shown when the drive-out spot is taken and the drive-in is refused.
-GarageConfig.driveInBlockedText = "Someone's parked out front. Try again in a moment."
+--   clearM: a car of anyone else's, or another player, within this box
+--     (the parking spot's footprint, width x length, metres) refuses the
+--     drive-in, so a parked car never lands on another car or a person.
+--   leaveRangeM: the server seats a player back in the parked car only if
+--     their character's root is this close to DoorZone's centre. In the
+--     view the character stands beside the parked car (about 7 m out) or
+--     at ExitSpot (3 m), so 20 is generous; anything farther is not a
+--     leave from the garage and gets the walk-in exit instead.
+--   blockedText: shown when the spot is taken and the drive-in refused.
+GarageConfig.driveIn = {
+	maxKmh = 20,
+	serverSlack = 1.25,
+	zoneMarginM = 3,
+	outM = 7,
+	clearM = Vector2.new(3, 6),
+	leaveRangeM = 20,
+	blockedText = "Someone's parked out front. Try again in a moment.",
+}
 
 -- Turntable.
 GarageConfig.spinDegPerSec = 8

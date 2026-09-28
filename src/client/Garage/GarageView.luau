@@ -1235,7 +1235,7 @@ local function driveIn(g: Garage, carId: string)
 	end
 	if status ~= "ok" then
 		if status == "blocked" then
-			notice(GarageConfig.driveInBlockedText)
+			notice(GarageConfig.driveIn.blockedText)
 		end
 		pcall(fade, 1)
 		state = "outside"
@@ -1254,10 +1254,14 @@ local function driveIn(g: Garage, carId: string)
 end
 
 local function watchDriveIn()
-	local g = garage
 	local car = VehicleController.currentCar()
+	if not car then
+		lastCarSide = nil
+		return
+	end
+	local g = garage
 	local _, hum = characterParts()
-	if state ~= "outside" or not g or not g.door.Parent or not car or not hum or not hum.SeatPart or hum.Health <= 0 then
+	if state ~= "outside" or not g or not g.door.Parent or not hum or not hum.SeatPart or hum.Health <= 0 then
 		lastCarSide = nil
 		return
 	end
