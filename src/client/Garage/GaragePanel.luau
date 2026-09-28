@@ -81,8 +81,9 @@ local C = UITheme.color
 -- scroll (the spawn menu's value; an input threshold, not a drawn size).
 local TAP_SLOP_PX = 14
 -- How many times an equip refused as "busy" (the server's rate limit) is
--- resent before the player is told.
-local BUSY_RETRIES = 2
+-- resent, one action's slot (1 / actionsPerSecond) apart, before the player
+-- is told: 4 retries span the server's whole 1 s window.
+local BUSY_RETRIES = 4
 -- How long a result message stays up, seconds.
 local TOAST_SECONDS = 3
 -- Draw order: the gui sits under the spawn menu (DisplayOrder 20) so SHOP
@@ -908,6 +909,10 @@ local function sendEquip(slot: Slot)
 			if value == nil or confirmed[slot] == value then
 				break
 			end
+			-- Whatever was confirmed before is superseded by this send: left
+			-- set, it could later block a tap back to that value (review fix
+			-- round 2).
+			confirmed[slot] = nil
 			local status
 			if slot == "plate" then
 				status = invoke("plate", forCar, if value == "" then nil else value)
@@ -932,9 +937,11 @@ local function sendEquip(slot: Slot)
 			end
 			if status ~= "done" then
 				want[slot] = nil
+				confirmed[slot] = nil
 				toast(MESSAGES[status] or MESSAGES.unavailable, if status == "busy" then "info" else "error")
 			elseif slotValue(savedLook(), slot) == value then
 				want[slot] = nil
+				confirmed[slot] = nil
 			else
 				confirmed[slot] = value -- shown until the saved look arrives
 			end
@@ -1034,8 +1041,10 @@ local function openSheet(u: UI)
 	local frame, scrim = UIKit.sheet(u.gui, touch, SHEET_Z)
 	frame.Name = "ConfirmSheet"
 	scrim.Name = "ConfirmScrim"
-	-- The scrim takes every tap under the sheet, so LEAVE, SHOP PLATES and
-	-- the handle cannot be pressed through it.
+	-- Active does not stop a button under the scrim from hearing a click
+	-- (SpawnMenu's header notes the same; measured again 2026-09-28: LEAVE
+	-- fired through it). The panel's own buttons check `sheet` instead;
+	-- Active still keeps the turntable drag from starting on the scrim.
 	scrim.Active = true
 	-- Opaque, not alpha.panel: at 0.06 the cards under the sheet showed
 	-- through its rows (measured in Play, 2026-09-28).
@@ -1137,7 +1146,15 @@ local function openSheet(u: UI)
 		local myEpoch = epoch
 		local status = invoke("buy", id)
 		if status == "done" or status == "owned" then
+			-- The buy used one of the server's actions: a "busy" here is the
+			-- rate limit, retried like sendEquip's.
 			local fitted = invoke("equip", forCar, slot, id)
+			local tries = 0
+			while fitted == "busy" and tries < BUSY_RETRIES and inside and epoch == myEpoch do
+				tries += 1
+				task.wait(1 / CosmeticsConfig.actionsPerSecond)
+				fitted = invoke("equip", forCar, slot, id)
+			end
 			if inside and epoch == myEpoch then
 				local cur = previewing
 				if cur and cur.id == id then
@@ -1336,6 +1353,9 @@ buildTab = function(u: UI)
 		shop.Name = "ShopPlates"
 		shop.LayoutOrder = 1
 		shop.Activated:Connect(function()
+			if sheet then
+				return -- under the confirm sheet
+			end
 			SpawnMenu.openTab("plates")
 		end)
 		local g = newGrid(u, u.grid, 1)
@@ -1649,13 +1669,21 @@ local function build(): UI
 	footButton:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitFoot)
 	fitFoot()
 
+	-- Buttons under the confirm sheet hear clicks through its scrim, so each
+	-- one ignores them while a sheet is open (Esc and gamepad B still leave).
 	leave.Activated:Connect(function()
+		if sheet then
+			return
+		end
 		GarageView.leave()
 	end)
 	handle.Activated:Connect(function()
 		setCollapsed(not collapsed)
 	end)
 	footButton.Activated:Connect(function()
+		if sheet then
+			return
+		end
 		if tab == "cars" then
 			local id = carId
 			if SpawnMenu.requestCar(id) then
