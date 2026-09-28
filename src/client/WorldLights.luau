@@ -23,6 +23,9 @@ local LAMP_TAG = "HajwalaLamp"
 local pool: { SpotLight } = {}
 local assigned: { [SpotLight]: BasePart? } = {}
 local running = false
+-- The garage view lights its bay with its own four lights and suspends the
+-- pool meanwhile, so the client never holds more than MaxLiveLights (12).
+local suspended = false
 
 local function settings(): Folder?
 	local f = ReplicatedStorage:FindFirstChild("WorldSettings")
@@ -72,7 +75,7 @@ local function update()
 	end
 	local origin = camera.CFrame.Position
 	local want = #pool
-	if want == 0 then
+	if want == 0 or suspended then
 		return
 	end
 
@@ -120,6 +123,14 @@ local function update()
 	end
 end
 
+local function darkenAll()
+	for _, light in pool do
+		light.Enabled = false
+		light.Parent = nil
+		assigned[light] = nil
+	end
+end
+
 function WorldLights.start()
 	if running then
 		return
@@ -143,10 +154,28 @@ end
 
 function WorldLights.stop()
 	running = false
-	for _, light in pool do
-		light.Enabled = false
-		light.Parent = nil
-		assigned[light] = nil
+	darkenAll()
+end
+
+-- Puts every pooled light out without destroying the pool (the garage view,
+-- which brings its own lights). The loop keeps running and does nothing.
+function WorldLights.suspend()
+	suspended = true
+	darkenAll()
+end
+
+-- Lets the pool light the nearest lamps again, at once rather than on the
+-- next tick.
+function WorldLights.resume()
+	if not suspended then
+		return
+	end
+	suspended = false
+	if running then
+		local ok, err = pcall(update :: () -> any)
+		if not ok then
+			warn("[WorldLights]", err)
+		end
 	end
 end
 

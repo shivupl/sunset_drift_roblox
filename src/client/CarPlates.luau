@@ -107,6 +107,10 @@ function CarPlates.place(model: Model, mounts: CarPlateMounts.Mounts)
 	end
 	draw()
 	watching[model] = model:GetAttributeChangedSignal("Plate"):Connect(draw)
+	-- Client-only models (the garage preview) are placed without build().
+	model.Destroying:Once(function()
+		watching[model] = nil
+	end)
 end
 
 local function build(model: Model)

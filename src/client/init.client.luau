@@ -21,6 +21,7 @@ local CarPlates = require(script.CarPlates)
 local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
+local GarageView = require(script.Garage.GarageView)
 
 print("[Hajwala] client boot")
 -- Up first: the server may still be building the world this client joined.
@@ -116,3 +117,6 @@ end)
 Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
+-- Walking into the garage opens the customisation view; the lift bay's
+-- raised car is built once the garage is here.
+GarageView.start()

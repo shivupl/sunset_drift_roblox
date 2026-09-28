@@ -40,6 +40,8 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Give every system one shared lookup.** When terrain, props, fences and collision all need "where is the border", compute it once and have each system read it, so they can never disagree.
 - **Keep features easy to remove.** When someone says "remove it completely", revert it; do not leave a disabled flag behind.
 - **Script `Source` caps at 200,000 characters.** Split generated data into several modules.
+- **Never key a weak table by Instance.** An Instance whose only Lua reference is a weak key can lose its entry while the Instance still exists (the garage's night glow silently never applied, 2026-09-28). Use a strong table and drop entries on `Destroying`.
+- **The PlayerModule is not always in PlayerScripts.** In Studio on 2026-09-28 it sat under `StarterPlayer.PlayerModule` (the input-action version), `require` of it returned an empty table (no `GetControls`), and `WaitForChild("PlayerModule")` on PlayerScripts yielded forever. To drop a character's control, find whichever module exists without waiting, and anchor the root on the client as well.
 
 ---
 
@@ -173,6 +175,9 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Build previews in Edit from a clone of the world module, then clean up everything they created**, including terrain.
 - **Before taking over a running Play session, check whether someone is using it.** Is the seat occupied? Has the car moved?
 - **Sync tools often create and update but never delete.** Remove stale modules by hand.
+- **`execute_luau` runs in its own VM.** Requiring a game module from it gives a fresh copy, not the running script's; editing a config table there changes nothing live. Change instances (lights, attributes) directly, or edit the file and restart Play.
+- **Virtual input cannot press Escape or gamepad B** (bound to CoreGui actions); test those paths through the on-screen button that does the same thing.
+- **A capture right after new lights appear can be dim and flat.** The renderer takes a few seconds to take new lights in; wait about 3 s before judging light.
 
 ---
 

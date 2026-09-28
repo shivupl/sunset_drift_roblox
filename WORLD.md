@@ -525,6 +525,34 @@ the turntable carry a SurfaceGui of their own colour at a LightInfluence
 below 1 (`bakedLight`): a lit tone that needs no Light. The view's own four
 lights add on top. The garage creates no Light instances.
 
+**At night** (the Night sky option, measured 2026-09-28) the pool does light
+the strip fittings when a player is near. With the painted light as built,
+the inside read flat and whitish through the door. With none at all it read
+as real pools of light, but it would go dark whenever the pool is lighting
+other lamps. So the client scales the painted light per sky option
+(`GarageConfig.bakedGlow`: sunset 1, night 0.5, LightInfluence = 1 - (1 -
+built) x glow; the sign is left alone). Inside the view at night, the four
+view lights are scaled down by the night exposure (0.76), so the car reads
+the same under either sky.
+
+**The customisation view** (the client's `Garage/GarageView.luau`):
+- **Entering:** the character's root crosses `DoorZone` into the garage,
+  on foot. The screen fades, control drops away (the root is anchored on
+  the client), the character hides, and the lamp pool is suspended.
+- **Lights and the cap:** the view makes its four lights on invisible
+  anchors in the bay. Measured on the client in the view: 5 Light instances
+  (the four plus one DuneLife campfire, which was already there). Outside:
+  12 pooled plus that campfire.
+- **The preview car:** a client-only, anchored, physics-free car on a
+  minimal rig, turned with the plate.
+- **The camera:** fixed 3/4 front right at 50 degrees, 7 to 8.4 m out,
+  depending on the car.
+- **The raised car in the lift bay:** built the same way (the kamri07,
+  stock, lamps off).
+- **Leaving** puts the character at `ExitSpot`, facing the road.
+- **Frame time in the view:** the same as outside (67 to 73 ms in this
+  Studio, where the whole world runs at about 14 fps either way).
+
 **The apron.** Painted on one transparent sheet over the pad: three
 nose-in bays with wheel stops in front of the lift bay, a yellow hatched
 keep-clear box in front of the open door, an arrow to it and GARAGE / كراج
