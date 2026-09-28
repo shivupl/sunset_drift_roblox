@@ -55,12 +55,14 @@ local touch = false
 local style = "SA" -- the style being searched (PlateText.STYLES)
 local styleButtons: { [string]: TextButton } = {}
 
--- What each style's search box expects, as a hint.
-local HINTS: { [string]: { placeholder: string, empty: string } } = {
-	SA = { placeholder = "ABJ 7   ·   حبأ ٧", empty = "Type 3 letters and a number, in Arabic or English" },
-	DU = { placeholder = "A 12345", empty = "Type the code (A to Z, or AA to EE) and a number of up to 5 digits" },
-	AD = { placeholder = "20 10234", empty = "Type the code (1, 4 to 22, or 50), a space, then a number of up to 5 digits" },
-	KW = { placeholder = "10 23456", empty = "Type the code (1 to 89), a space, then a number of up to 5 digits" },
+-- What each style's search box expects, as a hint, and the plate the
+-- preview shows until a valid plate is typed, so picking a style shows its
+-- design at once (owner, 2026-09-27).
+local HINTS: { [string]: { placeholder: string, empty: string, sample: string } } = {
+	SA = { placeholder = "ABJ 7   ·   حبأ ٧", empty = "Type 3 letters and a number, in Arabic or English", sample = "SA:ABJ-1234" },
+	DU = { placeholder = "A 12345", empty = "Type the code (A to Z, or AA to EE) and a number of up to 5 digits", sample = "DU:A-12345" },
+	AD = { placeholder = "20 10234", empty = "Type the code (1, 4 to 22, or 50), a space, then a number of up to 5 digits", sample = "AD:20-10234" },
+	KW = { placeholder = "10 23456", empty = "Type the code (1 to 89), a space, then a number of up to 5 digits", sample = "KW:10-23456" },
 }
 
 local function t(): Theme
@@ -146,10 +148,12 @@ local function refreshBuy()
 	b.Text = if price then `BUY  {money(price)}` else "BUY"
 end
 
+-- The preview: the typed plate, or with nothing valid typed, a sample of
+-- the selected style (the samples match the search box's placeholder).
 local function drawPreview(key: string?)
 	local box = previewBox
 	if box then
-		PlateStyles.draw(box, key or (Players.LocalPlayer:GetAttribute("PlateDefault") :: string?), format())
+		PlateStyles.draw(box, key or HINTS[style].sample, format())
 	end
 end
 
