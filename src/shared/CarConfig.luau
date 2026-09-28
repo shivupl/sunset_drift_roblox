@@ -735,6 +735,12 @@ local config = {
 		-- parts over the body. For checking a new car's fit.
 		showRig = false,
 		spawnHeightM = 0.45, -- above rest height; the car drops and settles on spawn
+		-- Leaving a car puts the driver beside the driver's door (ExitSpot):
+		-- this much clear space from the car's side, and this far above the
+		-- chassis centre so they land on their feet. The owner exited right
+		-- under the car (2026-09-27).
+		exitGapM = 1.0,
+		exitLiftM = 0.5,
 		slotStartM = -18, -- first bay slot, lateral; ten slots at the spacing must fit the bay width
 		slotSpacingM = 4,
 		settleSpeedMps = 0.5, -- a driverless car below this speed...

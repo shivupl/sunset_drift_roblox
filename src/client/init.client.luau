@@ -7,6 +7,7 @@ local reloadRemote = remotes:WaitForChild("ReloadConfig") :: RemoteEvent
 local submitSlide = remotes:WaitForChild("SubmitSlide") :: RemoteEvent
 local slideResult = remotes:WaitForChild("SlideResult") :: RemoteEvent
 local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
+local ExitSpot = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ExitSpot"))
 local VehicleController = require(script.VehicleController)
 local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
@@ -75,11 +76,38 @@ driveStart.OnClientEvent:Connect(function(carArg: Model?, carName: string?)
 	local id = car:GetAttribute("CarId")
 	SpawnMenu.setCurrent(if type(id) == "string" then id else nil)
 end)
+-- Stepping out: our own character is ours to move (the server's move alone
+-- lost to it, and the owner landed under the car, 2026-09-27), so once the
+-- seat has let go, stand beside the driver's door (ExitSpot).
+local function standBeside(car: Model)
+	local character = game:GetService("Players").LocalPlayer.Character
+	local hum = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not hum then
+		return
+	end
+	local deadline = os.clock() + 1
+	while hum.SeatPart and os.clock() < deadline do
+		task.wait()
+	end
+	if hum.SeatPart or not car.Parent then
+		return
+	end
+	local cfg = ConfigLoader.current()
+	local spot = ExitSpot.cframe(car, cfg.spawn.exitGapM, cfg.spawn.exitLiftM, cfg.units.metersPerStud)
+	if spot then
+		character:PivotTo(spot)
+	end
+end
+
 driveStop.OnClientEvent:Connect(function()
+	local car = VehicleController.currentCar()
 	VehicleController.stop()
 	ScoreController.clear()
 	Hud.hide()
 	DebugPanel.hide()
+	if car then
+		task.spawn(standBeside, car)
+	end
 end)
 
 -- Players start on foot; the spawn menu opens and puts them in a car.

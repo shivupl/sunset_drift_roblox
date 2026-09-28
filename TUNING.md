@@ -300,6 +300,7 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | slotStartM / slotSpacingM | Bay slot layout, one per player. |
 | settleSpeedMps / settleSeconds | A driverless car below this speed for this long is anchored. |
 | fallBelowM | A car this far under the road is re-parked in its bay (self-healing). A destroyed chassis respawns the car. |
+| exitGapM / exitLiftM | Leaving a car puts the driver beside the driver's door: this much clear space from the car's side (1.0 m), this far above the chassis centre (0.5 m). Up the gap if players land against the door. |
 
 ## effects
 Visual only; the physics never reads any of these. Client-side, for the car you are driving.

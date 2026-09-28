@@ -21,6 +21,7 @@ local CarConfig = require(Shared.CarConfig)
 local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
 local VehicleRig = require(Shared.VehicleRig)
+local ExitSpot = require(Shared.ExitSpot)
 local RigBuilder = require(script.Parent.RigBuilder)
 local Remotes = require(script.Parent.Remotes)
 
@@ -144,7 +145,10 @@ local function onOccupantChanged(entry: Entry)
 			local character = prev.Character
 			if character then
 				task.defer(function()
-					character:PivotTo(entry.model:GetPivot() * CFrame.new(-s(3), s(1.5), 0))
+					local spot = ExitSpot.cframe(entry.model, config.spawn.exitGapM, config.spawn.exitLiftM, config.units.metersPerStud)
+					if spot then
+						character:PivotTo(spot)
+					end
 				end)
 			end
 		end
