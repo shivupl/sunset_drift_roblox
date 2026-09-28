@@ -6,16 +6,18 @@
 -- the road, the dunes and the car spawner exist. Without this they stand in a
 -- half-built desert with a menu whose SPAWN buttons do nothing. The server
 -- sets ReplicatedStorage's WorldReady attribute when the build is done.
+--
+-- Colours and type read UITheme (UI_SYSTEM.md); re-skinned onto the tokens
+-- on 2026-09-28: the name in hero, the note in body, the bar in sodium.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UITheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UITheme"))
+local UIKit = require(script.Parent.UIKit)
 
 local LoadCover = {}
 
-local INK = Color3.fromRGB(15, 15, 18)
-local WHITE = Color3.new(1, 1, 1)
-local MUTED = Color3.fromRGB(165, 165, 175)
-local HOT = Color3.fromRGB(255, 165, 40)
+local C = UITheme.color
 
 local FADE_SECONDS = 0.6
 
@@ -40,6 +42,7 @@ function LoadCover.start()
 		return
 	end
 	local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local touch = UIKit.isTouch()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HajwalaLoadCover"
 	gui.IgnoreGuiInset = true
@@ -50,7 +53,7 @@ function LoadCover.start()
 	local back = Instance.new("Frame")
 	back.Name = "Back"
 	back.Size = UDim2.fromScale(1, 1)
-	back.BackgroundColor3 = INK
+	back.BackgroundColor3 = C.asphalt900
 	back.BorderSizePixel = 0
 	back.Active = true -- swallow taps meant for what is underneath
 	back.Parent = gui
@@ -59,11 +62,11 @@ function LoadCover.start()
 	title.Name = "Title"
 	title.AnchorPoint = Vector2.new(0.5, 1)
 	title.Position = UDim2.new(0.5, 0, 0.5, -4)
-	title.Size = UDim2.new(0.9, 0, 0, 40)
+	title.Size = UDim2.new(0.9, 0, 0, UITheme.textSize("hero", touch))
 	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBlack
-	title.TextSize = 30
-	title.TextColor3 = WHITE
+	title.FontFace = UITheme.font("hero")
+	title.TextSize = UITheme.textSize("hero", touch)
+	title.TextColor3 = C.paint
 	title.Text = "HAJWALA"
 	title.Parent = back
 
@@ -73,9 +76,9 @@ function LoadCover.start()
 	note.Position = UDim2.new(0.5, 0, 0.5, 4)
 	note.Size = UDim2.new(0.9, 0, 0, 22)
 	note.BackgroundTransparency = 1
-	note.Font = Enum.Font.GothamMedium
-	note.TextSize = 15
-	note.TextColor3 = MUTED
+	note.FontFace = UITheme.font("body")
+	note.TextSize = UITheme.textSize("body", touch)
+	note.TextColor3 = C.sand
 	note.Text = "Laying out the desert"
 	note.Parent = back
 
@@ -84,7 +87,7 @@ function LoadCover.start()
 	bar.AnchorPoint = Vector2.new(0.5, 0)
 	bar.Position = UDim2.new(0.5, 0, 0.5, 38)
 	bar.Size = UDim2.fromOffset(36, 3)
-	bar.BackgroundColor3 = HOT
+	bar.BackgroundColor3 = C.sodium
 	bar.BorderSizePixel = 0
 	bar.Parent = back
 	local pulse = TweenService:Create(bar, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Size = UDim2.fromOffset(120, 3) })

@@ -3,33 +3,30 @@
 -- in place of the car list.
 --   * Time of day: one button per SkyConfig option (Sunset, Night). The
 --     world changes at once, on this player's screen only (Sky).
+--
+-- Its chrome reads UITheme (UI_SYSTEM.md); re-skinned onto the tokens on
+-- 2026-09-28, replacing the Theme table SpawnMenu used to pass in.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SkyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkyConfig"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local SkyConfig = require(Shared:WaitForChild("SkyConfig"))
+local UITheme = require(Shared:WaitForChild("UITheme"))
 local Sky = require(script.Parent.Sky)
-
-export type Theme = { card: Color3, white: Color3, muted: Color3, hot: Color3, hotDim: Color3 }
+local UIKit = require(script.Parent.UIKit)
 
 local SettingsPanel = {}
 
-local INK = Color3.fromRGB(15, 15, 18)
-
-local theme: Theme? = nil
+local C = UITheme.color
 local root: Frame? = nil
 local heading: TextLabel? = nil
 local row: Frame? = nil
 local note: TextLabel? = nil
 local skyButtons: { [string]: TextButton } = {}
 
-local function t(): Theme
-	return theme :: Theme
-end
-
+-- The chosen sky takes the selected state (sodiumDim, sodium stroke).
 local function paint()
 	local current = Sky.current()
 	for id, b in skyButtons do
-		local on = id == current
-		b.BackgroundColor3 = if on then t().hot else t().card
-		b.TextColor3 = if on then INK else t().muted
+		UIKit.setSelected(b, id == current)
 	end
 end
 
@@ -44,8 +41,7 @@ local function text(parent: Instance, s: string, order: number): TextLabel
 	return l
 end
 
-function SettingsPanel.build(parent: Instance, th: Theme, layoutOrder: number): Frame
-	theme = th
+function SettingsPanel.build(parent: Instance, layoutOrder: number): Frame
 	local f = Instance.new("Frame")
 	f.Name = "Settings"
 	f.BackgroundTransparency = 1
@@ -57,9 +53,10 @@ function SettingsPanel.build(parent: Instance, th: Theme, layoutOrder: number): 
 	layout.Padding = UDim.new(0, 8)
 	layout.Parent = f
 
+	-- A section title: title role in paint.
 	local h = text(f, "TIME OF DAY", 1)
-	h.Font = Enum.Font.GothamBlack
-	h.TextColor3 = th.white
+	h.FontFace = UITheme.font("title")
+	h.TextColor3 = C.paint
 	heading = h
 
 	local r = Instance.new("Frame")
@@ -73,18 +70,12 @@ function SettingsPanel.build(parent: Instance, th: Theme, layoutOrder: number): 
 	rowLayout.Parent = r
 	local count = #SkyConfig.options
 	for i, option in SkyConfig.options do
-		local b = Instance.new("TextButton")
+		-- An option chip; paint() marks the chosen one selected.
+		local b = UIKit.chip(r, option.label, UIKit.isTouch())
 		b.Name = "Sky_" .. option.id
-		b.AutoButtonColor = false
-		b.BorderSizePixel = 0
-		b.Font = Enum.Font.GothamBlack
-		b.Text = string.upper(option.label)
+		b.AutomaticSize = Enum.AutomaticSize.None
 		b.LayoutOrder = i
 		b.Size = UDim2.new(1 / count, -8 * (count - 1) / count, 1, 0)
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(0, 8)
-		c.Parent = b
-		b.Parent = r
 		b.Activated:Connect(function()
 			Sky.set(option.id)
 		end)
@@ -94,8 +85,9 @@ function SettingsPanel.build(parent: Instance, th: Theme, layoutOrder: number): 
 	row = r
 
 	local n = text(f, "Changes only what you see", 3)
-	n.Font = Enum.Font.GothamMedium
-	n.TextColor3 = th.muted
+	-- A hint: caption role in sandDim.
+	n.FontFace = UITheme.font("caption")
+	n.TextColor3 = C.sandDim
 	note = n
 
 	Sky.changed = function()
@@ -123,13 +115,13 @@ function SettingsPanel.fit(height: number, isTouch: boolean)
 	end
 	f.Size = UDim2.new(1, 0, 0, height)
 	h.Size = UDim2.new(1, 0, 0, if isTouch then 26 else 22)
-	h.TextSize = if isTouch then 18 else 15
+	h.TextSize = UITheme.textSize("title", isTouch)
 	r.Size = UDim2.new(1, 0, 0, if isTouch then 56 else 44)
 	for _, b in skyButtons do
-		b.TextSize = if isTouch then 20 else 16
+		b.TextSize = UITheme.textSize("label", isTouch)
 	end
 	n.Size = UDim2.new(1, 0, 0, if isTouch then 22 else 18)
-	n.TextSize = if isTouch then 15 else 13
+	n.TextSize = UITheme.textSize("caption", isTouch)
 end
 
 function SettingsPanel.setVisible(visible: boolean)

@@ -17,8 +17,13 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PlateText = require(Shared:WaitForChild("PlateText"))
 local PlateStyles = require(Shared:WaitForChild("PlateStyles"))
 local CarPlateMounts = require(Shared:WaitForChild("CarPlateMounts"))
+local UITheme = require(Shared:WaitForChild("UITheme"))
+local UIKit = require(script.Parent.UIKit)
 
-export type Theme = { card: Color3, white: Color3, muted: Color3, hot: Color3, hotDim: Color3 }
+-- The panel's chrome reads UITheme (UI_SYSTEM.md); re-skinned onto the
+-- tokens on 2026-09-28, replacing the Theme table SpawnMenu used to pass
+-- in. The plate artwork itself is PlateStyles and is not UI chrome.
+local C = UITheme.color
 
 local PlatesPanel = {}
 
@@ -36,7 +41,6 @@ local MESSAGES: { [string]: string } = {
 	busy = "One moment…",
 }
 
-local theme: Theme? = nil
 local root: Frame? = nil
 local search: TextBox? = nil
 local previewBox: Frame? = nil
@@ -64,10 +68,6 @@ local HINTS: { [string]: { placeholder: string, empty: string, sample: string } 
 	AD = { placeholder = "20 10234", empty = "Type the code (1, 4 to 22, or 50), a space, then a number of up to 5 digits", sample = "AD:20-10234" },
 	KW = { placeholder = "10 23456", empty = "Type the code (1 to 89), a space, then a number of up to 5 digits", sample = "KW:10-23456" },
 }
-
-local function t(): Theme
-	return theme :: Theme
-end
 
 local function money(n: number): string
 	return (tostring(math.floor(n)):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
@@ -116,23 +116,11 @@ local function setInfo(text: string, color: Color3)
 	end
 end
 
-local function corner(parent: Instance, r: number)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r)
-	c.Parent = parent
-end
-
-local function button(parent: Instance, text: string): TextButton
-	local b = Instance.new("TextButton")
-	b.AutoButtonColor = false
-	b.BorderSizePixel = 0
-	b.Font = Enum.Font.GothamBlack
-	b.Text = text
-	b.TextSize = 16
-	b.TextColor3 = Color3.fromRGB(15, 15, 18)
-	b.BackgroundColor3 = t().hot
-	corner(b, 8)
-	b.Parent = parent
+-- A token button (UIKit) sized by the caller: the panel's layout sets every
+-- button's size itself, so it does not grow with its text.
+local function button(parent: Instance, text: string, kind: UIKit.ButtonKind): TextButton
+	local b = UIKit.button(parent, text, kind, touch)
+	b.AutomaticSize = Enum.AutomaticSize.None
 	return b
 end
 
@@ -144,7 +132,8 @@ local function refreshBuy()
 	local cash = tonumber(Players.LocalPlayer:GetAttribute("Cash")) or 0
 	local key, price = current.key, current.price
 	local can = key ~= nil and price ~= nil and current.free and not owns(key) and cash >= price
-	b.BackgroundColor3 = if can then t().hot else t().hotDim
+	-- Primary when there is something to buy, disabled when not.
+	UIKit.setDisabled(b, not can)
 	b.Text = if price then `BUY  {money(price)}` else "BUY"
 end
 
@@ -164,7 +153,7 @@ local function doAction(what: string, key: string)
 	if not remote then
 		return
 	end
-	setInfo(MESSAGES.busy, t().muted)
+	setInfo(MESSAGES.busy, C.sand)
 	-- The server normalises what it is sent as typed text, and a canonical
 	-- key ("SA:ABJ-7") is not typed text (its colon is refused), so send the
 	-- plate as a player would type it, with its style: "ABJ 7" in "SA"
@@ -176,9 +165,9 @@ local function doAction(what: string, key: string)
 	end)
 	local status = if ok and type(reply) == "table" then reply.status else "unavailable"
 	if status == "invalid" then
-		setInfo(reply.reason or "Not a plate", t().hot)
+		setInfo(reply.reason or "Not a plate", C.beacon)
 	else
-		setInfo(MESSAGES[status] or MESSAGES.unavailable, if status == "done" then t().white else t().hot)
+		setInfo(MESSAGES[status] or MESSAGES.unavailable, if status == "done" then C.paint else C.beacon)
 	end
 	if status == "done" or status == "taken" then
 		current.free = false
@@ -199,25 +188,25 @@ local function onSearch()
 	refreshBuy()
 	if text == "" then
 		drawPreview(nil)
-		setInfo(HINTS[style].empty, t().muted)
+		setInfo(HINTS[style].empty, C.sand)
 		return
 	end
 	local searching = style
 	local key, reason = PlateText.normalise(searching, text)
 	if not key then
 		drawPreview(nil)
-		setInfo(reason or "Not a plate", t().hot)
+		setInfo(reason or "Not a plate", C.beacon)
 		return
 	end
 	drawPreview(key)
 	if owns(key) then
-		setInfo(`{shown(key)} is yours`, t().white)
+		setInfo(`{shown(key)} is yours`, C.paint)
 		return
 	end
 	local price = PlateText.price(key) :: number
 	current = { key = key, price = price, free = false }
 	refreshBuy()
-	setInfo(`{money(price)} cash · checking…`, t().muted)
+	setInfo(`{money(price)} cash · checking…`, C.sand)
 	task.delay(QUERY_DELAY, function()
 		local remote = queryRemote
 		if mine ~= asked or not remote then
@@ -230,18 +219,18 @@ local function onSearch()
 			return
 		end
 		if not ok or type(reply) ~= "table" then
-			setInfo(MESSAGES.unavailable, t().hot)
+			setInfo(MESSAGES.unavailable, C.beacon)
 		elseif reply.status == "ok" then
 			current = { key = reply.key, price = reply.price, free = reply.available == true }
 			if current.free then
-				setInfo(`{money(reply.price)} cash · available`, t().white)
+				setInfo(`{money(reply.price)} cash · available`, C.paint)
 			else
-				setInfo(MESSAGES.taken, t().hot)
+				setInfo(MESSAGES.taken, C.beacon)
 			end
 		elseif reply.status == "invalid" then
-			setInfo(reply.reason or "Not a plate", t().hot)
+			setInfo(reply.reason or "Not a plate", C.beacon)
 		else
-			setInfo(MESSAGES[reply.status] or MESSAGES.unavailable, t().hot)
+			setInfo(MESSAGES[reply.status] or MESSAGES.unavailable, C.beacon)
 		end
 		refreshBuy()
 	end)
@@ -251,14 +240,21 @@ local function rowHeight(): number
 	return if touch then 72 else 56
 end
 
-local function row(parent: Instance, order: number, key: string, caption: string, fitted: boolean, onPress: () -> ())
+-- One of your plates, in the "Shop items" states of UI_SYSTEM.md: the one on
+-- the car is the selected state (sodiumDim ground, sodium stroke) with an
+-- ON CAR chip where its button was; a bought plate is a secondary card with a
+-- gantry OWNED badge beside its EQUIP button. The session's default plate is
+-- not bought, so it carries no OWNED badge.
+local function row(parent: Instance, order: number, key: string, caption: string, fitted: boolean, bought: boolean, onPress: () -> ())
 	local h = rowHeight()
+	local look = if fitted then UITheme.button.selected else UITheme.button.secondary
 	local f = Instance.new("Frame")
-	f.BackgroundColor3 = t().card
+	f.BackgroundColor3 = look.bg
 	f.BorderSizePixel = 0
 	f.Size = UDim2.new(1, 0, 0, h)
 	f.LayoutOrder = order
-	corner(f, 10)
+	UIKit.corner(f, "md")
+	UIKit.stroke(f, if fitted then "sodium" else "asphalt600", look.strokeThickness or UITheme.stroke.hairline)
 	local mini = Instance.new("Frame")
 	mini.BackgroundTransparency = 1
 	mini.Position = UDim2.fromOffset(10, math.floor(h * 0.12))
@@ -267,27 +263,47 @@ local function row(parent: Instance, order: number, key: string, caption: string
 	PlateStyles.draw(mini, key, format())
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
-	l.Font = Enum.Font.GothamBold
-	l.TextSize = if touch then 18 else 15
-	l.TextColor3 = t().white
+	l.FontFace = UITheme.font("heading")
+	l.TextSize = UITheme.textSize("heading", touch)
+	l.TextColor3 = look.text
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.Text = caption
 	l.Position = UDim2.fromOffset(math.floor(h * 1.9) + 22, 0)
-	l.Size = UDim2.new(1, -(math.floor(h * 1.9) + 22 + 130), 1, 0)
 	l.TextTruncate = Enum.TextTruncate.AtEnd
 	l.Parent = f
-	local b = button(f, if fitted then "FITTED" else "EQUIP")
-	b.AnchorPoint = Vector2.new(1, 0.5)
-	b.Position = UDim2.new(1, -10, 0.5, 0)
-	b.Size = UDim2.fromOffset(110, math.floor(h * 0.64))
+	-- The right-hand end: the ON CAR chip, or EQUIP with the OWNED badge
+	-- before it. The caption stops short of whichever is there.
+	local tail = Instance.new("Frame")
+	tail.Name = "Tail"
+	tail.BackgroundTransparency = 1
+	tail.AnchorPoint = Vector2.new(1, 0.5)
+	tail.Position = UDim2.new(1, -10, 0.5, 0)
+	tail.AutomaticSize = Enum.AutomaticSize.X
+	tail.Size = UDim2.fromOffset(0, math.floor(h * 0.64))
+	local tailLayout = Instance.new("UIListLayout")
+	tailLayout.FillDirection = Enum.FillDirection.Horizontal
+	tailLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	tailLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	tailLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tailLayout.Padding = UDim.new(0, UITheme.px(UITheme.space.sm, touch))
+	tailLayout.Parent = tail
+	tail.Parent = f
 	if fitted then
-		b.BackgroundColor3 = t().hotDim
-	end
-	b.Activated:Connect(function()
-		if not fitted then
-			onPress()
+		UIKit.badge(tail, "oncar", "ON CAR", touch).LayoutOrder = 2
+	else
+		if bought then
+			UIKit.badge(tail, "owned", "✓ OWNED", touch).LayoutOrder = 1
 		end
-	end)
+		local b = button(tail, "EQUIP", "secondary")
+		b.LayoutOrder = 2
+		b.Size = UDim2.fromOffset(110, math.floor(h * 0.64))
+		b.Activated:Connect(onPress)
+	end
+	local function fitCaption()
+		l.Size = UDim2.new(1, -(math.floor(h * 1.9) + 22 + 20 + tail.AbsoluteSize.X), 1, 0)
+	end
+	tail:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitCaption)
+	fitCaption()
 	f.Parent = parent
 end
 
@@ -305,22 +321,22 @@ refreshOwned = function()
 	local equipped = player:GetAttribute("PlateEquipped")
 	local default = player:GetAttribute("PlateDefault")
 	if type(default) == "string" then
-		row(l, 0, default, `{shown(default)} · default this session`, equipped == nil, function()
+		row(l, 0, default, `{shown(default)} · default this session`, equipped == nil, false, function()
 			doAction("unequip", "")
 		end)
 	end
 	local keys = ownedKeys()
 	for i, key in keys do
-		row(l, i, key, shown(key), equipped == key, function()
+		row(l, i, key, shown(key), equipped == key, true, function()
 			doAction("equip", key)
 		end)
 	end
 	if #keys == 0 then
 		local hint = Instance.new("TextLabel")
 		hint.BackgroundTransparency = 1
-		hint.Font = Enum.Font.GothamMedium
-		hint.TextSize = 14
-		hint.TextColor3 = t().muted
+		hint.FontFace = UITheme.font("caption")
+		hint.TextSize = UITheme.textSize("caption", touch)
+		hint.TextColor3 = C.sandDim
 		hint.Text = "Plates you buy show here"
 		hint.Size = UDim2.new(1, 0, 0, 28)
 		hint.LayoutOrder = 999
@@ -329,10 +345,9 @@ refreshOwned = function()
 end
 
 local function paintStyles()
+	-- The style being searched takes the selected state.
 	for code, b in styleButtons do
-		local on = code == style
-		b.BackgroundColor3 = if on then t().hot else t().card
-		b.TextColor3 = if on then Color3.fromRGB(15, 15, 18) else t().muted
+		UIKit.setSelected(b, code == style)
 	end
 	if search then
 		(search :: TextBox).PlaceholderText = HINTS[style].placeholder
@@ -348,8 +363,7 @@ local function setStyle(code: string)
 	onSearch()
 end
 
-function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Frame
-	theme = th
+function PlatesPanel.build(parent: Instance, layoutOrder: number): Frame
 	local f = Instance.new("Frame")
 	f.Name = "Plates"
 	f.BackgroundTransparency = 1
@@ -369,18 +383,20 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	top.Parent = f
 	topRow = top
 	local box = Instance.new("TextBox")
-	box.BackgroundColor3 = th.card
+	-- An input: asphalt800 with a hairline stroke, typed text in heading.
+	box.BackgroundColor3 = C.asphalt800
 	box.BorderSizePixel = 0
 	box.ClearTextOnFocus = false
-	box.Font = Enum.Font.GothamBold
-	box.TextSize = 20
-	box.TextColor3 = th.white
+	box.FontFace = UITheme.font("heading")
+	box.TextSize = UITheme.textSize("heading", touch)
+	box.TextColor3 = C.paint
 	box.PlaceholderText = "ABJ 7   ·   حبأ ٧"
-	box.PlaceholderColor3 = th.muted
+	box.PlaceholderColor3 = C.sandDim
 	box.Text = ""
 	box.TextXAlignment = Enum.TextXAlignment.Left
 	box.Size = UDim2.new(1, -170, 1, 0)
-	corner(box, 8)
+	UIKit.corner(box, "md")
+	UIKit.stroke(box, "asphalt600", UITheme.stroke.hairline)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 12)
 	pad.Parent = box
@@ -401,9 +417,9 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	switchLayout.Parent = switch
 	local count = #PlateText.STYLES
 	for i, st in PlateText.STYLES do
-		local sb = button(switch, st.name)
+		local sb = UIKit.chip(switch, st.name, touch)
 		sb.Name = "Style" .. st.code
-		sb.TextSize = 13
+		sb.AutomaticSize = Enum.AutomaticSize.None
 		sb.LayoutOrder = i
 		sb.Size = UDim2.new(1 / count, -6 * (count - 1) / count, 1, 0)
 		sb.Activated:Connect(function()
@@ -414,7 +430,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	switch.Parent = f
 	styleRow = switch
 	paintStyles()
-	local buy = button(top, "BUY")
+	local buy = button(top, "BUY", "primary")
 	buy.AnchorPoint = Vector2.new(1, 0)
 	buy.Position = UDim2.fromScale(1, 0)
 	buy.Size = UDim2.new(0, 160, 1, 0)
@@ -436,9 +452,9 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 
 	local line = Instance.new("TextLabel")
 	line.BackgroundTransparency = 1
-	line.Font = Enum.Font.GothamMedium
-	line.TextSize = 14
-	line.TextColor3 = th.muted
+	line.FontFace = UITheme.font("body")
+	line.TextSize = UITheme.textSize("body", touch)
+	line.TextColor3 = C.sand
 	line.LayoutOrder = 3
 	line.Size = UDim2.new(1, 0, 0, 20)
 	line.Parent = f
@@ -446,9 +462,10 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 
 	local head = Instance.new("TextLabel")
 	head.BackgroundTransparency = 1
-	head.Font = Enum.Font.GothamBlack
-	head.TextSize = 14
-	head.TextColor3 = th.muted
+	-- A small section label: label role in sand.
+	head.FontFace = UITheme.font("label")
+	head.TextSize = UITheme.textSize("label", touch)
+	head.TextColor3 = C.sand
 	head.TextXAlignment = Enum.TextXAlignment.Left
 	head.Text = "YOUR PLATES"
 	head.LayoutOrder = 4
@@ -461,7 +478,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	scroll.BorderSizePixel = 0
 	scroll.LayoutOrder = 5
 	scroll.ScrollBarThickness = 4
-	scroll.ScrollBarImageColor3 = th.muted
+	scroll.ScrollBarImageColor3 = C.asphalt500
 	scroll.CanvasSize = UDim2.fromOffset(0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -497,6 +514,19 @@ function PlatesPanel.fit(height: number, isTouch: boolean)
 	local fixed = switchH + topH + previewH + 20 + 18 + 8 * 5
 	scroll.Size = UDim2.new(1, 0, 0, math.max(height - fixed, rowHeight()))
 	scroll.ScrollBarThickness = if isTouch then 6 else 4
+	-- Text follows the type roles for this screen.
+	local box = search
+	if box then
+		box.TextSize = UITheme.textSize("heading", isTouch)
+	end
+	for _, sb in styleButtons do
+		sb.TextSize = UITheme.textSize("label", isTouch)
+	end
+	if buyButton then
+		(buyButton :: TextButton).TextSize = UITheme.textSize("label", isTouch)
+	end
+	(info :: TextLabel).TextSize = UITheme.textSize("body", isTouch);
+	(heading :: TextLabel).TextSize = UITheme.textSize("label", isTouch)
 end
 
 function PlatesPanel.setVisible(visible: boolean)

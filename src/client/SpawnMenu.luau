@@ -40,18 +40,21 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
+local UITheme = require(Shared:WaitForChild("UITheme"))
+local UIKit = require(script.Parent.UIKit)
 local PlatesPanel = require(script.Parent.PlatesPanel)
 local SettingsPanel = require(script.Parent.SettingsPanel)
 
 local SpawnMenu = {}
 
-local INK = Color3.fromRGB(15, 15, 18)
-local CARD = Color3.fromRGB(28, 28, 33)
-local CARD_DOWN = Color3.fromRGB(46, 46, 54)
-local WHITE = Color3.new(1, 1, 1)
-local MUTED = Color3.fromRGB(165, 165, 175)
-local HOT = Color3.fromRGB(255, 165, 40)
-local HOT_DIM = Color3.fromRGB(120, 84, 34)
+-- Colours, type, radii and button states come from UITheme (UI_SYSTEM.md).
+-- Re-skinned onto the tokens on 2026-09-28; the layout below is unchanged.
+local C = UITheme.color
+
+-- The CARS button floats over the road, so it stays see-through like the
+-- HUD card rather than taking a panel's near-opaque ground. Not a token:
+-- the one see-through control in the game.
+local OPEN_BUTTON_TRANSPARENCY = 0.35
 
 local ACTION = "HJ_SpawnMenu"
 -- How far a finger may travel and still count as a tap rather than a scroll.
@@ -84,8 +87,11 @@ local openButton: TextButton? = nil
 local panel: Frame? = nil
 local header: Frame? = nil
 local closeButton: TextButton? = nil
-local title: TextLabel? = nil
-local subtitle: TextLabel? = nil
+-- The bilingual title row (UIKit.title) and the holder that keeps it clear
+-- of the close button.
+local titleHolder: Frame? = nil
+local titleEnglish: TextLabel? = nil
+local titleArabic: TextLabel? = nil
 local list: ScrollingFrame? = nil
 local status: TextLabel? = nil
 local cards: { Card } = {}
@@ -103,22 +109,16 @@ local showing: Tab = "cars"
 -- car must not hand the thumbstick back mid-drive.
 local modalBefore = false
 
-local function isTouch(): boolean
-	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
-end
+local isTouch = UIKit.isTouch
 
-local function corner(parent: Instance, radius: number)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, radius)
-	c.Parent = parent
-end
-
-local function label(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3): TextLabel
+-- A fixed-size label in a type role. Not UIKit.text: these labels are sized
+-- and truncated by fit(), which AutomaticSize would fight.
+local function label(parent: Instance, text: string, role: UITheme.Role, color: Color3): TextLabel
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
-	l.Text = text
-	l.Font = font
-	l.TextSize = size
+	l.Text = if UITheme.type[role].caps then string.upper(text) else text
+	l.FontFace = UITheme.font(role)
+	l.TextSize = UITheme.textSize(role, isTouch())
 	l.TextColor3 = color
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.TextYAlignment = Enum.TextYAlignment.Center
@@ -139,8 +139,6 @@ type Metrics = {
 	nameSize: number,
 	blurbSize: number,
 	specSize: number,
-	titleSize: number,
-	subSize: number,
 	headerH: number,
 	tabH: number,
 	closeSize: number,
@@ -168,22 +166,23 @@ local function metrics(): Metrics
 			pad = 18,
 			buttonW = 118,
 			buttonH = 48,
-			nameSize = 22,
-			blurbSize = 14,
-			specSize = 12,
-			titleSize = 24,
-			subSize = 15,
+			-- Text sizes are the type roles (UI_SYSTEM.md): name heading,
+			-- blurb body, spec line caption, footer caption.
+			nameSize = UITheme.textSize("heading", false),
+			blurbSize = UITheme.textSize("body", false),
+			specSize = UITheme.textSize("caption", false),
 			headerH = 44,
 			tabH = 34,
 			closeSize = 40,
 			footerH = 18,
-			footerSize = 13,
+			footerSize = UITheme.textSize("caption", false),
 			panelWidth = 0.92,
 			panelMax = 560,
 		}
 	end
 	-- Phone: a card is about a fifth of the short side, a tap target never
-	-- under 44 points, and text scales with it.
+	-- under 44 points, and text scales with it, never under its type role's
+	-- touch size.
 	local unit = math.clamp(short, 320, 900)
 	local cardH = math.clamp(unit * 0.21, 78, 132)
 	local buttonH = math.clamp(cardH * 0.58, 46, 72)
@@ -194,16 +193,14 @@ local function metrics(): Metrics
 		pad = math.clamp(unit * 0.035, 12, 24),
 		buttonW = math.clamp(cardH * 1.5, 104, 190),
 		buttonH = buttonH,
-		nameSize = math.clamp(cardH * 0.25, 19, 32),
-		blurbSize = math.clamp(cardH * 0.17, 13, 21),
-		specSize = math.clamp(cardH * 0.145, 11, 18),
-		titleSize = math.clamp(unit * 0.055, 20, 34),
-		subSize = math.clamp(unit * 0.035, 13, 22),
+		nameSize = math.max(UITheme.textSize("heading", true), math.clamp(cardH * 0.25, 19, 32)),
+		blurbSize = math.max(UITheme.textSize("body", true), math.clamp(cardH * 0.17, 13, 21)),
+		specSize = math.max(UITheme.textSize("caption", true), math.clamp(cardH * 0.145, 11, 18)),
 		headerH = math.clamp(unit * 0.12, 44, 72),
 		tabH = math.clamp(unit * 0.08, 40, 56),
 		closeSize = math.clamp(unit * 0.095, 44, 60),
 		footerH = math.clamp(unit * 0.05, 18, 30),
-		footerSize = math.clamp(unit * 0.032, 12, 19),
+		footerSize = math.max(UITheme.textSize("caption", true), math.clamp(unit * 0.032, 12, 19)),
 		panelWidth = 0.96,
 		panelMax = 720,
 	}
@@ -217,11 +214,22 @@ local function paintCard(card: Card, down: boolean)
 	local m = metrics()
 	local current = card.id == currentCarId
 	local isBusy = busy()
-	card.frame.BackgroundColor3 = if down then CARD_DOWN else CARD
+	-- A card is a secondary surface, pressed while a finger is on it; the car
+	-- you are in carries the selected stroke. SPAWN is the primary button,
+	-- and waiting out the cooldown reads as disabled.
+	local surface = if down then UITheme.button.secondaryPressed else UITheme.button.secondary
+	card.frame.BackgroundColor3 = surface.bg
+	card.stroke.Color = if current then C.sodium else C.asphalt600
+	card.stroke.Thickness = if current then UITheme.stroke.selected else UITheme.stroke.hairline
+	card.stroke.Transparency = 0
+	local look = if isBusy then UITheme.button.disabled elseif down then UITheme.button.primaryPressed else UITheme.button.primary
 	card.button.Text = if isBusy then "…" elseif current then "RESPAWN" else "SPAWN"
-	card.button.BackgroundColor3 = if isBusy then HOT_DIM elseif down then Color3.fromRGB(255, 196, 110) else HOT
-	card.button.TextSize = math.floor(m.buttonH * 0.36)
-	card.stroke.Transparency = if current then 0.1 else 1
+	card.button.BackgroundColor3 = look.bg
+	card.button.TextColor3 = look.text
+	-- The label role; on a phone it grows with the button, as it did before.
+	card.button.TextSize = if m.touch
+		then math.max(UITheme.textSize("label", true), math.floor(m.buttonH * 0.36))
+		else UITheme.textSize("label", false)
 	card.chip.Visible = current
 end
 
@@ -302,16 +310,14 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 	-- The list handles taps for every card instead (see bindTapTracking).
 	local frame = Instance.new("Frame")
 	frame.Name = "Car_" .. id
-	frame.BackgroundColor3 = CARD
+	frame.BackgroundColor3 = UITheme.button.secondary.bg
 	frame.BorderSizePixel = 0
 	frame.Size = UDim2.new(1, 0, 0, 92)
 	frame.LayoutOrder = order
-	corner(frame, 10)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = HOT
-	stroke.Thickness = 2
-	stroke.Transparency = 1
-	stroke.Parent = frame
+	UIKit.corner(frame, "md")
+	-- Hairline asphalt600 at rest; paintCard makes it the selected sodium
+	-- stroke on the car you are in.
+	local stroke = UIKit.stroke(frame, "asphalt600", UITheme.stroke.hairline)
 	frame.Parent = parent
 
 	-- The car's paint, as a stripe down the left edge.
@@ -319,11 +325,12 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 	swatch.Name = "Paint"
 	swatch.BackgroundColor3 = entry.body.paint
 	swatch.BorderSizePixel = 0
-	corner(swatch, 4)
+	UIKit.corner(swatch, "sm")
 	swatch.Parent = frame
 
-	local name = label(frame, entry.displayName, Enum.Font.GothamBlack, 22, WHITE)
-	local chip = label(frame, "IN USE", Enum.Font.GothamBold, 11, HOT)
+	local name = label(frame, entry.displayName, "heading", C.paint)
+	-- Marks the chosen car, so it is the accent.
+	local chip = label(frame, "IN USE", "label", C.sodium)
 	chip.Name = "Current"
 	chip.AutomaticSize = Enum.AutomaticSize.X
 	chip.Visible = false
@@ -334,11 +341,10 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 		chipPad.PaddingLeft = UDim.new(0, name.TextBounds.X + 10)
 	end)
 
-	local blurb = label(frame, entry.blurb or "", Enum.Font.Gotham, 14, MUTED)
+	local blurb = label(frame, entry.blurb or "", "body", C.sand)
 	blurb.TextTruncate = Enum.TextTruncate.AtEnd
 
-	local specs = label(frame, specLine(entry), Enum.Font.GothamMedium, 12, MUTED)
-	specs.TextTransparency = 0.25
+	local specs = label(frame, specLine(entry), "caption", C.sandDim)
 	specs.TextTruncate = Enum.TextTruncate.AtEnd
 
 	-- The SPAWN pill reads as the action; tapping anywhere on the card does it.
@@ -348,13 +354,13 @@ local function buildCard(parent: Instance, id: string, entry: VehicleRig.CarEntr
 	btn.Active = false -- the card handles the touch, so this never eats one
 	btn.Selectable = false
 	btn.AnchorPoint = Vector2.new(1, 0.5)
-	btn.BackgroundColor3 = HOT
+	btn.BackgroundColor3 = UITheme.button.primary.bg
 	btn.BorderSizePixel = 0
-	btn.Font = Enum.Font.GothamBlack
-	btn.TextSize = 17
-	btn.TextColor3 = INK
+	btn.FontFace = UITheme.font("label")
+	btn.TextSize = UITheme.textSize("label", isTouch())
+	btn.TextColor3 = UITheme.button.primary.text
 	btn.Text = "SPAWN"
-	corner(btn, 10)
+	UIKit.corner(btn, "md")
 	btn.Parent = frame
 
 	local card: Card = {
@@ -452,7 +458,7 @@ local function fit()
 	local g = gui
 	local p = panel
 	local scroll = list
-	if not g or not p or not scroll or not header or not closeButton or not title or not subtitle or not status then
+	if not g or not p or not scroll or not header or not closeButton or not titleHolder or not status then
 		return
 	end
 	local m = metrics()
@@ -480,11 +486,9 @@ local function fit()
 	end
 
 	header.Size = UDim2.new(1, 0, 0, m.headerH);
-	(title :: TextLabel).TextSize = m.titleSize;
-	(title :: TextLabel).Size = UDim2.new(1, -(m.closeSize + 16), 0, math.floor(m.headerH * 0.6));
-	(subtitle :: TextLabel).TextSize = m.subSize;
-	(subtitle :: TextLabel).Position = UDim2.fromOffset(0, math.floor(m.headerH * 0.6));
-	(subtitle :: TextLabel).Size = UDim2.new(1, -(m.closeSize + 16), 0, math.floor(m.headerH * 0.4));
+	-- The title row sizes its own text from the type roles (UIKit.title); the
+	-- holder keeps it clear of the close button, as the old labels were.
+	(titleHolder :: Frame).Size = UDim2.new(1, -(m.closeSize + 16), 1, 0);
 	(closeButton :: TextButton).Size = UDim2.fromOffset(m.closeSize, m.closeSize);
 	(closeButton :: TextButton).TextSize = math.floor(m.closeSize * 0.62)
 
@@ -501,7 +505,7 @@ local function fit()
 		card.name.TextSize = m.nameSize
 		card.name.Position = UDim2.fromOffset(34, math.floor(m.cardH * 0.13))
 		card.name.Size = UDim2.new(1, textW, 0, math.floor(m.nameSize * 1.2))
-		card.chip.TextSize = math.floor(m.specSize * 0.95)
+		card.chip.TextSize = UITheme.textSize("label", m.touch)
 		card.chip.Position = card.name.Position
 		local chipPad = card.chip:FindFirstChildOfClass("UIPadding")
 		if chipPad then
@@ -544,7 +548,7 @@ local function fit()
 	if tabs then
 		(tabs :: Frame).Size = UDim2.new(1, 0, 0, m.tabH)
 		for _, b in tabButtons do
-			b.TextSize = math.floor(m.tabH * 0.42)
+			b.TextSize = UITheme.textSize("title", m.touch)
 		end
 	end
 	p.Size = UDim2.new(m.panelWidth, 0, 0, chrome + listH)
@@ -554,17 +558,16 @@ local function fit()
 		local w = if m.touch then math.clamp(vp.X * 0.2, 120, 220) else 92
 		local h = if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38
 		ob.Size = UDim2.fromOffset(w, h)
-		ob.TextSize = if m.touch then math.floor(h * 0.42) else 15
+		ob.TextSize = if m.touch then math.max(UITheme.textSize("label", true), math.floor(h * 0.42)) else UITheme.textSize("label", false)
 		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35) - (if m.touch then 10 else 0))
 	end
 	refreshButtons()
 end
 
 local function paintTabs()
+	-- The open tab takes the selected state (sodiumDim, sodium stroke).
 	for name, b in tabButtons do
-		local on = name == showing
-		b.BackgroundColor3 = if on then HOT else CARD
-		b.TextColor3 = if on then INK else MUTED
+		UIKit.setSelected(b, name == showing)
 	end
 end
 
@@ -575,14 +578,14 @@ local function show(which: Tab)
 	end
 	PlatesPanel.setVisible(which == "plates")
 	SettingsPanel.setVisible(which == "settings")
-	if title then
-		(title :: TextLabel).Text = if which == "cars"
+	if titleEnglish then
+		(titleEnglish :: TextLabel).Text = if which == "cars"
 			then "CHOOSE YOUR CAR"
 			elseif which == "plates" then "NUMBER PLATES"
 			else "SETTINGS"
 	end
-	if subtitle then
-		(subtitle :: TextLabel).Text = if which == "cars" then "اختر سيارتك" elseif which == "plates" then "لوحات" else "الإعدادات"
+	if titleArabic then
+		(titleArabic :: TextLabel).Text = if which == "cars" then "اختر سيارتك" elseif which == "plates" then "لوحات" else "الإعدادات"
 	end
 	if status then
 		(status :: TextLabel).Text = if which == "plates"
@@ -620,8 +623,8 @@ local function build()
 	back.Name = "Backdrop"
 	back.Text = ""
 	back.AutoButtonColor = false
-	back.BackgroundColor3 = Color3.new(0, 0, 0)
-	back.BackgroundTransparency = 0.45
+	back.BackgroundColor3 = C.asphalt950
+	back.BackgroundTransparency = UITheme.alpha.scrim
 	back.BorderSizePixel = 0
 	back.Size = UDim2.fromScale(1, 1)
 	back.Parent = g
@@ -631,12 +634,12 @@ local function build()
 	p.AnchorPoint = Vector2.new(0.5, 0.5)
 	p.Position = UDim2.fromScale(0.5, 0.5)
 	p.Size = UDim2.new(0.92, 0, 0, 0)
-	p.BackgroundColor3 = INK
-	p.BackgroundTransparency = 0.08
+	p.BackgroundColor3 = C.asphalt900
+	p.BackgroundTransparency = UITheme.alpha.panel
 	p.BorderSizePixel = 0
 	p.Active = true -- taps on the panel do not reach the backdrop
 	p.ZIndex = 2
-	corner(p, 14)
+	UIKit.corner(p, "lg")
 	local maxSize = Instance.new("UISizeConstraint")
 	maxSize.MaxSize = Vector2.new(560, math.huge)
 	maxSize.Parent = p
@@ -666,22 +669,31 @@ local function build()
 	head.LayoutOrder = 1
 	head.Parent = p
 	header = head
-	title = label(head, "CHOOSE YOUR CAR", Enum.Font.GothamBlack, 24, WHITE)
-	subtitle = label(head, "اختر سيارتك", Enum.Font.GothamMedium, 15, HOT)
-	local close = Instance.new("TextButton")
+	-- The screen title: English at the left in display, the Arabic at the
+	-- right edge in sand (UI_SYSTEM.md "Arabic with English"). The holder
+	-- stops short of the close button; the row sits centred in the header.
+	local holder = Instance.new("Frame")
+	holder.Name = "TitleHolder"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.new(1, -56, 1, 0)
+	holder.Parent = head
+	titleHolder = holder
+	local titleRow = UIKit.title(holder, "CHOOSE YOUR CAR", "اختر سيارتك", "display", isTouch())
+	titleRow.AnchorPoint = Vector2.new(0, 0.5)
+	titleRow.Position = UDim2.fromScale(0, 0.5)
+	titleEnglish = titleRow:FindFirstChild("English") :: TextLabel
+	titleArabic = titleRow:FindFirstChild("Arabic") :: TextLabel
+	local close = UIKit.button(head, "×", "secondary", isTouch())
 	close.Name = "Close"
-	close.AutoButtonColor = false
+	close.AutomaticSize = Enum.AutomaticSize.None
 	close.AnchorPoint = Vector2.new(1, 0)
 	close.Position = UDim2.fromScale(1, 0)
 	close.Size = UDim2.fromOffset(40, 40)
-	close.BackgroundColor3 = CARD
-	close.BorderSizePixel = 0
-	close.Text = "×"
-	close.Font = Enum.Font.GothamBold
-	close.TextSize = 26
-	close.TextColor3 = MUTED
-	corner(close, 10)
-	close.Parent = head
+	-- A glyph, sized by fit() to the button: no interior padding to squeeze it.
+	local closePad = close:FindFirstChildOfClass("UIPadding")
+	if closePad then
+		closePad:Destroy()
+	end
 	closeButton = close
 	close.Activated:Connect(function()
 		SpawnMenu.close()
@@ -699,17 +711,15 @@ local function build()
 	tabLayout.Parent = tabRow
 	local tabList = { { "cars", "CARS" }, { "plates", "PLATES" }, { "settings", "SETTINGS" } }
 	for i, pair in tabList do
-		local b = Instance.new("TextButton")
+		-- A tab is a chip in the title role (UI_SYSTEM.md: "title: section
+		-- title, tab names"); paintTabs marks the open one selected.
+		local b = UIKit.chip(tabRow, pair[2], isTouch())
 		b.Name = pair[2]
-		b.AutoButtonColor = false
-		b.BorderSizePixel = 0
-		b.Font = Enum.Font.GothamBlack
-		b.Text = pair[2]
-		b.TextSize = 14
+		b.FontFace = UITheme.font("title")
+		b.TextSize = UITheme.textSize("title", isTouch())
 		b.LayoutOrder = i
+		b.AutomaticSize = Enum.AutomaticSize.None
 		b.Size = UDim2.new(1 / #tabList, -8 * (#tabList - 1) / #tabList, 1, 0)
-		corner(b, 8)
-		b.Parent = tabRow
 		tabButtons[pair[1]] = b
 		b.Activated:Connect(function()
 			show(pair[1] :: any)
@@ -724,7 +734,7 @@ local function build()
 	scroll.BorderSizePixel = 0
 	scroll.LayoutOrder = 3
 	scroll.ScrollBarThickness = 4
-	scroll.ScrollBarImageColor3 = MUTED
+	scroll.ScrollBarImageColor3 = C.asphalt500
 	scroll.CanvasSize = UDim2.fromOffset(0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -735,15 +745,16 @@ local function build()
 	cardList.Parent = scroll
 	scroll.Parent = p
 	list = scroll
-	PlatesPanel.build(p, { card = CARD, white = WHITE, muted = MUTED, hot = HOT, hotDim = HOT_DIM }, 3)
-	SettingsPanel.build(p, { card = CARD, white = WHITE, muted = MUTED, hot = HOT, hotDim = HOT_DIM }, 3)
+	PlatesPanel.build(p, 3)
+	SettingsPanel.build(p, 3)
 
 	for i, car in sortedCars() do
 		buildCard(scroll, car.id, car.entry, i)
 	end
 	bindTapTracking()
 
-	local footer = label(p, "", Enum.Font.GothamMedium, 13, MUTED)
+	-- A hint: caption role in sandDim.
+	local footer = label(p, "", "caption", C.sandDim)
 	footer.Name = "Footer"
 	footer.LayoutOrder = 4
 	footer.Size = UDim2.new(1, 0, 0, 18)
@@ -754,29 +765,17 @@ local function build()
 	-- Bottom centre: the top left is the debug panel, the top centre the HUD,
 	-- the top right Roblox's own menus, and on a phone the steer pad and the
 	-- pedals leave the bottom centre free.
-	local open = Instance.new("TextButton")
-	open.Name = "OpenSpawnMenu"
-	open.AutoButtonColor = false
-	open.AnchorPoint = Vector2.new(0.5, 1)
-	open.Position = UDim2.new(0.5, 0, 1, -14)
-	open.Size = UDim2.fromOffset(92, 38)
-	open.BackgroundColor3 = INK
-	open.BackgroundTransparency = 0.35
-	open.BorderSizePixel = 0
-	open.Font = Enum.Font.GothamBlack
-	open.TextSize = 15
-	open.TextColor3 = WHITE
-	corner(open, 10)
-	local openStroke = Instance.new("UIStroke")
-	openStroke.Color = HOT
-	openStroke.Thickness = 2
-	openStroke.Transparency = 0.45
-	openStroke.Parent = open
+	-- A secondary button (UIKit), see-through over the road.
 	local openGui = Instance.new("ScreenGui")
 	openGui.Name = "HajwalaSpawnButton"
 	openGui.ResetOnSpawn = false
 	openGui.DisplayOrder = 7
-	open.Parent = openGui
+	local open = UIKit.button(openGui, "CARS", "secondary", isTouch())
+	open.Name = "OpenSpawnMenu"
+	open.AnchorPoint = Vector2.new(0.5, 1)
+	open.Position = UDim2.new(0.5, 0, 1, -14)
+	open.Size = UDim2.fromOffset(92, 38)
+	open.BackgroundTransparency = OPEN_BUTTON_TRANSPARENCY
 	openButton = open
 	open.Activated:Connect(function()
 		SpawnMenu.toggle()

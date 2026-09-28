@@ -18,24 +18,41 @@
 -- The live number comes from the client's own copy of Scoring so it moves
 -- with the car. The banked number comes back from the server, because that
 -- is the one that was actually paid.
+--
+-- Colours, type and radius read UITheme (UI_SYSTEM.md); re-skinned onto the
+-- tokens on 2026-09-28. Numbers are Oswald: speed and live points in
+-- display, cash in price. Sizes are the desktop type sizes on every
+-- platform, because the card's own UIScale already grows it on a phone.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local Scoring = require(Shared.Scoring)
+local UITheme = require(Shared:WaitForChild("UITheme"))
+local UIKit = require(script.Parent.UIKit)
 
 type VehicleState = Types.VehicleState
 
 local Hud = {}
 
-local WHITE = Color3.new(1, 1, 1)
-local MUTED = Color3.fromRGB(165, 165, 175)
-local HOT = Color3.fromRGB(255, 165, 40)
-local CASH = Color3.fromRGB(95, 220, 130)
-local NATL = Color3.fromRGB(110, 205, 255)
-local BAD = Color3.fromRGB(245, 85, 85)
+local C = UITheme.color
+local PAINT = C.paint
+local SAND = C.sand
+local HOT = C.sodium
+-- Cash is written in sodium (UI_SYSTEM.md "Type").
+local CASH = C.sodium
+-- A banked slide or a finished 360 is done, and done is green.
+local DONE = C.gantryBright
+-- Natl balance while holding it: was a blue, and the UI has no blue. lens
+-- keeps it apart from the amber "catch" and the red "TIP!" it escalates to.
+local NATL = C.lens
+local BAD = C.beacon
+
+-- The card floats over the road and must let it through, far more than a
+-- menu panel's alpha.panel. Not a token: the HUD is the one see-through
+-- surface.
+local CARD_TRANSPARENCY = 0.35
 
 local gui: ScreenGui? = nil
 local scaler: UIScale? = nil
@@ -61,12 +78,13 @@ local function comma(n: number): string
 	return (if n < 0 then "-" else "") .. out
 end
 
-local function text(parent: Instance, name: string, font: Enum.Font, size: number, color: Color3, order: number): TextLabel
+local function text(parent: Instance, name: string, role: UITheme.Role, color: Color3, order: number): TextLabel
 	local l = Instance.new("TextLabel")
 	l.Name = name
 	l.BackgroundTransparency = 1
-	l.Font = font
-	l.TextSize = size
+	l.FontFace = UITheme.font(role)
+	-- Desktop size everywhere: the card's UIScale does the phone scaling.
+	l.TextSize = UITheme.textSize(role, false)
 	l.TextColor3 = color
 	l.AutomaticSize = Enum.AutomaticSize.XY
 	l.Size = UDim2.fromOffset(0, 0)
@@ -96,9 +114,7 @@ local function row(parent: Instance, name: string, gap: number, order: number): 
 	return f
 end
 
-local function isTouch(): boolean
-	return UserInputService.TouchEnabled or Players.LocalPlayer:GetAttribute("ForceTouch") == true
-end
+local isTouch = UIKit.isTouch
 
 -- Where the card sits and how big it is, for the screen it is on. On a phone
 -- it drops under the touch HUD's top row and grows with the screen; on a
@@ -137,16 +153,14 @@ local function build(): ScreenGui
 
 	local card = Instance.new("Frame")
 	card.Name = "Card"
-	card.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-	card.BackgroundTransparency = 0.35
+	card.BackgroundColor3 = C.asphalt900
+	card.BackgroundTransparency = CARD_TRANSPARENCY
 	card.BorderSizePixel = 0
 	card.AnchorPoint = Vector2.new(0.5, 0)
 	card.Position = UDim2.new(0.5, 0, 0, 6)
 	card.AutomaticSize = Enum.AutomaticSize.XY
 	card.Size = UDim2.fromOffset(0, 0)
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = card
+	UIKit.corner(card, "lg")
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, 4)
 	pad.PaddingBottom = UDim.new(0, 7)
@@ -165,29 +179,29 @@ local function build(): ScreenGui
 	cardFrame = card
 
 	local top = row(card, "Top", 6, 1)
-	text(top, "Speed", Enum.Font.GothamBlack, 34, WHITE, 1)
-	local unit = text(top, "Unit", Enum.Font.Gotham, 12, MUTED, 2)
+	text(top, "Speed", "display", PAINT, 1)
+	local unit = text(top, "Unit", "caption", SAND, 2)
 	unit.Text = "km/h"
-	local gear = text(top, "Gear", Enum.Font.GothamBold, 20, HOT, 3)
+	local gear = text(top, "Gear", "title", HOT, 3)
 	local gearPad = Instance.new("UIPadding")
 	gearPad.PaddingLeft = UDim.new(0, 10)
 	gearPad.Parent = gear
 
 	-- The slide row: live points and multiplier, or the result of the last one.
 	local slide = row(card, "Slide", 8, 2)
-	text(slide, "Points", Enum.Font.GothamBlack, 26, HOT, 1)
-	text(slide, "Mult", Enum.Font.GothamBold, 18, HOT, 2)
-	text(slide, "Flash", Enum.Font.GothamBold, 20, HOT, 3)
+	text(slide, "Points", "display", HOT, 1)
+	text(slide, "Mult", "title", HOT, 2)
+	text(slide, "Flash", "title", HOT, 3)
 
 	local bottom = row(card, "Bottom", 14, 3)
-	text(bottom, "Drift", Enum.Font.GothamBold, 14, MUTED, 1)
-	text(bottom, "Spins", Enum.Font.GothamBold, 14, HOT, 2)
-	text(bottom, "Natl", Enum.Font.GothamBold, 14, NATL, 3)
+	text(bottom, "Drift", "label", SAND, 1)
+	text(bottom, "Spins", "label", HOT, 2)
+	text(bottom, "Natl", "label", NATL, 3)
 
 	local records = row(card, "Records", 12, 4)
-	text(records, "Cash", Enum.Font.GothamBold, 13, CASH, 1)
-	text(records, "Best", Enum.Font.GothamBold, 13, MUTED, 2)
-	text(records, "Server", Enum.Font.GothamBold, 13, MUTED, 3)
+	text(records, "Cash", "price", CASH, 1)
+	text(records, "Best", "label", SAND, 2)
+	text(records, "Server", "label", SAND, 3)
 
 	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	gui = g
@@ -202,7 +216,7 @@ function Hud.flashResult(points: number, cash: number)
 	local cfg = ConfigLoader.current().hud
 	if points > 0 then
 		flashText = if cash > 0 then `BANKED {comma(points)}  +{comma(cash)}` else `BANKED {comma(points)}`
-		flashColor = CASH
+		flashColor = DONE
 	else
 		flashText = "DROPPED"
 		flashColor = BAD
@@ -216,7 +230,7 @@ end
 function Hud.flashSpin(bonus: number, spins: number)
 	local cfg = ConfigLoader.current().hud
 	flashText = if spins > 1 then `{spins * 360}!  +{comma(bonus)}` else `360!  +{comma(bonus)}`
-	flashColor = CASH
+	flashColor = DONE
 	flashInSlide = true
 	flashUntil = os.clock() + cfg.flashSeconds
 end
@@ -257,12 +271,12 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 
 	local angle = math.abs(state.driftAngleDeg)
 	labels.Drift.Text = `DRIFT {math.floor(angle + 0.5)}°`
-	labels.Drift.TextColor3 = if angle >= cfg.hud.driftHighlightDeg then HOT else MUTED
+	labels.Drift.TextColor3 = if angle >= cfg.hud.driftHighlightDeg then HOT else SAND
 	labels.Spins.Visible = state.spinCount > 0 or state.spinProgressDeg > 90
 	labels.Spins.Text = `SPINS {state.spinCount}`
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
 	labels.Natl.Visible = up
-	-- Balance feedback: blue on the angle, amber when the tip margin is
+	-- Balance feedback: lens (was blue) on the angle, amber when the tip margin is
 	-- getting short, red when it is nearly gone. That colour is what the
 	-- player taps against.
 	local margin = state.rollMarginDeg
