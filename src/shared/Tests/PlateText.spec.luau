@@ -176,7 +176,7 @@ return function(t: T)
 		t.eq(table.concat(ad.latin), "20", "abu dhabi code in parts")
 		t.eq(ad.digits, "10234", "abu dhabi digits in parts")
 	end
-	for _, badKey in { "AD:2-5", "AD:20-123456", "AD:020-5", "KW:90-5", "KW:10-05", "KW:A-5" } do
+	for _, badKey in { "AD:2-5", "AD:20-123456", "AD:020-5", "KW:90-5", "KW:10-05", "KW:A-5", "AD:5e1-5", "KW:1e1-5" } do
 		t.eq(PlateText.parts(badKey), nil, "not a key: " .. badKey)
 	end
 	t.ok(PlateText.isStyle("AD") and PlateText.isStyle("KW"), "abu dhabi and kuwait are styles")

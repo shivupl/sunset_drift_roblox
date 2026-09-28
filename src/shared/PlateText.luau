@@ -296,7 +296,8 @@ function PlateText.parts(key: string): Parts?
 	end
 	local numeric = NUMERIC[style]
 	if numeric then
-		local code = tonumber(letters)
+		-- Digits only: tonumber alone would take "5e1" or "0x32" as 50.
+		local code = if string.match(letters, "^%d+$") then tonumber(letters) else nil
 		if not code or string.sub(letters, 1, 1) == "0" or not numeric.ok(code) or #digits > 5 then
 			return nil
 		end
