@@ -119,6 +119,12 @@ UITheme.minTarget = 36 -- desktop
 UITheme.minTouchTarget = 48 -- thumb
 UITheme.touchScale = 1.25
 
+-- The side panel (UI_SYSTEM.md "Targets and layout"; the garage panel,
+-- 2026-09-28): 360 px wide on desktop; on touch 42% of the screen width, at
+-- most 420 px, so the car always shows. A card grid inside it drops to one
+-- column when the panel is narrower than oneColumnBelow.
+UITheme.sidePanel = { width = 360, touchFraction = 0.42, touchMax = 420, oneColumnBelow = 340 }
+
 -- Motion.
 UITheme.motion = {
 	quick = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), -- press, hover, select

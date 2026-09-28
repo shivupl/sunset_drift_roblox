@@ -121,7 +121,8 @@ the same, in a fixed way:
 - On a phone, controls you use often sit in the bottom two thirds of the
   screen or down the side panel, where a thumb reaches.
 - A side panel is 360 px wide on desktop, 42% of the screen width (at most
-  420 px) on touch, and always leaves the car or the road visible.
+  420 px) on touch, and always leaves the car or the road visible
+  (`UITheme.sidePanel`; a card grid in it drops to one column under 340 px).
 
 ## States
 
@@ -153,7 +154,8 @@ unmistakable at a glance:
 
 Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing
-is ever charged from a single tap.
+is ever charged from a single tap. The sheet is opaque (not `alpha.panel`):
+over a panel of cards, 6% see-through let the cards show through its rows.
 
 ## Don'ts
 

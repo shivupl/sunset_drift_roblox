@@ -104,6 +104,8 @@ local showing: Tab = "cars"
 -- the menu remembers what it found and puts that back: closing the menu in a
 -- car must not hand the thumbstick back mid-drive.
 local modalBefore = false
+-- The garage view hides the CARS button (SpawnMenu.setOpenButtonHidden).
+local openButtonHidden = false
 
 local isTouch = UIKit.isTouch
 
@@ -834,7 +836,43 @@ function SpawnMenu.close()
 	local ob = openButton
 	if ob then
 		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
-		ob.Visible = true
+		ob.Visible = not openButtonHidden
+	end
+end
+
+-- Handles for the garage panel (garage plan, task 7, 2026-09-28).
+
+-- Opens the menu straight on one tab: the panel's SHOP PLATES opens it on
+-- the plates tab, which stays the one place plates are bought.
+function SpawnMenu.openTab(which: string)
+	if which == "cars" or which == "plates" or which == "settings" then
+		showing = which
+	end
+	SpawnMenu.open()
+end
+
+-- Asks for a car exactly as tapping its card here does (same cooldown).
+-- False if a spawn is still cooling down.
+function SpawnMenu.requestCar(id: string): boolean
+	if busy() or not remote then
+		return false
+	end
+	requestSpawn(id)
+	return true
+end
+
+-- The catalog cars in menu order (the panel's MY CARS uses the same order).
+function SpawnMenu.cars(): { { id: string, entry: VehicleRig.CarEntry } }
+	return sortedCars()
+end
+
+-- Hides the floating CARS button while the garage view fills the screen
+-- (it sat over the car); M still opens the menu.
+function SpawnMenu.setOpenButtonHidden(hidden: boolean)
+	openButtonHidden = hidden
+	local ob = openButton
+	if ob and not SpawnMenu.isOpen() then
+		ob.Visible = not hidden
 	end
 end
 

@@ -22,6 +22,7 @@ local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
 local GarageView = require(script.Garage.GarageView)
+local GaragePanel = require(script.Garage.GaragePanel)
 
 print("[Hajwala] client boot")
 -- Up first: the server may still be building the world this client joined.
@@ -120,3 +121,5 @@ SpawnMenu.start(remotes)
 -- Walking into the garage opens the customisation view; the lift bay's
 -- raised car is built once the garage is here.
 GarageView.start()
+-- The panel down the view's left side: preview, buy with a confirm, equip.
+GaragePanel.start(remotes)
