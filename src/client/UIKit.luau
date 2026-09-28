@@ -40,6 +40,36 @@
 --   buttons and `space.sm` for chips (a call, not a token; easy to retune).
 -- * Danger has no `dangerPressed` state in UITheme.button, so a pressed
 --   danger button keeps the danger colours (no distinct pressed tween).
+--
+-- Fix round 1 (review): two Important findings, both addressed here.
+-- * Wrapping: UIKit.text() takes an optional `wrap: boolean?` (default:
+--   true for non-CAPS roles — body/heading/caption/price — false for CAPS
+--   roles, which are short labels that should hug their content). When
+--   wrap is true the label is AutomaticSize.Y, TextWrapped, and starts at
+--   full parent width (`UDim2.new(1, 0, 0, 0)`) so a caller can narrow it;
+--   when false it stays AutomaticSize.XY as before. Without this, a
+--   TextLabel's glyphs are not clipped to its Size by Roblox, so long
+--   card names/descriptions painted past their box into whatever sits
+--   next to them. UIKit.title()'s English and Arabic labels are always
+--   meant to read as one line each (UI_SYSTEM.md: "titles pair on one
+--   line"), so both get TextWrapped + TextTruncate = AtEnd regardless of
+--   mode: long text wraps within its bounded half/full width and then
+--   ellipsises rather than pushing a second line into its sibling or
+--   growing the row past the height `relayout` computed for it. Badge and
+--   button/chip text call UIKit.text with `wrap = false` explicitly (they
+--   must hug their content in a UIListLayout row; letting `price`'s
+--   default-true wrap apply there would stretch them to fill their
+--   parent's width instead).
+-- * Layering: UIKit.panel(parent, touch, z) and UIKit.sheet(parent, touch,
+--   z) take an optional base ZIndex so a confirm sheet can be told to sit
+--   above an already-open panel. panel() defaults z = 2 (panel = z, its
+--   shadow = z - 1) — unchanged from before when z is omitted. sheet()
+--   defaults z = 1 (scrim = z, the sheet's own panel = z + 2, so its
+--   shadow, set by panel(), lands at z + 1) — scrim(1) < shadow(2) <
+--   sheet(3), same absolute numbers as before. A caller stacking a sheet
+--   over a panel opened at panel z passes a sheet z greater than that
+--   panel's z (eg. panel z=2, sheet z=10) to guarantee the sheet and its
+--   scrim draw above it.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -138,15 +168,27 @@ end
 -- TEXT -------------------------------------------------------------------------
 
 -- A plain text label in a token role and colour. CAPS roles (see
--- UITheme.type) upper-case the text; sizing is AutomaticSize so callers can
--- reposition or override freely.
-function UIKit.text(parent: Instance, text: string, role: UITheme.Role, colorName: ColorName, touch: boolean): TextLabel
+-- UITheme.type) upper-case the text. `wrap` defaults to true for non-CAPS
+-- roles (body/heading/caption/price — the running-text and descriptive
+-- roles) and false for CAPS roles (short labels that should hug their
+-- content): pass it explicitly to override. Wrapped labels are
+-- AutomaticSize.Y, TextWrapped, starting at the parent's full width — set
+-- Size.X afterward to narrow one. Unwrapped labels are AutomaticSize.XY, as
+-- before.
+function UIKit.text(parent: Instance, text: string, role: UITheme.Role, colorName: ColorName, touch: boolean, wrap: boolean?): TextLabel
 	local spec = UITheme.type[role]
+	local shouldWrap = if wrap == nil then not spec.caps else wrap
 	local l = Instance.new("TextLabel")
 	l.Name = "Text"
 	l.BackgroundTransparency = 1
-	l.AutomaticSize = Enum.AutomaticSize.XY
-	l.Size = UDim2.fromOffset(0, 0)
+	l.TextWrapped = shouldWrap
+	if shouldWrap then
+		l.AutomaticSize = Enum.AutomaticSize.Y
+		l.Size = UDim2.new(1, 0, 0, 0)
+	else
+		l.AutomaticSize = Enum.AutomaticSize.XY
+		l.Size = UDim2.fromOffset(0, 0)
+	end
 	l.FontFace = UITheme.font(role)
 	l.TextSize = UITheme.textSize(role, touch)
 	l.TextColor3 = UITheme.color[colorName]
@@ -170,16 +212,23 @@ function UIKit.title(parent: Instance, english: string, arabic: string, role: UI
 	frame.Size = UDim2.new(1, 0, 0, UITheme.textSize(role, touch))
 	frame.Parent = parent
 
-	local en = UIKit.text(frame, english, role, "paint", touch)
+	-- Both lines are meant to read as exactly one line each (UI_SYSTEM.md:
+	-- "titles pair on one line"): wrapped + truncated rather than left to
+	-- overflow into whichever sibling sits beside or below it.
+	local en = UIKit.text(frame, english, role, "paint", touch, false)
 	en.Name = "English"
 	en.AutomaticSize = Enum.AutomaticSize.None
 	en.TextXAlignment = Enum.TextXAlignment.Left
+	en.TextWrapped = true
+	en.TextTruncate = Enum.TextTruncate.AtEnd
 
 	local ar = Instance.new("TextLabel")
 	ar.Name = "Arabic"
 	ar.BackgroundTransparency = 1
 	ar.TextColor3 = UITheme.color.sand
 	ar.TextYAlignment = Enum.TextYAlignment.Center
+	ar.TextWrapped = true
+	ar.TextTruncate = Enum.TextTruncate.AtEnd
 	ar.Text = arabic
 	ar.Parent = frame
 
@@ -353,7 +402,10 @@ end
 -- shadow Frame kept as a lower-ZIndex sibling (assumes the ScreenGui uses
 -- ZIndexBehavior.Sibling, as the rest of the UI does) rather than a wrapper
 -- container, so UIKit.panel can return the single Frame the brief asks for.
-function UIKit.panel(parent: Instance, touch: boolean): Frame
+-- `z` (default 2) is the panel's own ZIndex; its shadow sits at z - 1. Pass
+-- a higher z to raise this panel above another one already on screen.
+function UIKit.panel(parent: Instance, touch: boolean, z: number?): Frame
+	local base = z or 2
 	local shadow = Instance.new("Frame")
 	shadow.Name = "PanelShadow"
 	shadow.BackgroundColor3 = UITheme.color.asphalt950
@@ -370,7 +422,7 @@ function UIKit.panel(parent: Instance, touch: boolean): Frame
 	panel.BackgroundColor3 = UITheme.color.asphalt900
 	panel.BackgroundTransparency = UITheme.alpha.panel
 	panel.BorderSizePixel = 0
-	panel.ZIndex = 2
+	panel.ZIndex = base
 	UIKit.corner(panel, "lg")
 	scaledPad(panel, "lg", touch)
 
@@ -489,7 +541,9 @@ function UIKit.badge(parent: Instance, kind: BadgeKind, text: string, touch: boo
 	if kind == "rare" then
 		body = "◆ " .. body
 	end
-	local textLabel = UIKit.text(row, body, role, fgName, touch)
+	-- wrap = false: a badge hugs its own text in a UIListLayout row (the
+	-- `price` role defaults to wrap = true, which would stretch it instead).
+	local textLabel = UIKit.text(row, body, role, fgName, touch, false)
 	textLabel.LayoutOrder = 2
 
 	frame.Parent = parent
@@ -499,11 +553,16 @@ end
 -- SHEET -----------------------------------------------------------------------
 
 -- A modal sheet: a scrim (asphalt950 at alpha.scrim) plus a panel-styled
--- Frame above it. Both are siblings of `parent`; the sheet's ZIndex (3)
--- keeps it, and its own shadow (2), above the scrim (1). The caller wires
--- dismiss-on-scrim-tap itself if it wants one (the scrim is a plain Frame,
--- per the brief's return type, not a button).
-function UIKit.sheet(parent: Instance, touch: boolean): (Frame, Frame)
+-- Frame above it. Both are siblings of `parent`. `z` (default 1) is the
+-- scrim's ZIndex; the sheet's own panel sits at z + 2, so its shadow
+-- (drawn by UIKit.panel at panel z - 1) lands at z + 1 — scrim < shadow <
+-- sheet. Pass a z above an already-open panel's own z (eg. that panel's
+-- z=2, this sheet's z=10) to guarantee the confirm sheet and its scrim
+-- draw above it. The caller wires dismiss-on-scrim-tap itself if it wants
+-- one (the scrim is a plain Frame, per the brief's return type, not a
+-- button).
+function UIKit.sheet(parent: Instance, touch: boolean, z: number?): (Frame, Frame)
+	local base = z or 1
 	local scrim = Instance.new("Frame")
 	scrim.Name = "Scrim"
 	scrim.BackgroundColor3 = UITheme.color.asphalt950
@@ -511,14 +570,13 @@ function UIKit.sheet(parent: Instance, touch: boolean): (Frame, Frame)
 	scrim.BorderSizePixel = 0
 	scrim.Size = UDim2.fromScale(1, 1)
 	scrim.Position = UDim2.fromScale(0, 0)
-	scrim.ZIndex = 1
+	scrim.ZIndex = base
 	scrim.Parent = parent
 
-	local sheet = UIKit.panel(parent, touch)
+	local sheet = UIKit.panel(parent, touch, base + 2)
 	sheet.Name = "Sheet"
 	sheet.AnchorPoint = Vector2.new(0.5, 0.5)
 	sheet.Position = UDim2.fromScale(0.5, 0.5)
-	sheet.ZIndex = 3
 
 	return sheet, scrim
 end
