@@ -22,6 +22,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared.VehicleRig)
 local ConfigLoader = require(Shared.ConfigLoader)
+local CosmeticsConfig = require(Shared.CosmeticsConfig)
 
 local CarLamps = {}
 
@@ -29,6 +30,15 @@ local CarLamps = {}
 CarLamps.HEAD = "LampHead"
 CarLamps.BRAKE = "LampBrake"
 CarLamps.REVERSE = "LampReverse"
+-- Colour overrides from the car's garage look (Color3, set by CarCosmetics
+-- on this client's copy of the car; unset = the car's effects.lamps).
+CarLamps.LOOK_HEAD = "LookHead"
+CarLamps.LOOK_TAIL = "LookTail"
+
+local function brighten(c: Color3, by: number): Color3
+	local h, s, v = c:ToHSV()
+	return Color3.fromHSV(h, s, math.min(1, v * (1 + by)))
+end
 
 local KIND_OF_PREFIX: { { string } } = { { "HeadLamps", "head" }, { "TailLamps", "tail" }, { "ReverseLamps", "reverse" } }
 
@@ -91,11 +101,18 @@ function CarLamps.apply(model: Model)
 	local head = model:GetAttribute(CarLamps.HEAD) == true
 	local brake = model:GetAttribute(CarLamps.BRAKE) == true
 	local reverse = model:GetAttribute(CarLamps.REVERSE) == true
+	-- A garage look's lamp colours (CarCosmetics) win over the car's own;
+	-- the brake is the chosen tail colour 40% brighter.
+	local lookHead = model:GetAttribute(CarLamps.LOOK_HEAD)
+	local lookTail = model:GetAttribute(CarLamps.LOOK_TAIL)
+	local headColor = if typeof(lookHead) == "Color3" then lookHead else lampsCfg.headColor
+	local tailColor = if typeof(lookTail) == "Color3" then lookTail else lampsCfg.tailColor
+	local brakeColor = if typeof(lookTail) == "Color3" then brighten(lookTail, CosmeticsConfig.render.brakeBrighten) else lampsCfg.brakeColor
 	local function look(kind: string): (boolean, Color3)
 		if kind == "head" then
-			return head, lampsCfg.headColor
+			return head, headColor
 		elseif kind == "tail" then
-			return head or brake, if brake then lampsCfg.brakeColor else lampsCfg.tailColor
+			return head or brake, if brake then brakeColor else tailColor
 		else
 			return reverse, lampsCfg.reverseColor
 		end

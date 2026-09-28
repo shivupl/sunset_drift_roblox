@@ -694,6 +694,17 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | aimHeightM | Spot lights aim at the turntable centre this high (the car's middle). |
 | lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color. Four with the pool suspended keeps the client under maxLiveLights (12). |
 
+## CosmeticsConfig.render (how a garage look is drawn, shared)
+`src/shared/CosmeticsConfig.luau`, read by `CarCosmetics` (client) and `CarLamps`. Each car's strip and tip spots are in `src/shared/CarCosmeticMounts.luau` (car frame, metres before scale, like `CarPlateMounts`).
+| Field | What it does |
+|---|---|
+| matteDarken | Matte takes the paint colour this much darker (0.08). |
+| brakeBrighten | A chosen tail colour's brake lamp is that colour this much brighter in HSV value (0.4): Deep Red tails #8A0508 brake at #C1070B (measured in Play). Smoked brakes dim (#670E11); raise this if braking gets lost. |
+| stripThicknessM / stripPixelsPerM / stripDrawStuds | The windscreen strip card: 4 mm thick, canvas 400 px per metre, not drawn past 250 studs. |
+| tipRadiusM / tipLengthM / boreRadiusM / boreColor / quadPairGapM | Exhaust tips: 0.09 m radius, 0.16 m long, a dark 0.065 m bore at the open end; quad tips are two pairs 0.2 m apart. Before the car's scale (1.2 on every car now). |
+| CarCosmeticMounts windscreen | posM (strip centre), widthM (glass width at its top), heightM (0.12), tiltDeg (top leaned back with the rake). Behind see-through glass the strip sits ~1 cm inside; behind opaque glass it sits just outside (BEHAVIOURS.md). |
+| CarCosmeticMounts exhaust | posM (between a twin pair, at the tips' centre) and spreadM (twin tips at ±spreadM/2; a single tip at -spreadM/2; quad as two pairs). Tips poke 3-5 cm past the bumper's lower edge. |
+
 ## cityscape
 | Field | What it does |
 |---|---|

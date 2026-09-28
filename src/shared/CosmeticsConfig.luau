@@ -41,6 +41,31 @@ export type Item = {
 -- 2026-09-28; same idea as PlateConfig.actionsPerSecond).
 CosmeticsConfig.actionsPerSecond = 4
 
+-- How a look is drawn on the car (CarCosmetics, CarLamps; garage plan,
+-- task 3, 2026-09-28). The spots themselves are per car, CarCosmeticMounts.
+CosmeticsConfig.render = {
+	-- Matte takes the chosen paint colour this much darker.
+	matteDarken = 0.08,
+	-- A chosen tail colour's brake lamp: that colour this much brighter (HSV
+	-- value), so braking still reads over the tail lamps. Smoked (#4A0A0C)
+	-- brakes at #670E11, which is dim: raise this if braking gets lost.
+	brakeBrighten = 0.4,
+	-- The windscreen strip: a thin card, its canvas drawn at this many pixels
+	-- per metre, not drawn past drawStuds (the text is unreadable by then).
+	stripThicknessM = 0.004,
+	stripPixelsPerM = 400,
+	stripDrawStuds = 250,
+	-- Exhaust tips along the car, metres before the car's scale: a 0.09 m
+	-- radius, 0.16 m long pipe with a dark bore flush at its open end so it
+	-- reads as a pipe, not a rod. Quad tips are two pairs, each pair's tips
+	-- quadPairGapM apart centre to centre.
+	tipRadiusM = 0.09,
+	tipLengthM = 0.16,
+	boreRadiusM = 0.065,
+	boreColor = Color3.fromRGB(18, 18, 20),
+	quadPairGapM = 0.2,
+}
+
 -- Panel order: also the order categories' chips appear in within the panel.
 CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust" } :: { Category }
 

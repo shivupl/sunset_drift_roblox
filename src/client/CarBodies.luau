@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared:WaitForChild("VehicleRig"))
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local BodyBuilder = require(Shared:WaitForChild("BodyBuilder"))
+local CarCosmetics = require(script.Parent:WaitForChild("CarCosmetics"))
 
 local CarBodies = {}
 
@@ -45,7 +46,10 @@ local function mount(model: Model)
 	end)
 	if not ok then
 		warn(`[CarBodies] body for {model.Name} ({carId}) failed: {err}`)
+		return
 	end
+	-- The garage look (paint, rims, lamps, strip, tips), now and on change.
+	CarCosmetics.watch(model)
 end
 
 function CarBodies.start()

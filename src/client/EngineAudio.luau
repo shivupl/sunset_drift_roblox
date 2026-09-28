@@ -29,6 +29,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
+local CarLook = require(Shared.CarLook)
 
 type VehicleState = Types.VehicleState
 
@@ -70,6 +71,12 @@ local punch = 0 -- rpm the note sits over it after the throttle goes on
 local heardLoad = 0 -- the throttle the layers hear, eased (lift tapers off)
 local ignition = 0 -- 0 before the engine has started, 1 once it runs (fades in)
 local chassisPart: BasePart? = nil
+-- The garage exhaust's sound profile (CosmeticsConfig: engineVolume scales
+-- the engine layers, crackleChance the pops in each lift-off burst), read
+-- from the driven car's Look and kept current while driving.
+local exhaustVolume = 1
+local exhaustCrackle = 1
+local lookConn: RBXScriptConnection? = nil
 
 local function layersOf(cfg: ConfigLoader.Config): { [string]: Layer }
 	local layers = (cfg.effects.engineAudio.layers :: any) :: { [string]: Layer }
@@ -86,6 +93,13 @@ function EngineAudio.attach(model: Model)
 	end
 	local chassis = VehicleRig.handles(model).chassis
 	chassisPart = chassis
+	local function readLook()
+		local item = CarLook.item(CarLook.decode(model:GetAttribute(CarLook.ATTRIBUTE)), "exhaust")
+		exhaustVolume = item.engineVolume or 1
+		exhaustCrackle = item.crackleChance or 1
+	end
+	readLook()
+	lookConn = model:GetAttributeChangedSignal(CarLook.ATTRIBUTE):Connect(readLook)
 	local layers = layersOf(cfg)
 	local byId: { [string]: Voice } = {}
 	for _, name in LAYER_NAMES do
@@ -231,7 +245,12 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	if #pops > 0 then
 		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
 		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 then
-			local n = rng:NextInteger(audio.crackleBurstPops[1], audio.crackleBurstPops[2])
+			-- The exhaust scales the burst; a fraction is a chance of one more.
+			local scaled = rng:NextInteger(audio.crackleBurstPops[1], audio.crackleBurstPops[2]) * exhaustCrackle
+			local n = math.floor(scaled)
+			if rng:NextNumber() < scaled - n then
+				n += 1
+			end
 			for _ = 1, n do
 				table.insert(popQueue, clock + rng:NextNumber(0, audio.crackleBurstSeconds))
 			end
@@ -286,7 +305,7 @@ function EngineAudio.update(state: VehicleState, dt: number)
 			mid += layer.eq[2] * p
 			hi += layer.eq[3] * p
 		end
-		v.sound.Volume = audio.masterVolume * math.sqrt(power) * gainMul
+		v.sound.Volume = audio.masterVolume * exhaustVolume * math.sqrt(power) * gainMul
 		if power > 1e-6 then
 			v.eq.LowGain = low / power
 			v.eq.MidGain = mid / power
@@ -316,6 +335,12 @@ function EngineAudio.detach()
 	end
 	chassisPart = nil
 	ignition = 0
+	if lookConn then
+		lookConn:Disconnect()
+		lookConn = nil
+	end
+	exhaustVolume = 1
+	exhaustCrackle = 1
 	for _, v in voices do
 		v.sound:Destroy()
 	end

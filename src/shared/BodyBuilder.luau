@@ -169,6 +169,7 @@ local function makePiece(piece: BodyPiece, body: VehicleRig.BodySpec, mps: numbe
 	part.Name = name
 	part.Size = Vector3.new(piece.sizeM[1], piece.sizeM[2], piece.sizeM[3]) * (k / mps)
 	part.Color = if piece.paint then paint else (piece.color or Color3.fromRGB(160, 160, 160))
+	part:SetAttribute("Painted", if piece.paint then true else nil) -- CarCosmetics repaints these
 	part.Material = piece.material or Enum.Material.SmoothPlastic
 	part.Transparency = piece.transparency or 0
 	part.CastShadow = piece.castShadow ~= false
