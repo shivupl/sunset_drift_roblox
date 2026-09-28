@@ -81,7 +81,7 @@ return function(t: T)
 	end
 
 	-- Prices
-	local prices = PlateConfig.prices
+	local prices = PlateConfig.prices.SA
 	local double = PlateConfig.repeatMultiplier
 	t.eq(PlateText.price("SA:ABJ-7"), prices[1], "1 digit")
 	t.eq(PlateText.price("SA:ABJ-12"), prices[2], "2 digits")
@@ -91,4 +91,52 @@ return function(t: T)
 	t.eq(PlateText.price("SA:AAA-1234"), prices[4] * double, "three identical letters")
 	t.eq(PlateText.price("SA:ABJ-7777"), prices[4] * double, "all digits identical")
 	t.eq(PlateText.price("SA:AAA-7777"), prices[4] * double, "both still only double")
+	-- Dubai (docs/superpowers/specs/2026-09-27-dubai-plates-design.md)
+	local function du(s: string): string?
+		return (PlateText.normalise("DU", s))
+	end
+	local function duReason(s: string): string?
+		local _, r = PlateText.normalise("DU", s)
+		return r
+	end
+	t.eq(du("A 12345"), "DU:A-12345", "dubai code and number")
+	t.eq(du("a-7"), "DU:A-7", "lower case code")
+	t.eq(du("12345 A"), "DU:A-12345", "number first")
+	t.eq(du("AA 0007"), "DU:AA-7", "double code, leading zeros")
+	t.eq(du("Z" .. utf8.char(0x0661, 0x0662)), "DU:Z-12", "arabic-indic digits")
+	t.eq(du("Z" .. utf8.char(0x06F5)), "DU:Z-5", "persian digit")
+	for _, code in { "AA", "BB", "CC", "DD", "EE" } do
+		t.eq(du(code .. " 9"), `DU:{code}-9`, "double code " .. code)
+	end
+	for _, bad in { "FF 1", "AB 1", "ABC 1", "A 123456", "A 00000", "A", "7", "A7B", "أ 7", string.rep("A", 100) } do
+		t.eq(du(bad), nil, "dubai rejected: " .. bad)
+		t.ok(duReason(bad) ~= nil, "dubai reason for: " .. bad)
+	end
+	t.eq(PlateText.normalise("XX", "A 1"), nil, "unknown style")
+	-- A Dubai key is never read as a Saudi one, and the other way round
+	t.eq(PlateText.normalise("SA", "A 12345"), nil, "a dubai plate is not a saudi plate")
+	local d = PlateText.parts("DU:AA-12345")
+	t.ok(d ~= nil, "parts of a dubai key")
+	if d then
+		t.eq(d.style, "DU", "style")
+		t.eq(table.concat(d.latin), "AA", "code")
+		t.eq(d.digits, "12345", "digits")
+		t.eq(#d.arabic, 0, "no arabic letters on a dubai plate")
+	end
+	for _, badKey in { "DU:FF-1", "DU:A-123456", "DU:A-07", "DU:A-0" } do
+		t.eq(PlateText.parts(badKey), nil, "not a dubai key: " .. badKey)
+	end
+	t.eq(PlateText.styleOf("DU:A-7"), "DU", "style of a dubai key")
+	t.eq(PlateText.styleOf("SA:ABJ-7"), "SA", "style of a saudi key")
+	t.eq(PlateText.typed("DU:AA-12345"), "AA 12345", "dubai key as typed text")
+	t.eq(PlateText.typed("SA:ABJ-7"), "ABJ 7", "saudi key as typed text")
+	t.eq(PlateText.normalise("DU", PlateText.typed("DU:AA-12345") :: string), "DU:AA-12345", "typed text round trip")
+	t.ok(PlateText.isStyle("SA") and PlateText.isStyle("DU") and not PlateText.isStyle("XX"), "known styles")
+	local dp = PlateConfig.prices.DU
+	t.eq(PlateText.price("DU:A-7"), dp[1], "dubai 1 digit")
+	t.eq(PlateText.price("DU:A-12"), dp[2], "dubai 2 digits")
+	t.eq(PlateText.price("DU:A-123"), dp[3], "dubai 3 digits")
+	t.eq(PlateText.price("DU:A-1234"), dp[4], "dubai 4 digits")
+	t.eq(PlateText.price("DU:A-12345"), dp[5], "dubai 5 digits")
+	t.eq(PlateText.price("DU:AA-55555"), dp[5] * double, "dubai all digits identical")
 end

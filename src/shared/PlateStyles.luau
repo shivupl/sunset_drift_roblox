@@ -11,12 +11,18 @@
 -- above its Latin letter, so the Arabic row reads (right to left) in the
 -- reverse order of the Latin. The KSA strip is a column on the right of
 -- the short plate and between the two blocks on the long one.
+--
+-- Dubai private plate (docs/superpowers/specs/2026-09-27-dubai-plates-design.md):
+-- black on white, the same two sizes. Long: the name ("DUBAI" over "دبي")
+-- at the left with the code under it, the number large on the right.
+-- Short: the name at the top left, the code at the top right, the number
+-- large across the bottom. The city wordmark is drawn as plain text.
 local PlateText = require(script.Parent.PlateText)
 
 export type Format = "short" | "long"
 export type Rect = { x: number, y: number, w: number, h: number }
-export type Role = "arabicLetter" | "arabicDigit" | "latinLetter" | "latinDigit" | "strip"
-export type Cell = { text: string, role: Role, rect: Rect, font: Enum.Font, color: Color3 }
+export type Role = "arabicLetter" | "arabicDigit" | "latinLetter" | "latinDigit" | "strip" | "code" | "label"
+export type Cell = { text: string, role: Role, rect: Rect, font: Enum.Font, color: Color3, bold: boolean? }
 export type Block = { rect: Rect, color: Color3 }
 export type Art = { blocks: { Block }, cells: { Cell } }
 
@@ -44,6 +50,9 @@ PlateStyles.COLORS = COLORS
 local FONTS = {
 	latin = Enum.Font.GothamBold,
 	arabic = Enum.Font.GothamBold,
+	-- Dubai's number and code are tall and narrow (2026-09-27 reference);
+	-- Oswald is the closest condensed face Roblox has.
+	condensed = Enum.Font.Oswald,
 }
 
 type Layout = {
@@ -97,6 +106,33 @@ local LAYOUT: { [Format]: Layout } = {
 	},
 }
 
+type DubaiLayout = {
+	name: Rect, -- "DUBAI"
+	nameArabic: Rect, -- "دبي"
+	code: Rect,
+	digits: Rect,
+	border: number,
+}
+
+-- Measured from the Wikimedia Commons drawings (550x110 and 335x155 mm,
+-- 2026-09-27), as fractions of the plate from the top left.
+local DUBAI: { [Format]: DubaiLayout } = {
+	long = {
+		name = { x = 0.07, y = 0.10, w = 0.20, h = 0.26 },
+		nameArabic = { x = 0.10, y = 0.34, w = 0.14, h = 0.20 },
+		code = { x = 0.09, y = 0.52, w = 0.16, h = 0.38 },
+		digits = { x = 0.37, y = 0.10, w = 0.50, h = 0.80 },
+		border = 0.035,
+	},
+	short = {
+		name = { x = 0.08, y = 0.07, w = 0.30, h = 0.18 },
+		nameArabic = { x = 0.12, y = 0.24, w = 0.22, h = 0.13 },
+		code = { x = 0.72, y = 0.05, w = 0.18, h = 0.32 },
+		digits = { x = 0.10, y = 0.38, w = 0.80, h = 0.56 },
+		border = 0.03,
+	},
+}
+
 -- Glyphs spread evenly across a rect, first on the left (or the right).
 local function spread(out: { Cell }, glyphs: { string }, rect: Rect, role: Role, font: Enum.Font, color: Color3, rightToLeft: boolean)
 	local n = #glyphs
@@ -112,22 +148,60 @@ local function spread(out: { Cell }, glyphs: { string }, rect: Rect, role: Role,
 	end
 end
 
+-- The plate's border: four ink bars, the same thickness on every side.
+local function border(format: Format, thickness: number): { Block }
+	local size = PlateStyles.SIZE_M[format]
+	local bx = thickness * size.Y / size.X
+	return {
+		{ rect = { x = 0, y = 0, w = 1, h = thickness }, color = COLORS.ink },
+		{ rect = { x = 0, y = 1 - thickness, w = 1, h = thickness }, color = COLORS.ink },
+		{ rect = { x = 0, y = 0, w = bx, h = 1 }, color = COLORS.ink },
+		{ rect = { x = 1 - bx, y = 0, w = bx, h = 1 }, color = COLORS.ink },
+	}
+end
+
+local function dubai(p: PlateText.Parts, format: Format): Art?
+	local l = DUBAI[format]
+	if not l then
+		return nil
+	end
+	local cells: { Cell } = {
+		{ text = "DUBAI", role = "label", font = FONTS.latin, color = COLORS.ink, rect = l.name },
+		{ text = "دبي", role = "label", font = FONTS.arabic, color = COLORS.ink, rect = l.nameArabic },
+		{ text = table.concat(p.latin), role = "code", font = FONTS.condensed, color = COLORS.ink, rect = l.code, bold = true },
+	}
+	local digits: { string } = {}
+	for i = 1, #p.digits do
+		table.insert(digits, string.sub(p.digits, i, i))
+	end
+	-- Each digit keeps a fifth of the block and the group is centred, so a
+	-- short number stays tight like the real plate instead of spreading out.
+	local slot = l.digits.w / 5
+	local width = slot * #digits
+	local block = { x = l.digits.x + (l.digits.w - width) / 2, y = l.digits.y, w = width, h = l.digits.h }
+	spread(cells, digits, block, "latinDigit", FONTS.condensed, COLORS.ink, false)
+	for _, c in cells do
+		if c.role == "latinDigit" then
+			c.bold = true
+		end
+	end
+	return { blocks = border(format, l.border), cells = cells }
+end
+
 -- The plate for a key as plain data; nil for anything not a valid key.
 function PlateStyles.layout(key: string, format: Format): Art?
 	local p = PlateText.parts(key)
+	if p and p.style == "DU" then
+		return dubai(p, format)
+	end
 	local l = LAYOUT[format]
 	if not p or not l then
 		return nil
 	end
-	local size = PlateStyles.SIZE_M[format]
-	local bx = l.border * size.Y / size.X -- the same thickness on the sides
-	local blocks: { Block } = {
-		{ rect = l.strip, color = COLORS.strip },
-		{ rect = { x = 0, y = 0, w = 1, h = l.border }, color = COLORS.ink },
-		{ rect = { x = 0, y = 1 - l.border, w = 1, h = l.border }, color = COLORS.ink },
-		{ rect = { x = 0, y = 0, w = bx, h = 1 }, color = COLORS.ink },
-		{ rect = { x = 1 - bx, y = 0, w = bx, h = 1 }, color = COLORS.ink },
-	}
+	local blocks: { Block } = { { rect = l.strip, color = COLORS.strip } }
+	for _, b in border(format, l.border) do
+		table.insert(blocks, b)
+	end
 	for _, line in l.lines do
 		table.insert(blocks, { rect = line, color = COLORS.ink })
 	end
@@ -189,6 +263,11 @@ function PlateStyles.draw(parent: Instance, key: string?, format: Format): Frame
 		l.BackgroundTransparency = 1
 		l.Text = c.text
 		l.Font = c.font
+		if c.bold then
+			local face = Font.fromEnum(c.font)
+			face.Weight = Enum.FontWeight.Bold
+			l.FontFace = face
+		end
 		l.TextColor3 = c.color
 		l.TextScaled = true
 		place(l, c.rect)

@@ -3,16 +3,17 @@
 -- screen and the server both use it; the server always normalises again
 -- and never trusts the client's string.
 --
--- Canonical key: style code, colon, the Latin letters in reading order, a
--- hyphen, the number without leading zeros. ASCII only: "SA:ABJ-7".
+-- Canonical key: style code, colon, the Latin letters in reading order (or
+-- the Dubai code), a hyphen, the number without leading zeros. ASCII only:
+-- "SA:ABJ-7", "DU:AA-12345".
 local PlateConfig = require(script.Parent.PlateConfig)
 
 local PlateText = {}
 
 export type Parts = {
 	style: string,
-	latin: { string }, -- the letters in reading order
-	arabic: { string }, -- the same letters in Arabic: arabic[i] is latin[i] and is drawn above it
+	latin: { string }, -- the letters in reading order (a Dubai plate: its code)
+	arabic: { string }, -- Saudi: the same letters in Arabic, arabic[i] is latin[i] and is drawn above it; Dubai: empty
 	digits: string, -- "7"
 	arabicDigits: { string }, -- one per digit, same order as digits
 }
@@ -71,22 +72,51 @@ local DROP: { [number]: boolean } = {
 	[0x200D] = true, -- ZWJ
 }
 
--- The plate key for what a player typed, or nil and the reason to show them.
-function PlateText.normalise(style: string, input: string): (string?, string?)
-	if style ~= "SA" then
-		return nil, "Only Saudi plates for now"
+-- The styles a player can buy, in menu order. The code is the start of
+-- every key of that style, so plates of two styles never collide.
+local STYLES: { { code: string, name: string } } = {
+	{ code = "SA", name = "KSA" },
+	{ code = "DU", name = "DUBAI" }, -- docs/superpowers/specs/2026-09-27-dubai-plates-design.md
+}
+PlateText.STYLES = STYLES
+
+function PlateText.isStyle(code: any): boolean
+	for _, st in STYLES do
+		if st.code == code then
+			return true
+		end
 	end
+	return false
+end
+
+-- Dubai codes (2026-09-27 reference check): a single letter, or one of the
+-- five double codes.
+local DU_CODES: { [string]: boolean } = { AA = true, BB = true, CC = true, DD = true, EE = true }
+for c = 65, 90 do
+	DU_CODES[string.char(c)] = true
+end
+
+type Scan = {
+	letters: { string }, -- Latin, uppercase; Arabic letters already mapped to Latin
+	digits: { string }, -- 0-9
+	groups: number, -- runs of letters or digits, in order
+	latin: boolean, -- a letter was typed in Latin
+	arabic: boolean, -- a letter was typed in Arabic
+}
+
+-- What a player typed, split into letters and digits. Every style's rules
+-- work on this, so hidden marks and Arabic-Indic digits normalise the same
+-- way everywhere. nil and a reason for anything that is not a letter or a
+-- digit.
+local function scan(input: string): (Scan?, string?)
 	if #input > PlateConfig.maxInputBytes then
 		return nil, "That is too long for a plate"
 	end
 	if not utf8.len(input) then
 		return nil, "That is not valid text"
 	end
-	local letters: { string } = {}
-	local digits: { string } = {}
-	local groups = 0
+	local out: Scan = { letters = {}, digits = {}, groups = 0, latin = false, arabic = false }
 	local last = ""
-	local scripts: { [string]: boolean } = {} -- which scripts the letters came in
 	for _, cp in utf8.codes(input) do
 		if DROP[cp] then
 			continue
@@ -99,56 +129,115 @@ function PlateText.normalise(style: string, input: string): (string?, string?)
 		elseif cp >= 0x06F0 and cp <= 0x06F9 then
 			kind, ch = "digit", tostring(cp - 0x06F0)
 		elseif (cp >= 65 and cp <= 90) or (cp >= 97 and cp <= 122) then
-			local up = string.upper(string.char(cp))
-			if not TO_ARABIC[up] then
-				return nil, `{up} is not a Saudi plate letter`
-			end
-			kind, ch = "letter", up
-			scripts.latin = true
+			kind, ch = "letter", string.upper(string.char(cp))
+			out.latin = true
 		elseif FROM_ARABIC[cp] then
 			kind, ch = "letter", FROM_ARABIC[cp]
-			scripts.arabic = true
+			out.arabic = true
 		else
-			return nil, `{utf8.char(cp)} is not a Saudi plate letter or digit`
+			return nil, `{utf8.char(cp)} is not a plate letter or digit`
 		end
 		if kind ~= last then
-			groups += 1
+			out.groups += 1
 			last = kind
 		end
-		table.insert(if kind == "letter" then letters else digits, ch)
+		table.insert(if kind == "letter" then out.letters else out.digits, ch)
 	end
-	if groups > 2 then
+	if out.groups > 2 then
 		return nil, "Put the letters together and the number together"
 	end
-	if scripts.latin and scripts.arabic then
+	return out, nil
+end
+
+-- The number part: 1 to maxDigits digits, leading zeros dropped, not all zeros.
+local function number(digits: { string }, maxDigits: number, name: string): (number?, string?)
+	if #digits < 1 or #digits > maxDigits then
+		return nil, `A {name} plate has a number of 1 to {maxDigits} digits`
+	end
+	local n = tonumber(table.concat(digits)) :: number
+	if n == 0 then
+		return nil, "The number cannot be all zeros"
+	end
+	return n, nil
+end
+
+local function normaliseSA(sc: Scan): (string?, string?)
+	if sc.latin and sc.arabic then
 		return nil, "Type the letters in one script, Arabic or English"
 	end
-	if #letters ~= 3 then
+	for _, l in sc.letters do
+		if not TO_ARABIC[l] then
+			return nil, `{l} is not a Saudi plate letter`
+		end
+	end
+	if #sc.letters ~= 3 then
 		return nil, "A Saudi plate has 3 letters"
 	end
-	if scripts.arabic then
+	local letters = sc.letters
+	if sc.arabic then
 		-- Arabic is typed in reading order, right to left, and each Arabic
 		-- letter sits above its Latin letter on the plate, so the Latin
 		-- reading order is the reverse (spec "Checked", 2026-09-27).
 		letters = { letters[3], letters[2], letters[1] }
 	end
-	if #digits < 1 or #digits > 4 then
-		return nil, "A Saudi plate has a number of 1 to 4 digits"
+	local n, why = number(sc.digits, 4, "Saudi")
+	if not n then
+		return nil, why
 	end
-	local number = tonumber(table.concat(digits)) :: number
-	if number == 0 then
-		return nil, "The number cannot be all zeros"
+	return `SA:{table.concat(letters)}-{n}`, nil
+end
+
+local function normaliseDU(sc: Scan): (string?, string?)
+	if sc.arabic then
+		return nil, "Dubai codes are English letters"
 	end
-	return `SA:{table.concat(letters)}-{number}`, nil
+	local code = table.concat(sc.letters)
+	if code == "" then
+		return nil, "A Dubai plate has a code letter, A to Z"
+	end
+	if not DU_CODES[code] then
+		return nil, `{code} is not a Dubai code (A to Z, or AA, BB, CC, DD, EE)`
+	end
+	local n, why = number(sc.digits, 5, "Dubai")
+	if not n then
+		return nil, why
+	end
+	return `DU:{code}-{n}`, nil
+end
+
+-- The plate key for what a player typed in a style, or nil and the reason
+-- to show them.
+function PlateText.normalise(style: string, input: string): (string?, string?)
+	if not PlateText.isStyle(style) then
+		return nil, "Unknown plate style"
+	end
+	local sc, why = scan(input)
+	if not sc then
+		return nil, why
+	end
+	if style == "DU" then
+		return normaliseDU(sc)
+	end
+	return normaliseSA(sc)
 end
 
 -- A key split into what a plate draws. nil for anything not a valid key.
 function PlateText.parts(key: string): Parts?
-	local style, letters, number = string.match(key, "^(%u%u):(%u+)%-(%d+)$")
-	if not style or not letters or not number then
+	local style, letters, digits = string.match(key, "^(%u%u):(%u+)%-(%d+)$")
+	if not style or not letters or not digits or string.sub(digits, 1, 1) == "0" then
 		return nil
 	end
-	if style ~= "SA" or #letters ~= 3 or #number > 4 or string.sub(number, 1, 1) == "0" then
+	if style == "DU" then
+		if not DU_CODES[letters] or #digits > 5 then
+			return nil
+		end
+		local code: { string } = {}
+		for i = 1, #letters do
+			table.insert(code, string.sub(letters, i, i))
+		end
+		return { style = "DU", latin = code, arabic = {}, digits = digits, arabicDigits = {} }
+	end
+	if style ~= "SA" or #letters ~= 3 or #digits > 4 then
 		return nil
 	end
 	local latin: { string } = {}
@@ -163,10 +252,23 @@ function PlateText.parts(key: string): Parts?
 		table.insert(arabic, a)
 	end
 	local arabicDigits: { string } = {}
-	for i = 1, #number do
-		table.insert(arabicDigits, utf8.char(0x0660 + (tonumber(string.sub(number, i, i)) :: number)))
+	for i = 1, #digits do
+		table.insert(arabicDigits, utf8.char(0x0660 + (tonumber(string.sub(digits, i, i)) :: number)))
 	end
-	return { style = style :: string, latin = latin, arabic = arabic, digits = number, arabicDigits = arabicDigits }
+	return { style = style :: string, latin = latin, arabic = arabic, digits = digits, arabicDigits = arabicDigits }
+end
+
+-- The style code of a key ("SA", "DU"); nil for anything not a valid key.
+function PlateText.styleOf(key: string): string?
+	local p = PlateText.parts(key)
+	return if p then p.style else nil
+end
+
+-- A key as a player would type it ("ABJ 7", "AA 12345"): what the menu
+-- sends back to the server, which only ever takes typed text.
+function PlateText.typed(key: string): string?
+	local p = PlateText.parts(key)
+	return if p then `{table.concat(p.latin)} {p.digits}` else nil
 end
 
 -- A random Saudi plate, 3 letters and 4 digits: the session's default
@@ -185,11 +287,12 @@ function PlateText.price(key: string): number?
 	if not p then
 		return nil
 	end
-	local base = PlateConfig.prices[#p.digits]
+	local byDigits = PlateConfig.prices[p.style]
+	local base = byDigits and byDigits[#p.digits]
 	if not base then
 		return nil
 	end
-	local sameLetters = p.latin[1] == p.latin[2] and p.latin[2] == p.latin[3]
+	local sameLetters = p.style == "SA" and p.latin[1] == p.latin[2] and p.latin[2] == p.latin[3]
 	local first = string.sub(p.digits, 1, 1)
 	local sameDigits = #p.digits > 1 and string.rep(first, #p.digits) == p.digits
 	return if sameLetters or sameDigits then base * PlateConfig.repeatMultiplier else base

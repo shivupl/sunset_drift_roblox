@@ -742,8 +742,9 @@ Number plates (docs/superpowers/specs/2026-09-26-number-plates-design.md).
 
 | Field | What it does | Which way |
 |---|---|---|
-| `prices[1..4]` | Cash price by number of digits (500,000 / 200,000 / 75,000 / 20,000) | First guesses; the owner sets them against how fast cash is earned |
-| `repeatMultiplier` | Price multiplier for AAA letters or all-identical digits (2) | Up to make those rarer |
+| `prices.SA[1..4]` | Saudi cash price by number of digits (500,000 / 200,000 / 75,000 / 20,000) | First guesses; the owner sets them against how fast cash is earned |
+| `prices.DU[1..5]` | Dubai cash price by number of digits (1,000,000 / 400,000 / 150,000 / 40,000 / 15,000); higher than Saudi as Dubai numbers are the prestige market | First guesses, as above |
+| `repeatMultiplier` | Price multiplier for Saudi AAA letters or all-identical digits in either style (2) | Up to make those rarer |
 | `pendingSeconds` | How long a purchase holds a plate while cash is taken (120) | Down frees abandoned claims sooner; never below about 20 s — a purchase can queue behind the 6 s per-key write limit twice plus the lock |
 | `availabilityCacheSeconds` | How long a server trusts a "free" answer (30) | Down shows sold plates sooner, at a read per plate per search |
 | `availabilityCacheMax` | Entries the availability cache holds before it is cleared (2000) | Up if legitimate searches are clearing it early; a player cycling plate strings would otherwise grow it for the life of the server |

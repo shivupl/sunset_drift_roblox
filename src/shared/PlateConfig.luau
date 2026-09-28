@@ -3,10 +3,15 @@
 -- (docs/superpowers/specs/2026-09-26-number-plates-design.md). TUNING.md,
 -- "PlateConfig", says which way to move each.
 local PlateConfig = {
-	-- Price by how many digits the number has. First guesses (spec §5,
-	-- 2026-09-26), for the owner to set against how fast cash is earned.
-	prices = { [1] = 500_000, [2] = 200_000, [3] = 75_000, [4] = 20_000 } :: { [number]: number },
-	-- Three identical letters (AAA) or all digits identical (77, 7777) cost this many times the price.
+	-- Price by style, then by how many digits the number has. First guesses,
+	-- for the owner to set against how fast cash is earned. Saudi: spec §5,
+	-- 2026-09-26. Dubai: higher, as Dubai numbers are the prestige market
+	-- (docs/superpowers/specs/2026-09-27-dubai-plates-design.md).
+	prices = {
+		SA = { [1] = 500_000, [2] = 200_000, [3] = 75_000, [4] = 20_000 },
+		DU = { [1] = 1_000_000, [2] = 400_000, [3] = 150_000, [4] = 40_000, [5] = 15_000 },
+	} :: { [string]: { [number]: number } },
+	-- Three identical letters (Saudi AAA) or all digits identical (77, 7777) cost this many times the price.
 	repeatMultiplier = 2,
 	-- Seconds a purchase holds a plate while the cash is taken; after this
 	-- anyone may claim it (spec §4). Long enough for a slow profile write.
