@@ -7,8 +7,9 @@
 -- about a plate is trusted.
 --
 -- Each car carries the plate to draw as the Model attribute "Plate"
--- (CarPlates draws it on every client): its owner's equipped plate, or a
--- random default plate for the session. Player attributes: Plates and
+-- (CarPlates draws it on every client): the plate its owner picked for that
+-- car in the garage (Economy.look(...).plate) while they still own it, else
+-- their equipped plate, else a random default plate for the session. Player attributes: Plates and
 -- PlateEquipped (Economy), PlateDefault (here).
 --
 -- One plate transaction per player at a time. Any left unfinished (the
@@ -57,7 +58,18 @@ local function allowed(kind: string, player: Player, perSecond: number): boolean
 	return cur.n <= perSecond
 end
 
-local function plateFor(player: Player): string?
+local function ownsPlate(player: Player, key: string): boolean
+	local plates = player:GetAttribute("Plates")
+	return type(plates) == "string" and table.find(string.split(plates, ","), key) ~= nil
+end
+
+local function plateFor(player: Player, carId: string?): string?
+	if carId then
+		local chosen = Economy.look(player, carId).plate
+		if type(chosen) == "string" and ownsPlate(player, chosen) then
+			return chosen
+		end
+	end
 	local equipped = player:GetAttribute("PlateEquipped")
 	if type(equipped) == "string" then
 		return equipped
@@ -79,10 +91,15 @@ local function carOf(player: Player): Model?
 	return nil
 end
 
+local function carIdOf(car: Instance): string?
+	local id = car:GetAttribute("CarId")
+	return if type(id) == "string" then id else nil
+end
+
 local function refreshCar(player: Player)
 	local car = carOf(player)
 	if car then
-		car:SetAttribute("Plate", plateFor(player))
+		car:SetAttribute("Plate", plateFor(player, carIdOf(car)))
 	end
 end
 
@@ -278,6 +295,10 @@ function PlateService.start(remotes: Remotes.RemoteTable)
 		player:GetAttributeChangedSignal("PlateEquipped"):Connect(function()
 			refreshCar(player)
 		end)
+		-- A plate picked for a car stops showing once it is no longer owned.
+		player:GetAttributeChangedSignal("Plates"):Connect(function()
+			refreshCar(player)
+		end)
 	end
 	Players.PlayerAdded:Connect(watch)
 	for _, player in Players:GetPlayers() do
@@ -300,7 +321,7 @@ function PlateService.start(remotes: Remotes.RemoteTable)
 		local uid = child:GetAttribute("OwnerUserId")
 		local owner = if type(uid) == "number" then Players:GetPlayerByUserId(uid) else nil
 		if owner and child:IsA("Model") then
-			child:SetAttribute("Plate", plateFor(owner))
+			child:SetAttribute("Plate", plateFor(owner, carIdOf(child)))
 		end
 	end
 	task.spawn(function()
@@ -329,6 +350,12 @@ function PlateService.start(remotes: Remotes.RemoteTable)
 			end
 		end
 	end)
+end
+
+-- Re-stamps the player's car's plate, for CosmeticsService after a garage
+-- plate change.
+function PlateService.refresh(player: Player)
+	refreshCar(player)
 end
 
 return PlateService

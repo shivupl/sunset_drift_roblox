@@ -10,6 +10,7 @@ local ScoreService = require(script.ScoreService)
 local CarControls = require(script.CarControls)
 local PlateService = require(script.PlateService)
 local SkyService = require(script.SkyService)
+local CosmeticsService = require(script.CosmeticsService)
 
 print("[Hajwala] server boot")
 local config = ConfigLoader.current()
@@ -29,6 +30,9 @@ CarSpawner.driverChanged = ScoreService.setDriving
 CarSpawner.configChanged = ScoreService.setConfig
 -- Before ScoreService.start, which starts Economy: plates hook its profile loads.
 PlateService.start(remotes)
+-- After PlateService (it chains onto the onLoaded hook PlateService sets),
+-- and like it before ScoreService.start so no profile load is missed.
+CosmeticsService.start(remotes)
 ScoreService.start(config, remotes)
 CarSpawner.start(config, road, remotes)
 CarControls.start(remotes)

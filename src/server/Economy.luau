@@ -2,7 +2,7 @@
 -- Cash, the all-time best and number plates, persisted per player.
 --
 -- Everything the client can see is an attribute on the Player (Cash,
--- SessionBest, BestScore, Plates, PlateEquipped, Sky): attributes replicate
+-- SessionBest, BestScore, Plates, PlateEquipped, Sky, Cosmetics, Looks): attributes replicate
 -- server to client on their own, and a client writing one locally changes
 -- nothing on the server. No remote carries a balance, so there is nothing
 -- to forge.
@@ -32,9 +32,12 @@
 -- overclaimed this). Worth revisiting when teleports arrive (Phase 2).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlateConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlateConfig"))
 local SkyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkyConfig"))
+local CosmeticsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CosmeticsConfig"))
+local CarLook = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CarLook"))
 local PlateRegistry = require(script.Parent.PlateRegistry)
 local Stores = require(script.Parent.Stores)
 
@@ -49,6 +52,11 @@ export type Profile = {
 	equipped: string?,
 	pendingTxns: { PlateRegistry.PendingTxn },
 	sky: string?, -- the time of day picked in the menu (SkyConfig id); nil = the default
+	-- Garage (docs/superpowers/specs/2026-09-28-garage-design.md §5): the
+	-- cosmetic ids bought (CosmeticsConfig; stock ids are never listed, they
+	-- are everyone's), and each car's chosen look, keyed by catalog car id.
+	cosmetics: { string },
+	looks: { [string]: CarLook.Look },
 }
 
 local Economy = {}
@@ -69,7 +77,7 @@ local function key(player: Player): string
 end
 
 local function fresh(): Profile
-	return { cash = 0, bestScore = 0, plates = {}, equipped = nil, pendingTxns = {}, sky = nil }
+	return { cash = 0, bestScore = 0, plates = {}, equipped = nil, pendingTxns = {}, sky = nil, cosmetics = {}, looks = {} }
 end
 
 local function publish(player: Player)
@@ -88,6 +96,13 @@ local function publish(player: Player)
 	player:SetAttribute("Plates", table.concat(owned, ","))
 	player:SetAttribute("PlateEquipped", p.equipped)
 	player:SetAttribute("Sky", p.sky)
+	player:SetAttribute("Cosmetics", table.concat(p.cosmetics, ","))
+	player:SetAttribute("Looks", HttpService:JSONEncode(p.looks))
+end
+
+-- True if this profile may use the cosmetic: stock ids always, others once bought.
+local function profileOwns(p: Profile, id: string): boolean
+	return CosmeticsConfig.isStock(id) or table.find(p.cosmetics, id) ~= nil
 end
 
 -- A stored profile read defensively. The plate fields are new (2026-09-26):
@@ -112,6 +127,25 @@ local function readProfile(raw: any): Profile
 	-- New 2026-09-28; an older profile has none and gets the default sky.
 	if type(raw.sky) == "string" and SkyConfig.find(raw.sky) then
 		p.sky = raw.sky
+	end
+	-- New 2026-09-28 (garage); an older profile has none and owns nothing.
+	-- Ids the catalog no longer knows, and stock ids, are dropped.
+	if type(raw.cosmetics) == "table" then
+		for _, id in raw.cosmetics do
+			if type(id) == "string" and CosmeticsConfig.find(id) and not CosmeticsConfig.isStock(id) and not table.find(p.cosmetics, id) then
+				table.insert(p.cosmetics, id)
+			end
+		end
+	end
+	-- Looks are read after cosmetics so clean() can drop anything not owned.
+	if type(raw.looks) == "table" then
+		for carId, look in raw.looks do
+			if type(carId) == "string" then
+				p.looks[carId] = CarLook.clean(look, function(id: string): boolean
+					return profileOwns(p, id)
+				end)
+			end
+		end
 	end
 	if type(raw.pendingTxns) == "table" then
 		for _, t in raw.pendingTxns do
@@ -139,14 +173,26 @@ local function copyProfile(p: Profile): Profile
 	for _, t in p.pendingTxns do
 		table.insert(out.pendingTxns, table.clone(t))
 	end
+	out.cosmetics = table.clone(p.cosmetics)
+	for carId, look in p.looks do
+		out.looks[carId] = table.clone(look)
+	end
 	return out
 end
 
 -- What is written: this session's profile, with the all-time best merged
 -- rather than overwritten (another session may have set a higher best).
+-- Owned cosmetics are merged the same way (the stored list's ids are kept),
+-- so a stale save never un-owns something bought elsewhere.
 local function encode(p: Profile, old: any): any
 	local out = copyProfile(p)
-	out.bestScore = math.max(p.bestScore, readProfile(old).bestScore)
+	local stored = readProfile(old)
+	out.bestScore = math.max(p.bestScore, stored.bestScore)
+	for _, id in stored.cosmetics do
+		if not table.find(out.cosmetics, id) then
+			table.insert(out.cosmetics, id)
+		end
+	end
 	return out
 end
 
@@ -335,6 +381,73 @@ function Economy.setSky(player: Player, id: string): boolean
 	p.sky = id
 	publish(player)
 	return true
+end
+
+-- True if the player may use this cosmetic: stock ids always, others once bought.
+function Economy.owns(player: Player, id: string): boolean
+	if CosmeticsConfig.isStock(id) then
+		return true
+	end
+	local p = profiles[player]
+	return p ~= nil and table.find(p.cosmetics, id) ~= nil
+end
+
+-- Buys a cosmetic in one durable write (transact). The caller passes the
+-- price from CosmeticsConfig. "refused" when it is already owned or the
+-- player cannot afford it.
+function Economy.buyCosmetic(player: Player, id: string, price: number): PlateRegistry.Outcome
+	return Economy.transact(player, function(p: Profile): boolean
+		if profileOwns(p, id) or p.cash < price then
+			return false
+		end
+		p.cash -= price
+		table.insert(p.cosmetics, id)
+		return true
+	end)
+end
+
+-- Sets one slot of a car's look. Kept in memory; the next save writes it
+-- (like setEquipped). A cosmetic slot takes an owned id of that slot's
+-- category; nil or the stock id clears it. Slot "plate" takes any plate key
+-- or nil: CosmeticsService checks plate ownership. False if refused.
+function Economy.setLook(player: Player, carId: string, slot: string, value: string?): boolean
+	local p = profiles[player]
+	if not p then
+		return false
+	end
+	local look: CarLook.Look = p.looks[carId] or {}
+	if slot == "plate" then
+		look.plate = value
+	else
+		if not table.find(CarLook.SLOTS, slot :: any) then
+			return false
+		end
+		if value ~= nil then
+			local item = CosmeticsConfig.find(value)
+			if not item or (item.category :: string) ~= slot or not profileOwns(p, value) then
+				return false
+			end
+			if CosmeticsConfig.isStock(value) then
+				value = nil
+			end
+		end
+		(look :: any)[slot] = value
+	end
+	-- An all-factory look is dropped rather than saved empty.
+	if next(look) == nil then
+		(p.looks :: any)[carId] = nil
+	else
+		p.looks[carId] = look
+	end
+	publish(player)
+	return true
+end
+
+-- A copy of the player's look for one car ({} when nothing is chosen).
+function Economy.look(player: Player, carId: string): CarLook.Look
+	local p = profiles[player]
+	local look = if p then p.looks[carId] else nil
+	return if look then table.clone(look) else {}
 end
 
 function Economy.release(player: Player)
