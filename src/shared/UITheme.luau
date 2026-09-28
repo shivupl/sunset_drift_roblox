@@ -65,6 +65,10 @@ UITheme.alpha = {
 	panel = 0.06, -- a panel lets a hint of the world through
 	scrim = 0.45, -- the dim behind a modal
 	disabled = 0.5, -- whole-element fade for a disabled control
+	-- The HUD card and the CARS button float over the road while you drive,
+	-- so they let far more of it through than a menu panel does. 0.35 is
+	-- what both used before the tokens existed (2026-09-28).
+	hud = 0.35,
 }
 
 -- TYPE ---------------------------------------------------------------------

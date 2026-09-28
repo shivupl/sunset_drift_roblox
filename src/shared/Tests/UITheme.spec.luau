@@ -27,6 +27,7 @@ return function(t: T)
 		{ name = "paint on gantry", fg = c.paint, bg = c.gantry },
 		{ name = "asphalt900 on beacon", fg = c.asphalt900, bg = c.beacon },
 		{ name = "beacon on asphalt900", fg = c.beacon, bg = c.asphalt900 },
+		{ name = "beacon on asphalt800", fg = c.beacon, bg = c.asphalt800 }, -- error text on a card or input (4.86)
 		{ name = "paint on beaconDim", fg = c.paint, bg = c.beaconDim },
 		{ name = "dusk on asphalt900", fg = c.dusk, bg = c.asphalt900 },
 		{ name = "dusk on duskDim", fg = c.dusk, bg = c.duskDim },

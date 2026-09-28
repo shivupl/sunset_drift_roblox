@@ -47,8 +47,13 @@ Rules:
 - Allowed text pairs (all 4.5:1 or better): paint, sand or sandDim on any
   asphalt 700 to 900; asphalt900 on sodium, sodiumDeep or beacon; paint or
   sodium on sodiumDim; paint on gantry; gantryBright on asphalt 800 to 900;
-  paint on beaconDim; dusk on asphalt900 or duskDim. **Not** gantryBright
-  on gantry (3.98).
+  paint on beaconDim; beacon on asphalt 800 to 900 (error text: 4.86 and
+  5.31; not on asphalt700, 4.25); dusk on asphalt900 or duskDim. **Not**
+  gantryBright on gantry (3.98).
+- Transparency: `alpha.panel` 0.06 for panels, `alpha.scrim` 0.45 for the
+  modal dim, `alpha.disabled` 0.5 for a faded control, and `alpha.hud` 0.35
+  for the two surfaces that float over the road while you drive (the HUD
+  card and the CARS button), which must let the road through.
 
 ## Type
 

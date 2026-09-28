@@ -37,10 +37,11 @@ type VehicleState = Types.VehicleState
 local Hud = {}
 
 local C = UITheme.color
+-- One accent (UI_SYSTEM.md): the live readouts are paint and their labels
+-- sand, and sodium is kept for the one figure that is cash (UI_SYSTEM.md
+-- "Type": cash is written in sodium). Fix round 1, 2026-09-28.
 local PAINT = C.paint
 local SAND = C.sand
-local HOT = C.sodium
--- Cash is written in sodium (UI_SYSTEM.md "Type").
 local CASH = C.sodium
 -- A banked slide or a finished 360 is done, and done is green.
 local DONE = C.gantryBright
@@ -49,10 +50,6 @@ local DONE = C.gantryBright
 local NATL = C.lens
 local BAD = C.beacon
 
--- The card floats over the road and must let it through, far more than a
--- menu panel's alpha.panel. Not a token: the HUD is the one see-through
--- surface.
-local CARD_TRANSPARENCY = 0.35
 
 local gui: ScreenGui? = nil
 local scaler: UIScale? = nil
@@ -60,7 +57,7 @@ local cardFrame: Frame? = nil
 local labels: { [string]: TextLabel } = {}
 local rows: { [string]: Frame } = {}
 local flashText = ""
-local flashColor = HOT
+local flashColor = PAINT
 local flashUntil = 0
 local flashInSlide = false -- a spin flash shows beside the live counter
 local lastUpdate = 0
@@ -154,7 +151,7 @@ local function build(): ScreenGui
 	local card = Instance.new("Frame")
 	card.Name = "Card"
 	card.BackgroundColor3 = C.asphalt900
-	card.BackgroundTransparency = CARD_TRANSPARENCY
+	card.BackgroundTransparency = UITheme.alpha.hud
 	card.BorderSizePixel = 0
 	card.AnchorPoint = Vector2.new(0.5, 0)
 	card.Position = UDim2.new(0.5, 0, 0, 6)
@@ -182,20 +179,20 @@ local function build(): ScreenGui
 	text(top, "Speed", "display", PAINT, 1)
 	local unit = text(top, "Unit", "caption", SAND, 2)
 	unit.Text = "km/h"
-	local gear = text(top, "Gear", "title", HOT, 3)
+	local gear = text(top, "Gear", "title", PAINT, 3)
 	local gearPad = Instance.new("UIPadding")
 	gearPad.PaddingLeft = UDim.new(0, 10)
 	gearPad.Parent = gear
 
 	-- The slide row: live points and multiplier, or the result of the last one.
 	local slide = row(card, "Slide", 8, 2)
-	text(slide, "Points", "display", HOT, 1)
-	text(slide, "Mult", "title", HOT, 2)
-	text(slide, "Flash", "title", HOT, 3)
+	text(slide, "Points", "display", PAINT, 1)
+	text(slide, "Mult", "title", PAINT, 2)
+	text(slide, "Flash", "title", PAINT, 3)
 
 	local bottom = row(card, "Bottom", 14, 3)
 	text(bottom, "Drift", "label", SAND, 1)
-	text(bottom, "Spins", "label", HOT, 2)
+	text(bottom, "Spins", "label", PAINT, 2)
 	text(bottom, "Natl", "label", NATL, 3)
 
 	local records = row(card, "Records", 12, 4)
@@ -271,7 +268,8 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 
 	local angle = math.abs(state.driftAngleDeg)
 	labels.Drift.Text = `DRIFT {math.floor(angle + 0.5)}°`
-	labels.Drift.TextColor3 = if angle >= cfg.hud.driftHighlightDeg then HOT else SAND
+	-- Past the highlight angle the drift readout brightens from sand to paint.
+	labels.Drift.TextColor3 = if angle >= cfg.hud.driftHighlightDeg then PAINT else SAND
 	labels.Spins.Visible = state.spinCount > 0 or state.spinProgressDeg > 90
 	labels.Spins.Text = `SPINS {state.spinCount}`
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
@@ -280,7 +278,10 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 	-- getting short, red when it is nearly gone. That colour is what the
 	-- player taps against.
 	local margin = state.rollMarginDeg
-	labels.Natl.TextColor3 = if margin < 8 then BAD elseif margin < 16 then HOT else NATL
+	-- "catch" keeps the amber: the one sodium besides cash, on purpose. It is
+	-- a transient warning between lens and the beacon red, and the owner
+	-- tuned the natl feel against that three-step scale.
+	labels.Natl.TextColor3 = if margin < 8 then BAD elseif margin < 16 then C.sodium else NATL
 	labels.Natl.Text = `NATL {math.floor(math.abs(state.rollDeg) + 0.5)}°  {if margin < 8 then "TIP!" elseif margin < 16 then "catch" else "hold"}`
 
 	-- Cash and the records replicate as attributes, so there is nothing to

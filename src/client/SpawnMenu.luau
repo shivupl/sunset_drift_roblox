@@ -51,10 +51,6 @@ local SpawnMenu = {}
 -- Re-skinned onto the tokens on 2026-09-28; the layout below is unchanged.
 local C = UITheme.color
 
--- The CARS button floats over the road, so it stays see-through like the
--- HUD card rather than taking a panel's near-opaque ground. Not a token:
--- the one see-through control in the game.
-local OPEN_BUTTON_TRANSPARENCY = 0.35
 
 local ACTION = "HJ_SpawnMenu"
 -- How far a finger may travel and still count as a tap rather than a scroll.
@@ -172,7 +168,10 @@ local function metrics(): Metrics
 			blurbSize = UITheme.textSize("body", false),
 			specSize = UITheme.textSize("caption", false),
 			headerH = 44,
-			tabH = 34,
+			-- Every pressable is at least UITheme.target (36 here, 48 on a
+			-- phone): fix round 1, 2026-09-28, the owner wants the UI thumb-
+			-- reachable. The tabs were 34.
+			tabH = math.max(34, UITheme.target(false)),
 			closeSize = 40,
 			footerH = 18,
 			footerSize = UITheme.textSize("caption", false),
@@ -185,7 +184,11 @@ local function metrics(): Metrics
 	-- touch size.
 	local unit = math.clamp(short, 320, 900)
 	local cardH = math.clamp(unit * 0.21, 78, 132)
-	local buttonH = math.clamp(cardH * 0.58, 46, 72)
+	-- Tap targets never under UITheme.target(true) (48): the SPAWN pill, the
+	-- tabs and the close button were floored at 46, 40 and 44 before.
+	local thumb = UITheme.target(true)
+	local buttonH = math.max(thumb, math.clamp(cardH * 0.58, 46, 72))
+	local closeSize = math.max(thumb, math.clamp(unit * 0.095, 44, 60))
 	return {
 		touch = true,
 		cardH = cardH,
@@ -196,9 +199,10 @@ local function metrics(): Metrics
 		nameSize = math.max(UITheme.textSize("heading", true), math.clamp(cardH * 0.25, 19, 32)),
 		blurbSize = math.max(UITheme.textSize("body", true), math.clamp(cardH * 0.17, 13, 21)),
 		specSize = math.max(UITheme.textSize("caption", true), math.clamp(cardH * 0.145, 11, 18)),
-		headerH = math.clamp(unit * 0.12, 44, 72),
-		tabH = math.clamp(unit * 0.08, 40, 56),
-		closeSize = math.clamp(unit * 0.095, 44, 60),
+		-- The header always holds the close button.
+		headerH = math.max(closeSize, math.clamp(unit * 0.12, 44, 72)),
+		tabH = math.max(thumb, math.clamp(unit * 0.08, 40, 56)),
+		closeSize = closeSize,
 		footerH = math.clamp(unit * 0.05, 18, 30),
 		footerSize = math.max(UITheme.textSize("caption", true), math.clamp(unit * 0.032, 12, 19)),
 		panelWidth = 0.96,
@@ -556,7 +560,7 @@ local function fit()
 	local ob = openButton
 	if ob then
 		local w = if m.touch then math.clamp(vp.X * 0.2, 120, 220) else 92
-		local h = if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38
+		local h = math.max(UITheme.target(m.touch), if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38)
 		ob.Size = UDim2.fromOffset(w, h)
 		ob.TextSize = if m.touch then math.max(UITheme.textSize("label", true), math.floor(h * 0.42)) else UITheme.textSize("label", false)
 		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35) - (if m.touch then 10 else 0))
@@ -775,7 +779,8 @@ local function build()
 	open.AnchorPoint = Vector2.new(0.5, 1)
 	open.Position = UDim2.new(0.5, 0, 1, -14)
 	open.Size = UDim2.fromOffset(92, 38)
-	open.BackgroundTransparency = OPEN_BUTTON_TRANSPARENCY
+	-- It floats over the road like the HUD card: alpha.hud, not a panel's.
+	open.BackgroundTransparency = UITheme.alpha.hud
 	openButton = open
 	open.Activated:Connect(function()
 		SpawnMenu.toggle()

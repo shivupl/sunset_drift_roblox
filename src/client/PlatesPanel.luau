@@ -55,6 +55,12 @@ local actionRemote: RemoteFunction? = nil
 local carId: string? = nil
 local current: { key: string?, price: number?, free: boolean } = { key = nil, price = nil, free = false }
 local asked = 0
+-- Whether the panel is laid out for touch. TRAP: it is false until the first
+-- PlatesPanel.fit(), and SpawnMenu calls build() before that, so anything
+-- build() sizes from it (UIKit padding, chip heights, starting text sizes)
+-- gets the desktop value. fit() re-applies the text sizes; rows are rebuilt
+-- by refreshOwned() after fit, so they are right. Anything new that build()
+-- sizes from `touch` must be re-applied in fit() too.
 local touch = false
 local style = "SA" -- the style being searched (PlateText.STYLES)
 local styleButtons: { [string]: TextButton } = {}
@@ -247,6 +253,8 @@ end
 -- not bought, so it carries no OWNED badge.
 local function row(parent: Instance, order: number, key: string, caption: string, fitted: boolean, bought: boolean, onPress: () -> ())
 	local h = rowHeight()
+	-- EQUIP is at least a tap target (h * 0.64 was 36 / 46).
+	local pressH = math.max(math.floor(h * 0.64), UITheme.target(touch))
 	local look = if fitted then UITheme.button.selected else UITheme.button.secondary
 	local f = Instance.new("Frame")
 	f.BackgroundColor3 = look.bg
@@ -279,7 +287,7 @@ local function row(parent: Instance, order: number, key: string, caption: string
 	tail.AnchorPoint = Vector2.new(1, 0.5)
 	tail.Position = UDim2.new(1, -10, 0.5, 0)
 	tail.AutomaticSize = Enum.AutomaticSize.X
-	tail.Size = UDim2.fromOffset(0, math.floor(h * 0.64))
+	tail.Size = UDim2.fromOffset(0, pressH)
 	local tailLayout = Instance.new("UIListLayout")
 	tailLayout.FillDirection = Enum.FillDirection.Horizontal
 	tailLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
@@ -296,7 +304,7 @@ local function row(parent: Instance, order: number, key: string, caption: string
 		end
 		local b = button(tail, "EQUIP", "secondary")
 		b.LayoutOrder = 2
-		b.Size = UDim2.fromOffset(110, math.floor(h * 0.64))
+		b.Size = UDim2.fromOffset(110, pressH)
 		b.Activated:Connect(onPress)
 	end
 	local function fitCaption()
@@ -504,7 +512,8 @@ function PlatesPanel.fit(height: number, isTouch: boolean)
 	end
 	local topH = if isTouch then 56 else 44
 	local previewH = if isTouch then 96 else 84
-	local switchH = if isTouch then 44 else 30
+	-- The style chips are tap targets: UITheme.target (they were 30 / 44).
+	local switchH = UITheme.target(isTouch)
 	f.Size = UDim2.new(1, 0, 0, height)
 	top.Size = UDim2.new(1, 0, 0, topH)
 	preview.Size = UDim2.new(1, 0, 0, previewH)
