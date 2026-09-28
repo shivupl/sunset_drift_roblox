@@ -58,12 +58,29 @@ CosmeticsConfig.render = {
 	-- Exhaust tips along the car, metres before the car's scale: a 0.09 m
 	-- radius, 0.16 m long pipe with a dark bore flush at its open end so it
 	-- reads as a pipe, not a rod. Quad tips are two pairs, each pair's tips
-	-- quadPairGapM apart centre to centre.
+	-- quadPairGapM apart centre to centre (at least 2 x tipRadiusM, or they
+	-- overlap: CarCosmeticMounts.spec).
 	tipRadiusM = 0.09,
 	tipLengthM = 0.16,
 	boreRadiusM = 0.065,
 	boreColor = Color3.fromRGB(18, 18, 20),
 	quadPairGapM = 0.2,
+	-- The pipe each tip sits on, running forward under the car for the car's
+	-- tips.pipeLengthM (CarCosmeticMounts), so a tip is attached, never a
+	-- floating can (garage round 2, 2026-09-28: "exhausts should be attached
+	-- in some sense to the car - not floating"). 0.04 m radius: plainly
+	-- thinner than the tip, as a real slip-on tip over its pipe. It starts
+	-- pipeOverlapM inside the tip so no seam shows.
+	pipeRadiusM = 0.04,
+	pipeOverlapM = 0.03,
+	pipeColor = Color3.fromRGB(62, 60, 58),
+	-- A factory pipe, built where a car's body has none (a stock outlet with
+	-- factory = true): a plain 0.032 m radius dark pipe with a 0.022 m bore,
+	-- the same run forward as the tips' pipe. Small and plain on purpose, it
+	-- is the car's standard exhaust, not a tip.
+	factoryPipeRadiusM = 0.032,
+	factoryBoreRadiusM = 0.022,
+	factoryPipeColor = Color3.fromRGB(70, 68, 66),
 }
 
 -- Panel order: also the order categories' chips appear in within the panel.

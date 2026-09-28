@@ -703,9 +703,29 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 |---|---|
 | brakeBrighten | A chosen tail colour's brake lamp is that colour this much brighter in HSV value (0.4): Deep Red tails #8A0508 brake at #C1070B (measured in Play). Smoked brakes dim (#670E11); raise this if braking gets lost. |
 | stripThicknessM / stripPixelsPerM / stripDrawStuds | The windscreen strip card: 4 mm thick, canvas 400 px per metre, not drawn past 250 studs. |
-| tipRadiusM / tipLengthM / boreRadiusM / boreColor / quadPairGapM | Exhaust tips: 0.09 m radius, 0.16 m long, a dark 0.065 m bore at the open end; quad tips are two pairs 0.2 m apart. Before the car's scale (1.2 on every car now). |
+| tipRadiusM / tipLengthM / boreRadiusM / boreColor / quadPairGapM | Exhaust tips: 0.09 m radius, 0.16 m long, a dark 0.065 m bore at the open end; quad tips are two pairs 0.2 m apart (at least one tip diameter, or they overlap). Before the car's scale (1.2 on every car now). |
+| pipeRadiusM / pipeOverlapM / pipeColor | The pipe each tip sits on (0.04 m radius, dark metal), from 3 cm inside the tip forward for the car's `tips.pipeLengthM`, into the body or the car's own muffler, so no tip floats. Thinner than the bore, so it never shows through the mouth. |
+| factoryPipeRadiusM / factoryBoreRadiusM / factoryPipeColor | The plain pipe built where a body has no pipe of its own (kamri, pickup, cruiser): 0.032 m radius, 0.022 m bore, the same run forward as the tips' pipe. It goes when tips go on. |
 | CarCosmeticMounts windscreen | posM (strip centre), widthM (glass width at its top), heightM (0.12), tiltDeg (top leaned back with the rake). Behind see-through glass the strip sits ~1 cm inside; behind opaque glass it sits just outside (BEHAVIOURS.md). |
-| CarCosmeticMounts exhaust | posM (between a twin pair, at the tips' centre) and spreadM (twin tips at ±spreadM/2; a single tip at -spreadM/2; quad as two pairs). Tips poke 3-5 cm past the bumper's lower edge. |
+| CarCosmeticMounts exhaust | One shape on every car (garage round 2 §1): `stock` (the car's own pipe mouths: posM at the mouth's centre, optional `dir` the way the pipe points, `factory = true` where we build the pipe), `tips` (posM: between a twin pair at the tips' mouth; spreadM: twin tips at ±spreadM/2, a single on stock[1]'s side, quad as two pairs; pipeLengthM: the pipe run forward) and `bumperZ` (the body's rear face just above the tips). Tip mouths sit 2-5 cm past bumperZ (3 cm on every car), and over the car's own pipes where it has them. `CarCosmeticMounts.spec` holds every car to it. |
+| ExhaustOutlet attachments | `CarCosmetics.outlets(model)`: one Attachment per pipe mouth that shows (tips, plus any own pipe no tip covers), at the mouth's centre, WorldCFrame.LookVector out of the pipe. The flame contract; switching the exhaust item rebuilds them. |
+
+**Exhaust spots, measured 2026-09-28** (near-orthographic captures from behind, the side and below, calibrated at ~700 px/m; car metres before scale):
+
+| Car | Stock mouth(s) (x, y, z) and what they are | Tips y / mouth z / spread | bumperZ | Parts: stock / single / twin / quad |
+|---|---|---|---|---|
+| kamri | factory pipe (-0.55, 0.33, 2.47): no pipe on the generated body | 0.30 / 2.48 / 1.1 | 2.45 | 3 / 4 / 7 / 13 |
+| hatch | ExhaustL/R (-0.048 and 0.078, 0.444, 2.079), 23° up | 0.30 / 2.065 / 0.8 (either side of its pipes) | 2.035 | 1 / 4 / 7 / 13 |
+| pickup | factory pipe (-0.6, 0.415, 2.83) through the bumper, top on the bed floor | 0.415 / 2.84 / 1.2 | 2.81 | 3 / 4 / 7 / 13 |
+| cruiser | factory pipe (-0.6, 0.37, 2.84) under the bumper edge | 0.32 / 2.85 / 1.2 | 2.82 | 3 / 4 / 7 / 13 |
+| krownvik | twin in Underbody (±0.715, 0.265, 2.655), 8° down | 0.265 / 2.76 / 1.43 | 2.73 | 1 / 4 / 7 / 13 |
+| krownvikfleet | twin in Underbody_6 (±0.715, 0.265, 2.665), 8° down | 0.265 / 2.77 / 1.43 | 2.74 | 1 / 4 / 7 / 13 |
+| lekzas | chrome tips Chrome_2 (±0.553, 0.325, 2.52), slightly down | 0.30 / 2.62 / 1.106 | 2.59 | 1 / 4 / 7 / 13 |
+| kamri07 | slash-cut tips P50 off mufflers P31 (±0.565, 0.337, 2.31) | 0.31 / 2.43 / 1.13 | 2.40 | 1 / 4 / 7 / 13 |
+| batrol | single in Trim (-0.666, 0.485, 2.395), 29° out to the left | 0.44 / 2.52 / 1.332 | 2.49 | 1 / 4 / 7 / 13 |
+| kruzer80 | single in Chrome_13 (0.60, 0.643, 2.41), a little out and 8° down | 0.62 / 2.47 / 1.2 | 2.44 | 1 / 4 / 7 / 13 |
+
+Parts per car are the `LookExhaust` folder: 1 invisible outlet holder, plus per tip a tip, bore and pipe (3), or per factory pipe a pipe and bore (2). All massless, non-colliding, unqueryable, welded. Outlets per item: stock 1-2; the hatch keeps its two centre pipes as outlets beside its tips (single 3, twin 4, quad 6); a single tip on a twin-pipe car leaves the other pipe as an outlet (2).
 
 **Finishes** (the FINISH items; retuned 2026-09-28 in the lit bay). Under ShadowMap the view's lights give no specular highlight, and Metal and Foil ignore Reflectance on these meshes. A red Lekzas at Metal with Reflectance 0.08, and again at 0.35, was the same flat red as SmoothPlastic. EnvironmentSpecularScale and EnvironmentDiffuseScale changed nothing indoors. Glass is the one material that picks up the view's lights, as a sheen. So the ladder is:
 

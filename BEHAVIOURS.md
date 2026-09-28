@@ -167,7 +167,9 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 
 - **Server code needs a Play restart.** Config can often be hot-reloaded; world or server modules cannot.
 - **Edit mode caches `require` for the whole session.** Require a `:Clone()` of a module to see fresh code. A cloned module outside its original hierarchy cannot require its siblings.
+  - A clone only helps for its own code: a module that finds its siblings by path (`ReplicatedStorage:WaitForChild("Shared")`) still gets the stale cached siblings. To load a client module against fresh shared code in Edit, clone `Shared`, rename the original aside, parent the clone as `Shared`, require, then rename back, all in one `execute_luau` call (2026-09-28, exhaust standard).
 - **Keep scripted chunks short** (under about 100 s); long ones get backgrounded or time out.
+- **Measuring a store mesh by script does not work; measure it by eye with a near-orthographic camera.** Raycasts hit a MeshPart's collision hull (Box on the store cars), a script cannot change `CollisionFidelity`, and `AssetService:CreateEditableMeshAsync` is refused for store meshes ("no permission"). `screen_capture` keeps `workspace.CurrentCamera.FieldOfView`: at FieldOfView 3 with the camera 30 m out, a capture is close to orthographic (about 700 px per metre on the 1285 x 1080 capture), so a point reads straight off the pixels. Calibrate each view with small neon balls at known car-space points, hide the other body pieces to see a pipe inside the body, and set FieldOfView back to 70 afterwards. A camera looking straight up has no defined roll; offset it a little along the car (2026-09-28, exhaust standard).
 - **Screenshots:**
   - Capture only in Edit mode, one at a time; parallel captures time out.
   - Clear the Selection first.

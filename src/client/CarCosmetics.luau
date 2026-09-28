@@ -12,6 +12,11 @@
 -- remembered on the first apply to a body, and again whenever the model gets
 -- a new body or car id (the garage preview re-mounts on the same model).
 --
+-- The exhaust follows one standard on every car (CarCosmeticMounts, garage
+-- round 2 §1): the car's own pipes or a built factory one, or aftermarket
+-- tips on pipes running forward into the body; either way an ExhaustOutlet
+-- Attachment at every pipe mouth, LookVector out of the pipe (outlets()).
+--
 -- Paint and finish need `paint = true` body pieces. The pickup and cruiser
 -- are single textured shells with none, so paint does nothing on them;
 -- paintable() tells the garage panel to grey those out. Owner follow-up:
@@ -29,6 +34,10 @@ local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
 local CarCosmetics = {}
 
 local R = CosmeticsConfig.render
+
+-- The exhaust outlets' names (outlets()): the flame contract.
+local OUTLET = "ExhaustOutlet"
+local OUTLETS = "ExhaustOutlets"
 
 type Original = { part: BasePart, color: Color3, material: Enum.Material, reflectance: number, sa: SurfaceAppearance?, saColor: Color3? }
 
@@ -220,18 +229,35 @@ local function strip(s: State, model: Model, body: Instance, carId: string, look
 	st.label.Visible = (item.text or "") ~= ""
 end
 
-local function tipOffsets(n: number, spread: number): { number }
-	if n == 1 then
-		return { -spread / 2 }
-	elseif n == 2 then
-		return { -spread / 2, spread / 2 }
-	elseif n >= 4 then
-		local g = R.quadPairGapM / 2
-		return { -spread / 2 - g, -spread / 2 + g, spread / 2 - g, spread / 2 + g }
-	end
-	return {}
+-- A pipe or tip: a cylinder along the car's Z (a Cylinder's axis is its X;
+-- turned a quarter about Y it runs along Z), centred at `at` (car metres),
+-- `length` long. s is studs per car metre.
+local ALONG_Z = CFrame.Angles(0, math.pi / 2, 0)
+local function cylinder(name: string, handles: VehicleRig.Handles, s: number, at: Vector3, length: number, radius: number): Part
+	local part = visualPart(name, handles, CFrame.new(at * s) * ALONG_Z)
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(length, radius * 2, radius * 2) * s
+	return part
 end
 
+-- The dark bore of a pipe whose open end is at z: as long as the pipe's
+-- visible length, flush with (2 mm past) its open end, hidden inside it
+-- everywhere else, so the mouth reads as a hole.
+local function bore(name: string, handles: VehicleRig.Handles, s: number, x: number, y: number, z: number, length: number, radius: number): Part
+	local part = cylinder(name, handles, s, Vector3.new(x, y, z + 0.002 - length / 2), length, radius)
+	part.Color = R.boreColor
+	part.Material = Enum.Material.SmoothPlastic
+	return part
+end
+
+-- The exhaust fitted to the car (garage round 2 §1, the exhaust standard):
+-- stock (no tips) builds a plain pipe at each stock outlet whose body has
+-- none (factory = true) and leaves the car's own pipes be; tips build each
+-- tip, its bore and the pipe it sits on, running forward under the car (a
+-- tip over one of the car's own pipes hides that pipe's mouth inside it).
+-- Either way one ExhaustOutlet Attachment goes at every pipe mouth that shows
+-- (CarCosmeticMounts.outletFrames), on an invisible part welded at the body
+-- mount: flames and any other exhaust effect use only those (outlets()).
 local function exhaust(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
 	if s.exhaust then
 		s.exhaust:Destroy()
@@ -240,37 +266,88 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	local item = CarLook.item(look, "exhaust")
 	local mounts = CarCosmeticMounts.cars[carId]
 	local spot = mounts and mounts.exhaust
-	local n = item.tips or 0
-	if not spot or n <= 0 then
+	if not spot then
 		return
 	end
+	local n = item.tips or 0
 	local handles = VehicleRig.handles(model)
 	local k = VehicleRig.scaleOf(ConfigLoader.entry(carId))
 	local mps = ConfigLoader.forCar(carId).units.metersPerStud
+	local sc = k / mps
 	local folder = Instance.new("Folder")
 	folder.Name = "LookExhaust"
-	-- A Cylinder's axis is its X; turned a quarter about Y it runs along Z.
-	local alongZ = CFrame.Angles(0, math.pi / 2, 0)
-	for i, dx in tipOffsets(n, spot.spreadM) do
-		local at = CarCosmeticMounts.cframe({ spot.posM[1] + dx, spot.posM[2], spot.posM[3] }, 0, k, mps)
-		local tip = visualPart(`Tip{i}`, handles, at * alongZ)
-		tip.Shape = Enum.PartType.Cylinder
-		tip.Size = Vector3.new(R.tipLengthM, R.tipRadiusM * 2, R.tipRadiusM * 2) * (k / mps)
-		tip.Color = item.tipColor or Color3.fromRGB(200, 200, 200)
-		tip.Material = item.tipMaterial or Enum.Material.Metal
-		tip.Parent = folder
-		-- The bore: flush with the tip's open (rear, +Z) end, hidden inside
-		-- it everywhere else.
-		local boreAt = at * CFrame.new(0, 0, 0.002 * k / mps)
-		local bore = visualPart(`Bore{i}`, handles, boreAt * alongZ)
-		bore.Shape = Enum.PartType.Cylinder
-		bore.Size = Vector3.new(R.tipLengthM, R.boreRadiusM * 2, R.boreRadiusM * 2) * (k / mps)
-		bore.Color = R.boreColor
-		bore.Material = Enum.Material.SmoothPlastic
-		bore.Parent = folder
+	if n > 0 then
+		local tips = spot.tips
+		local y, mouthZ = tips.posM[2], tips.posM[3]
+		local frontZ = mouthZ - R.tipLengthM
+		for i, x in CarCosmeticMounts.tipXs(spot, n, R.quadPairGapM) do
+			local tip = cylinder(`Tip{i}`, handles, sc, Vector3.new(x, y, mouthZ - R.tipLengthM / 2), R.tipLengthM, R.tipRadiusM)
+			tip.Color = item.tipColor or Color3.fromRGB(200, 200, 200)
+			tip.Material = item.tipMaterial or Enum.Material.Metal
+			tip.Parent = folder
+			bore(`Bore{i}`, handles, sc, x, y, mouthZ, R.tipLengthM, R.boreRadiusM).Parent = folder
+			-- The pipe: from pipeOverlapM inside the tip's front end forward
+			-- pipeLengthM, into the body or the car's own muffler.
+			local len = tips.pipeLengthM + R.pipeOverlapM
+			local pipe = cylinder(`Pipe{i}`, handles, sc, Vector3.new(x, y, frontZ + R.pipeOverlapM - len / 2), len, R.pipeRadiusM)
+			pipe.Color = R.pipeColor
+			pipe.Material = Enum.Material.Metal
+			pipe.Parent = folder
+		end
+	else
+		for i, o in spot.stock do
+			if not o.factory then
+				continue
+			end
+			local x, y, z = o.posM[1], o.posM[2], o.posM[3]
+			local len = spot.tips.pipeLengthM
+			local pipe = cylinder(`FactoryPipe{i}`, handles, sc, Vector3.new(x, y, z - len / 2), len, R.factoryPipeRadiusM)
+			pipe.Color = R.factoryPipeColor
+			pipe.Material = Enum.Material.Metal
+			pipe.Parent = folder
+			bore(`FactoryBore{i}`, handles, sc, x, y, z, len, R.factoryBoreRadiusM).Parent = folder
+		end
 	end
+	-- The outlets' holder: invisible, at the body mount, so each outlet's
+	-- CFrame is its car-space frame in studs.
+	local holder = visualPart(OUTLETS, handles, CFrame.identity)
+	holder.Size = Vector3.one * 0.05
+	holder.Transparency = 1
+	for _, frame in CarCosmeticMounts.outletFrames(spot, n, R.quadPairGapM, R.tipRadiusM) do
+		local a = Instance.new("Attachment")
+		a.Name = OUTLET
+		a.CFrame = CarCosmeticMounts.toStuds(frame, k, mps)
+		a.Parent = holder
+	end
+	holder.Parent = folder
 	folder.Parent = body
 	s.exhaust = folder
+end
+
+-- The car's exhaust outlets, for flames and any other exhaust effect: one
+-- Attachment per pipe mouth of the exhaust fitted now (stock or tips), at the
+-- centre of the mouth. Orientation convention: WorldCFrame.LookVector (the
+-- attachment's -Z, Enum.NormalId.Front) points out of the pipe, the way the
+-- gas leaves, following the pipe (straight back for tips, the stock pipe's
+-- own angle where it has one); UpVector is as near car-up as that allows. A
+-- ParticleEmitter under one with EmissionDirection = Front shoots out of the
+-- pipe. Rebuilt (new instances) whenever the look changes; empty on a car
+-- with no built body or no exhaust spot.
+function CarCosmetics.outlets(model: Model): { Attachment }
+	local out: { Attachment } = {}
+	local ok, handles = pcall(VehicleRig.handles, model)
+	local body = if ok then handles.body else nil
+	local folder = body and body:FindFirstChild("LookExhaust")
+	local holder = folder and folder:FindFirstChild(OUTLETS)
+	if not holder then
+		return out
+	end
+	for _, a in holder:GetChildren() do
+		if a:IsA("Attachment") and a.Name == OUTLET then
+			table.insert(out, a)
+		end
+	end
+	return out
 end
 
 -- Whether paint and finish show on this car: its body has a painted piece.
