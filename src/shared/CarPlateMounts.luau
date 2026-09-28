@@ -60,9 +60,10 @@ CarPlateMounts.cars = {
 	-- between the chrome strip and the lower intake, too shallow for a short
 	-- plate.
 	lekzas = {
-		-- Front moved 6 cm back and leaned 8 degrees onto the bumper: it stood
-		-- off the bumper, seen from the side (owner, 2026-09-27).
-		front = { posM = { 0, 0.52, -2.30 }, format = "long", tiltDeg = 8 },
+		-- Front moved 7.5 cm back and leaned 8 degrees onto the bumper: it stood
+		-- off the bumper, seen from the side (owner, 2026-09-27; the last 1.5 cm
+		-- after the owner's check in Play).
+		front = { posM = { 0, 0.52, -2.285 }, format = "long", tiltDeg = 8 },
 		rear = { posM = { 0, 0.76, 2.555 }, format = "short", tiltDeg = 9 },
 	},
 	-- By eye in Studio (2026-09-27): rear, the tailgate recess left of the
