@@ -96,7 +96,8 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Shapes:**
   - Big Cylinder parts are visibly faceted.
   - A Ball part never stretches (use a sphere SpecialMesh for ellipsoids).
-  - A WedgePart's tall face is at +Z.
+  - A WedgePart's tall face is at +Z. A SurfaceGui on its sloped face is `Face = Front`, not Top.
+- **Rounded frames on a fully transparent part do not render.** A Frame with a UICorner in a SurfaceGui on a `Transparency = 1` part is invisible, although square frames and text on the same kind of sheet show (the station's forecourt paint, the garage apron). The garage's hose coil failed this way. Put rounded paint on an opaque part instead: the coil became a thin cylinder with its discs on the end face.
 
 ### Distant backdrops and atmosphere
 - **Atmosphere haze swallows solid bodies long before emissive parts.** A distant city needs dark bodies with Neon lights. In daylight, dim the lights too, or they float free of their buildings.

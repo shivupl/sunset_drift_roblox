@@ -658,8 +658,8 @@ local config = {
 		floor = { thicknessM = 0.3, topM = 0.02, jointM = 4.33 }, -- sealed slab, 2 cm proud of the pad; saw-cut joints
 		doorApronM = 2.4, -- concrete strip outside the doors, before the asphalt
 
-		-- A steel plate flush in a darker ring, 3 m in front of the
-		-- backdrop. Its top centre is where the preview car stands. The
+		-- A steel plate flush in a darker ring, its centre about 6 m in
+		-- front of the backdrop's face (its edge about 3 m). Its top centre is where the preview car stands. The
 		-- spin rate is the view's (GarageConfig.spinDegPerSec).
 		turntable = { v = 1.6, diameterM = 5.4, ringM = 0.22, topM = 0.05, ringTopM = 0.035, thicknessM = 0.2 },
 		backdrop = { coveM = 0.7 }, -- the flat grey wall behind it, with a studio cove at the floor
@@ -762,7 +762,7 @@ local config = {
 		},
 	},
 
-	-- THE BORDER:a chain-link fence either side of the highway, 250 m
+	-- THE BORDER: a chain-link fence either side of the highway, 250 m
 	-- past each road edge, well behind the low dunes. Galvanised square
 	-- posts, a top rail, the mesh as a see-through texture (the desert and
 	-- the skyline show through it), and two strands of barbed wire, the

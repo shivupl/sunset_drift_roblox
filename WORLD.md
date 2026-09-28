@@ -553,7 +553,10 @@ either).
 **Cost.** 308 parts, ~5,900 triangles by the build estimate (23 cylinders
 at 108: the turntable and ring, 16 tyres, the compressor tank, drum and
 funnel, the extinguisher, the hose reel), plus 421 painted frames and 10
-labels (about 860 triangles of quads and the glyphs). 27 parts cast shadows
+labels (about 860 triangles of quads and the glyphs). The triangle knob:
+the display bay's tyre rack (the `shelf` props entry at u -12.66, v -5.2)
+is five tyres and a rack, about 600 of those triangles; dropping that
+entry is the cheapest cut that leaves the lift bay as it is. 27 parts cast shadows
 (the shell, the roof, the lift, the sign). Built in 0.02 to 0.14 s.
 
 ## The city section (`src/server/World/City/`)

@@ -67,6 +67,8 @@ local function originFrame(cfg: Config, ctx: Context, path: Path): CFrame
 end
 
 -- The scatter asks thousands of times, and sampling the path is a scan.
+-- Cleared by every build, so a rebuild that moves or turns the garage
+-- never answers from the old frame.
 local frames: { [Path]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
 local function frameFor(cfg: Config, ctx: Context, path: Path): CFrame
 	local o = frames[path]
@@ -141,9 +143,7 @@ local function label(parent: Instance, text: string, x: number, y: number, w: nu
 end
 
 -- A filled disc, size a fraction of the canvas's shorter side; rings are
--- discs stacked on discs. Put them on an opaque part: rounded frames on a
--- fully transparent part's SurfaceGui did not render (measured, the hose
--- coil).
+-- discs stacked on discs. Opaque parts only (BEHAVIOURS.md, section 4).
 local function disc(parent: Instance, x: number, y: number, size: number, colour: Color3)
 	local f = Instance.new("Frame")
 	f.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -162,6 +162,7 @@ end
 function Garage.build(cfg: Config, ctx: Context, path: Path, parent: Instance): Folder
 	local g = cfg.garage
 	local C = g.colors
+	table.clear(frames)
 	local rng = Build.rng(g.seed)
 	local folder = Build.folder("Garage", parent)
 	folder:SetAttribute("GarageRoot", true)
