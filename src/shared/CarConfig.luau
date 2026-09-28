@@ -841,8 +841,8 @@ local config = {
 			-- crackleBurstPops (min, max) pops over crackleBurstSeconds. The
 			-- owner (2026-09-22): only when going fast and letting off, 1 to
 			-- 3 times; the stray pops while coasting and braking are gone.
-			-- (Round 2 added single pops on hard upshifts and the limiter,
-			-- below; still none while coasting or braking.) Every pop gets a random pitch in
+			-- (Single pops on hard upshifts and the limiter exist below, off
+			-- by default under this ruling.) Every pop gets a random pitch in
 			-- cracklePitch and volume in crackleVolumeRange (times
 			-- crackleVolume), so no two bursts match. The pop is Mor5464's
 			-- "Car Backfire Exhaust" (112720519011313, 0.44 s), checked to
@@ -856,19 +856,19 @@ local config = {
 			crackleLiftFrom = 0.6,
 			crackleBurstPops = { 1, 3 },
 			crackleBurstSeconds = 0.5,
-			-- Single pops, each with its exhaust flame (garage round 2 §2,
-			-- 2026-09-28: "a single pop on an upshift from high rpm, random
-			-- pops on the limiter"). An upshift from above crackleShiftRpm
-			-- pops with crackleShiftChance; sitting on the limiter pops about
-			-- crackleLimiterPerSecond times a second. The exhaust item's
-			-- crackleChance multiplies both, so the factory exhaust pops on
-			-- about a third of hard upshifts and the titanium on nearly all.
-			-- The gearbox upshifts at 6400 (drivetrain.upshiftRpm), so 6000
-			-- is a full-throttle shift, never a short-shift. Lower the chance
-			-- if shifting pops too often.
+			-- Single pops, each with its exhaust flame: an upshift from above
+			-- crackleShiftRpm pops with crackleShiftChance, and sitting on the
+			-- limiter pops about crackleLimiterPerSecond times a second, both
+			-- times the exhaust item's crackleChance. The round-2 design
+			-- (2026-09-28) asked for them, but the owner's 2026-09-22 ruling
+			-- stands: pops only when going fast and letting off. So both are 0,
+			-- off, by default; turning them on is the owner's call. 6000 rpm is
+			-- a full-throttle shift (the box shifts at 6400), never a
+			-- short-shift; about 0.35 and 1.2 were tried in Play (twin tips:
+			-- two upshift pops in 9 s of full throttle).
 			crackleShiftRpm = 6000,
-			crackleShiftChance = 0.35,
-			crackleLimiterPerSecond = 1.2,
+			crackleShiftChance = 0,
+			crackleLimiterPerSecond = 0,
 			-- Punch, in sound only (the owner, 2026-09-22: getting back on
 			-- the gas should rev it back up, the punch depending on speed).
 			-- The sim's rpm is locked to the wheels, so this is an rpm offset

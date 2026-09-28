@@ -60,6 +60,16 @@ GarageConfig.resumeAfterSeconds = 3 -- auto-spin comes back this long after the 
 -- A flick's release speed is capped here, so one hard swipe does not spin
 -- the car in a blur.
 GarageConfig.maxFlickDegPerSec = 360
+-- REV (garage round 2 §2, fix round 1: fired wherever the turntable faced,
+-- side-on the flame streamed behind the panel or off-screen): the turntable
+-- first eases the car to a rear 3/4, turnDeg off square-on to the camera,
+-- so the tips and their flames sit in the open right of the screen; the
+-- burst fires on arrival (within arriveDeg), holds holdSeconds, then the
+-- spin resumes. easeSeconds is the ease's time constant (about 1.1 s from
+-- 76 degrees away, measured). turnDeg 35 put the right-hand flame off the
+-- screen's right edge; at 15 both tips and their flames sit on screen,
+-- clear of the panel (Play, Kamri, titanium, 2026-09-28).
+GarageConfig.revPresent = { turnDeg = 15, easeSeconds = 0.25, arriveDeg = 1.5, holdSeconds = 1.5 }
 -- The preview's headlights (and so its tails) are on, so the Lights
 -- category's colours show on the turntable; off would leave the lenses as
 -- plain glass.

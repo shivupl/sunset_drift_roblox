@@ -149,12 +149,24 @@ CosmeticsConfig.flames = {
 	-- Pops that come in one relayed burst are spread over this window, as
 	-- EngineAudio spreads the driver's (crackleBurstSeconds).
 	burstSeconds = 0.5,
-	-- Relay limits (server CarControls): bursts a driver may send a second
-	-- (a lift-off, an upshift and limiter pops are each one; a person does
-	-- two or three a second at most), and the most pops one burst may ask
-	-- for (3 pops times the titanium's 2.5, rounded up, is 8).
-	relayPerSecond = 6,
+	-- Relay limits (server CarControls). The driver's client sends each pop
+	-- as it plays; the server allows relayPopsPerSecond pops a second per
+	-- player, counted in pops, not messages (a titanium lift-off is at most
+	-- 8 pops in 0.5 s, so 10 a second never clips a real burst but stops a
+	-- script flooding every client), and no message may carry more than
+	-- maxPopsPerBurst (3 pops times the titanium's 2.5, rounded up, is 8).
+	relayPopsPerSecond = 10,
 	maxPopsPerBurst = 8,
+	-- A receiving client drops a relayed pop that lands within this long of
+	-- the car's last one (a relayed burst of several blocks for its whole
+	-- burstSeconds). The driver's own pops can come a frame apart, so this
+	-- only thins a flood; it never hides a real burst's first pop.
+	relayMinGapSeconds = 0.04,
+	-- Particle time for inspecting the effect in Studio: each emitter's
+	-- TimeScale, with jets and delays stretched to match, so a harness can
+	-- run a pop at 0.1 and freeze it at any age (BEHAVIOURS, "Freeze a
+	-- particle effect"). Must stay 1 in play; nothing in the game sets it.
+	timeScale = 1,
 	layers = {
 		core = {
 			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",

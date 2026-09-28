@@ -10,10 +10,11 @@
 -- flameCore, flameColor).
 --
 -- Who calls it:
---   * the driver's client, once per pop EngineAudio plays (pop), and once
---     per burst it decides on (send, which tells the server);
---   * every other client, when the server relays a driver's burst (start
---     listens; burst plays the pops with their sound over the window);
+--   * the driver's client, once per pop EngineAudio plays: pop here, and
+--     send(1) to the server, so others see exactly the pops the driver
+--     heard (a burst cut short by the throttle is cut short for them too);
+--   * every other client, when the server relays a driver's pop (start
+--     listens; burst plays the pops with their sound);
 --   * the garage's REV button, on the turntable car (burst with sound).
 --
 -- The emitters live under the outlet's own holder part, so they go when
@@ -32,11 +33,6 @@ local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
 local CarCosmetics = require(script.Parent:WaitForChild("CarCosmetics"))
 
 local ExhaustFlames = {}
-
--- For inspecting the effect in Studio: particle time runs at this rate (each
--- emitter's TimeScale) and jets and delays stretch to match, so a 0.2 s pop
--- can be frozen and captured at any age. 1 in play; nothing sets it.
-ExhaustFlames.timeScale = 1
 
 type Key = { number }
 type Layer = {
@@ -66,6 +62,8 @@ type Layer = {
 local LAYERS = { "smoke", "sparks", "flash", "lick", "tongue", "core" }
 local MOUTH = "FlameMouth"
 local EXHAUST_FOLDER = "LookExhaust"
+-- The tip's colour before any glow, kept on the part. It goes stale only if
+-- something recolours a tip in place; CarCosmetics rebuilds tips instead.
 local GLOW_BASE = "FlameBaseColor"
 -- Parts in the exhaust folder that glow after a pop: built tips and factory
 -- pipes (a car's own mesh pipe is left alone).
@@ -193,7 +191,7 @@ local function dress(mouth: Attachment, item: CosmeticsConfig.Item, sc: number, 
 		end
 		local L = layer(name)
 		local reach = if L.locked then 1 + F.trailGain * trail else 1
-		e.TimeScale = ExhaustFlames.timeScale
+		e.TimeScale = F.timeScale
 		e.Size = numbers(L.size, k)
 		e.Speed = NumberRange.new(L.speed[1] * k * reach, L.speed[2] * k * reach)
 		e.Acceleration = Vector3.new(0, L.riseMps2 * sc, 0)
@@ -255,7 +253,7 @@ local function jet(e: ParticleEmitter, n: number, seconds: number)
 	if n <= 1 then
 		return
 	end
-	table.insert(jets, { e = e, left = n - 1, rate = (n - 1) / seconds * ExhaustFlames.timeScale, owed = 0 })
+	table.insert(jets, { e = e, left = n - 1, rate = (n - 1) / seconds * F.timeScale, owed = 0 })
 	if not jetConn then
 		jetConn = RunService.Heartbeat:Connect(stepJets)
 	end
@@ -272,7 +270,7 @@ local function emit(mouth: Attachment, name: string)
 		return
 	end
 	if L.delaySeconds then
-		task.delay(L.delaySeconds / ExhaustFlames.timeScale, function()
+		task.delay(L.delaySeconds / F.timeScale, function()
 			if e.Parent then
 				e:Emit(n)
 			end
@@ -333,7 +331,9 @@ local function trailOf(model: Model): number
 	if not ok then
 		return 0
 	end
-	local kmh = handles.chassis.AssemblyLinearVelocity.Magnitude * ConfigLoader.current().units.metersPerStud * 3.6
+	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+	local mps = ConfigLoader.forCar(if type(id) == "string" then id else nil).units.metersPerStud
+	local kmh = handles.chassis.AssemblyLinearVelocity.Magnitude * mps * 3.6
 	return math.clamp(kmh / F.trailFullKmh, 0, 1)
 end
 
@@ -436,8 +436,12 @@ function ExhaustFlames.revPops(item: CosmeticsConfig.Item): number
 end
 
 local remote: RemoteEvent? = nil
+-- Relayed bursts, per car: until when the last one plays (strong tables,
+-- cleared on Destroying; BEHAVIOURS: never a weak table keyed by Instance).
+local busyUntil: { [Model]: number } = {}
+local watched: { [Model]: boolean } = {}
 
--- The driver's burst, for the server to relay to everyone else (the driver
+-- The driver's pops, for the server to relay to everyone else (the driver
 -- has already played it).
 function ExhaustFlames.send(pops: number)
 	if remote and pops > 0 then
@@ -455,6 +459,20 @@ function ExhaustFlames.start(remotes: Folder)
 		end
 		if not model:IsDescendantOf(Workspace) then
 			return
+		end
+		-- Drop a burst that lands while this car's last one is still
+		-- playing: the server limits each sender, this guards each car.
+		local now = os.clock()
+		if now < (busyUntil[model] or 0) then
+			return
+		end
+		busyUntil[model] = now + (if pops > 1 then F.burstSeconds else F.relayMinGapSeconds)
+		if not watched[model] then
+			watched[model] = true
+			model.Destroying:Once(function()
+				busyUntil[model] = nil
+				watched[model] = nil
+			end)
 		end
 		ExhaustFlames.burst(model, pops)
 	end)

@@ -4,8 +4,8 @@
 -- exhaust pops; the server checks they are sitting in that car's driver
 -- seat, copies the lamps onto the car Model as attributes (every client
 -- shows them, CarLights), plays the horn on the chassis, so every player
--- hears it, and relays each burst of pops to every other player (the
--- driver has already played it; garage round 2 §2).
+-- hears it, and relays each exhaust pop to every other player (the driver
+-- has already played it; garage round 2 §2).
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,19 +24,21 @@ local MAX_PER_SECOND = 30
 
 local budget: { [Player]: { at: number, n: number } } = {}
 local sounding: { [Player]: Sound } = {} -- the horn each player is holding
--- Exhaust bursts, limited on their own (CosmeticsConfig.flames
--- relayPerSecond): each one is a message to every other player.
+-- Exhaust pops, limited on their own and counted in pops, not messages
+-- (CosmeticsConfig.flames.relayPopsPerSecond): each pop is a flame and a
+-- sound on every other player's client.
 local popBudget: { [Player]: { at: number, n: number } } = {}
 
-local function popAllowed(player: Player): boolean
+local function popAllowed(player: Player, pops: number): boolean
 	local now = os.clock()
-	local b = popBudget[player]
-	if not b or now - b.at >= 1 then
-		popBudget[player] = { at = now, n = 1 }
-		return true
+	local held = popBudget[player]
+	local b: { at: number, n: number } = if held and now - held.at < 1 then held else { at = now, n = 0 }
+	popBudget[player] = b
+	if b.n + pops > CosmeticsConfig.flames.relayPopsPerSecond then
+		return false
 	end
-	b.n += 1
-	return b.n <= CosmeticsConfig.flames.relayPerSecond
+	b.n += pops
+	return true
 end
 
 local function allowed(player: Player): boolean
@@ -134,7 +136,7 @@ function CarControls.start(remotes: Remotes.RemoteTable)
 		if type(pops) ~= "number" or pops ~= pops or pops < 1 or pops > CosmeticsConfig.flames.maxPopsPerBurst or math.floor(pops) ~= pops then
 			return
 		end
-		if not popAllowed(player) then
+		if not popAllowed(player, pops) then
 			return
 		end
 		local model = drivenBy(player)

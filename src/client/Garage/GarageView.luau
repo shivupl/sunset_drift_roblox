@@ -101,6 +101,11 @@ local lastMove = 0
 local releaseVel = 0
 local releaseAt = -math.huge
 local lastDrag = -math.huge
+-- A presentation (present(), the garage's REV): the turntable eases to a
+-- set angle, calls onArrive, holds, then the auto-spin resumes. A drag,
+-- a car switch or leaving cancels it without calling onArrive.
+type Presenting = { target: number, arrived: boolean, holdUntil: number, onArrive: () -> () }
+local presenting: Presenting? = nil
 
 -- The framing's sideways offset (fraction of the screen width), eased.
 local panelOpen = true
@@ -350,6 +355,7 @@ end
 local function destroyPreview()
 	local p = preview
 	preview = nil
+	presenting = nil
 	if p then
 		p.model:Destroy()
 	end
@@ -730,7 +736,25 @@ local function step(dt: number)
 		return
 	end
 	local now = os.clock()
-	if not dragging then
+	local pr = presenting
+	if pr and not dragging then
+		local R = GarageConfig.revPresent
+		if not pr.arrived then
+			-- The shortest way round, eased (exponential approach).
+			local delta = (pr.target - angle + math.pi) % (2 * math.pi) - math.pi
+			angle += delta * (1 - math.exp(-dt / R.easeSeconds))
+			if math.abs(delta) < math.rad(R.arriveDeg) then
+				pr.arrived = true
+				pr.holdUntil = now + R.holdSeconds
+				task.spawn(pr.onArrive)
+			end
+		elseif now >= pr.holdUntil then
+			presenting = nil
+			-- Spin again straight away, not after the drag pause.
+			lastDrag = now - GarageConfig.resumeAfterSeconds
+			releaseVel = 0
+		end
+	elseif not dragging then
 		local left = 1 - (now - releaseAt) / GarageConfig.inertiaSeconds
 		if left > 0 then
 			angle += releaseVel * left * dt
@@ -791,6 +815,7 @@ local function onInputBegan(input: InputObject, processed: boolean)
 		return
 	end
 	dragging = input
+	presenting = nil
 	dragX = input.Position.X
 	dragVel = 0
 	lastMove = os.clock()
@@ -1148,6 +1173,22 @@ function GarageView.setCar(carId: string)
 		return
 	end
 	buildPreview(g, ConfigLoader.resolveCarId(carId))
+end
+
+-- Turns the car's rear toward the camera (GarageConfig.revPresent: a rear
+-- 3/4 with the exhaust in the open right-hand part of the screen), calls
+-- onArrive once it is there, holds, then lets the turntable spin on. False
+-- (and onArrive never called) when the view is not open or a presentation
+-- is already running; a drag, car switch or leaving cancels it.
+function GarageView.present(onArrive: () -> ()): boolean
+	if state ~= "inside" or not preview or presenting then
+		return false
+	end
+	-- angle 0 is the nose toward the door (+Z); the camera sits yawDeg
+	-- round from the nose, so 180 - yawDeg puts the rear square to it.
+	local target = math.rad(180 - GarageConfig.yawDeg + GarageConfig.revPresent.turnDeg)
+	presenting = { target = target, arrived = false, holdUntil = 0, onArrive = onArrive }
+	return true
 end
 
 -- The car on the turntable, for CarCosmetics.apply.

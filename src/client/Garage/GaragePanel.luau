@@ -1413,9 +1413,17 @@ buildTab = function(u: UI)
 			if sheet or not m or not m.Parent or os.clock() < revUntil then
 				return -- under the confirm sheet, or the last burst is still going
 			end
-			local item = CarLook.item(draftLook(), "exhaust")
-			ExhaustFlames.burst(m, ExhaustFlames.revPops(item), item)
-			revUntil = os.clock() + CosmeticsConfig.flames.burstSeconds
+			-- The rear comes round first (GarageView.present), then the burst,
+			-- with the exhaust on the car at that moment.
+			GarageView.present(function()
+				local now = previewModel
+				if not now or now ~= m or not m.Parent then
+					return
+				end
+				local item = CarLook.item(draftLook(), "exhaust")
+				ExhaustFlames.burst(m, ExhaustFlames.revPops(item), item)
+				revUntil = os.clock() + CosmeticsConfig.flames.burstSeconds
+			end)
 		end)
 		itemCards(u, newGrid(u, u.grid, 1), "exhaust", 0)
 	elseif tab == "plates" then

@@ -37,13 +37,12 @@ LoadCover.whenReady(WorldLights.start)
 CarBodies.start()
 CarLights.start()
 CarPlates.start()
--- Exhaust flames: the driver's own at each pop EngineAudio plays, sent on
--- to the server per burst; everyone else's as the server relays them.
+-- Exhaust flames: the driver's own at each pop EngineAudio plays, and each
+-- pop sent on to the server as it plays (so a burst the throttle cuts short
+-- is cut short for everyone); everyone else's as the server relays them.
 EngineAudio.onPop = function(model: Model)
 	ExhaustFlames.pop(model)
-end
-EngineAudio.onBurst = function(_model: Model, pops: number)
-	ExhaustFlames.send(pops)
+	ExhaustFlames.send(1)
 end
 ExhaustFlames.start(remotes)
 WheelVisuals.localCar = VehicleController.currentCar
