@@ -9,7 +9,13 @@
 -- Everything here is visual: the strip and tips are massless, non-colliding,
 -- unqueryable parts welded to the chassis, like the plates (CarPlates).
 -- Stock in every slot puts back what BodyBuilder built: the originals are
--- remembered on the first apply.
+-- remembered on the first apply to a body, and again whenever the model gets
+-- a new body or car id (the garage preview re-mounts on the same model).
+--
+-- Paint and finish need `paint = true` body pieces. The pickup and cruiser
+-- are single textured shells with none, so paint does nothing on them;
+-- paintable() tells the garage panel to grey those out. Owner follow-up:
+-- a paint split of those shells in CarCatalog (garage plan, task 3 fix 1).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared:WaitForChild("VehicleRig"))
@@ -27,6 +33,8 @@ local R = CosmeticsConfig.render
 type Original = { part: BasePart, color: Color3, material: Enum.Material, reflectance: number, sa: SurfaceAppearance?, saColor: Color3? }
 
 type State = {
+	body: Instance,
+	carId: string,
 	paint: { Original },
 	rims: { Original },
 	strip: { part: Part, frame: Frame, gradient: UIGradient, label: TextLabel }?,
@@ -51,7 +59,7 @@ end
 -- The painted pieces (BodyBuilder stamps `Painted`) and the rim pieces:
 -- wheel pieces named *Rim* (not a Rim_Disc, which is the brake disc behind
 -- the rim), or, on a car without one, its Metal wheel pieces.
-local function collect(model: Model, body: Instance, carId: string): State
+local function collect(body: Instance, carId: string): State
 	local entry = ConfigLoader.entry(carId)
 	local wheelNames: { [string]: boolean } = {}
 	for _, piece in entry.body.wheelPieces do
@@ -59,7 +67,7 @@ local function collect(model: Model, body: Instance, carId: string): State
 			wheelNames[`{piece.name}_{w.name}`] = true
 		end
 	end
-	local s: State = { paint = {}, rims = {} }
+	local s: State = { body = body, carId = carId, paint = {}, rims = {} }
 	local metal: { Original } = {}
 	for _, part in body:GetChildren() do
 		if not part:IsA("BasePart") then
@@ -149,13 +157,17 @@ local function strip(s: State, model: Model, body: Instance, carId: string, look
 	local spot = mounts and mounts.windscreen
 	local show = spot ~= nil and item.stripColor ~= nil
 	if not show then
+		-- None means none: the card goes, and is built again when a strip is.
 		if s.strip then
-			s.strip.part.Transparency = 1
-			s.strip.frame.Visible = false
+			s.strip.part:Destroy()
+			s.strip = nil
 		end
 		return
 	end
 	assert(spot)
+	if s.strip and s.strip.part.Parent ~= body then
+		s.strip = nil -- destroyed with its body or by someone else
+	end
 	if not s.strip then
 		local handles = VehicleRig.handles(model)
 		local k = VehicleRig.scaleOf(ConfigLoader.entry(carId))
@@ -256,19 +268,42 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	s.exhaust = folder
 end
 
+-- Whether paint and finish show on this car: its body has a painted piece.
+function CarCosmetics.paintable(carId: string): boolean
+	for _, piece in ConfigLoader.entry(carId).body.pieces do
+		if piece.paint then
+			return true
+		end
+	end
+	return false
+end
+
 -- Puts this look on a car's built body. Safe to call again with a new look.
 function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 	local body = VehicleRig.handles(model).body
 	if not body then
 		return
 	end
-	local s = states[model]
+	local s: State? = states[model]
+	if s and (s.body ~= body or s.carId ~= carId or not s.body.Parent) then
+		-- A new body (or car) on the same model: the remembered pieces and the
+		-- built strip and tips belong to the old one.
+		if s.strip then
+			s.strip.part:Destroy()
+		end
+		if s.exhaust then
+			s.exhaust:Destroy()
+		end
+		s = nil
+	end
 	if not s then
-		s = collect(model, body, carId)
+		if not states[model] then
+			model.Destroying:Once(function()
+				states[model] = nil
+			end)
+		end
+		s = collect(body, carId)
 		states[model] = s
-		model.Destroying:Once(function()
-			states[model] = nil
-		end)
 	end
 	assert(s)
 	paint(s, look)

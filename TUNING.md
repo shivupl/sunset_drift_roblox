@@ -705,6 +705,8 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | CarCosmeticMounts windscreen | posM (strip centre), widthM (glass width at its top), heightM (0.12), tiltDeg (top leaned back with the rake). Behind see-through glass the strip sits ~1 cm inside; behind opaque glass it sits just outside (BEHAVIOURS.md). |
 | CarCosmeticMounts exhaust | posM (between a twin pair, at the tips' centre) and spreadM (twin tips at ±spreadM/2; a single tip at -spreadM/2; quad as two pairs). Tips poke 3-5 cm past the bumper's lower edge. |
 
+Paint and finish only show on cars with `paint = true` body pieces. The pickup and cruiser are single textured shells with none, so `CarCosmetics.paintable(carId)` is false for them and the garage panel greys paint and finish out. **Owner follow-up:** split a paintable body piece out of those shells in CarCatalog.
+
 ## cityscape
 | Field | What it does |
 |---|---|
