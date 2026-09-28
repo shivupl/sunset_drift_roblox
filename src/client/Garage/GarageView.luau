@@ -65,6 +65,7 @@ local LEAVE_ACTION = "GarageLeave"
 local PREVIEW_NAME = "GaragePreview"
 local LIFT_CAR_NAME = "GarageLiftCar"
 local LIGHTS_NAME = "GarageViewLights"
+local NO_PREVIEW_TEXT = "The garage couldn't show this car. Try again in a moment."
 local FIND_INTERVAL = 1 -- seconds between looks for the garage while it is not here
 
 type Garage = {
@@ -532,37 +533,53 @@ local function characterParts(): (Model?, Humanoid?, BasePart?)
 	return character, hum, if root and root:IsA("BasePart") then root else nil
 end
 
+-- The character's visible pieces, collected once on entering; each frame
+-- only re-hides a piece something else has shown again.
+local hiddenParts: { any } = {} -- BaseParts and Decals
+
 local function setHidden(hidden: boolean)
-	local character = player.Character
-	if not character then
-		return
+	if hidden then
+		local character = player.Character
+		if not character then
+			return
+		end
+		table.clear(hiddenParts)
+		for _, d in character:GetDescendants() do
+			if d:IsA("BasePart") or d:IsA("Decal") then
+				table.insert(hiddenParts, d)
+				d.LocalTransparencyModifier = 1
+			end
+		end
+	else
+		for _, d in hiddenParts do
+			d.LocalTransparencyModifier = 0
+		end
+		table.clear(hiddenParts)
 	end
-	local v = if hidden then 1 else 0
-	for _, d in character:GetDescendants() do
-		if d:IsA("BasePart") or d:IsA("Decal") then
-			d.LocalTransparencyModifier = v
+end
+
+local function keepHidden()
+	for _, d in hiddenParts do
+		if d.LocalTransparencyModifier ~= 1 then
+			d.LocalTransparencyModifier = 1
 		end
 	end
 end
 
--- The PlayerModule's controls. The classic module sits in PlayerScripts;
--- newer engine builds keep it under StarterPlayer (measured in Studio
--- 2026-09-28: PlayerScripts held no PlayerModule, and the module there
--- returns an empty table, so GetControls is not on it), with the
--- ControlModule carrying Enable and Disable. Either is used if present,
--- and the character's root is anchored on this client as well, so control
--- drops away whichever module is running.
+-- The PlayerModule's controls, by the documented route
+-- (PlayerScripts.PlayerModule:GetControls()), looked up without waiting:
+-- in the Studio session of 2026-09-28 PlayerScripts held no PlayerModule,
+-- and a WaitForChild there hung the fade on black. Requiring the copy under
+-- StarterPlayer instead would make a second, separate ControlModule (and
+-- its Enable could build a second set of touch controls), so it is not
+-- used. The character's root is anchored on this client as well, which
+-- drops control whether or not the module was found.
 local function controlModule(): any
 	local ok, module = pcall(function(): any
 		local scripts = player:FindFirstChild("PlayerScripts")
 		local classic = scripts and scripts:FindFirstChild("PlayerModule")
 		if classic and classic:IsA("ModuleScript") then
 			return ((require :: any)(classic)):GetControls()
-		end
-		local starter = game:GetService("StarterPlayer"):FindFirstChild("PlayerModule")
-		local control = starter and starter:FindFirstChild("ControlModule")
-		if control and control:IsA("ModuleScript") then
-			return (require :: any)(control)
 		end
 		return nil
 	end)
@@ -636,6 +653,29 @@ local function ensureGui(): (ScreenGui, Frame)
 	screen.Parent = player:WaitForChild("PlayerGui")
 	gui, fadeFrame, leaveButton = screen, fade, button
 	return screen, fade
+end
+
+-- A short line of text at the foot of the screen, gone after a moment.
+local function notice(text: string)
+	local screen = ensureGui()
+	local touch = UIKit.isTouch()
+	local box = Instance.new("Frame")
+	box.Name = "Notice"
+	box.AnchorPoint = Vector2.new(0.5, 1)
+	box.Position = UDim2.new(0.5, 0, 1, -UITheme.px(UITheme.space.xxxl, touch) * 2)
+	box.AutomaticSize = Enum.AutomaticSize.XY
+	box.BackgroundColor3 = UITheme.color.asphalt900
+	box.BackgroundTransparency = UITheme.alpha.panel
+	box.BorderSizePixel = 0
+	box.ZIndex = 20 -- over the fade
+	UIKit.corner(box, "md")
+	UIKit.pad(box, "md")
+	local label = UIKit.text(box, text, "body", "paint", touch, false)
+	label.ZIndex = 21
+	box.Parent = screen
+	task.delay(GarageConfig.noticeSeconds, function()
+		box:Destroy()
+	end)
 end
 
 local function fade(to: number)
@@ -717,7 +757,7 @@ local function step(dt: number)
 	end
 	-- The default camera scripts may set it back while the character is
 	-- close to the camera; keep it hidden.
-	setHidden(true)
+	keepHidden()
 end
 
 ------------------------------------------------------------------------
@@ -807,6 +847,26 @@ local function disconnectAll()
 	ContextActionService:UnbindAction(LEAVE_ACTION)
 end
 
+local function seatedNow(): boolean
+	local _, hum = characterParts()
+	return hum ~= nil and hum.SeatPart ~= nil
+end
+
+-- The camera back to the default one, unless the character is seated: then
+-- the car camera (CameraRig) owns it and setting Custom would fight it.
+local function restoreCamera()
+	local cam = Workspace.CurrentCamera
+	if cam and not seatedNow() then
+		local _, hum = characterParts()
+		cam.FieldOfView = savedFov or 70
+		cam.CameraType = Enum.CameraType.Custom
+		if hum then
+			cam.CameraSubject = hum
+		end
+	end
+	savedFov = nil
+end
+
 -- Everything the view changed, put back. `outside`: stand the character at
 -- ExitSpot (not when it is seated, dead or gone).
 local function restore(outside: boolean)
@@ -836,17 +896,39 @@ local function restore(outside: boolean)
 			cam.CFrame = CFrame.lookAt(eye, g.exit.Position)
 		end
 	end
-	local cam = Workspace.CurrentCamera
-	if cam then
-		cam.FieldOfView = savedFov or 70
-		cam.CameraType = Enum.CameraType.Custom
-		if hum then
-			cam.CameraSubject = hum
-		end
-	end
-	savedFov = nil
+	restoreCamera()
 	setHidden(false)
 	setControls(true)
+	local b = leaveButton
+	if b then
+		b.Visible = false
+	end
+end
+
+-- The parts of restore that must happen whatever failed, each on its own,
+-- so one error cannot leave the player anchored, hidden or blind.
+local function restoreEssentials()
+	local function dropScene()
+		destroyPreview()
+		local lf = lightsFolder
+		lightsFolder = nil
+		if lf then
+			lf:Destroy()
+		end
+		local g, home = garage, plateHome
+		plateHome = nil
+		if g and home and g.turntable.Parent then
+			g.turntable.CFrame = home
+		end
+	end
+	for _, fn in { disconnectAll, dropScene, WorldLights.resume, restoreCamera } :: { () -> () } do
+		local ok, err = pcall(fn :: () -> any)
+		if not ok then
+			warn("[GarageView]", err)
+		end
+	end
+	pcall(setHidden, false)
+	pcall(setControls, true)
 	local b = leaveButton
 	if b then
 		b.Visible = false
@@ -858,9 +940,24 @@ local function leaveNow(outside: boolean)
 		return
 	end
 	state = "leaving"
-	fade(0)
-	restore(outside)
-	fade(1)
+	if seatedNow() then
+		-- The car camera and the seat weld take over now, not after the fade.
+		pcall(function()
+			RunService:UnbindFromRenderStep(RENDER_STEP)
+		end)
+		pcall(setControls, true)
+	end
+	local ok, err = xpcall(function(): any
+		fade(0)
+		restore(outside)
+		return nil
+	end, debug.traceback)
+	if not ok then
+		warn("[GarageView] leaving failed:", err)
+	end
+	-- Always, even after an error: the player walks away free.
+	restoreEssentials()
+	pcall(fade, 1)
 	state = "outside"
 	local cb = GarageView.onLeave
 	if cb then
@@ -873,30 +970,66 @@ local function enter(g: Garage)
 		return
 	end
 	state = "entering"
-	fade(0)
-	setControls(false)
-	setHidden(true)
-	local cam = Workspace.CurrentCamera
-	if cam then
-		savedFov = cam.FieldOfView
-		cam.CameraType = Enum.CameraType.Scriptable
+	local _, hum = characterParts()
+	if hum then
+		-- Hooked before anything else, so a death or a seat during the fade in
+		-- is not missed (the checks after entering catch those).
+		table.insert(connections, hum.Died:Connect(function()
+			task.spawn(leaveNow, false)
+		end))
+		table.insert(connections, hum:GetPropertyChangedSignal("SeatPart"):Connect(function()
+			if hum.SeatPart then
+				-- Seated (the spawn menu put them in a car): stop driving the
+				-- camera and let go of the root at once, so the car camera and
+				-- the seat weld take over; then close the view without moving
+				-- the character.
+				pcall(function()
+					RunService:UnbindFromRenderStep(RENDER_STEP)
+				end)
+				pcall(setControls, true)
+				task.spawn(leaveNow, false)
+			end
+		end))
 	end
-	WorldLights.suspend()
-	makeLights(g)
-	plateHome = g.turntable.CFrame
-	angle = 0
-	releaseVel, releaseAt, lastDrag = 0, -math.huge, -math.huge
-	panelOpen = true
-	offsetFrom, offsetTo, offsetAt = GarageConfig.screenOffset, GarageConfig.screenOffset, -math.huge
 	local carId = currentCarId()
-	local p = buildPreview(g, carId)
-	state = "inside"
-	RunService:BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + 1, step)
-	step(0)
+	local p: Preview? = nil
+	local ok, err = xpcall(function(): any
+		fade(0)
+		setControls(false)
+		setHidden(true)
+		local cam = Workspace.CurrentCamera
+		if cam then
+			savedFov = cam.FieldOfView
+			cam.CameraType = Enum.CameraType.Scriptable
+		end
+		WorldLights.suspend()
+		makeLights(g)
+		plateHome = g.turntable.CFrame
+		angle = 0
+		releaseVel, releaseAt, lastDrag = 0, -math.huge, -math.huge
+		panelOpen = true
+		offsetFrom, offsetTo, offsetAt = GarageConfig.screenOffset, GarageConfig.screenOffset, -math.huge
+		p = buildPreview(g, carId)
+		state = "inside"
+		RunService:BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + 1, step)
+		step(0)
+		return nil
+	end, debug.traceback)
+	if not ok then
+		warn("[GarageView] entering failed:", err)
+		local rok, rerr = pcall(restore :: (boolean) -> any, false)
+		if not rok then
+			warn("[GarageView]", rerr)
+		end
+		restoreEssentials()
+		pcall(fade, 1)
+		state = "outside"
+		return
+	end
 	table.insert(connections, UserInputService.InputBegan:Connect(function(input, processed)
 		-- Esc leaves; the Roblox menu may take it first, so it is read here
-		-- whether or not the game "processed" it.
-		if input.KeyCode == Enum.KeyCode.Escape and (state :: string) == "inside" then
+		-- whether or not the game "processed" it. Not while typing in a box.
+		if input.KeyCode == Enum.KeyCode.Escape and (state :: string) == "inside" and not UserInputService:GetFocusedTextBox() then
 			task.spawn(leaveNow, true)
 			return
 		end
@@ -910,26 +1043,26 @@ local function enter(g: Garage)
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.ButtonB)
-	local _, hum = characterParts()
-	if hum then
-		-- Seated (the spawn menu put them in a car) or dead: out, no fade
-		-- back to the door.
-		table.insert(connections, hum:GetPropertyChangedSignal("SeatPart"):Connect(function()
-			if hum.SeatPart then
-				task.spawn(leaveNow, false)
-			end
-		end))
-		table.insert(connections, hum.Died:Connect(function()
-			task.spawn(leaveNow, false)
-		end))
+	-- Died or seated while the fade ran: out at once.
+	if hum and (hum.Health <= 0 or hum.SeatPart) then
+		leaveNow(false)
+		return
+	end
+	local built = p
+	if not built then
+		-- No car to show: say so and step back out, rather than open an
+		-- empty turntable. onLeave still fires, for the panel.
+		notice(NO_PREVIEW_TEXT)
+		leaveNow(true)
+		return
 	end
 	local b = leaveButton
 	if b then
 		b.Visible = leaveButtonWanted
 	end
 	local cb = GarageView.onEnter
-	if cb and p then
-		task.spawn(cb, carId, p.model)
+	if cb then
+		task.spawn(cb, carId, built.model)
 	end
 	fade(1)
 end

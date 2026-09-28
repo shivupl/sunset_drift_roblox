@@ -45,6 +45,8 @@ GarageConfig.screenOffset = 0.18
 -- to the doorway, and never while seated (driving in does nothing).
 GarageConfig.thresholdRangeM = 12
 GarageConfig.fadeSeconds = 0.2 -- to asphalt950 and back, each way
+-- How long a short message (the car could not be shown) stays up.
+GarageConfig.noticeSeconds = 3
 -- On leaving, the camera starts this far behind and above the character
 -- standing at ExitSpot (facing out), so it does not swing round from the
 -- turntable framing. The default camera takes over from there.
