@@ -31,6 +31,12 @@ Why it is parked: the owner judged the flame animation poor (2026-09-25) and lef
 The store emitter (0.09 s puffs of one texture) is the weak part; the triggers and relay can
 be kept if it is picked up again with a better flame.
 
+Superseded on `garage` (round 2, 2026-09-28): `src/client/ExhaustFlames.luau` is the new
+layered flame on every car's exhaust outlets, hooked to EngineAudio's pops (lift-off burst,
+upshift, limiter) and relayed through server `CarControls` (`ExhaustPops`). Its trigger and
+relay ideas came from this branch; nothing of its code or look was merged. The branch can be
+deleted once the owner agrees.
+
 ## Parked: the Kamri car body (uncommitted in the working tree)
 
 The Kamri is a car body generated in the repo (`tools/carbody/kamri.py`), 10,108 triangles,

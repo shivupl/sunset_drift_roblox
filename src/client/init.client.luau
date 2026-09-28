@@ -21,6 +21,8 @@ local CarPlates = require(script.CarPlates)
 local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
+local EngineAudio = require(script.EngineAudio)
+local ExhaustFlames = require(script.ExhaustFlames)
 local GarageView = require(script.Garage.GarageView)
 local GaragePanel = require(script.Garage.GaragePanel)
 
@@ -35,6 +37,15 @@ LoadCover.whenReady(WorldLights.start)
 CarBodies.start()
 CarLights.start()
 CarPlates.start()
+-- Exhaust flames: the driver's own at each pop EngineAudio plays, sent on
+-- to the server per burst; everyone else's as the server relays them.
+EngineAudio.onPop = function(model: Model)
+	ExhaustFlames.pop(model)
+end
+EngineAudio.onBurst = function(_model: Model, pops: number)
+	ExhaustFlames.send(pops)
+end
+ExhaustFlames.start(remotes)
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
 ScoreController.onSpin = function(bonus: number, spins: number)

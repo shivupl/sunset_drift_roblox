@@ -35,6 +35,14 @@ export type Item = {
 	tipMaterial: Enum.Material?,
 	engineVolume: number?,
 	crackleChance: number?,
+	-- Exhaust only: the flame profile (ExhaustFlames, CosmeticsConfig.flames).
+	-- flameSize scales every flame length and size; flameCore tints the hot
+	-- core at the mouth, flameColor the tongue's body. The profile's pop
+	-- multiplier is crackleChance: every pop is one flame, so one knob sets
+	-- both what you hear and what you see.
+	flameSize: number?,
+	flameCore: Color3?,
+	flameColor: Color3?,
 }
 
 -- Garage actions (buy, equip, plate) a player may send per second through
@@ -81,6 +89,200 @@ CosmeticsConfig.render = {
 	factoryPipeRadiusM = 0.032,
 	factoryBoreRadiusM = 0.022,
 	factoryPipeColor = Color3.fromRGB(70, 68, 66),
+}
+
+-- Exhaust flames (ExhaustFlames; garage round 2 §2, 2026-09-28: the owner
+-- asked for "really refined and polished exhaust flame animations"; the
+-- parked car-backfire branch's 0.09 s puffs of one texture were judged
+-- poor). One pop is a layered burst at every ExhaustOutlet, all Emit, never
+-- a running emitter, all from Roblox's built-in particle textures, and no
+-- Light (the live-light cap):
+--   core   a short blue-white cone at the mouth, the hot gas
+--   tongue the flame's body: fat near the mouth, stretched along its speed
+--   lick   thinner, faster, wispier flames past the tongue, so the whole
+--          flame tapers to a point (one emitter cannot tie size to reach)
+--   sparks a few hot flecks thrown back, falling
+--   smoke  a faint dark wisp left behind after
+-- Lengths are metres before the car's scale; the item's flameSize scales
+-- them all. Each layer: texture, count (min, max particles per pop at each
+-- outlet), lifetime (s), speed (m/s), spreadDeg, drag, riseMps2 (upward
+-- acceleration; negative falls), size, transparency and squash keyframes
+-- ({time, value} over the particle's life; squash below 0 stretches it
+-- along its motion, the particle drawn VelocityParallel), color (from, to)
+-- where the layer has its own colour, lightEmission and brightness,
+-- jetSeconds (let the count out over this long, a few a frame, so the
+-- flame is one tongue from the mouth rather than a clump that leaves it),
+-- alongMotion (drawn VelocityParallel, else facing the camera) and zOffsetM
+-- (drawn this much nearer the camera, so the core shows through). locked
+-- layers ride with the car (a 0.1 s core left in the air at 150 km/h would
+-- smear 1.7 m behind); the rest are left in the world, inheriting part of
+-- the car's velocity so they drift back from the car.
+CosmeticsConfig.flames = {
+	-- Where each flame starts: this far out along the outlet's LookVector,
+	-- plus however far the mouth sits inside the bumper (a stock mouth up to
+	-- ~9 cm in on the kamri07, CarCosmeticMounts bumperZ), so the core is
+	-- never born hidden inside the body.
+	mouthLeadM = 0.015,
+	-- At speed the locked layers reach further back, as the airflow drags
+	-- the flame out of the pipe: their speed times 1 + trailGain * f, f
+	-- rising from 0 at rest to 1 at trailFullKmh.
+	trailFullKmh = 160,
+	trailGain = 1.2,
+	-- The world-space layers (sparks, smoke) keep this much of the car's
+	-- velocity when they are born, so they fall back from the car rather
+	-- than being dropped on the road at once.
+	inheritVelocity = 0.8,
+	-- The tip's own glow for a moment after each pop: its colour pulled this
+	-- far toward glowColor, easing back over glowSeconds. Only built tips and
+	-- factory pipes glow; a car's own mesh pipe is left as it is.
+	glowColor = Color3.fromHex("#FF6A1E"),
+	glowAmount = 0.6,
+	glowSeconds = 0.45,
+	-- Pops heard with the relayed and preview flames (the driver's own come
+	-- from EngineAudio): the crackle sound and ranges in
+	-- CarConfig effects.engineAudio, a pool of this many per car so pops
+	-- overlap.
+	soundPool = 3,
+	-- The garage REV button: this many pops (min, max, times the exhaust's
+	-- crackleChance) over burstSeconds.
+	revPops = { 3, 5 },
+	-- Pops that come in one relayed burst are spread over this window, as
+	-- EngineAudio spreads the driver's (crackleBurstSeconds).
+	burstSeconds = 0.5,
+	-- Relay limits (server CarControls): bursts a driver may send a second
+	-- (a lift-off, an upshift and limiter pops are each one; a person does
+	-- two or three a second at most), and the most pops one burst may ask
+	-- for (3 pops times the titanium's 2.5, rounded up, is 8).
+	relayPerSecond = 6,
+	maxPopsPerBurst = 8,
+	layers = {
+		core = {
+			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+			count = { 5, 5 },
+			jetSeconds = 0.09,
+			lifetime = { 0.05, 0.08 },
+			speed = { 0.5, 1.2 },
+			spreadDeg = 4,
+			drag = 0,
+			riseMps2 = 0,
+			size = { { 0, 0.07 }, { 0.3, 0.1 }, { 1, 0.04 } },
+			transparency = { { 0, 0 }, { 0.6, 0.2 }, { 1, 1 } },
+			squash = { { 0, -1.2 }, { 1, -0.8 } },
+			-- The item's flameCore, this much toward white at birth. Brightness
+			-- 1 and little light emission: brighter, or additive over the
+			-- tongue, and the blue clipped to white under the bloom.
+			whiteAtBirth = 0.45,
+			lightEmission = 0.15,
+			brightness = 1,
+			locked = true,
+			alongMotion = true,
+			zOffsetM = 0.08,
+		},
+		-- A soft glow on the mouth the moment it pops, facing the camera, so
+		-- the pop reads from straight behind too (where the flame points at
+		-- the camera and foreshortens to nothing) and stands in for the light
+		-- the live-light cap rules out. In the item's flameColor.
+		flash = {
+			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+			count = { 1, 1 },
+			lifetime = { 0.07, 0.09 },
+			speed = { 0, 0 },
+			spreadDeg = 0,
+			drag = 0,
+			riseMps2 = 0,
+			size = { { 0, 0.35 }, { 0.25, 0.6 }, { 1, 0.4 } },
+			transparency = { { 0, 0.35 }, { 1, 1 } },
+			squash = { { 0, 0 }, { 1, 0 } },
+			lightEmission = 1,
+			brightness = 1.2,
+			locked = true,
+			alongMotion = false,
+			zOffsetM = 0.02,
+		},
+		tongue = {
+			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+			count = { 9, 10 },
+			jetSeconds = 0.08,
+			lifetime = { 0.14, 0.22 },
+			speed = { 3, 8 },
+			spreadDeg = 8,
+			drag = 6,
+			-- Enough lift that the flame curls up as it dies (a few cm would
+			-- not show): about 15 cm over its life.
+			riseMps2 = 8,
+			-- Fullest early and shrinking after, so the far end tapers.
+			size = { { 0, 0.1 }, { 0.12, 0.18 }, { 0.6, 0.08 }, { 1, 0.02 } },
+			-- Thin at birth so the core shows at the mouth, fullest a quarter
+			-- of the way out.
+			transparency = { { 0, 0.5 }, { 0.25, 0.15 }, { 0.6, 0.3 }, { 1, 1 } },
+			squash = { { 0, -1.2 }, { 1, -0.6 } },
+			-- Orange-yellow at birth, the item's flameColor by a third of its
+			-- life, deep red as it dies (the lick uses the same ramp).
+			hot = Color3.fromHex("#FFC05A"),
+			dying = Color3.fromHex("#C0300A"),
+			lightEmission = 0.6,
+			brightness = 0.9,
+			locked = true,
+			alongMotion = true,
+			zOffsetM = 0.03,
+		},
+		lick = {
+			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+			count = { 5, 6 },
+			jetSeconds = 0.09,
+			lifetime = { 0.14, 0.22 },
+			speed = { 3, 8 },
+			spreadDeg = 10,
+			drag = 5,
+			riseMps2 = 10,
+			size = { { 0, 0.14 }, { 0.12, 0.24 }, { 0.6, 0.1 }, { 1, 0.03 } },
+			transparency = { { 0, 0.8 }, { 0.3, 0.6 }, { 0.6, 0.7 }, { 1, 1 } },
+			squash = { { 0, -1.3 }, { 1, -0.8 } },
+			lightEmission = 0.5,
+			brightness = 1,
+			locked = true,
+			alongMotion = true,
+			zOffsetM = 0,
+		},
+		sparks = {
+			texture = "rbxasset://textures/particles/explosion01_implosion_main.dds",
+			count = { 0, 3 },
+			lifetime = { 0.25, 0.45 },
+			speed = { 4, 8 },
+			spreadDeg = 18,
+			drag = 1.5,
+			riseMps2 = -3,
+			size = { { 0, 0.015 }, { 1, 0 } },
+			transparency = { { 0, 0 }, { 1, 0.4 } },
+			squash = { { 0, -2.5 }, { 1, -2.5 } },
+			color = { from = Color3.fromHex("#FFE2A0"), to = Color3.fromHex("#FF5A14") },
+			lightEmission = 1,
+			brightness = 3,
+			locked = false,
+			alongMotion = true,
+			zOffsetM = 0,
+		},
+		smoke = {
+			texture = "rbxasset://textures/particles/smoke_main.dds",
+			count = { 1, 1 },
+			lifetime = { 0.6, 1 },
+			speed = { 0.4, 0.9 },
+			spreadDeg = 15,
+			drag = 1,
+			riseMps2 = 0.4,
+			size = { { 0, 0.12 }, { 1, 0.45 } },
+			transparency = { { 0, 0.82 }, { 1, 1 } },
+			squash = { { 0, 0 }, { 1, 0 } },
+			color = { from = Color3.fromHex("#2A2622"), to = Color3.fromHex("#4A4540") },
+			lightEmission = 0,
+			brightness = 1,
+			locked = false,
+			alongMotion = false,
+			zOffsetM = -0.03,
+			-- Born a moment after the flame, as the pop's gas cools.
+			delaySeconds = 0.06,
+		},
+	},
 }
 
 -- Panel order: also the order categories' chips appear in within the panel.
@@ -163,12 +365,15 @@ CosmeticsConfig.items = {
 	{ id = "decal_gradient", category = "decal", name = "Dusk Gradient", price = 50000, rare = true, text = "", stripColor = Color3.fromHex("#FFBA5C"), stripColor2 = Color3.fromHex("#5A2E6E") },
 
 	-- EXHAUST: tip count, tip colour/material, and the sound tweaks they buy
-	-- (engineVolume multiplies the engine sound, crackleChance the pops).
-	{ id = "exhaust_stock", category = "exhaust", name = "Factory", price = 0, tips = 0, engineVolume = 1, crackleChance = 1 },
-	{ id = "exhaust_single", category = "exhaust", name = "Single Chrome Tip", price = 15000, tips = 1, tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.1, crackleChance = 1.3 },
-	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.2, crackleChance = 1.6 },
-	{ id = "exhaust_quad", category = "exhaust", name = "Quad Tips", price = 60000, tips = 4, tipColor = Color3.fromHex("#2A2A2E"), tipMaterial = Enum.Material.Metal, engineVolume = 1.3, crackleChance = 2 },
-	{ id = "exhaust_titanium", category = "exhaust", name = "Burnt Titanium Twin", price = 120000, rare = true, tips = 2, tipColor = Color3.fromHex("#6F5A8C"), tipMaterial = Enum.Material.Metal, engineVolume = 1.35, crackleChance = 2.5 },
+	-- (engineVolume multiplies the engine sound, crackleChance the pops), and
+	-- the flame profile (garage round 2 §2): factory small and orange, the
+	-- sport tips larger and yellower with a bluer core, the burnt titanium
+	-- largest with a blue-violet core, like the heat tint on its tips.
+	{ id = "exhaust_stock", category = "exhaust", name = "Factory", price = 0, tips = 0, engineVolume = 1, crackleChance = 1, flameSize = 0.9, flameCore = Color3.fromHex("#6C8CFF"), flameColor = Color3.fromHex("#FF6A1A") },
+	{ id = "exhaust_single", category = "exhaust", name = "Single Chrome Tip", price = 15000, tips = 1, tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.1, crackleChance = 1.3, flameSize = 1.2, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
+	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.2, crackleChance = 1.6, flameSize = 1.25, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
+	{ id = "exhaust_quad", category = "exhaust", name = "Quad Tips", price = 60000, tips = 4, tipColor = Color3.fromHex("#2A2A2E"), tipMaterial = Enum.Material.Metal, engineVolume = 1.3, crackleChance = 2, flameSize = 1.4, flameCore = Color3.fromHex("#2E62FF"), flameColor = Color3.fromHex("#FF8A24") },
+	{ id = "exhaust_titanium", category = "exhaust", name = "Burnt Titanium Twin", price = 120000, rare = true, tips = 2, tipColor = Color3.fromHex("#6F5A8C"), tipMaterial = Enum.Material.Metal, engineVolume = 1.35, crackleChance = 2.5, flameSize = 1.5, flameCore = Color3.fromHex("#6A3CFF"), flameColor = Color3.fromHex("#FF6A2A") },
 } :: { Item }
 
 local byId: { [string]: Item } = {}

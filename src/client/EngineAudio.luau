@@ -15,7 +15,11 @@
 -- On top of the layers, four events read off the same state: an upshift
 -- dips the engine (the torque cut), an off-throttle downshift blips the
 -- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
--- redline cuts the engine in and out like a limiter. The note also kicks
+-- redline cuts the engine in and out like a limiter. Pops also come singly
+-- on an upshift from high rpm and now and then on the limiter (garage round
+-- 2 §2). Every pop is also a flame: onPop fires as each one plays, onBurst
+-- once per decision with its pop count (the exhaust flames, ExhaustFlames,
+-- wired in init.client). The note also kicks
 -- up when the throttle goes back on: an rpm offset for the audio only,
 -- since the sim's rpm follows the wheels. Lifting off has no offset; the
 -- note falls as the sim's rpm does.
@@ -49,6 +53,12 @@ type Voice = {
 
 local EngineAudio = {}
 
+-- The flame hooks (init.client wires them to ExhaustFlames): onPop as each
+-- pop sound plays, onBurst when pops are decided (a lift-off burst, an
+-- upshift pop, a limiter pop), with how many.
+EngineAudio.onPop = nil :: ((model: Model) -> ())?
+EngineAudio.onBurst = nil :: ((model: Model, pops: number) -> ())?
+
 local LAYER_NAMES = { "idle", "lowLoad", "highLoad", "overrun" }
 local HALF_PI = math.pi / 2
 
@@ -71,6 +81,8 @@ local punch = 0 -- rpm the note sits over it after the throttle goes on
 local heardLoad = 0 -- the throttle the layers hear, eased (lift tapers off)
 local ignition = 0 -- 0 before the engine has started, 1 once it runs (fades in)
 local chassisPart: BasePart? = nil
+local attached: Model? = nil
+local lastSimRpm = 0
 -- The garage exhaust's sound profile (CosmeticsConfig: engineVolume scales
 -- the engine layers, crackleChance the pops in each lift-off burst), read
 -- from the driven car's Look and kept current while driving.
@@ -93,6 +105,7 @@ function EngineAudio.attach(model: Model)
 	end
 	local chassis = VehicleRig.handles(model).chassis
 	chassisPart = chassis
+	attached = model
 	local function readLook()
 		local item = CarLook.item(CarLook.decode(model:GetAttribute(CarLook.ATTRIBUTE)), "exhaust")
 		exhaustVolume = item.engineVolume or 1
@@ -179,6 +192,17 @@ local function pop(audio: typeof(ConfigLoader.current().effects.engineAudio))
 	s.Volume = audio.crackleVolume * rng:NextNumber(audio.crackleVolumeRange[1], audio.crackleVolumeRange[2])
 	s.TimePosition = 0
 	s:Play()
+	local model = attached
+	if model and EngineAudio.onPop then
+		EngineAudio.onPop(model)
+	end
+end
+
+local function burst(n: number)
+	local model = attached
+	if model and n > 0 and EngineAudio.onBurst then
+		EngineAudio.onBurst(model, n)
+	end
 end
 
 function EngineAudio.update(state: VehicleState, dt: number)
@@ -228,8 +252,10 @@ function EngineAudio.update(state: VehicleState, dt: number)
 
 	-- Events. Gear changes into or out of reverse are not shifts.
 	local gear = state.gear
+	local shiftedUp = false
 	if gear >= 1 and lastGear >= 1 and gear ~= lastGear then
 		if gear > lastGear then
+			shiftedUp = true
 			dipUntil = clock + audio.shiftDipSeconds
 			if shiftSound then
 				shiftSound.Volume = audio.shiftSoundVolume
@@ -254,6 +280,18 @@ function EngineAudio.update(state: VehicleState, dt: number)
 			for _ = 1, n do
 				table.insert(popQueue, clock + rng:NextNumber(0, audio.crackleBurstSeconds))
 			end
+			burst(n)
+		end
+		-- One pop on an upshift from high rpm, and now and then on the
+		-- limiter; the exhaust's crackleChance scales both chances.
+		if shiftedUp and lastSimRpm >= audio.crackleShiftRpm and rng:NextNumber() < audio.crackleShiftChance * exhaustCrackle then
+			pop(audio)
+			burst(1)
+		end
+		local onLimiter = simRpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5
+		if onLimiter and rng:NextNumber() < audio.crackleLimiterPerSecond * exhaustCrackle * dt then
+			pop(audio)
+			burst(1)
 		end
 		for i = #popQueue, 1, -1 do
 			if popQueue[i] <= clock then
@@ -266,6 +304,7 @@ function EngineAudio.update(state: VehicleState, dt: number)
 		end
 	end
 	lastLoad = throttle
+	lastSimRpm = simRpm
 
 	local gainMul, pitchMul = ignition, 1
 	if clock < dipUntil then
@@ -334,6 +373,8 @@ function EngineAudio.detach()
 		end
 	end
 	chassisPart = nil
+	attached = nil
+	lastSimRpm = 0
 	ignition = 0
 	if lookConn then
 		lookConn:Disconnect()

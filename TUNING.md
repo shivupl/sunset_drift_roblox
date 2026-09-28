@@ -331,7 +331,8 @@ Visual only; the physics never reads any of these. Client-side, for the car you 
 | engineAudio.shiftSoundId / shiftSoundVolume | Optional mechanical thunk played on each upshift. Empty for now. |
 | engineAudio.blipPitch / blipRiseSeconds / blipFallSeconds | Off-throttle downshift: pitch rises by this fraction, then falls back, about 30% louder while it lasts. Braking from 200 km/h blips at 4-3, 3-2 and 2-1 (pitch peaks 1.58 to 1.72, volume 0.25 to 0.32). |
 | engineAudio.crackleSoundId / crackleVolume / crackleVolumeRange / cracklePitch | The exhaust pop and its loudness; each pop picks a random pitch and volume from these ranges. Empty id = no crackle. |
-| engineAudio.crackleMinRpm / crackleMinKmh / crackleLiftFrom / crackleBurstPops / crackleBurstSeconds | Lifting from above crackleLiftFrom throttle while over both crackleMinKmh and crackleMinRpm fires a burst of (min, max) pops over crackleBurstSeconds; nothing else pops. Throttle back on cancels the rest. Raise the speed or rpm for rarer pops. |
+| engineAudio.crackleMinRpm / crackleMinKmh / crackleLiftFrom / crackleBurstPops / crackleBurstSeconds | Lifting from above crackleLiftFrom throttle while over both crackleMinKmh and crackleMinRpm fires a burst of (min, max) pops over crackleBurstSeconds. Throttle back on cancels the rest. Raise the speed or rpm for rarer pops. |
+| engineAudio.crackleShiftRpm / crackleShiftChance / crackleLimiterPerSecond | Single pops (garage round 2 §2): an upshift from above crackleShiftRpm (6000; the box shifts at 6400) pops with crackleShiftChance (0.35), and on the limiter about crackleLimiterPerSecond (1.2) a second. The exhaust's crackleChance multiplies both (factory 0.35 of hard upshifts, twin 0.56, titanium every one). Every pop is also a flame (CosmeticsConfig.flames). Measured with the harness on the Kamri, twin tips: 9 s of full throttle from rest gave two single pops, a lift at 5,200 rpm and 115 km/h a burst of 3; each pop's sound and flame started in the same frame. Lower the chance if shifting pops too often. |
 | engineAudio.punchRpm / punchDecaySeconds / punchFullKmh / punchFadeKmh / punchMinFactor | Sound only: pressing the throttle kicks the note up by punchRpm times the pedal travel, settling over punchDecaySeconds. Full kick up to punchFullKmh, tapering to punchMinFactor of it by punchFadeKmh. |
 | engineAudio.limiterBandRpm / limiterHz / limiterDipGain / limiterPitchDip | On throttle within the band of redline, the engine eases down to limiterDipGain and back this many times a second, the pitch sagging by limiterPitchDip at the bottom of each cut. 11 Hz to 0.6 with 4%; it was 16 Hz hard cuts to 0.35, a harsh buzz. Lower Hz or a higher dip gain is gentler. |
 | engineAudio.chimeSoundId / chimeVolume / chimeSeconds | Getting in plays this chime for chimeSeconds (the file is a 5.5 s sequence; the first chime is enough). From the store Camry's scripts. Empty id = none. |
@@ -874,6 +875,35 @@ The garage's items (docs/superpowers/specs/2026-09-28-garage-design.md), read by
 | `items[].darken` / `desaturate` | Finish only: the paint colour's value and saturation this much lower (0..1). Matte 0.2 / 0.3, metallic 0.25 | Up for a duller, deeper base |
 | `items[].text` / `textColor` / `stripColor` / `stripColor2` | Decal: the windscreen strip's text and colours; a second strip colour makes it a gradient | |
 | `items[].tips` / `tipColor` / `tipMaterial` | Exhaust: how many tips (0, 1, 2 or 4) and their look | |
-| `items[].engineVolume` / `crackleChance` | Exhaust: multiplies the engine sound's volume and the chance of pops (1.1 to 1.35, 1.3 to 2.5) | Down if a tip is too loud; crackle scaling is not yet checked by ear |
+| `items[].engineVolume` / `crackleChance` | Exhaust: multiplies the engine sound's volume and the chance of pops (1.1 to 1.35, 1.3 to 2.5); crackleChance is also the flame profile's pop multiplier, since every pop is a flame | Down if a tip is too loud; crackle scaling is not yet checked by ear |
+| `items[].flameSize` / `flameCore` / `flameColor` | Exhaust: the flame profile. flameSize scales every flame length and size (factory 0.9, single 1.2, twin 1.25, quad 1.4, titanium 1.5); flameCore is the hot core's colour at the mouth (factory #6C8CFF pale blue, sport #3A6BFF, quad #2E62FF, titanium #6A3CFF blue-violet); flameColor the tongue's body (#FF6A1A to #FF8A24) | Keep cores saturated: pale blues read white under bloom |
+
+### `flames` (exhaust flames, `ExhaustFlames`)
+
+One pop is a layered burst at every `ExhaustOutlet` (CarCosmetics), all `Emit`, no Light. Built in Edit and Play on 2026-09-28 by freezing the effect at set ages (BEHAVIOURS, "Freeze a particle effect"), judged from the side, a drift 3/4, the chase cam at 100 km/h, at sunset and night, and on the garage turntable. Lengths are metres before the car's scale, times the item's flameSize.
+
+| Layer | What it is | Particles per pop per outlet |
+|---|---|---|
+| `core` | Blue-white cone at the mouth, let out over 0.09 s, 0.05-0.08 s life, drawn nearest the camera | 5 |
+| `flash` | Camera-facing glow on the mouth for 0.08 s, in the flameColor: the pop from straight behind, and the light the cap rules out | 1 |
+| `tongue` | The flame body: 9-10 stretched particles over 0.08 s at 3-8 m/s with drag 6, fullest early and shrinking after, so it tapers; orange-yellow to the flameColor to deep red; rises 8 m/s² so it curls up as it dies | 9-10 |
+| `lick` | A wider, fainter envelope round the tongue (5-6 over 0.09 s) | 5-6 |
+| `sparks` | Hot flecks thrown back and falling, in the world | 0-3 |
+| `smoke` | A faint dark wisp 0.06 s after, in the world | 1 |
+
+Most per pop per outlet: 26 (spec: at most 30). A titanium lift-off (up to 8 pops) on twin tips is at most 416 particles over half a second, each alive under 0.25 s except smoke (1 s) and sparks (0.45 s).
+
+| Field | What it does | Which way |
+|---|---|---|
+| `mouthLeadM` | Flames start this far out along the outlet, plus however far the mouth sits inside the bumper (bumperZ), so a recessed stock pipe (kamri07, ~9 cm in) still shows its core (0.015) | Up if a car's core hides in its bumper |
+| `trailFullKmh` / `trailGain` | At speed the car-locked layers reach further back: speed times 1 + trailGain x (kmh / trailFullKmh, capped at 1). 160 / 1.2 | Up for longer flames at speed |
+| `inheritVelocity` | Sparks and smoke keep this much of the car's velocity when born (0.8), so they fall back rather than drop at the tip | |
+| `glowColor` / `glowAmount` / `glowSeconds` | A built tip (or factory pipe) is pulled this far toward this orange at each pop and eases back (0.6 over 0.45 s) | Down if the tips flash too much |
+| `soundPool` / `burstSeconds` | Pops heard with relayed and preview flames: a pool of 3 crackle Sounds per car; a relayed burst spreads over 0.5 s like the driver's | |
+| `revPops` | The garage REV button: 3-5 pops times the exhaust's crackleChance | |
+| `relayPerSecond` / `maxPopsPerBurst` | Server relay (CarControls): bursts a driver may send a second (6) and the most pops in one (8) | Down if relays cost too much |
+| `layers.*` | Each layer's texture (built-in `rbxasset://textures/particles/...` only, each checked to load), count, jetSeconds (let out over this long), lifetime, speed, spread, drag, riseMps2, size / transparency / squash keyframes, colours, lightEmission, brightness, locked (rides with the car), alongMotion (VelocityParallel), zOffsetM | Keep Brightness at or near 1 on coloured layers (BEHAVIOURS, "Colour past 1 goes white") |
+
+**The owner's feel knobs for the flames:** the items' `flameSize` (bigger or smaller flames per exhaust), `trailGain` (how far flames reach at speed), `layers.tongue.speed` (flame length at rest), and `crackleShiftChance` (how often upshifts pop).
 
 **The owner's feel knobs for the garage:** `GarageConfig.lights.key.brightness` (hotter highlight, more bloom on white), `GarageConfig.fovDeg` (longer lens, farther eye; the wall limits it), the finish items' `material` / `reflectance` / `darken` / `desaturate` (the finish ladder above), and `GarageConfig.bakedGlow` (how much painted-on light the interior keeps per sky option).

@@ -838,10 +838,11 @@ local config = {
 			blipFallSeconds = 0.3,
 			-- Overrun crackle: lifting from above crackleLiftFrom throttle
 			-- while over crackleMinKmh and crackleMinRpm fires a burst of
-			-- crackleBurstPops (min, max) pops over crackleBurstSeconds, and
-			-- nothing else pops. The owner (2026-09-22): only when going
-			-- fast and letting off, 1 to 3 times; the stray pops while
-			-- coasting and braking are gone. Every pop gets a random pitch in
+			-- crackleBurstPops (min, max) pops over crackleBurstSeconds. The
+			-- owner (2026-09-22): only when going fast and letting off, 1 to
+			-- 3 times; the stray pops while coasting and braking are gone.
+			-- (Round 2 added single pops on hard upshifts and the limiter,
+			-- below; still none while coasting or braking.) Every pop gets a random pitch in
 			-- cracklePitch and volume in crackleVolumeRange (times
 			-- crackleVolume), so no two bursts match. The pop is Mor5464's
 			-- "Car Backfire Exhaust" (112720519011313, 0.44 s), checked to
@@ -855,6 +856,19 @@ local config = {
 			crackleLiftFrom = 0.6,
 			crackleBurstPops = { 1, 3 },
 			crackleBurstSeconds = 0.5,
+			-- Single pops, each with its exhaust flame (garage round 2 §2,
+			-- 2026-09-28: "a single pop on an upshift from high rpm, random
+			-- pops on the limiter"). An upshift from above crackleShiftRpm
+			-- pops with crackleShiftChance; sitting on the limiter pops about
+			-- crackleLimiterPerSecond times a second. The exhaust item's
+			-- crackleChance multiplies both, so the factory exhaust pops on
+			-- about a third of hard upshifts and the titanium on nearly all.
+			-- The gearbox upshifts at 6400 (drivetrain.upshiftRpm), so 6000
+			-- is a full-throttle shift, never a short-shift. Lower the chance
+			-- if shifting pops too often.
+			crackleShiftRpm = 6000,
+			crackleShiftChance = 0.35,
+			crackleLimiterPerSecond = 1.2,
 			-- Punch, in sound only (the owner, 2026-09-22: getting back on
 			-- the gas should rev it back up, the punch depending on speed).
 			-- The sim's rpm is locked to the wheels, so this is an rpm offset

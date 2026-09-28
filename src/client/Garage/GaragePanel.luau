@@ -63,6 +63,7 @@ local PlateStyles = require(Shared:WaitForChild("PlateStyles"))
 local Client = script.Parent.Parent
 local UIKit = require(Client:WaitForChild("UIKit"))
 local CarCosmetics = require(Client:WaitForChild("CarCosmetics"))
+local ExhaustFlames = require(Client:WaitForChild("ExhaustFlames"))
 local SpawnMenu = require(Client:WaitForChild("SpawnMenu"))
 local GarageView = require(script.Parent:WaitForChild("GarageView"))
 
@@ -212,6 +213,8 @@ local toastSerial = 0
 local lastApplied: string? = nil
 local modalBefore = false
 local relaying = false
+-- REV's last burst runs until this os.clock(); taps before then do nothing.
+local revUntil = 0
 
 ------------------------------------------------------------------------
 -- What the player owns and has saved (Player attributes from Economy).
@@ -1399,6 +1402,21 @@ buildTab = function(u: UI)
 			note.Name = "NoSpot"
 			note.LayoutOrder = 1
 		end
+		-- REV: a burst of pops and flames on the turntable car, with the
+		-- exhaust on it now (bought or only previewing), so the flame is
+		-- part of what a player is choosing (garage round 2 §2).
+		local rev = UIKit.button(u.sub, "REV", "secondary", touch)
+		rev.Name = "Rev"
+		rev.LayoutOrder = 2
+		rev.Activated:Connect(function()
+			local m = previewModel
+			if sheet or not m or not m.Parent or os.clock() < revUntil then
+				return -- under the confirm sheet, or the last burst is still going
+			end
+			local item = CarLook.item(draftLook(), "exhaust")
+			ExhaustFlames.burst(m, ExhaustFlames.revPops(item), item)
+			revUntil = os.clock() + CosmeticsConfig.flames.burstSeconds
+		end)
 		itemCards(u, newGrid(u, u.grid, 1), "exhaust", 0)
 	elseif tab == "plates" then
 		local shop = UIKit.button(u.sub, "SHOP PLATES", "secondary", touch)

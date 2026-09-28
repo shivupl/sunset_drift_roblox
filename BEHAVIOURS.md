@@ -116,6 +116,12 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Lights are expensive.** Pool a handful of real lights and move them to the nearest lamps; let Neon lenses stand in for the rest.
 - **Make lighting changes small**, and compare the same camera view before and after.
 
+### Particles
+- **A turned particle drawn along its motion splays into a starburst.** With `Orientation = VelocityParallel`, any `Rotation` spins the stretched particle off its line of travel: a flame of stretched particles became radiating rays (exhaust flames, 2026-09-28). Keep Rotation 0 on VelocityParallel layers; turn only camera-facing ones (smoke).
+- **Colour past 1 goes white.** `Brightness` above 1, or LightEmission stacking several particles, clips a coloured particle toward white, and bloom finishes the job: a blue exhaust core at Brightness 1.6 read as white, and at Brightness 1 with little LightEmission it stayed blue. Keep a colour you need to see at Brightness 1 and pick a saturated value (#3A6BFF read blue where #A9CCFF read white).
+- **A burst emitted in one frame is a clump, not a flame.** All particles leave together and the flame detaches from the pipe. Letting them out a few a frame over ~0.08 s (still `Emit`, never a running emitter) gives a continuous tongue with particles of every age along it.
+- **A flame pointing at the camera foreshortens to a dot.** From a chase cam straight behind, an exhaust flame shows only as a blob; a short camera-facing glow at the mouth carries the pop from that angle.
+
 ---
 
 ## 5. Assets from the Creator Store
@@ -180,6 +186,7 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **`execute_luau` runs in its own VM.** Requiring a game module from it gives a fresh copy, not the running script's; editing a config table there changes nothing live. Change instances (lights, attributes) directly, or edit the file and restart Play.
 - **Virtual input cannot press Escape or gamepad B** (bound to CoreGui actions); test those paths through the on-screen button that does the same thing.
 - **A capture right after new lights appear can be dim and flat.** The renderer takes a few seconds to take new lights in; wait about 3 s before judging light.
+- **Freeze a particle effect with a slow-motion timescale, not a wait.** The Edit viewport runs at about 16 fps even focused, so waiting 0.1 s then setting `TimeScale = 0` froze a 0.2 s flame at a different age every time (and sometimes after it died). Run the emitters at `TimeScale = 0.1` (and any scripted emission to match), wait ten times the age, then set 0: the freeze lands within a few ms (ExhaustFlames.timeScale, 2026-09-28).
 - **Low graphics quality stops drawing parts past a distance.** At Automatic quality in a Studio running at ~14 fps, plain parts past about 80-85 m were not drawn at all (the garage from the spawn bay, 100 m, 2026-09-28), while the mesh lamp posts further out still showed (far palms and scatter vanished too). `settings().Rendering.QualityLevel` can be set from `execute_luau` to check a view at a real quality; set it back to Automatic afterwards. Judge "can you see it from X" at a stated quality level.
 
 ---

@@ -11,6 +11,7 @@ export type RemoteTable = {
 	SlideResult: RemoteEvent, -- server -> client (points banked, cash earned; 0,0 = dropped)
 	CarLamps: RemoteEvent, -- client -> server (head, brake, reverse: booleans for the car I drive)
 	Horn: RemoteEvent, -- client -> server (true while held)
+	ExhaustPops: RemoteEvent, -- client -> server (pops in a burst from the car I drive); server -> every other client (that car's Model, pops) (CarControls)
 	PlateQuery: RemoteFunction, -- client -> server (typed plate text, style "SA" | "DU", default "SA") -> { status, key, price, available, reason } (PlateService)
 	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text, style) -> { status, reason } (PlateService)
 	SetSky: RemoteEvent, -- client -> server (SkyConfig id): the time of day I picked, saved in my profile (SkyService)
@@ -48,6 +49,7 @@ function Remotes.create(): RemoteTable
 		SlideResult = ev("SlideResult"),
 		CarLamps = ev("CarLamps"),
 		Horn = ev("Horn"),
+		ExhaustPops = ev("ExhaustPops"),
 		PlateQuery = fn("PlateQuery"),
 		PlateAction = fn("PlateAction"),
 		SetSky = ev("SetSky"),
