@@ -92,9 +92,16 @@ function CarPlates.place(model: Model, mounts: CarPlateMounts.Mounts)
 	end
 	folder.Parent = model
 	local function draw()
-		local key = model:GetAttribute("Plate")
+		local raw = model:GetAttribute("Plate")
+		local key = if type(raw) == "string" then raw else nil
 		for _, d in drawn do
-			local art = PlateStyles.draw(d.gui, if type(key) == "string" then key else nil, d.format)
+			-- Plate styles differ in size (Abu Dhabi and Kuwait long plates
+			-- are 52 cm, Saudi and Dubai 55): the part and canvas follow the
+			-- plate shown, at the same spot.
+			local sizeM = PlateStyles.sizeOf(key, d.format)
+			d.part.Size = Vector3.new(sizeM.X, sizeM.Y, PlateConfig.thicknessM) * (k / mps)
+			d.gui.CanvasSize = sizeM * PlateStyles.PIXELS_PER_M
+			local art = PlateStyles.draw(d.gui, key, d.format)
 			d.part.Transparency = if art then 0 else 1
 		end
 	end

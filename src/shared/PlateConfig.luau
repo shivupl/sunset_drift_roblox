@@ -10,6 +10,9 @@ local PlateConfig = {
 	prices = {
 		SA = { [1] = 500_000, [2] = 200_000, [3] = 75_000, [4] = 20_000 },
 		DU = { [1] = 1_000_000, [2] = 400_000, [3] = 150_000, [4] = 40_000, [5] = 15_000 },
+		-- Abu Dhabi and Kuwait: 2026-09-27-abu-dhabi-kuwait-plates-design.md.
+		AD = { [1] = 900_000, [2] = 350_000, [3] = 125_000, [4] = 35_000, [5] = 12_000 },
+		KW = { [1] = 600_000, [2] = 250_000, [3] = 90_000, [4] = 30_000, [5] = 10_000 },
 	} :: { [string]: { [number]: number } },
 	-- Three identical letters (Saudi AAA) or all digits identical (77, 7777) cost this many times the price.
 	repeatMultiplier = 2,

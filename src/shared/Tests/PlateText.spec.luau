@@ -139,4 +139,52 @@ return function(t: T)
 	t.eq(PlateText.price("DU:A-1234"), dp[4], "dubai 4 digits")
 	t.eq(PlateText.price("DU:A-12345"), dp[5], "dubai 5 digits")
 	t.eq(PlateText.price("DU:AA-55555"), dp[5] * double, "dubai all digits identical")
+	-- Abu Dhabi and Kuwait (docs/superpowers/specs/2026-09-27-abu-dhabi-kuwait-plates-design.md)
+	local function key2(style: string, s: string): string?
+		return (PlateText.normalise(style, s))
+	end
+	local function why2(style: string, s: string): string?
+		local _, r = PlateText.normalise(style, s)
+		return r
+	end
+	t.eq(key2("AD", "20 10234"), "AD:20-10234", "abu dhabi code and number")
+	t.eq(key2("AD", "1-7"), "AD:1-7", "abu dhabi code 1, hyphen")
+	t.eq(key2("AD", "050 00099"), "AD:50-99", "abu dhabi code 50, leading zeros")
+	t.eq(key2("AD", utf8.char(0x0662, 0x0660) .. " " .. utf8.char(0x0661, 0x0662)), "AD:20-12", "abu dhabi arabic-indic digits")
+	for _, code in { 1, 4, 13, 22, 50 } do
+		t.eq(key2("AD", `{code} 5`), `AD:{code}-5`, "abu dhabi code " .. code)
+	end
+	for _, bad in { "2 5", "3 5", "23 5", "49 5", "51 5", "0 5", "20 123456", "20 0", "2010234", "20", "A 20 5", "20 5 6" } do
+		t.eq(key2("AD", bad), nil, "abu dhabi rejected: " .. bad)
+		t.ok(why2("AD", bad) ~= nil, "abu dhabi reason for: " .. bad)
+	end
+	t.eq(key2("KW", "10-23456"), "KW:10-23456", "kuwait code and number")
+	t.eq(key2("KW", "1 1"), "KW:1-1", "kuwait smallest")
+	t.eq(key2("KW", "89 99999"), "KW:89-99999", "kuwait largest")
+	t.eq(key2("KW", utf8.char(0x06F1, 0x06F0) .. "-" .. utf8.char(0x06F5)), "KW:10-5", "kuwait persian digits")
+	for _, bad in { "0 5", "90 5", "10 123456", "10 00000", "1023456", "10", "K 10 5" } do
+		t.eq(key2("KW", bad), nil, "kuwait rejected: " .. bad)
+		t.ok(why2("KW", bad) ~= nil, "kuwait reason for: " .. bad)
+	end
+	for _, k in { "AD:20-10234", "AD:1-7", "KW:10-23456", "KW:89-5" } do
+		local q = PlateText.parts(k)
+		t.ok(q ~= nil, "parts of " .. k)
+		t.eq(PlateText.normalise(string.sub(k, 1, 2), PlateText.typed(k) :: string), k, "typed round trip " .. k)
+	end
+	local ad = PlateText.parts("AD:20-10234")
+	if ad then
+		t.eq(table.concat(ad.latin), "20", "abu dhabi code in parts")
+		t.eq(ad.digits, "10234", "abu dhabi digits in parts")
+	end
+	for _, badKey in { "AD:2-5", "AD:20-123456", "AD:020-5", "KW:90-5", "KW:10-05", "KW:A-5" } do
+		t.eq(PlateText.parts(badKey), nil, "not a key: " .. badKey)
+	end
+	t.ok(PlateText.isStyle("AD") and PlateText.isStyle("KW"), "abu dhabi and kuwait are styles")
+	t.eq(PlateText.price("AD:20-7"), PlateConfig.prices.AD[1], "abu dhabi 1 digit")
+	t.eq(PlateText.price("AD:20-12345"), PlateConfig.prices.AD[5], "abu dhabi 5 digits")
+	t.eq(PlateText.price("KW:10-99"), PlateConfig.prices.KW[2] * double, "kuwait identical digits")
+	t.eq(PlateText.price("KW:10-23456"), PlateConfig.prices.KW[5], "kuwait 5 digits")
+	-- The existing styles are unchanged by the new runs
+	t.eq(PlateText.normalise("SA", "ABJ 12 34"), "SA:ABJ-1234", "saudi digits may still be spaced")
+	t.eq(PlateText.normalise("DU", "A 12 345"), "DU:A-12345", "dubai digits may still be spaced")
 end

@@ -45,6 +45,7 @@ local buyButton: TextButton? = nil
 local list: ScrollingFrame? = nil
 local heading: TextLabel? = nil
 local topRow: Frame? = nil
+local styleRow: Frame? = nil
 local queryRemote: RemoteFunction? = nil
 local actionRemote: RemoteFunction? = nil
 local carId: string? = nil
@@ -58,6 +59,8 @@ local styleButtons: { [string]: TextButton } = {}
 local HINTS: { [string]: { placeholder: string, empty: string } } = {
 	SA = { placeholder = "ABJ 7   ·   حبأ ٧", empty = "Type 3 letters and a number, in Arabic or English" },
 	DU = { placeholder = "A 12345", empty = "Type the code (A to Z, or AA to EE) and a number of up to 5 digits" },
+	AD = { placeholder = "20 10234", empty = "Type the code (1, 4 to 22, or 50), a space, then a number of up to 5 digits" },
+	KW = { placeholder = "10 23456", empty = "Type the code (1 to 89), a space, then a number of up to 5 digits" },
 }
 
 local function t(): Theme
@@ -341,9 +344,6 @@ local function setStyle(code: string)
 	onSearch()
 end
 
--- Width of the style switch at the left of the search row.
-local SWITCH_W = 150
-
 function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Frame
 	theme = th
 	local f = Instance.new("Frame")
@@ -359,6 +359,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 
 	local top = Instance.new("Frame")
 	top.BackgroundTransparency = 1
+	top.Name = "Search"
 	top.LayoutOrder = 1
 	top.Size = UDim2.new(1, 0, 0, 44)
 	top.Parent = f
@@ -374,8 +375,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	box.PlaceholderColor3 = th.muted
 	box.Text = ""
 	box.TextXAlignment = Enum.TextXAlignment.Left
-	box.Position = UDim2.fromOffset(SWITCH_W + 8, 0)
-	box.Size = UDim2.new(1, -(SWITCH_W + 8 + 170), 1, 0)
+	box.Size = UDim2.new(1, -170, 1, 0)
 	corner(box, 8)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 12)
@@ -383,17 +383,32 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	box.Parent = top
 	box:GetPropertyChangedSignal("Text"):Connect(onSearch)
 	search = box
+	-- The style switch: one button per plate style, its own row above the
+	-- search (four names do not fit beside it).
+	local switch = Instance.new("Frame")
+	switch.Name = "Styles"
+	switch.BackgroundTransparency = 1
+	switch.LayoutOrder = 0
+	switch.Size = UDim2.new(1, 0, 0, 30)
+	local switchLayout = Instance.new("UIListLayout")
+	switchLayout.FillDirection = Enum.FillDirection.Horizontal
+	switchLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	switchLayout.Padding = UDim.new(0, 6)
+	switchLayout.Parent = switch
+	local count = #PlateText.STYLES
 	for i, st in PlateText.STYLES do
-		local sb = button(top, st.name)
+		local sb = button(switch, st.name)
 		sb.Name = "Style" .. st.code
 		sb.TextSize = 13
-		sb.Position = UDim2.fromOffset((i - 1) * (SWITCH_W / #PlateText.STYLES), 0)
-		sb.Size = UDim2.new(0, SWITCH_W / #PlateText.STYLES - 4, 1, 0)
+		sb.LayoutOrder = i
+		sb.Size = UDim2.new(1 / count, -6 * (count - 1) / count, 1, 0)
 		sb.Activated:Connect(function()
 			setStyle(st.code)
 		end)
 		styleButtons[st.code] = sb
 	end
+	switch.Parent = f
+	styleRow = switch
 	paintStyles()
 	local buy = button(top, "BUY")
 	buy.AnchorPoint = Vector2.new(1, 0)
@@ -408,6 +423,7 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	buyButton = buy
 
 	local preview = Instance.new("Frame")
+	preview.Name = "Preview"
 	preview.BackgroundTransparency = 1
 	preview.LayoutOrder = 2
 	preview.Size = UDim2.new(1, 0, 0, 84)
@@ -467,10 +483,14 @@ function PlatesPanel.fit(height: number, isTouch: boolean)
 	end
 	local topH = if isTouch then 56 else 44
 	local previewH = if isTouch then 96 else 84
+	local switchH = if isTouch then 44 else 30
 	f.Size = UDim2.new(1, 0, 0, height)
 	top.Size = UDim2.new(1, 0, 0, topH)
 	preview.Size = UDim2.new(1, 0, 0, previewH)
-	local fixed = topH + previewH + 20 + 18 + 8 * 4
+	if styleRow then
+		(styleRow :: Frame).Size = UDim2.new(1, 0, 0, switchH)
+	end
+	local fixed = switchH + topH + previewH + 20 + 18 + 8 * 5
 	scroll.Size = UDim2.new(1, 0, 0, math.max(height - fixed, rowHeight()))
 	scroll.ScrollBarThickness = if isTouch then 6 else 4
 end

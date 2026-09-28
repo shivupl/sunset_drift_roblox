@@ -34,6 +34,24 @@ PlateStyles.SIZE_M = {
 	long = Vector2.new(0.55, 0.11), -- the "EU size"
 } :: { [Format]: Vector2 }
 
+-- Real sizes by style where they differ from the table above: Abu Dhabi
+-- and Kuwait long plates are 52 cm (2026-09-27 reference check).
+local SIZE_BY_STYLE: { [string]: { [Format]: Vector2 } } = {
+	AD = { short = Vector2.new(0.335, 0.155), long = Vector2.new(0.52, 0.11) },
+	KW = { short = Vector2.new(0.335, 0.155), long = Vector2.new(0.52, 0.11) },
+}
+
+-- A style's plate size in metres, for a car spot's format.
+function PlateStyles.sizeM(style: string?, format: Format): Vector2
+	local byStyle = if style then SIZE_BY_STYLE[style] else nil
+	return if byStyle then byStyle[format] else PlateStyles.SIZE_M[format]
+end
+
+-- The size of the plate a key draws (the default size when there is no key).
+function PlateStyles.sizeOf(key: string?, format: Format): Vector2
+	return PlateStyles.sizeM(if key then PlateText.styleOf(key) else nil, format)
+end
+
 -- SurfaceGui canvas pixels per metre of plate: a long plate is 550 px wide.
 PlateStyles.PIXELS_PER_M = 1000
 
@@ -42,6 +60,8 @@ local COLORS = {
 	ink = Color3.fromRGB(18, 18, 20),
 	strip = Color3.fromRGB(246, 246, 242), -- white on private plates (yellow taxi, blue commercial)
 	stripInk = Color3.fromRGB(18, 18, 20),
+	adRed = Color3.fromRGB(204, 16, 24), -- Abu Dhabi's code box and band
+	onRed = Color3.fromRGB(255, 255, 255),
 }
 PlateStyles.COLORS = COLORS
 
@@ -114,6 +134,95 @@ type DubaiLayout = {
 	border: number,
 }
 
+-- Abu Dhabi and Kuwait, measured the same way (520x110 and 335x155 mm
+-- drawings, 2026-09-27). Each is a list of fills, labels, the code and the
+-- number block; `slots` is how many glyph widths the number block holds, so
+-- a short number stays tight and centred.
+type Label = { text: string, rect: Rect, color: Color3?, font: Enum.Font? }
+type NumericLayout = {
+	fills: { Block },
+	labels: { Label },
+	code: Rect,
+	codeColor: Color3,
+	digits: Rect,
+	slots: number,
+	joined: boolean, -- Kuwait long: the code, a hyphen and the number share one line
+	border: number,
+}
+
+local NUMERIC_LAYOUT: { [string]: { [Format]: NumericLayout } } = {
+	AD = {
+		-- Red code box at the left, the names stacked beside it, the number.
+		long = {
+			fills = { { rect = { x = 0, y = 0, w = 0.21, h = 1 }, color = COLORS.adRed } },
+			labels = {
+				{ text = "الامارات", rect = { x = 0.24, y = 0.10, w = 0.20, h = 0.26 } },
+				{ text = "أبوظبي", rect = { x = 0.25, y = 0.37, w = 0.18, h = 0.25 } },
+				{ text = "U.A.E A.D", rect = { x = 0.235, y = 0.64, w = 0.22, h = 0.24 } },
+			},
+			code = { x = 0.03, y = 0.18, w = 0.16, h = 0.64 },
+			codeColor = COLORS.onRed,
+			digits = { x = 0.48, y = 0.12, w = 0.48, h = 0.76 },
+			slots = 5,
+			joined = false,
+			border = 0.035,
+		},
+		-- A red band across the top: the emirate at the left, the code in
+		-- the middle, the country at the right; the number below.
+		short = {
+			fills = { { rect = { x = 0, y = 0, w = 1, h = 0.39 }, color = COLORS.adRed } },
+			labels = {
+				{ text = "أبوظبي", rect = { x = 0.05, y = 0.05, w = 0.28, h = 0.17 }, color = COLORS.onRed },
+				{ text = "A.D", rect = { x = 0.10, y = 0.21, w = 0.16, h = 0.15 }, color = COLORS.onRed },
+				{ text = "الامارات", rect = { x = 0.63, y = 0.05, w = 0.32, h = 0.17 }, color = COLORS.onRed },
+				{ text = "U.A.E", rect = { x = 0.70, y = 0.21, w = 0.20, h = 0.15 }, color = COLORS.onRed },
+			},
+			code = { x = 0.38, y = 0.04, w = 0.24, h = 0.33 },
+			codeColor = COLORS.onRed,
+			digits = { x = 0.08, y = 0.44, w = 0.84, h = 0.50 },
+			slots = 5,
+			joined = false,
+			border = 0.03,
+		},
+	},
+	KW = {
+		-- The names stacked at the left, then "10-23456" on one line.
+		long = {
+			fills = {},
+			labels = {
+				{ text = "دولة الكويت", rect = { x = 0.03, y = 0.12, w = 0.26, h = 0.32 } },
+				{ text = "KUWAIT", rect = { x = 0.03, y = 0.52, w = 0.27, h = 0.34 } },
+			},
+			code = { x = 0, y = 0, w = 0, h = 0 }, -- drawn on the number line
+			codeColor = COLORS.ink,
+			digits = { x = 0.31, y = 0.12, w = 0.66, h = 0.76 },
+			slots = 8, -- two code digits, the hyphen, five number digits
+			joined = true,
+			border = 0.035,
+		},
+		-- KUWAIT down a strip at the left edge; the code and the country's
+		-- name across the top; the number below.
+		short = {
+			fills = { { rect = { x = 0.13, y = 0, w = 0.006, h = 1 }, color = COLORS.ink } },
+			labels = {
+				{ text = "K", rect = { x = 0.035, y = 0.06, w = 0.08, h = 0.145 } },
+				{ text = "U", rect = { x = 0.035, y = 0.205, w = 0.08, h = 0.145 } },
+				{ text = "W", rect = { x = 0.035, y = 0.35, w = 0.08, h = 0.145 } },
+				{ text = "A", rect = { x = 0.035, y = 0.495, w = 0.08, h = 0.145 } },
+				{ text = "I", rect = { x = 0.035, y = 0.64, w = 0.08, h = 0.145 } },
+				{ text = "T", rect = { x = 0.035, y = 0.785, w = 0.08, h = 0.145 } },
+				{ text = "دولة الكويت", rect = { x = 0.40, y = 0.09, w = 0.55, h = 0.26 } },
+			},
+			code = { x = 0.16, y = 0.05, w = 0.22, h = 0.36 },
+			codeColor = COLORS.ink,
+			digits = { x = 0.16, y = 0.42, w = 0.80, h = 0.52 },
+			slots = 5,
+			joined = false,
+			border = 0.03,
+		},
+	},
+}
+
 -- Measured from the Wikimedia Commons drawings (550x110 and 335x155 mm,
 -- 2026-09-27), as fractions of the plate from the top left.
 local DUBAI: { [Format]: DubaiLayout } = {
@@ -149,8 +258,7 @@ local function spread(out: { Cell }, glyphs: { string }, rect: Rect, role: Role,
 end
 
 -- The plate's border: four ink bars, the same thickness on every side.
-local function border(format: Format, thickness: number): { Block }
-	local size = PlateStyles.SIZE_M[format]
+local function border(size: Vector2, thickness: number): { Block }
 	local bx = thickness * size.Y / size.X
 	return {
 		{ rect = { x = 0, y = 0, w = 1, h = thickness }, color = COLORS.ink },
@@ -158,6 +266,74 @@ local function border(format: Format, thickness: number): { Block }
 		{ rect = { x = 0, y = 0, w = bx, h = 1 }, color = COLORS.ink },
 		{ rect = { x = 1 - bx, y = 0, w = bx, h = 1 }, color = COLORS.ink },
 	}
+end
+
+-- Glyphs in fixed-width slots (the block holds `slots` of them), centred
+-- as a group: a short number stays tight, like the real plates.
+local function centred(out: { Cell }, glyphs: { string }, rect: Rect, slots: number, roles: { Role }, color: Color3)
+	local slot = rect.w / slots
+	local width = slot * #glyphs
+	local block = { x = rect.x + (rect.w - width) / 2, y = rect.y, w = width, h = rect.h }
+	local first = #out
+	spread(out, glyphs, block, "latinDigit", FONTS.condensed, color, false)
+	for i = first + 1, #out do
+		out[i].role = roles[i - first]
+		out[i].bold = true
+	end
+end
+
+local function chars(text: string): { string }
+	local out: { string } = {}
+	for i = 1, #text do
+		table.insert(out, string.sub(text, i, i))
+	end
+	return out
+end
+
+local function numeric(p: PlateText.Parts, format: Format): Art?
+	local l = (NUMERIC_LAYOUT[p.style] or {})[format]
+	if not l then
+		return nil
+	end
+	local blocks: { Block } = table.clone(l.fills)
+	for _, b in border(PlateStyles.sizeM(p.style, format), l.border) do
+		table.insert(blocks, b)
+	end
+	local cells: { Cell } = {}
+	for _, lab in l.labels do
+		local isArabic = utf8.codepoint(lab.text, 1) >= 0x0600
+		table.insert(cells, {
+			text = lab.text,
+			role = "label",
+			font = lab.font or (if isArabic then FONTS.arabic else FONTS.latin),
+			color = lab.color or COLORS.ink,
+			rect = lab.rect,
+		})
+	end
+	local code = p.latin[1]
+	local digits = chars(p.digits)
+	if l.joined then
+		local glyphs = chars(code)
+		local roles: { Role } = {}
+		for _ = 1, #glyphs do
+			table.insert(roles, "code")
+		end
+		table.insert(glyphs, "-")
+		table.insert(roles, "label")
+		for _, d in digits do
+			table.insert(glyphs, d)
+			table.insert(roles, "latinDigit")
+		end
+		centred(cells, glyphs, l.digits, l.slots, roles, COLORS.ink)
+	else
+		table.insert(cells, { text = code, role = "code", font = FONTS.condensed, color = l.codeColor, rect = l.code, bold = true })
+		local roles: { Role } = {}
+		for _ = 1, #digits do
+			table.insert(roles, "latinDigit")
+		end
+		centred(cells, digits, l.digits, l.slots, roles, COLORS.ink)
+	end
+	return { blocks = blocks, cells = cells }
 end
 
 local function dubai(p: PlateText.Parts, format: Format): Art?
@@ -170,22 +346,13 @@ local function dubai(p: PlateText.Parts, format: Format): Art?
 		{ text = "دبي", role = "label", font = FONTS.arabic, color = COLORS.ink, rect = l.nameArabic },
 		{ text = table.concat(p.latin), role = "code", font = FONTS.condensed, color = COLORS.ink, rect = l.code, bold = true },
 	}
-	local digits: { string } = {}
-	for i = 1, #p.digits do
-		table.insert(digits, string.sub(p.digits, i, i))
+	local digits = chars(p.digits)
+	local roles: { Role } = {}
+	for _ = 1, #digits do
+		table.insert(roles, "latinDigit")
 	end
-	-- Each digit keeps a fifth of the block and the group is centred, so a
-	-- short number stays tight like the real plate instead of spreading out.
-	local slot = l.digits.w / 5
-	local width = slot * #digits
-	local block = { x = l.digits.x + (l.digits.w - width) / 2, y = l.digits.y, w = width, h = l.digits.h }
-	spread(cells, digits, block, "latinDigit", FONTS.condensed, COLORS.ink, false)
-	for _, c in cells do
-		if c.role == "latinDigit" then
-			c.bold = true
-		end
-	end
-	return { blocks = border(format, l.border), cells = cells }
+	centred(cells, digits, l.digits, 5, roles, COLORS.ink)
+	return { blocks = border(PlateStyles.sizeM(p.style, format), l.border), cells = cells }
 end
 
 -- The plate for a key as plain data; nil for anything not a valid key.
@@ -193,13 +360,15 @@ function PlateStyles.layout(key: string, format: Format): Art?
 	local p = PlateText.parts(key)
 	if p and p.style == "DU" then
 		return dubai(p, format)
+	elseif p and NUMERIC_LAYOUT[p.style] then
+		return numeric(p, format)
 	end
 	local l = LAYOUT[format]
 	if not p or not l then
 		return nil
 	end
 	local blocks: { Block } = { { rect = l.strip, color = COLORS.strip } }
-	for _, b in border(format, l.border) do
+	for _, b in border(PlateStyles.sizeM(p.style, format), l.border) do
 		table.insert(blocks, b)
 	end
 	for _, line in l.lines do
@@ -239,7 +408,7 @@ function PlateStyles.draw(parent: Instance, key: string?, format: Format): Frame
 	if not art then
 		return nil
 	end
-	local size = PlateStyles.SIZE_M[format]
+	local size = PlateStyles.sizeOf(key, format)
 	local f = Instance.new("Frame")
 	f.Name = "PlateArt"
 	f.AnchorPoint = Vector2.new(0.5, 0.5)

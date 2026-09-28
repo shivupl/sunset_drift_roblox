@@ -85,4 +85,45 @@ return function(t: T)
 			t.ok(r.x >= 0 and r.y >= 0 and r.x + r.w <= 1.0001 and r.y + r.h <= 1.0001, "dubai " .. format .. ": block inside the plate")
 		end
 	end
+	-- Abu Dhabi and Kuwait
+	for _, format: PlateStyles.Format in formats do
+		for _, spec in { { key = "AD:20-10234", code = "20", digits = "1,0,2,3,4", labels = { "الامارات", "أبوظبي" } }, { key = "KW:10-23456", code = "10", digits = "2,3,4,5,6", labels = { "دولة الكويت" } } } do
+			local art = PlateStyles.layout(spec.key, format)
+			t.ok(art ~= nil, `{format} {spec.key}: lays out`)
+			if not art then
+				continue
+			end
+			t.eq(row(art, "latinDigit"), spec.digits, `{format} {spec.key}: digits`)
+			local codeText = {}
+			for _, c in art.cells do
+				if c.role == "code" then
+					table.insert(codeText, c.text)
+				end
+			end
+			t.eq(table.concat(codeText), spec.code, `{format} {spec.key}: code`)
+			local seen = {}
+			for _, c in art.cells do
+				seen[c.text] = true
+			end
+			for _, l in spec.labels do
+				t.ok(seen[l] == true, `{format} {spec.key}: shows {l}`)
+			end
+			for _, c in art.cells do
+				local r = c.rect
+				t.ok(r.x >= 0 and r.y >= 0 and r.x + r.w <= 1.0001 and r.y + r.h <= 1.0001, `{format} {spec.key}: {c.text} inside the plate`)
+			end
+			for _, b in art.blocks do
+				local r = b.rect
+				t.ok(r.x >= 0 and r.y >= 0 and r.x + r.w <= 1.0001 and r.y + r.h <= 1.0001, `{format} {spec.key}: block inside the plate`)
+			end
+		end
+	end
+	-- Sizes per style: Saudi and Dubai long plates are 55 cm, Abu Dhabi and Kuwait 52 cm
+	t.near(PlateStyles.sizeM("SA", "long").X, 0.55, 1e-6, "saudi long 55 cm")
+	t.near(PlateStyles.sizeM("DU", "long").X, 0.55, 1e-6, "dubai long 55 cm")
+	t.near(PlateStyles.sizeM("AD", "long").X, 0.52, 1e-6, "abu dhabi long 52 cm")
+	t.near(PlateStyles.sizeM("KW", "long").X, 0.52, 1e-6, "kuwait long 52 cm")
+	t.near(PlateStyles.sizeM("KW", "short").X, 0.335, 1e-6, "kuwait short 33.5 cm")
+	t.near(PlateStyles.sizeOf("AD:20-7", "long").X, 0.52, 1e-6, "size from a key")
+	t.near(PlateStyles.sizeOf(nil, "long").X, 0.55, 1e-6, "size with no key")
 end

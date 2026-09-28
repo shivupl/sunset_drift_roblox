@@ -12,10 +12,10 @@ local PlateText = {}
 
 export type Parts = {
 	style: string,
-	latin: { string }, -- the letters in reading order (a Dubai plate: its code)
+	latin: { string }, -- the letters in reading order (Dubai: its code letters; Abu Dhabi, Kuwait: its code number, one entry)
 	arabic: { string }, -- Saudi: the same letters in Arabic, arabic[i] is latin[i] and is drawn above it; Dubai: empty
 	digits: string, -- "7"
-	arabicDigits: { string }, -- one per digit, same order as digits
+	arabicDigits: { string }, -- Saudi only: one per digit, same order as digits
 }
 
 -- The 17 Saudi plate letters and the Latin letter printed with each
@@ -77,6 +77,8 @@ local DROP: { [number]: boolean } = {
 local STYLES: { { code: string, name: string } } = {
 	{ code = "SA", name = "KSA" },
 	{ code = "DU", name = "DUBAI" }, -- docs/superpowers/specs/2026-09-27-dubai-plates-design.md
+	{ code = "AD", name = "ABU DHABI" }, -- docs/superpowers/specs/2026-09-27-abu-dhabi-kuwait-plates-design.md
+	{ code = "KW", name = "KUWAIT" }, -- same
 }
 PlateText.STYLES = STYLES
 
@@ -96,12 +98,38 @@ for c = 65, 90 do
 	DU_CODES[string.char(c)] = true
 end
 
+-- Abu Dhabi private codes: 1, 4 to 22, and 50 (the UAE's 50th National
+-- Day); Kuwait: 1 to 89 (2026-09-27 reference check).
+local function adCode(n: number): boolean
+	return n == 1 or n == 50 or (n >= 4 and n <= 22)
+end
+local function kwCode(n: number): boolean
+	return n >= 1 and n <= 89
+end
+
+-- Styles whose code is a number: the code test, how the reason lists the
+-- codes, and an example of the typed format.
+local NUMERIC: { [string]: { name: string, ok: (number) -> boolean, codes: string, example: string } } = {
+	AD = { name = "Abu Dhabi", ok = adCode, codes = "1, 4 to 22, or 50", example = "20 10234" },
+	KW = { name = "Kuwait", ok = kwCode, codes = "1 to 89", example = "10 23456" },
+}
+
+type Run = { kind: string, text: string }
+
 type Scan = {
 	letters: { string }, -- Latin, uppercase; Arabic letters already mapped to Latin
 	digits: { string }, -- 0-9
 	groups: number, -- runs of letters or digits, in order
 	latin: boolean, -- a letter was typed in Latin
 	arabic: boolean, -- a letter was typed in Arabic
+	runs: { Run }, -- letters and digits as typed, split by spaces and hyphens
+}
+
+-- Characters that end a run of digits or letters as typed (the rest of DROP,
+-- tatweel and hidden marks, never split anything).
+local SEPARATOR: { [number]: boolean } = {
+	[9] = true, [10] = true, [11] = true, [12] = true, [13] = true, [32] = true,
+	[45] = true, [0x00A0] = true,
 }
 
 -- What a player typed, split into letters and digits. Every style's rules
@@ -115,10 +143,14 @@ local function scan(input: string): (Scan?, string?)
 	if not utf8.len(input) then
 		return nil, "That is not valid text"
 	end
-	local out: Scan = { letters = {}, digits = {}, groups = 0, latin = false, arabic = false }
+	local out: Scan = { letters = {}, digits = {}, groups = 0, latin = false, arabic = false, runs = {} }
 	local last = ""
+	local run: Run? = nil
 	for _, cp in utf8.codes(input) do
 		if DROP[cp] then
+			if SEPARATOR[cp] then
+				run = nil
+			end
 			continue
 		end
 		local kind: string, ch: string = "", ""
@@ -142,6 +174,14 @@ local function scan(input: string): (Scan?, string?)
 			last = kind
 		end
 		table.insert(if kind == "letter" then out.letters else out.digits, ch)
+		local current = run
+		if current and current.kind == kind then
+			current.text ..= ch
+		else
+			local fresh: Run = { kind = kind, text = ch }
+			table.insert(out.runs, fresh)
+			run = fresh
+		end
 	end
 	if out.groups > 2 then
 		return nil, "Put the letters together and the number together"
@@ -205,6 +245,31 @@ local function normaliseDU(sc: Scan): (string?, string?)
 	return `DU:{code}-{n}`, nil
 end
 
+-- Abu Dhabi and Kuwait: a code and a number, both digits, so they must be
+-- typed as two groups ("20 10234"); run together they cannot be told apart.
+local function normaliseNumeric(style: string, sc: Scan): (string?, string?)
+	local rule = NUMERIC[style]
+	if #sc.letters > 0 then
+		return nil, `{rule.name} plates are all digits: the code, then the number`
+	end
+	if #sc.runs ~= 2 then
+		return nil, `Type the code, a space, then the number, like {rule.example}`
+	end
+	local code = tonumber(sc.runs[1].text) :: number
+	if not rule.ok(code) then
+		return nil, `{sc.runs[1].text} is not a {rule.name} code ({rule.codes})`
+	end
+	local numberDigits: { string } = {}
+	for i = 1, #sc.runs[2].text do
+		table.insert(numberDigits, string.sub(sc.runs[2].text, i, i))
+	end
+	local n, why = number(numberDigits, 5, rule.name)
+	if not n then
+		return nil, why
+	end
+	return `{style}:{code}-{n}`, nil
+end
+
 -- The plate key for what a player typed in a style, or nil and the reason
 -- to show them.
 function PlateText.normalise(style: string, input: string): (string?, string?)
@@ -217,15 +282,25 @@ function PlateText.normalise(style: string, input: string): (string?, string?)
 	end
 	if style == "DU" then
 		return normaliseDU(sc)
+	elseif NUMERIC[style] then
+		return normaliseNumeric(style, sc)
 	end
 	return normaliseSA(sc)
 end
 
 -- A key split into what a plate draws. nil for anything not a valid key.
 function PlateText.parts(key: string): Parts?
-	local style, letters, digits = string.match(key, "^(%u%u):(%u+)%-(%d+)$")
+	local style, letters, digits = string.match(key, "^(%u%u):(%w+)%-(%d+)$")
 	if not style or not letters or not digits or string.sub(digits, 1, 1) == "0" then
 		return nil
+	end
+	local numeric = NUMERIC[style]
+	if numeric then
+		local code = tonumber(letters)
+		if not code or string.sub(letters, 1, 1) == "0" or not numeric.ok(code) or #digits > 5 then
+			return nil
+		end
+		return { style = style :: string, latin = { letters }, arabic = {}, digits = digits, arabicDigits = {} }
 	end
 	if style == "DU" then
 		if not DU_CODES[letters] or #digits > 5 then
