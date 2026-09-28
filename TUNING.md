@@ -690,7 +690,7 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | Field | What it does |
 |---|---|
 | fovDeg / eyeHeightM / yawDeg / framingMargin / screenOffset | The one camera: 50 degree lens (the spec's 40 put the eye 10.3 m out, in the bay's front-left corner inside the tyre rack), eye 1.5 m, 30 degrees round from the nose toward the right (3/4 front right; 35 crowded the side wall), margin round the body's bounding sphere, and how far right of centre the car sits (0.18 of the width) so the panel does not cover it. The camera turns to put the car there; it does not slide. Distances by rig box: 7.0 m (hatch) to 8.4 m (cruiser), the eye at least 1.9 m off the side wall and 2 m inside the door. Lower fovDeg = longer lens, farther eye. |
-| thresholdRangeM / fadeSeconds / exitCamera | The doorway is watched within 12 m; the fade is 0.2 s each way; on leaving the camera starts 4 m behind and 1.6 m above the character at ExitSpot. |
+| thresholdRangeM / fadeSeconds / noticeSeconds / exitCamera | The doorway is watched within 12 m (never while seated); the fade is 0.2 s each way; a short notice (the car could not be shown) stays 3 s; on leaving the camera starts 4 m behind and 1.6 m above the character at ExitSpot. |
 | spinDegPerSec / dragDegPerPixel / inertiaSeconds / resumeAfterSeconds / maxFlickDegPerSec | Turntable: 8 degrees a second (measured 7.6 in Play), 0.35 degrees per pixel of drag (a 200 px drag turned it 76 degrees, auto-spin included), flick decay over 1 s capped at 360 degrees a second, and 3 s before auto-spin resumes. |
 | previewLampsOn | The preview's headlights (and so its tails) are lit, so the Lights category shows. |
 | aimHeightM | Spot lights aim at the turntable centre this high (the car's middle). |
@@ -836,3 +836,23 @@ Number plates (docs/superpowers/specs/2026-09-26-number-plates-design.md).
 | `studioCash` | Starting cash in Studio's fake store (2,000,000) | Studio only |
 | `standoffM`, `thicknessM` | Plate offset from its spot and thickness (0.006, 0.01 m) | Up `standoffM` if a plate flickers against the body |
 | `drawDistanceStuds` | Plates beyond this are not drawn (150) | Down for phone performance |
+
+# Cosmetics (`src/shared/CosmeticsConfig.luau`)
+
+The garage's items (docs/superpowers/specs/2026-09-28-garage-design.md), read by the server (`CosmeticsService`), the look renderer (`CarCosmetics`, `CarLamps`) and the garage panel. How a look is drawn is `render` (World section above, "CosmeticsConfig.render"), with the finish ladder.
+
+| Field | What it does | Which way |
+|---|---|---|
+| `actionsPerSecond` | Garage actions (buy, equip, plate) a player may send per second through `CosmeticsAction`; more get "busy" (4) | Each is one tap, so 4 is well above a person and below a script. Down if the DataStore budget runs short |
+| `CATEGORIES` | The panel's order of categories, and the chip order inside it | Order only |
+| `items[].id` | The permanent id stored on profiles (in the `Looks` string) | Never rename a shipped id; only add |
+| `items[].price` | Cash price. 0 marks the category's free factory item (`stockId`), exactly one per category | First guesses in PlateConfig's economy (10,000 to 200,000 here); the owner sets them against how fast cash is earned |
+| `items[].rare` | Shows the dusk diamond in the panel; nothing else | |
+| `items[].color` | Paint: the body colour. Rims: the rim colour. Head / tail: the lamp colour (a tail's brake lamp is `render.brakeBrighten` brighter) | |
+| `items[].material` / `reflectance` | Finish and rims: the material and reflectance painted pieces or rims take. Nil material keeps the car's own | Glass reflectance is steep: 0.04 already washes a colour (finish table above) |
+| `items[].darken` / `desaturate` | Finish only: the paint colour's value and saturation this much lower (0..1). Matte 0.2 / 0.3, metallic 0.25 | Up for a duller, deeper base |
+| `items[].text` / `textColor` / `stripColor` / `stripColor2` | Decal: the windscreen strip's text and colours; a second strip colour makes it a gradient | |
+| `items[].tips` / `tipColor` / `tipMaterial` | Exhaust: how many tips (0, 1, 2 or 4) and their look | |
+| `items[].engineVolume` / `crackleChance` | Exhaust: multiplies the engine sound's volume and the chance of pops (1.1 to 1.35, 1.3 to 2.5) | Down if a tip is too loud; crackle scaling is not yet checked by ear |
+
+**The owner's feel knobs for the garage:** `GarageConfig.lights.key.brightness` (hotter highlight, more bloom on white), `GarageConfig.fovDeg` (longer lens, farther eye; the wall limits it), the finish items' `material` / `reflectance` / `darken` / `desaturate` (the finish ladder above), and `GarageConfig.bakedGlow` (how much painted-on light the interior keeps per sky option).

@@ -540,9 +540,13 @@ the same under either sky.
   on foot. The screen fades, control drops away (the root is anchored on
   the client), the character hides, and the lamp pool is suspended.
 - **Lights and the cap:** the view makes its four lights on invisible
-  anchors in the bay. Measured on the client in the view: 5 Light instances
-  (the four plus one DuneLife campfire, which was already there). Outside:
-  12 pooled plus that campfire.
+  anchors in the bay and suspends the lamp pool. Measured on the client
+  (2026-09-28, final Play pass, every Light instance in the workspace):
+  in the view, 5 = the four view lights + one DuneLife campfire; outside,
+  13 = 12 pooled lamp lights + that campfire. The campfire is pre-existing
+  (DuneLife, not the garage) and sits outside the pool's
+  `maxLiveLights` (12) count either way; the garage adds no Light of its
+  own.
 - **The preview car:** a client-only, anchored, physics-free car on a
   minimal rig, turned with the plate.
 - **The camera:** fixed 3/4 front right at 50 degrees, 7 to 8.4 m out,
@@ -589,6 +593,28 @@ the display bay's tyre rack (the `shelf` props entry at u -12.66, v -5.2)
 is five tyres and a rack, about 600 of those triangles; dropping that
 entry is the cheapest cut that leaves the lift bay as it is. 27 parts cast shadows
 (the shell, the roof, the lift, the sign). Built in 0.02 to 0.14 s.
+
+The build's own lines (final Play pass, 2026-09-28, `testRoad`):
+
+```
+[World] garage: 308 parts, ~5900 tris by estimate, 0.03 s
+[World]   garage       308 parts  ~  5900 tris
+[World]   TOTAL      27985 parts  ~4321548 tris (whole world, not one viewpoint)
+```
+
+So the garage is 1.1% of the world's parts and 0.14% of its estimated
+triangles (the station is 126 parts, ~1,372 tris). On the client the folder
+holds 412 parts: the 308 built plus the raised kamri07 on the lift, which
+the client builds.
+
+**Seen from the spawn bay** (100 m away, across the carriageways). In this
+Studio, at Automatic graphics quality while it runs at about 14 fps, the
+garage is not drawn at all from the bay: it appears from about 78 m. A test
+box at the same spot showed the cut is by distance, not by the garage's
+parts. With the quality forced to level 10 it is drawn from the bay: sign,
+doors and lit interior read as the first building on the left. A phone on
+low quality may not show it from the spawn either; the apron and the
+fascia's sodium lamps are what show first once it is drawn.
 
 ## The city section (`src/server/World/City/`)
 

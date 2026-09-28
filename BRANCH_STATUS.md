@@ -12,6 +12,13 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`garage` (open, 2026-09-28): ready for owner review, not merged.** The UI design system
+(UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
+per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
+wing, the walk-in customisation view and its panel (buy with confirm, equip). Spec and plan in
+docs/superpowers. Open owner calls: finish look (mirror chrome needs Future lighting or
+SurfaceAppearance maps), prices, `lights.key.brightness`, paintable pickup and cruiser shells.
+
 ## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 
 Pops and a flame burst at the exhaust tips, from the Kruzer 80 store model's A-Chassis

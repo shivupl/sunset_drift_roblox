@@ -6,6 +6,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 - **`BEHAVIOURS.md`:** general rules of thumb for Roblox development: engine traps, terrain, atmosphere, assets, performance, verification, working with the owner. Follow it, and add to it when the engine surprises you.
 - **`WORLD.md`:** how this world is built and why, with measured numbers.
 - **`TUNING.md`:** every config field, what it does and which way to move it.
+- **`UI_SYSTEM.md`:** the UI's design tokens (`src/shared/UITheme.luau`) and the rules for using them: one sodium accent, bilingual titles, tap targets, shop item states.
 - **`DESIGN.md`:** the vehicle model (suspension, tyres).
 - **`RIG_SPEC.md`:** the car rig and body contract.
 - **`tools/carbody/README.md`:** the store-car standard: how every car is split, named and debadged, which store-script features we keep (engine sounds, ignition, horn; the car's own lamp parts driven by our `CarLamps`), and the steps to add a car. Keep it current when the standard changes.
@@ -16,13 +17,14 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 | Path | Maps to | What is in it |
 |---|---|---|
 | `src/server` | ServerScriptService/Server | Spawning, rigs, scoring, economy |
-| `src/server/World` | ServerScriptService/Server/World | The world build: RoadNetwork, Relief (terrain dunes and the shared `Relief.border` lookup), Fence, Scatter, DuneLife, Cityscape (skyline and aura), Station, Lighting, City (`City/`) |
-| `src/client` | StarterPlayerScripts/Client | Input, camera, HUD, vehicle controller, effects |
-| `src/shared` | ReplicatedStorage/Shared | CarConfig, CarCatalog, VehicleSim, VehicleRig, tests |
+| `src/server/World` | ServerScriptService/Server/World | The world build: RoadNetwork, Relief (terrain dunes and the shared `Relief.border` lookup), Fence, Scatter, DuneLife, Cityscape (skyline and aura), Station, Garage (the walk-in workshop), Lighting, City (`City/`) |
+| `src/client` | StarterPlayerScripts/Client | Input, camera, HUD, menus, vehicle controller, effects, car looks (`CarCosmetics`), the garage view and panel (`Garage/`) |
+| `src/shared` | ReplicatedStorage/Shared | CarConfig, CarCatalog, VehicleSim, VehicleRig, UITheme, CosmeticsConfig, GarageConfig, CarLook, tests |
 
 Where the settings live:
 - **World:** `src/server/World/WorldConfig.luau` and `City/CityConfig.luau`.
 - **Car:** `src/shared/CarConfig.luau` and `CarCatalog.luau`.
+- **Garage and UI:** `WorldConfig.garage` (the building), `src/shared/GarageConfig.luau` (the view), `CosmeticsConfig.luau` (items and how looks are drawn), `UITheme.luau` (UI tokens).
 
 World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road starts at the origin and runs along -Z; +X is the road's right; the sunset is on the left.
 

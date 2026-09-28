@@ -123,7 +123,7 @@ the same, in a fixed way:
 ## Targets and layout
 
 - The smallest tappable thing is 36 px on desktop, **48 px on touch**
-  (`UITheme.target`).
+  (`UITheme.minTarget` / `minTouchTarget`, read through `UITheme.target(touch)`).
 - On a phone, controls you use often sit in the bottom two thirds of the
   screen or down the side panel, where a thumb reaches.
 - A side panel is 360 px wide on desktop, 42% of the screen width (at most

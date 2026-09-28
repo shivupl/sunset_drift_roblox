@@ -178,6 +178,7 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **`execute_luau` runs in its own VM.** Requiring a game module from it gives a fresh copy, not the running script's; editing a config table there changes nothing live. Change instances (lights, attributes) directly, or edit the file and restart Play.
 - **Virtual input cannot press Escape or gamepad B** (bound to CoreGui actions); test those paths through the on-screen button that does the same thing.
 - **A capture right after new lights appear can be dim and flat.** The renderer takes a few seconds to take new lights in; wait about 3 s before judging light.
+- **Low graphics quality stops drawing parts past a distance.** At Automatic quality in a Studio running at ~14 fps, plain parts past about 80-85 m were not drawn at all (the garage from the spawn bay, 100 m, 2026-09-28), while the mesh lamp posts further out still showed (far palms and scatter vanished too). `settings().Rendering.QualityLevel` can be set from `execute_luau` to check a view at a real quality; set it back to Automatic afterwards. Judge "can you see it from X" at a stated quality level.
 
 ---
 
