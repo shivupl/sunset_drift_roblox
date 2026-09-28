@@ -722,6 +722,7 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 - **Not reachable under ShadowMap:** a mirror chrome. Red chrome reads salmon.
 
 Paint and finish only show on cars with `paint = true` body pieces. The pickup and cruiser are single textured shells with none, so `CarCosmetics.paintable(carId)` is false for them and the garage panel greys paint and finish out. **Owner follow-up:** split a paintable body piece out of those shells in CarCatalog.
+Likewise a car with no windscreen or exhaust spot in `CarCosmeticMounts` would get its DECALS or EXHAUST items greyed out (`CarCosmetics.hasSpot(carId, "windscreen" | "exhaust")`); every catalog car has both today, and `CarCosmeticMounts.spec` fails if a new car ships without them.
 
 ## cityscape
 | Field | What it does |

@@ -51,7 +51,6 @@ local SpawnMenu = {}
 -- Re-skinned onto the tokens on 2026-09-28; the layout below is unchanged.
 local C = UITheme.color
 
-
 local ACTION = "HJ_SpawnMenu"
 -- How far a finger may travel and still count as a tap rather than a scroll.
 local TAP_SLOP_PX = 14
@@ -665,6 +664,11 @@ local function build()
 				return
 			end
 		end
+		-- The plates confirm sheet's scrim covers the backdrop, and a click
+		-- still comes through it: the sheet's CANCEL is the way out.
+		if PlatesPanel.sheetOpen() then
+			return
+		end
 		SpawnMenu.close()
 	end)
 
@@ -702,6 +706,9 @@ local function build()
 	end
 	closeButton = close
 	close.Activated:Connect(function()
+		if PlatesPanel.sheetOpen() then
+			return -- under the plates confirm sheet
+		end
 		SpawnMenu.close()
 	end)
 
@@ -728,6 +735,9 @@ local function build()
 		b.Size = UDim2.new(1 / #tabList, -8 * (#tabList - 1) / #tabList, 1, 0)
 		tabButtons[pair[1]] = b
 		b.Activated:Connect(function()
+			if PlatesPanel.sheetOpen() then
+				return -- under the plates confirm sheet
+			end
 			show(pair[1] :: any)
 		end)
 	end
@@ -825,6 +835,8 @@ function SpawnMenu.open()
 end
 
 function SpawnMenu.close()
+	-- M closes the menu even over the plates confirm sheet: that cancels it.
+	PlatesPanel.closeSheet()
 	if gui then
 		(gui :: ScreenGui).Enabled = false
 	end

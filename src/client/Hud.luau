@@ -38,18 +38,17 @@ local Hud = {}
 
 local C = UITheme.color
 -- One accent (UI_SYSTEM.md): the live readouts are paint and their labels
--- sand, and sodium is kept for the one figure that is cash (UI_SYSTEM.md
--- "Type": cash is written in sodium). Fix round 1, 2026-09-28.
+-- sand. Cash you hold is your balance, and a balance is paint, not sodium
+-- (UI_SYSTEM.md "Colour": sodium is for a price you would pay); it keeps the
+-- price type role. Fix round 1 had it sodium; final review fix 2, 2026-09-28.
 local PAINT = C.paint
 local SAND = C.sand
-local CASH = C.sodium
 -- A banked slide or a finished 360 is done, and done is green.
 local DONE = C.gantryBright
 -- Natl balance while holding it: was a blue, and the UI has no blue. lens
 -- keeps it apart from the amber "catch" and the red "TIP!" it escalates to.
 local NATL = C.lens
 local BAD = C.beacon
-
 
 local gui: ScreenGui? = nil
 local scaler: UIScale? = nil
@@ -196,7 +195,7 @@ local function build(): ScreenGui
 	text(bottom, "Natl", "label", NATL, 3)
 
 	local records = row(card, "Records", 12, 4)
-	text(records, "Cash", "price", CASH, 1)
+	text(records, "Cash", "price", PAINT, 1)
 	text(records, "Best", "label", SAND, 2)
 	text(records, "Server", "label", SAND, 3)
 
@@ -278,7 +277,7 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 	-- getting short, red when it is nearly gone. That colour is what the
 	-- player taps against.
 	local margin = state.rollMarginDeg
-	-- "catch" keeps the amber: the one sodium besides cash, on purpose. It is
+	-- "catch" keeps the amber: the HUD's one sodium, on purpose. It is
 	-- a transient warning between lens and the beacon red, and the owner
 	-- tuned the natl feel against that three-step scale.
 	labels.Natl.TextColor3 = if margin < 8 then BAD elseif margin < 16 then C.sodium else NATL

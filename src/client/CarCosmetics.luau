@@ -283,6 +283,18 @@ function CarCosmetics.paintable(carId: string): boolean
 	return false
 end
 
+-- Whether this car has a spot for a windscreen strip or exhaust tips
+-- (CarCosmeticMounts); the garage panel greys DECALS / EXHAUST items out on a
+-- car without one, like paint on a car with no painted piece. Every catalog
+-- car has both (CarCosmeticMounts.spec), so this guards a car added later.
+function CarCosmetics.hasSpot(carId: string, spot: "windscreen" | "exhaust"): boolean
+	local mounts = CarCosmeticMounts.cars[carId]
+	if not mounts then
+		return false
+	end
+	return if spot == "windscreen" then mounts.windscreen ~= nil else mounts.exhaust ~= nil
+end
+
 -- Puts this look on a car's built body. Safe to call again with a new look.
 function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 	local body = VehicleRig.handles(model).body

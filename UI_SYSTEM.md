@@ -162,6 +162,10 @@ Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing
 is ever charged from a single tap. The sheet is opaque (not `alpha.panel`):
 over a panel of cards, 6% see-through let the cards show through its rows.
+Plates too: the spawn menu's PLATES tab BUY opens the same sheet (the plate
+drawn, its name, price, your cash, cash after or `Short N` in beacon), and
+only the sheet's BUY charges. Buttons under a sheet still hear clicks
+through its scrim, so each one checks for an open sheet first.
 
 ## Don'ts
 

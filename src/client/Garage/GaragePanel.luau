@@ -80,7 +80,7 @@ local C = UITheme.color
 -- How far a finger may travel and still count as a tap rather than a
 -- scroll (the spawn menu's value; an input threshold, not a drawn size).
 local TAP_SLOP_PX = 14
--- How many times an equip refused as "busy" (the server's rate limit) is
+-- How many times an equip or buy refused as "busy" (the server's rate limit) is
 -- resent, one action's slot (1 / actionsPerSecond) apart, before the player
 -- is told: 4 retries span the server's whole 1 s window.
 local BUSY_RETRIES = 4
@@ -357,6 +357,24 @@ local function paintable(): boolean
 	return CarCosmetics.paintable(carId)
 end
 
+-- Whether this car shows a slot's items at all: paint and finish need a
+-- painted piece, the strip and tips a spot (CarCosmetics.hasSpot). Items
+-- the car can't show are greyed out and can't be chosen (final review fix 5).
+local function showsSlot(slot: string, canPaint: boolean, hasStrip: boolean, hasTips: boolean): boolean
+	if slot == "paint" or slot == "finish" then
+		return canPaint
+	elseif slot == "decal" then
+		return hasStrip
+	elseif slot == "exhaust" then
+		return hasTips
+	end
+	return true
+end
+
+local function shows(slot: string): boolean
+	return showsSlot(slot, paintable(), CarCosmetics.hasSpot(carId, "windscreen"), CarCosmetics.hasSpot(carId, "exhaust"))
+end
+
 ------------------------------------------------------------------------
 -- Sizes, all from the tokens.
 ------------------------------------------------------------------------
@@ -563,11 +581,27 @@ type CardState = {
 
 -- What every card's state is read from, worked out once per repaint (the
 -- looks decode JSON and the owned set splits a string).
-type Context = { saved: Look, draft: Look, driving: string?, paintable: boolean, owned: { [string]: boolean } }
+type Context = {
+	saved: Look,
+	draft: Look,
+	driving: string?,
+	paintable: boolean,
+	hasStrip: boolean,
+	hasTips: boolean,
+	owned: { [string]: boolean },
+}
 
 local function context(): Context
 	local saved = savedLook()
-	return { saved = saved, draft = draftLook(saved), driving = drivingId(), paintable = paintable(), owned = ownedIds() }
+	return {
+		saved = saved,
+		draft = draftLook(saved),
+		driving = drivingId(),
+		paintable = paintable(),
+		hasStrip = CarCosmetics.hasSpot(carId, "windscreen"),
+		hasTips = CarCosmetics.hasSpot(carId, "exhaust"),
+		owned = ownedIds(),
+	}
 end
 
 local function stateOf(card: Card, ctx: Context): CardState
@@ -581,7 +615,7 @@ local function stateOf(card: Card, ctx: Context): CardState
 			driving = ctx.driving == card.key,
 		}
 	end
-	local disabled = (slot == "paint" or slot == "finish") and not ctx.paintable
+	local disabled = not showsSlot(slot, ctx.paintable, ctx.hasStrip, ctx.hasTips)
 	return {
 		disabled = disabled,
 		onCar = slotValue(ctx.saved, slot) == card.key,
@@ -961,7 +995,7 @@ local function sendEquip(slot: Slot)
 end
 
 local function chooseItem(slot: Category, id: string)
-	if (slot == "paint" or slot == "finish") and not paintable() then
+	if not shows(slot) then
 		return
 	end
 	local p = previewing
@@ -987,7 +1021,6 @@ local function choosePlate(key: string)
 	sendEquip("plate")
 	refresh()
 end
-
 
 local function chooseCar(id: string)
 	if id == carId then
@@ -1145,6 +1178,15 @@ local function openSheet(u: UI)
 		local forCar = carId
 		local myEpoch = epoch
 		local status = invoke("buy", id)
+		-- "busy" is the server's rate limit (an equip may be in flight):
+		-- resend the buy one action's slot later, like sendEquip. Only this
+		-- sheet's BUY gets here (final review fix 4).
+		local buyTries = 0
+		while status == "busy" and buyTries < BUSY_RETRIES and inside and epoch == myEpoch do
+			buyTries += 1
+			task.wait(1 / CosmeticsConfig.actionsPerSecond)
+			status = invoke("buy", id)
+		end
 		if status == "done" or status == "owned" then
 			-- The buy used one of the server's actions: a "busy" here is the
 			-- rate limit, retried like sendEquip's.
@@ -1345,8 +1387,18 @@ buildTab = function(u: UI)
 		tail.LayoutOrder = 3
 		itemCards(u, newGrid(u, u.grid, 4), "tail", 0)
 	elseif tab == "decal" then
+		if not shows("decal") then
+			local note = UIKit.text(u.sub, "This car has no spot for a windscreen strip yet", "caption", "sand", touch, true)
+			note.Name = "NoSpot"
+			note.LayoutOrder = 1
+		end
 		itemCards(u, newGrid(u, u.grid, 1), "decal", 0)
 	elseif tab == "exhaust" then
+		if not shows("exhaust") then
+			local note = UIKit.text(u.sub, "This car has no spot for exhaust tips yet", "caption", "sand", touch, true)
+			note.Name = "NoSpot"
+			note.LayoutOrder = 1
+		end
 		itemCards(u, newGrid(u, u.grid, 1), "exhaust", 0)
 	elseif tab == "plates" then
 		local shop = UIKit.button(u.sub, "SHOP PLATES", "secondary", touch)

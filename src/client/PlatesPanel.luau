@@ -8,7 +8,9 @@
 --     the plate is free once typing pauses.
 --   * A preview in the current car's rear plate format.
 --   * Buy, then your plates, each with an Equip button, and the session's
---     default plate.
+--     default plate. BUY opens a confirm sheet (the plate, its price, your
+--     cash, cash after, BUY / CANCEL) like the garage's; only the sheet's BUY
+--     charges (UI_SYSTEM.md: nothing is ever charged from a single tap).
 -- What you own comes from Player attributes set by the server (Plates,
 -- PlateEquipped, PlateDefault); nothing here is trusted by the server.
 local Players = game:GetService("Players")
@@ -29,6 +31,12 @@ local PlatesPanel = {}
 
 -- Seconds typing must pause before the server is asked.
 local QUERY_DELAY = 0.35
+-- The confirm sheet's base ZIndex (UIKit.sheet: scrim here, the sheet at +2),
+-- above SpawnMenu's panel (ZIndex 2) and everything in it.
+local SHEET_Z = 10
+-- A price row's height is the price text size times this (the garage
+-- panel's LINE_BOX: Builder Sans' line box with room for Arabic marks).
+local LINE_BOX = 1.3
 
 local MESSAGES: { [string]: string } = {
 	done = "Done",
@@ -64,6 +72,11 @@ local asked = 0
 local touch = false
 local style = "SA" -- the style being searched (PlateText.STYLES)
 local styleButtons: { [string]: TextButton } = {}
+-- The open confirm sheet. Buttons under its scrim still hear clicks through
+-- it (GaragePanel measured LEAVE firing through, 2026-09-28), so every button
+-- here, and SpawnMenu's own, checks PlatesPanel.sheetOpen() first.
+type Sheet = { frame: Frame, scrim: Frame, update: () -> () }
+local sheet: Sheet? = nil
 
 -- What each style's search box expects, as a hint, and the plate the
 -- preview shows until a valid plate is typed, so picking a style shows its
@@ -182,6 +195,163 @@ local function doAction(what: string, key: string)
 	refreshBuy()
 end
 
+------------------------------------------------------------------------
+-- The confirm sheet (the garage panel's, GaragePanel openSheet).
+------------------------------------------------------------------------
+
+local function sp(name: string): number
+	return UITheme.px((UITheme.space :: any)[name], touch)
+end
+
+-- Closes the open sheet, or only `which` if given: a reply that comes back
+-- after that sheet was closed must not close a newer one.
+local function closeSheet(which: Sheet?)
+	local s = which or sheet
+	if s and sheet == s then
+		sheet = nil
+	end
+	if s then
+		s.frame:Destroy()
+		s.scrim:Destroy()
+	end
+end
+
+local function openSheet()
+	local f = root
+	local key, price = current.key, current.price
+	if sheet or not f or not key or not price or not current.free or owns(key) then
+		return
+	end
+	local g = f:FindFirstAncestorOfClass("ScreenGui")
+	if not g then
+		return
+	end
+	local frame, scrim = UIKit.sheet(g, touch, SHEET_Z)
+	frame.Name = "ConfirmSheet"
+	scrim.Name = "ConfirmScrim"
+	scrim.Active = true
+	-- Opaque, as the garage's: at alpha.panel the tab under it shows through.
+	frame.BackgroundTransparency = 0
+	local width = f.AbsoluteSize.X
+	frame.Size = UDim2.fromOffset(width, 0)
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, sp("md"))
+	layout.Parent = frame
+
+	local title = UIKit.title(frame, "BUY", "شراء", "title", touch)
+	title.LayoutOrder = 1
+
+	-- The plate itself, in the current car's rear format, the preview's size.
+	local art = Instance.new("Frame")
+	art.Name = "Plate"
+	art.BackgroundTransparency = 1
+	art.Size = UDim2.new(1, 0, 0, if previewBox then (previewBox :: Frame).AbsoluteSize.Y else UITheme.target(touch) * 2)
+	art.LayoutOrder = 2
+	art.Parent = frame
+	PlateStyles.draw(art, key, format())
+
+	local name = UIKit.text(frame, shown(key), "heading", "paint", touch, true)
+	name.Name = "PlateName"
+	name.LayoutOrder = 3
+	local what = UIKit.text(frame, "Yours alone: nobody else can own it", "caption", "sandDim", touch, true)
+	what.LayoutOrder = 4
+
+	local function row(order: number, labelText: string, valueColor: UIKit.ColorName): TextLabel
+		local r = Instance.new("Frame")
+		r.BackgroundTransparency = 1
+		r.Size = UDim2.new(1, 0, 0, math.ceil(UITheme.textSize("price", touch) * LINE_BOX))
+		r.LayoutOrder = order
+		local l = UIKit.text(r, labelText, "body", "sand", touch, false)
+		l.AnchorPoint = Vector2.new(0, 0.5)
+		l.Position = UDim2.fromScale(0, 0.5)
+		local v = UIKit.text(r, "", "price", valueColor, touch, false)
+		v.AnchorPoint = Vector2.new(1, 0.5)
+		v.Position = UDim2.fromScale(1, 0.5)
+		v.TextXAlignment = Enum.TextXAlignment.Right
+		r.Parent = frame
+		return v
+	end
+	local priceValue = row(5, "Price", "sodium")
+	local cashValue = row(6, "Your cash", "paint")
+	local afterValue = row(7, "Cash after", "paint")
+	afterValue.Name = "CashAfter"
+
+	local short = UIKit.text(frame, "", "body", "beacon", touch, true)
+	short.Name = "Short"
+	short.LayoutOrder = 8
+
+	local buttons = Instance.new("Frame")
+	buttons.Name = "Buttons"
+	buttons.BackgroundTransparency = 1
+	buttons.Size = UDim2.new(1, 0, 0, UITheme.target(touch))
+	buttons.LayoutOrder = 9
+	local bl = Instance.new("UIListLayout")
+	bl.FillDirection = Enum.FillDirection.Horizontal
+	bl.SortOrder = Enum.SortOrder.LayoutOrder
+	bl.Padding = UDim.new(0, sp("sm"))
+	bl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	bl.VerticalAlignment = Enum.VerticalAlignment.Center
+	bl.Parent = buttons
+	buttons.Parent = frame
+	local cancel = button(buttons, "CANCEL", "secondary")
+	cancel.Name = "Cancel"
+	cancel.Size = UDim2.new(0.5, -math.floor(sp("sm") / 2), 1, 0)
+	cancel.LayoutOrder = 1
+	local buy = button(buttons, "BUY", "primary")
+	buy.Name = "Buy"
+	buy.Size = UDim2.new(0.5, -math.floor(sp("sm") / 2), 1, 0)
+	buy.LayoutOrder = 2
+
+	local working = false
+	local mine: Sheet
+	local function cash(): number
+		return tonumber(Players.LocalPlayer:GetAttribute("Cash")) or 0
+	end
+	local function update()
+		local have = cash()
+		priceValue.Text = money(price)
+		cashValue.Text = money(have)
+		local lacking = price - have
+		-- Short: the shortfall in beacon rather than a cash-after of 0.
+		afterValue.Text = if lacking > 0 then `Short {money(lacking)}` else money(have - price)
+		afterValue.TextColor3 = if lacking > 0 then C.beacon else C.paint
+		short.Visible = lacking > 0
+		short.Text = if lacking > 0 then "Not enough cash to buy this plate" else ""
+		UIKit.setDisabled(buy, working or lacking > 0)
+		UIKit.setDisabled(cancel, working)
+	end
+
+	local pad = sp("lg")
+	local function fitHeight()
+		frame.Size = UDim2.fromOffset(width, layout.AbsoluteContentSize.Y + 2 * pad)
+	end
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitHeight)
+	fitHeight()
+
+	cancel.Activated:Connect(function()
+		if not working then
+			closeSheet(mine)
+		end
+	end)
+	buy.Activated:Connect(function()
+		if working or cash() < price then
+			return
+		end
+		working = true
+		update()
+		-- The one place a plate is charged; its statuses show on the tab.
+		doAction("buy", key)
+		working = false
+		closeSheet(mine)
+		refreshBuy()
+	end)
+
+	mine = { frame = frame, scrim = scrim, update = update }
+	sheet = mine
+	update()
+end
+
 local function onSearch()
 	local box = search
 	if not box then
@@ -229,7 +399,8 @@ local function onSearch()
 		elseif reply.status == "ok" then
 			current = { key = reply.key, price = reply.price, free = reply.available == true }
 			if current.free then
-				setInfo(`{money(reply.price)} cash · available`, C.paint)
+				-- A price you are about to pay: sodium (UI_SYSTEM.md "Colour").
+				setInfo(`{money(reply.price)} cash · available`, C.sodium)
 			else
 				setInfo(MESSAGES.taken, C.beacon)
 			end
@@ -305,7 +476,11 @@ local function row(parent: Instance, order: number, key: string, caption: string
 		local b = button(tail, "EQUIP", "secondary")
 		b.LayoutOrder = 2
 		b.Size = UDim2.fromOffset(110, pressH)
-		b.Activated:Connect(onPress)
+		b.Activated:Connect(function()
+			if not sheet then
+				onPress()
+			end
+		end)
 	end
 	local function fitCaption()
 		l.Size = UDim2.new(1, -(math.floor(h * 1.9) + 22 + 20 + tail.AbsoluteSize.X), 1, 0)
@@ -410,6 +585,13 @@ function PlatesPanel.build(parent: Instance, layoutOrder: number): Frame
 	pad.Parent = box
 	box.Parent = top
 	box:GetPropertyChangedSignal("Text"):Connect(onSearch)
+	-- Under the confirm sheet the box can still take a click: give it back,
+	-- so the plate being bought cannot change under the sheet.
+	box.Focused:Connect(function()
+		if sheet then
+			box:ReleaseFocus()
+		end
+	end)
 	search = box
 	-- The style switch: one button per plate style, its own row above the
 	-- search (four names do not fit beside it).
@@ -431,7 +613,9 @@ function PlatesPanel.build(parent: Instance, layoutOrder: number): Frame
 		sb.LayoutOrder = i
 		sb.Size = UDim2.new(1 / count, -6 * (count - 1) / count, 1, 0)
 		sb.Activated:Connect(function()
-			setStyle(st.code)
+			if not sheet then
+				setStyle(st.code)
+			end
 		end)
 		styleButtons[st.code] = sb
 	end
@@ -439,14 +623,16 @@ function PlatesPanel.build(parent: Instance, layoutOrder: number): Frame
 	styleRow = switch
 	paintStyles()
 	local buy = button(top, "BUY", "primary")
+	buy.Name = "Buy"
 	buy.AnchorPoint = Vector2.new(1, 0)
 	buy.Position = UDim2.fromScale(1, 0)
 	buy.Size = UDim2.new(0, 160, 1, 0)
 	buy.Activated:Connect(function()
-		local key = current.key
-		if key and current.free then
-			doAction("buy", key)
+		if sheet then
+			return
 		end
+		-- Opens the confirm sheet; nothing is charged until its BUY.
+		openSheet()
 	end)
 	buyButton = buy
 
@@ -544,6 +730,9 @@ function PlatesPanel.setVisible(visible: boolean)
 		return
 	end
 	f.Visible = visible
+	if not visible then
+		closeSheet() -- leaving the tab cancels a buy not yet confirmed
+	end
 	if visible then
 		refreshOwned()
 		onSearch()
@@ -570,8 +759,23 @@ function PlatesPanel.start(remotes: Folder)
 				refreshOwned()
 				refreshBuy()
 			end
+			local s = sheet
+			if s and name == "Cash" then
+				s.update()
+			end
 		end)
 	end
+end
+
+-- Whether the confirm sheet is up: SpawnMenu's own buttons ignore clicks
+-- that come through its scrim.
+function PlatesPanel.sheetOpen(): boolean
+	return sheet ~= nil
+end
+
+-- Cancels an open confirm sheet (the menu closing).
+function PlatesPanel.closeSheet()
+	closeSheet()
 end
 
 return PlatesPanel
