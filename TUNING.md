@@ -590,7 +590,7 @@ Haze and glow round the backdrop skyline (`Cityscape.luau`). Every layer is a li
 `timeOfDay` picks one of `dusk`, `goldenHour`, `blueHour`, `night`. Each preset:
 | Field | What it does |
 |---|---|
-| clockTime | Sun height. At latitude 60: 17.4 = 7° up, 17.55 = 5°, 17.68 = 3.9° (golden hour now), 17.75 = 3°, 17.88 = 1.5°. Lower = longer shadows and a darker sky. |
+| clockTime | Sun height. At latitude 60: 17.4 = 7° up, 17.55 = 5°, 17.68 = 3.9° (golden hour now, and the Sunset option in SkyConfig), 17.75 = 3°, 17.88 = 1.5°. Lower = longer shadows and a darker sky. |
 | geographicLatitude | **This is the sun azimuth control**, because Roblox has no other. 24.7 (real Riyadh) puts the evening sun 90° off the road, out of the driving view; 60 puts it 127°, ahead-left, in the windscreen with shadows diagonal across the asphalt. 80 is 147°, nearly dead ahead. |
 | ambient / outdoorAmbient | Fill light. This is the readability knob: too low and the car disappears between lamps. |
 | brightness | Sun strength. |
@@ -610,6 +610,16 @@ Haze and glow round the backdrop skyline (`Cityscape.luau`). Every layer is a li
 | lamps.enabled / brightness / rangeM | Whether street lamps are lit at this hour, and how hard. |
 | bloom.intensity / size / threshold | Glow round anything brighter than threshold: the skyline's Neon and aura glow, the lamp lenses, the sun. Lower threshold blooms more (and blows the sun out sooner). |
 | grade.contrast / saturation / tint | A light colour grade over the whole frame. |
+
+## SkyConfig (the player's time of day)
+`src/shared/SkyConfig.luau`. The times of day a player can pick in the menu's Settings tab (Sunset, Night). Each client sets `ClockTime` and `ExposureCompensation` over the world's preset, on that player's screen only; the choice is saved in the profile. Everything else (brightness, ambient, haze, the skybox) is the active `timesOfDay` preset. Studio's Properties panel edits of those two fields in Play are undone by the client, so try values here.
+| Field | What it does |
+|---|---|
+| default | What a new player sees (`sunset`). Keep `goldenHour`'s clockTime and exposure equal to it, or the world changes as a client starts. |
+| options[].id | Saved in the profile. Never rename one that players may have saved; an unknown id falls back to the default. |
+| options[].label | The button text. A new row adds a button. |
+| options[].clockTime | The hour. Sunset 17.68 (sun about 3.5° up), Night 19.2 (below the horizon). Lower = more daytime; 0.05 is a visible step. |
+| options[].exposureCompensation | Overall exposure for that hour. Sunset −0.12, Night 0.14 (raised so the road reads between lamps). ±0.1 is a small step. |
 
 ## shadows
 Per-type switch. Shadow cost scales with the **number** of casters, not size.

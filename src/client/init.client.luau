@@ -20,6 +20,7 @@ local CarLights = require(script.CarLights)
 local CarPlates = require(script.CarPlates)
 local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
+local Sky = require(script.Sky)
 
 print("[Hajwala] client boot")
 -- Up first: the server may still be building the world this client joined.
@@ -110,5 +111,8 @@ driveStop.OnClientEvent:Connect(function()
 	end
 end)
 
+-- The time of day this player picked (Settings tab), before the menu that
+-- shows it.
+Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)

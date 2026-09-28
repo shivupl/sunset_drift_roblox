@@ -2,7 +2,7 @@
 -- Cash, the all-time best and number plates, persisted per player.
 --
 -- Everything the client can see is an attribute on the Player (Cash,
--- SessionBest, BestScore, Plates, PlateEquipped): attributes replicate
+-- SessionBest, BestScore, Plates, PlateEquipped, Sky): attributes replicate
 -- server to client on their own, and a client writing one locally changes
 -- nothing on the server. No remote carries a balance, so there is nothing
 -- to forge.
@@ -34,6 +34,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlateConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlateConfig"))
+local SkyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkyConfig"))
 local PlateRegistry = require(script.Parent.PlateRegistry)
 local Stores = require(script.Parent.Stores)
 
@@ -47,6 +48,7 @@ export type Profile = {
 	plates: { PlateRegistry.OwnedPlate },
 	equipped: string?,
 	pendingTxns: { PlateRegistry.PendingTxn },
+	sky: string?, -- the time of day picked in the menu (SkyConfig id); nil = the default
 }
 
 local Economy = {}
@@ -67,7 +69,7 @@ local function key(player: Player): string
 end
 
 local function fresh(): Profile
-	return { cash = 0, bestScore = 0, plates = {}, equipped = nil, pendingTxns = {} }
+	return { cash = 0, bestScore = 0, plates = {}, equipped = nil, pendingTxns = {}, sky = nil }
 end
 
 local function publish(player: Player)
@@ -85,6 +87,7 @@ local function publish(player: Player)
 	end
 	player:SetAttribute("Plates", table.concat(owned, ","))
 	player:SetAttribute("PlateEquipped", p.equipped)
+	player:SetAttribute("Sky", p.sky)
 end
 
 -- A stored profile read defensively. The plate fields are new (2026-09-26):
@@ -106,6 +109,10 @@ local function readProfile(raw: any): Profile
 	if type(raw.equipped) == "string" then
 		p.equipped = raw.equipped
 	end
+	-- New 2026-09-28; an older profile has none and gets the default sky.
+	if type(raw.sky) == "string" and SkyConfig.find(raw.sky) then
+		p.sky = raw.sky
+	end
 	if type(raw.pendingTxns) == "table" then
 		for _, t in raw.pendingTxns do
 			if type(t) == "table" and type(t.txn) == "string" and type(t.key) == "string" and (t.kind == "buy" or t.kind == "release") then
@@ -125,6 +132,7 @@ local function copyProfile(p: Profile): Profile
 	out.cash = p.cash
 	out.bestScore = p.bestScore
 	out.equipped = p.equipped
+	out.sky = p.sky
 	for _, plate in p.plates do
 		table.insert(out.plates, table.clone(plate))
 	end
@@ -200,6 +208,11 @@ function Economy.load(player: Player)
 	local p = readProfile(result)
 	if storeKind == "fake" and result == nil then
 		p.cash = PlateConfig.studioCash
+	end
+	-- A sky picked while the read was in flight is newer than the stored one.
+	local session = profiles[player]
+	if session and session.sky then
+		p.sky = session.sky
 	end
 	profiles[player] = p
 	savable[player] = true
@@ -308,6 +321,18 @@ function Economy.setEquipped(player: Player, plateKey: string?): boolean
 		end
 	end
 	p.equipped = plateKey
+	publish(player)
+	return true
+end
+
+-- Picks the time of day the player sees (SkyConfig id). Kept in memory; the
+-- next save writes it. False for an unknown id.
+function Economy.setSky(player: Player, id: string): boolean
+	local p = profiles[player]
+	if not p or not SkyConfig.find(id) then
+		return false
+	end
+	p.sky = id
 	publish(player)
 	return true
 end

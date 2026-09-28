@@ -41,6 +41,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
 local PlatesPanel = require(script.Parent.PlatesPanel)
+local SettingsPanel = require(script.Parent.SettingsPanel)
 
 local SpawnMenu = {}
 
@@ -94,7 +95,8 @@ local currentCarId: string? = nil
 local waitingUntil = 0
 local tabs: Frame? = nil
 local tabButtons: { [string]: TextButton } = {}
-local showing: "cars" | "plates" = "cars"
+type Tab = "cars" | "plates" | "settings"
+local showing: Tab = "cars"
 -- ModalEnabled hides Roblox's own touch controls. VehicleController holds it
 -- on for the whole drive (its thumbstick would sit under our steer pad), so
 -- the menu remembers what it found and puts that back: closing the menu in a
@@ -530,10 +532,15 @@ local function fit()
 	local chrome = m.pad * 2 + m.headerH + m.tabH + m.gap * 3 + m.footerH
 	local room = math.max(vp.Y - topMargin - bottomMargin - chrome, math.floor(m.cardH * 0.6))
 	local want = #cards * (m.cardH + m.gap) - m.gap
-	-- The plates tab takes all the room; the car list only what it needs.
-	local listH = if showing == "plates" then room else math.min(want, room)
+	-- The plates tab takes all the room; the car list and settings only what
+	-- they need.
+	local listH = if showing == "plates"
+		then room
+		elseif showing == "settings" then math.min(SettingsPanel.height(m.touch), room)
+		else math.min(want, room)
 	scroll.Size = UDim2.new(1, 0, 0, listH)
 	PlatesPanel.fit(listH, m.touch)
+	SettingsPanel.fit(listH, m.touch)
 	if tabs then
 		(tabs :: Frame).Size = UDim2.new(1, 0, 0, m.tabH)
 		for _, b in tabButtons do
@@ -561,21 +568,26 @@ local function paintTabs()
 	end
 end
 
-local function show(which: "cars" | "plates")
+local function show(which: Tab)
 	showing = which
 	if list then
 		(list :: ScrollingFrame).Visible = which == "cars"
 	end
 	PlatesPanel.setVisible(which == "plates")
+	SettingsPanel.setVisible(which == "settings")
 	if title then
-		(title :: TextLabel).Text = if which == "cars" then "CHOOSE YOUR CAR" else "NUMBER PLATES"
+		(title :: TextLabel).Text = if which == "cars"
+			then "CHOOSE YOUR CAR"
+			elseif which == "plates" then "NUMBER PLATES"
+			else "SETTINGS"
 	end
 	if subtitle then
-		(subtitle :: TextLabel).Text = if which == "cars" then "اختر سيارتك" else "لوحات"
+		(subtitle :: TextLabel).Text = if which == "cars" then "اختر سيارتك" elseif which == "plates" then "لوحات" else "الإعدادات"
 	end
 	if status then
 		(status :: TextLabel).Text = if which == "plates"
 			then "Plates are yours alone: nobody else can own the same one"
+			elseif which == "settings" then "Your settings are saved with your progress"
 			elseif isTouch() then "Tap a car to spawn it   ·   CARS reopens this"
 			else "Click a car to spawn it   ·   M reopens this"
 	end
@@ -685,7 +697,8 @@ local function build()
 	tabLayout.Padding = UDim.new(0, 8)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabRow
-	for i, pair in { { "cars", "CARS" }, { "plates", "PLATES" } } do
+	local tabList = { { "cars", "CARS" }, { "plates", "PLATES" }, { "settings", "SETTINGS" } }
+	for i, pair in tabList do
 		local b = Instance.new("TextButton")
 		b.Name = pair[2]
 		b.AutoButtonColor = false
@@ -694,7 +707,7 @@ local function build()
 		b.Text = pair[2]
 		b.TextSize = 14
 		b.LayoutOrder = i
-		b.Size = UDim2.new(0.5, -4, 1, 0)
+		b.Size = UDim2.new(1 / #tabList, -8 * (#tabList - 1) / #tabList, 1, 0)
 		corner(b, 8)
 		b.Parent = tabRow
 		tabButtons[pair[1]] = b
@@ -723,6 +736,7 @@ local function build()
 	scroll.Parent = p
 	list = scroll
 	PlatesPanel.build(p, { card = CARD, white = WHITE, muted = MUTED, hot = HOT, hotDim = HOT_DIM }, 3)
+	SettingsPanel.build(p, { card = CARD, white = WHITE, muted = MUTED, hot = HOT, hotDim = HOT_DIM }, 3)
 
 	for i, car in sortedCars() do
 		buildCard(scroll, car.id, car.entry, i)

@@ -13,6 +13,7 @@ export type RemoteTable = {
 	Horn: RemoteEvent, -- client -> server (true while held)
 	PlateQuery: RemoteFunction, -- client -> server (typed plate text, style "SA" | "DU", default "SA") -> { status, key, price, available, reason } (PlateService)
 	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text, style) -> { status, reason } (PlateService)
+	SetSky: RemoteEvent, -- client -> server (SkyConfig id): the time of day I picked, saved in my profile (SkyService)
 }
 
 local Remotes = {}
@@ -48,6 +49,7 @@ function Remotes.create(): RemoteTable
 		Horn = ev("Horn"),
 		PlateQuery = fn("PlateQuery"),
 		PlateAction = fn("PlateAction"),
+		SetSky = ev("SetSky"),
 	}
 	folder.Parent = ReplicatedStorage
 	return t

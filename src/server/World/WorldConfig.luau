@@ -1129,12 +1129,17 @@ local config = {
 			-- the hour slightly toward night (17.68, brightness 1.95, exposure
 			-- -0.25, ambient 88/78/80 and 116/100/96) for the skyline's lights,
 			-- then asked for it "slightly more daytime like it was before".
-			clockTime = 17.55, -- about 5 degrees up
+			-- Then, trying values live (2026-09-28), picked two hours that
+			-- players now choose between in the menu: SkyConfig holds them and
+			-- each client sets ClockTime and exposure over these. Keep these
+			-- two equal to SkyConfig's default (Sunset: 17.68, -0.12), so the
+			-- world does not change as a client starts.
+			clockTime = 17.68, -- about 3.5 degrees up
 			geographicLatitude = 60,
 			ambient = Color3.fromRGB(96, 84, 82),
 			outdoorAmbient = Color3.fromRGB(128, 110, 100),
 			brightness = 2.2,
-			exposureCompensation = -0.15,
+			exposureCompensation = -0.12,
 			colorShiftTop = Color3.fromRGB(255, 196, 140),
 			colorShiftBottom = Color3.fromRGB(92, 82, 88),
 			globalShadows = true,
