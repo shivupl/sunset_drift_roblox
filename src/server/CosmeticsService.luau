@@ -29,10 +29,6 @@ type Reply = { status: string }
 
 local CosmeticsService = {}
 
--- Actions a player may send per second; more get "busy". Each is one tap in
--- the garage, so 4 is well above a person and well below a script (brief,
--- 2026-09-28; same idea as PlateConfig.actionsPerSecond).
-local ACTIONS_PER_SECOND = 4
 -- Longest id or plate key accepted from a client before any lookup.
 local MAX_ARG_LENGTH = 64
 
@@ -48,7 +44,7 @@ local function allowed(player: Player): boolean
 		return true
 	end
 	b.n += 1
-	return b.n <= ACTIONS_PER_SECOND
+	return b.n <= CosmeticsConfig.actionsPerSecond
 end
 
 local function isText(v: any): boolean
@@ -155,11 +151,6 @@ local function equip(player: Player, carId: any, slot: any, id: any): Reply
 	return { status = "done" }
 end
 
-local function ownsPlate(player: Player, key: string): boolean
-	local plates = player:GetAttribute("Plates")
-	return type(plates) == "string" and table.find(string.split(plates, ","), key) ~= nil
-end
-
 local function plate(player: Player, carId: any, key: any): Reply
 	if not isCar(carId) then
 		return { status = "unknown" }
@@ -168,7 +159,7 @@ local function plate(player: Player, carId: any, key: any): Reply
 		if not isText(key) then
 			return { status = "unknown" }
 		end
-		if not ownsPlate(player, key) then
+		if not PlateService.owns(player, key) then
 			return { status = "notowned" }
 		end
 	end

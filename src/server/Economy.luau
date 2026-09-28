@@ -38,6 +38,7 @@ local PlateConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local SkyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkyConfig"))
 local CosmeticsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CosmeticsConfig"))
 local CarLook = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CarLook"))
+local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
 local PlateRegistry = require(script.Parent.PlateRegistry)
 local Stores = require(script.Parent.Stores)
 
@@ -141,9 +142,13 @@ local function readProfile(raw: any): Profile
 	if type(raw.looks) == "table" then
 		for carId, look in raw.looks do
 			if type(carId) == "string" then
-				p.looks[carId] = CarLook.clean(look, function(id: string): boolean
+				local cleaned = CarLook.clean(look, function(id: string): boolean
 					return profileOwns(p, id)
 				end)
+				-- Nothing left (all factory, or all unknown here): no entry.
+				if next(cleaned) ~= nil then
+					p.looks[carId] = cleaned
+				end
 			end
 		end
 	end
@@ -182,15 +187,28 @@ end
 
 -- What is written: this session's profile, with the all-time best merged
 -- rather than overwritten (another session may have set a higher best).
--- Owned cosmetics are merged the same way (the stored list's ids are kept),
--- so a stale save never un-owns something bought elsewhere.
+-- Owned cosmetics are merged the same way, so a stale save never un-owns
+-- something bought elsewhere. The merge uses the RAW stored ids, not
+-- readProfile's filtered list: during a rolling update an older server does
+-- not know an item a newer one sold, and must still write it back (task 2
+-- review, 2026-09-28). For the same reason a stored look for a car this
+-- version's catalog does not have is written back exactly as stored.
 local function encode(p: Profile, old: any): any
 	local out = copyProfile(p)
-	local stored = readProfile(old)
-	out.bestScore = math.max(p.bestScore, stored.bestScore)
-	for _, id in stored.cosmetics do
-		if not table.find(out.cosmetics, id) then
-			table.insert(out.cosmetics, id)
+	out.bestScore = math.max(p.bestScore, readProfile(old).bestScore)
+	if type(old) == "table" and type(old.cosmetics) == "table" then
+		for _, id in old.cosmetics do
+			if type(id) == "string" and not table.find(out.cosmetics, id) then
+				table.insert(out.cosmetics, id)
+			end
+		end
+	end
+	if type(old) == "table" and type(old.looks) == "table" then
+		local cars = ConfigLoader.catalog().cars
+		for carId, look in old.looks do
+			if type(carId) == "string" and type(look) == "table" and not cars[carId] then
+				(out.looks :: any)[carId] = look
+			end
 		end
 	end
 	return out

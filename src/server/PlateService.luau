@@ -58,7 +58,8 @@ local function allowed(kind: string, player: Player, perSecond: number): boolean
 	return cur.n <= perSecond
 end
 
-local function ownsPlate(player: Player, key: string): boolean
+-- True if the player owns this plate key (their published Plates list).
+function PlateService.owns(player: Player, key: string): boolean
 	local plates = player:GetAttribute("Plates")
 	return type(plates) == "string" and table.find(string.split(plates, ","), key) ~= nil
 end
@@ -66,7 +67,7 @@ end
 local function plateFor(player: Player, carId: string?): string?
 	if carId then
 		local chosen = Economy.look(player, carId).plate
-		if type(chosen) == "string" and ownsPlate(player, chosen) then
+		if type(chosen) == "string" and PlateService.owns(player, chosen) then
 			return chosen
 		end
 	end

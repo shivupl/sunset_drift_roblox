@@ -35,6 +35,12 @@ export type Item = {
 	crackleChance: number?,
 }
 
+-- Garage actions (buy, equip, plate) a player may send per second through
+-- CosmeticsAction; more get "busy". Each is one tap in the garage, so 4 is
+-- well above a person and well below a script (garage plan, task 2,
+-- 2026-09-28; same idea as PlateConfig.actionsPerSecond).
+CosmeticsConfig.actionsPerSecond = 4
+
 -- Panel order: also the order categories' chips appear in within the panel.
 CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust" } :: { Category }
 
