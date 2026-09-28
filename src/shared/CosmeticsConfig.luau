@@ -24,6 +24,8 @@ export type Item = {
 	color: Color3?,
 	material: Enum.Material?,
 	reflectance: number?,
+	darken: number?, -- finish only: the paint colour's value this much lower (0..1)
+	desaturate: number?, -- finish only: the paint colour's saturation this much lower (0..1)
 	text: string?,
 	textColor: Color3?,
 	stripColor: Color3?,
@@ -44,8 +46,6 @@ CosmeticsConfig.actionsPerSecond = 4
 -- How a look is drawn on the car (CarCosmetics, CarLamps; garage plan,
 -- task 3, 2026-09-28). The spots themselves are per car, CarCosmeticMounts.
 CosmeticsConfig.render = {
-	-- Matte takes the chosen paint colour this much darker.
-	matteDarken = 0.08,
 	-- A chosen tail colour's brake lamp: that colour this much brighter (HSV
 	-- value), so braking still reads over the tail lamps. Smoked (#4A0A0C)
 	-- brakes at #670E11, which is dim: raise this if braking gets lost.
@@ -87,20 +87,41 @@ CosmeticsConfig.items = {
 	{ id = "paint_gunmetal", category = "paint", name = "Gunmetal", price = 20000, color = Color3.fromHex("#3D4046") },
 	{ id = "paint_rose", category = "paint", name = "Riyadh Rose", price = 40000, rare = true, color = Color3.fromHex("#C77D86") },
 
-	-- FINISH. The paint's material and reflectance; stock is the catalog's
-	-- own material at reflectance 0. Matte is the same reflectance as stock
-	-- but the applier darkens the chosen paint colour 8% for it.
+	-- FINISH. The paint's material, reflectance and darkening; stock is the
+	-- catalog's own material at reflectance 0.
+	--
+	-- Retuned in the lit bay 2026-09-28 (garage task 6, fix round 2), because
+	-- the first values did not read: Lighting.Technology is ShadowMap, where
+	-- the view's SpotLights give no specular highlight at all, Metal and Foil
+	-- ignore Reflectance on these meshes (a red Lekzas at Metal 0.08 and at
+	-- 0.35 was the same flat red as SmoothPlastic), and EnvironmentSpecular-
+	-- and EnvironmentDiffuseScale changed nothing measurable indoors. Glass is
+	-- the one material that answers the view's lights: at Reflectance 0 it
+	-- keeps the paint colour and lays a lit sheen over the bonnet, roof and
+	-- flanks (clear coat); more Reflectance washes the panels toward a pale
+	-- silver. So the finishes are a ladder on Glass:
+	--   matte    flat SmoothPlastic, the colour 20% darker and 30% less
+	--            saturated: no sheen, and dull beside the factory colour
+	--            (the old 8% darker could not be told from factory on red)
+	--   gloss    Glass 0: the colour, with the lit sheen
+	--   metallic Glass 0.05 over the colour 25% darker: sheen over the whole
+	--            panel on a deeper base
+	--   chrome   Glass 0.15 on the colour: pale liquid silver tinted by it
+	--            (0.3 and a colour lightened toward white read as a plain
+	--            white car)
 	{ id = "finish_stock", category = "finish", name = "Factory", price = 0, reflectance = 0 },
-	{ id = "finish_gloss", category = "finish", name = "Gloss", price = 10000, material = Enum.Material.SmoothPlastic, reflectance = 0.12 },
-	{ id = "finish_matte", category = "finish", name = "Matte", price = 30000, material = Enum.Material.SmoothPlastic, reflectance = 0 },
-	{ id = "finish_metallic", category = "finish", name = "Metallic", price = 45000, material = Enum.Material.Metal, reflectance = 0.08 },
-	{ id = "finish_chrome", category = "finish", name = "Chrome", price = 200000, rare = true, material = Enum.Material.Foil, reflectance = 0.35 },
+	{ id = "finish_gloss", category = "finish", name = "Gloss", price = 10000, material = Enum.Material.Glass, reflectance = 0 },
+	{ id = "finish_matte", category = "finish", name = "Matte", price = 30000, material = Enum.Material.SmoothPlastic, reflectance = 0, darken = 0.2, desaturate = 0.3 },
+	{ id = "finish_metallic", category = "finish", name = "Metallic", price = 45000, material = Enum.Material.Glass, reflectance = 0.05, darken = 0.25 },
+	{ id = "finish_chrome", category = "finish", name = "Chrome", price = 200000, rare = true, material = Enum.Material.Glass, reflectance = 0.15 },
 
 	-- RIMS.
 	{ id = "rims_stock", category = "rims", name = "Factory", price = 0 },
 	{ id = "rims_black", category = "rims", name = "Gloss Black", price = 12000, color = Color3.fromHex("#121214"), material = Enum.Material.SmoothPlastic, reflectance = 0.1 },
-	{ id = "rims_chrome", category = "rims", name = "Chrome", price = 30000, color = Color3.fromHex("#D8DADD"), material = Enum.Material.Foil, reflectance = 0.3 },
-	{ id = "rims_gold", category = "rims", name = "Gold", price = 60000, rare = true, color = Color3.fromHex("#C9A24A"), material = Enum.Material.Metal, reflectance = 0.15 },
+	-- Chrome and gold on Glass, for the reason under FINISH (Foil and Metal
+	-- read flat in the bay; 2026-09-28).
+	{ id = "rims_chrome", category = "rims", name = "Chrome", price = 30000, color = Color3.fromHex("#B8BCC2"), material = Enum.Material.Glass, reflectance = 0.15 },
+	{ id = "rims_gold", category = "rims", name = "Gold", price = 60000, rare = true, color = Color3.fromHex("#B8892E"), material = Enum.Material.Glass, reflectance = 0.05 },
 	{ id = "rims_bronze", category = "rims", name = "Bronze", price = 35000, color = Color3.fromHex("#8C6A3F"), material = Enum.Material.Metal, reflectance = 0.1 },
 	{ id = "rims_gunmetal", category = "rims", name = "Gunmetal", price = 20000, color = Color3.fromHex("#3A3C40"), material = Enum.Material.Metal, reflectance = 0.08 },
 	{ id = "rims_white", category = "rims", name = "White", price = 20000, color = Color3.fromHex("#EDEDEA"), material = Enum.Material.SmoothPlastic, reflectance = 0.08 },

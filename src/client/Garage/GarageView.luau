@@ -854,6 +854,8 @@ end
 
 -- The camera back to the default one, unless the character is seated: then
 -- the car camera (CameraRig) owns it and setting Custom would fight it.
+-- Idempotent: restore() and restoreEssentials() both call it, so savedFov
+-- is only forgotten once the whole leave is over (forgetFov).
 local function restoreCamera()
 	local cam = Workspace.CurrentCamera
 	if cam and not seatedNow() then
@@ -864,6 +866,9 @@ local function restoreCamera()
 			cam.CameraSubject = hum
 		end
 	end
+end
+
+local function forgetFov()
 	savedFov = nil
 end
 
@@ -927,8 +932,12 @@ local function restoreEssentials()
 			warn("[GarageView]", err)
 		end
 	end
-	pcall(setHidden, false)
-	pcall(setControls, true)
+	for _, step in { { setHidden, false }, { setControls, true } } :: { { any } } do
+		local ok, err = pcall(step[1], step[2])
+		if not ok then
+			warn("[GarageView]", err)
+		end
+	end
 	local b = leaveButton
 	if b then
 		b.Visible = false
@@ -957,6 +966,7 @@ local function leaveNow(outside: boolean)
 	end
 	-- Always, even after an error: the player walks away free.
 	restoreEssentials()
+	forgetFov()
 	pcall(fade, 1)
 	state = "outside"
 	local cb = GarageView.onLeave
@@ -1022,6 +1032,7 @@ local function enter(g: Garage)
 			warn("[GarageView]", rerr)
 		end
 		restoreEssentials()
+		forgetFov()
 		pcall(fade, 1)
 		state = "outside"
 		return

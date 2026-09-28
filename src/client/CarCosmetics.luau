@@ -90,14 +90,19 @@ local function collect(body: Instance, carId: string): State
 	return s
 end
 
-local function darken(c: Color3, by: number): Color3
-	return Color3.new(c.R * (1 - by), c.G * (1 - by), c.B * (1 - by))
+-- A finish's colour treatment (CosmeticsConfig FINISH): value and
+-- saturation lowered by its darken and desaturate.
+local function treat(c: Color3, finish: CosmeticsConfig.Item): Color3
+	if not finish.darken and not finish.desaturate then
+		return c
+	end
+	local h, s, v = c:ToHSV()
+	return Color3.fromHSV(h, s * (1 - (finish.desaturate or 0)), v * (1 - (finish.darken or 0)))
 end
 
 local function paint(s: State, look: CarLook.Look)
 	local colour = CarLook.item(look, "paint").color
 	local finish = CarLook.item(look, "finish")
-	local matte = finish.id == "finish_matte"
 	for _, o in s.paint do
 		local c = colour or o.color
 		if o.sa then
@@ -106,7 +111,7 @@ local function paint(s: State, look: CarLook.Look)
 			o.sa.Color = colour or (o.saColor :: Color3)
 			continue
 		end
-		o.part.Color = if matte then darken(c, R.matteDarken) else c
+		o.part.Color = treat(c, finish)
 		o.part.Material = finish.material or o.material
 		o.part.Reflectance = if finish.material then finish.reflectance or 0 else o.reflectance
 	end

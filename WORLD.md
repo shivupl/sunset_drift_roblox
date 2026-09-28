@@ -550,6 +550,9 @@ the same under either sky.
 - **The raised car in the lift bay:** built the same way (the kamri07,
   stock, lamps off).
 - **Leaving** puts the character at `ExitSpot`, facing the road.
+- **Finishes under ShadowMap** (measured 2026-09-28 on a Lekzas and a kamri07, in red and in navy). The view's lights give no specular highlight, and Metal and Foil ignore Reflectance on these meshes. Before the retune, gloss, metallic and chrome looked like flat plastic. Glass is the material that answers the view's lights, so the finishes are now a Glass ladder (TUNING.md, CosmeticsConfig), and the fill light is a softbox over the car.
+  - After, side by side: factory is flat; matte is duller; gloss has a lit sheen on the bonnet, roof and flanks; metallic is sheen over a deeper base (navy turns slate); chrome is pale silver.
+  - A mirror chrome is out of reach without Future lighting or SurfaceAppearance maps.
 - **Frame time in the view:** the same as outside (67 to 73 ms in this
   Studio, where the whole world runs at about 14 fps either way).
 

@@ -694,19 +694,32 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | spinDegPerSec / dragDegPerPixel / inertiaSeconds / resumeAfterSeconds / maxFlickDegPerSec | Turntable: 8 degrees a second (measured 7.6 in Play), 0.35 degrees per pixel of drag (a 200 px drag turned it 76 degrees, auto-spin included), flick decay over 1 s capped at 360 degrees a second, and 3 s before auto-spin resumes. |
 | previewLampsOn | The preview's headlights (and so its tails) are lit, so the Lights category shows. |
 | aimHeightM | Spot lights aim at the turntable centre this high (the car's middle). |
-| lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color, sizeM (the fill's 1.2 m face), shadows (the key only). Brightness: key 1, fill 1, rim 1.5, under 0.4 (from 3 / 1 / 2.5 / 0.8, because a white car passed the world bloom threshold and glowed). **The owner's feel knob is `lights.key.brightness`**: higher gives a hotter highlight and more bloom on white. Each light is scaled per sky option by 2^(default exposure - option exposure), so at night (+0.4 stops) they run at 0.76. Four lights with the pool suspended keeps the client under maxLiveLights (12). |
+| lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color, sizeM (the fill's face), shadows (the key only; no effect under ShadowMap). The fill is a 3 m softbox 4.6 m over the car, brightness 1.5, angle 120, range 11 m (from a 1.2 m panel on the far side): the Glass finishes take their sheen from it. A white gloss car still does not bloom. Brightness: key 1, fill 1, rim 1.5, under 0.4 (from 3 / 1 / 2.5 / 0.8, because a white car passed the world bloom threshold and glowed). **The owner's feel knob is `lights.key.brightness`**: higher gives a hotter highlight and more bloom on white. Each light is scaled per sky option by 2^(default exposure - option exposure), so at night (+0.4 stops) they run at 0.76. Four lights with the pool suspended keeps the client under maxLiveLights (12). |
 | bakedGlow / bakedGlowSkip | The interior's painted-on light per sky option: each panel's LightInfluence becomes 1 - (1 - built) * glow. Sunset 1 (as built), night 0.5. The sign (Fascia) is left alone. |
 
 ## CosmeticsConfig.render (how a garage look is drawn, shared)
 `src/shared/CosmeticsConfig.luau`, read by `CarCosmetics` (client) and `CarLamps`. Each car's strip and tip spots are in `src/shared/CarCosmeticMounts.luau` (car frame, metres before scale, like `CarPlateMounts`).
 | Field | What it does |
 |---|---|
-| matteDarken | Matte takes the paint colour this much darker (0.08). |
 | brakeBrighten | A chosen tail colour's brake lamp is that colour this much brighter in HSV value (0.4): Deep Red tails #8A0508 brake at #C1070B (measured in Play). Smoked brakes dim (#670E11); raise this if braking gets lost. |
 | stripThicknessM / stripPixelsPerM / stripDrawStuds | The windscreen strip card: 4 mm thick, canvas 400 px per metre, not drawn past 250 studs. |
 | tipRadiusM / tipLengthM / boreRadiusM / boreColor / quadPairGapM | Exhaust tips: 0.09 m radius, 0.16 m long, a dark 0.065 m bore at the open end; quad tips are two pairs 0.2 m apart. Before the car's scale (1.2 on every car now). |
 | CarCosmeticMounts windscreen | posM (strip centre), widthM (glass width at its top), heightM (0.12), tiltDeg (top leaned back with the rake). Behind see-through glass the strip sits ~1 cm inside; behind opaque glass it sits just outside (BEHAVIOURS.md). |
 | CarCosmeticMounts exhaust | posM (between a twin pair, at the tips' centre) and spreadM (twin tips at ±spreadM/2; a single tip at -spreadM/2; quad as two pairs). Tips poke 3-5 cm past the bumper's lower edge. |
+
+**Finishes** (the FINISH items; retuned 2026-09-28 in the lit bay). Under ShadowMap the view's lights give no specular highlight, and Metal and Foil ignore Reflectance on these meshes. A red Lekzas at Metal with Reflectance 0.08, and again at 0.35, was the same flat red as SmoothPlastic. EnvironmentSpecularScale and EnvironmentDiffuseScale changed nothing indoors. Glass is the one material that picks up the view's lights, as a sheen. So the ladder is:
+
+| Finish | Material and reflectance | Colour treatment | How it reads in the bay |
+|---|---|---|---|
+| factory | the car's own | none | flat |
+| matte | SmoothPlastic | `darken` 0.2, `desaturate` 0.3 | dull, clearly flatter than factory (the old 8% darken could not be told from factory on red) |
+| gloss | Glass, 0 | none | the colour, with a lit sheen on the bonnet, roof and flanks; gloss black reads as real gloss black |
+| metallic | Glass, 0.05 | `darken` 0.25 | sheen over the whole panel: navy turns slate-silver, red turns a lighter pinkish red |
+| chrome | Glass, 0.15 | none | pale silver tinted by the paint (0.3 with the colour lightened read as a plain white car) |
+
+- **Rims:** chrome is Glass 0.15 (#B8BCC2) and gold is Glass 0.05 (#B8892E). Gold reads as bright gold with a sheen; chrome reads near white.
+- **The knobs:** each finish item's `material`, `reflectance`, `darken` and `desaturate`. Glass reflectance is very steep: 0.04 already washes a colour.
+- **Not reachable under ShadowMap:** a mirror chrome. Red chrome reads salmon.
 
 Paint and finish only show on cars with `paint = true` body pieces. The pickup and cruiser are single textured shells with none, so `CarCosmetics.paintable(carId)` is false for them and the garage panel greys paint and finish out. **Owner follow-up:** split a paintable body piece out of those shells in CarCatalog.
 

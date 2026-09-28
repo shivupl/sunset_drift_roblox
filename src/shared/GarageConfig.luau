@@ -91,17 +91,24 @@ GarageConfig.lights = {
 		rangeM = 16,
 		angleDeg = 70,
 		color = Color3.fromRGB(255, 244, 228),
-		shadows = true, -- the car's shadow on the plate grounds it; the only shadowed light
+		-- Under Lighting.Technology ShadowMap (this place) local lights cast
+		-- no shadow and give no specular highlight; this only matters if the
+		-- place moves to Future, where it would ground the car on the plate.
+		shadows = true,
 	},
-	-- A broad, soft light from the far side, lifting the shadow side.
+	-- A softbox: a broad panel over the car, facing down. Moved 2026-09-28
+	-- from the far side (3.6, 2.6, 0.6), brightness 1, 1.2 m face: the
+	-- Glass finishes (see CosmeticsConfig FINISH) take their sheen from the
+	-- view's lights, and from overhead it lands on the bonnet and roof, the
+	-- faces the camera sees. It is still the "fill": it lifts the shadow side.
 	fill = {
 		type = "SurfaceLight",
-		positionM = Vector3.new(3.6, 2.6, 0.6),
-		brightness = 1,
-		rangeM = 12,
-		angleDeg = 90,
+		positionM = Vector3.new(0, 4.6, 0.3),
+		brightness = 1.5,
+		rangeM = 11,
+		angleDeg = 120,
 		color = Color3.fromRGB(226, 232, 240),
-		sizeM = 1.2, -- a broad face, so the fill reads as a soft panel
+		sizeM = 3, -- a broad face, so the sheen is soft and wide
 	},
 	-- Warm, from behind and above: an edge on the roof and shoulders
 	-- against the backdrop.
