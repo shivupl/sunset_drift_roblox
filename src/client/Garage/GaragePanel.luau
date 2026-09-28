@@ -80,6 +80,9 @@ local C = UITheme.color
 -- How far a finger may travel and still count as a tap rather than a
 -- scroll (the spawn menu's value; an input threshold, not a drawn size).
 local TAP_SLOP_PX = 14
+-- How many times an equip refused as "busy" (the server's rate limit) is
+-- resent before the player is told.
+local BUSY_RETRIES = 2
 -- How long a result message stays up, seconds.
 local TOAST_SECONDS = 3
 -- Draw order: the gui sits under the spawn menu (DisplayOrder 20) so SHOP
@@ -161,7 +164,7 @@ type UI = {
 	titleRow: Frame,
 	cash: TextLabel,
 	leave: TextButton,
-	chips: ScrollingFrame,
+	chips: Frame,
 	chipButtons: { [Tab]: TextButton },
 	sub: Frame,
 	subList: UIListLayout,
@@ -189,10 +192,21 @@ local previewing: { slot: Slot, id: string }? = nil
 -- look agrees. "" in the plate slot is the account's plate.
 local want: { [Slot]: string } = {}
 local sending: { [Slot]: boolean } = {}
+-- Values the server said "done" to, waiting for the saved look to show them.
+local confirmed: { [Slot]: string } = {}
+-- Bumped on every enter, leave and car switch: replies from an earlier one
+-- are ignored.
+local epoch = 0
 local cards: { Card } = {}
+-- PAINT's finish row and its pills, flowed by relayout.
+local finishRow: Frame? = nil
+local finishPills: { GuiObject } = {}
+-- The owned plates changed while the PLATES list could not be rebuilt.
+local platesDirty = false
 local taps: { Tap } = {}
 local press: Press? = nil
-local sheet: { frame: Frame, scrim: Frame, update: () -> () }? = nil
+type Sheet = { frame: Frame, scrim: Frame, update: () -> () }
+local sheet: Sheet? = nil
 local toastSerial = 0
 local lastApplied: string? = nil
 local modalBefore = false
@@ -277,8 +291,8 @@ end
 
 -- What the turntable car shows: the saved look, then choices on their way to
 -- the server, then the unbought preview.
-local function draftLook(): Look
-	local look = table.clone(savedLook())
+local function draftLook(saved: Look?): Look
+	local look = table.clone(saved or savedLook())
 	for slot, value in want do
 		setSlot(look, slot, value)
 	end
@@ -546,7 +560,16 @@ type CardState = {
 	driving: boolean, -- MY CARS: the car you have out
 }
 
-local function stateOf(card: Card): CardState
+-- What every card's state is read from, worked out once per repaint (the
+-- looks decode JSON and the owned set splits a string).
+type Context = { saved: Look, draft: Look, driving: string?, paintable: boolean, owned: { [string]: boolean } }
+
+local function context(): Context
+	local saved = savedLook()
+	return { saved = saved, draft = draftLook(saved), driving = drivingId(), paintable = paintable(), owned = ownedIds() }
+end
+
+local function stateOf(card: Card, ctx: Context): CardState
 	local slot = card.slot
 	if slot == nil then
 		return {
@@ -554,17 +577,15 @@ local function stateOf(card: Card): CardState
 			onCar = false,
 			showing = card.key == carId,
 			owned = true,
-			driving = drivingId() == card.key,
+			driving = ctx.driving == card.key,
 		}
 	end
-	local saved = savedLook()
-	local draft = draftLook()
-	local disabled = (slot == "paint" or slot == "finish") and not paintable()
+	local disabled = (slot == "paint" or slot == "finish") and not ctx.paintable
 	return {
 		disabled = disabled,
-		onCar = slotValue(saved, slot) == card.key,
-		showing = slotValue(draft, slot) == card.key,
-		owned = slot == "plate" or owns(card.key),
+		onCar = slotValue(ctx.saved, slot) == card.key,
+		showing = slotValue(ctx.draft, slot) == card.key,
+		owned = slot == "plate" or CosmeticsConfig.isStock(card.key) or ctx.owned[card.key] == true,
 		driving = false,
 	}
 end
@@ -585,8 +606,8 @@ local function setBadge(card: Card, kind: string?, text: string)
 	end
 end
 
-local function paintCard(card: Card, down: boolean?)
-	local st = stateOf(card)
+local function paintCard(card: Card, down: boolean?, ctx: Context?)
+	local st = stateOf(card, ctx or context())
 	local look: UITheme.State
 	local sodiumStroke = false
 	if st.disabled then
@@ -628,8 +649,9 @@ local function paintCard(card: Card, down: boolean?)
 end
 
 local function paintCards()
+	local ctx = context()
 	for _, card in cards do
-		paintCard(card)
+		paintCard(card, nil, ctx)
 	end
 end
 
@@ -826,16 +848,34 @@ local function paintFoot(u: UI)
 	end
 end
 
+-- A new session of choices (enter, leave, car switch): what was wanted or
+-- sent for the last one is dropped, and its replies are ignored.
+local function newEpoch()
+	epoch += 1
+	table.clear(want)
+	table.clear(sending)
+	table.clear(confirmed)
+end
+
+local buildTab: (u: UI) -> ()
+
 local function refresh()
 	local u = ui
 	if not u or not inside then
 		return
+	end
+	if platesDirty and not sheet then
+		platesDirty = false
+		if tab == "plates" then
+			buildTab(u)
+		end
 	end
 	-- Choices the saved look now agrees with are settled.
 	local saved = savedLook()
 	for slot, value in want do
 		if not sending[slot] and slotValue(saved, slot) == value then
 			want[slot] = nil
+			confirmed[slot] = nil
 		end
 	end
 	applyPreview()
@@ -859,11 +899,13 @@ local function sendEquip(slot: Slot)
 		return
 	end
 	sending[slot] = true
+	local myEpoch = epoch
 	task.spawn(function()
 		local forCar = carId
-		while inside and carId == forCar do
+		local busyTries = 0
+		while inside and epoch == myEpoch do
 			local value = want[slot]
-			if value == nil then
+			if value == nil or confirmed[slot] == value then
 				break
 			end
 			local status
@@ -872,22 +914,42 @@ local function sendEquip(slot: Slot)
 			else
 				status = invoke("equip", forCar, slot, value)
 			end
-			if carId ~= forCar then
-				break
+			-- A reply for another car or an earlier visit changes nothing here:
+			-- that session's state is gone, and its own loop runs for it.
+			if epoch ~= myEpoch then
+				return
 			end
 			if want[slot] ~= value then
+				busyTries = 0
 				continue -- a newer tap; send that
+			end
+			if status == "busy" and busyTries < BUSY_RETRIES then
+				-- The server's rate limit: wait one action's slot and resend
+				-- the latest choice before saying anything.
+				busyTries += 1
+				task.wait(1 / CosmeticsConfig.actionsPerSecond)
+				continue
 			end
 			if status ~= "done" then
 				want[slot] = nil
 				toast(MESSAGES[status] or MESSAGES.unavailable, if status == "busy" then "info" else "error")
 			elseif slotValue(savedLook(), slot) == value then
 				want[slot] = nil
+			else
+				confirmed[slot] = value -- shown until the saved look arrives
 			end
 			break
 		end
+		if epoch ~= myEpoch then
+			return
+		end
 		sending[slot] = false
 		refresh()
+		-- A tap that came while the last reply was on its way.
+		local latest = want[slot]
+		if inside and latest ~= nil and confirmed[slot] ~= latest then
+			sendEquip(slot)
+		end
 	end)
 end
 
@@ -919,14 +981,13 @@ local function choosePlate(key: string)
 	refresh()
 end
 
-local buildTab: (u: UI) -> ()
 
 local function chooseCar(id: string)
 	if id == carId then
 		return
 	end
 	previewing = nil
-	table.clear(want)
+	newEpoch()
 	GarageView.setCar(id)
 	previewModel = GarageView.preview()
 	carId = id
@@ -948,9 +1009,13 @@ end
 -- The confirm sheet.
 ------------------------------------------------------------------------
 
-local function closeSheet()
-	local s = sheet
-	sheet = nil
+-- Closes the open sheet, or only `which` if given: a buy reply that comes
+-- back after the player left and re-entered must not close the new sheet.
+local function closeSheet(which: Sheet?)
+	local s = which or sheet
+	if s and sheet == s then
+		sheet = nil
+	end
 	if s then
 		s.frame:Destroy()
 		s.scrim:Destroy()
@@ -969,6 +1034,9 @@ local function openSheet(u: UI)
 	local frame, scrim = UIKit.sheet(u.gui, touch, SHEET_Z)
 	frame.Name = "ConfirmSheet"
 	scrim.Name = "ConfirmScrim"
+	-- The scrim takes every tap under the sheet, so LEAVE, SHOP PLATES and
+	-- the handle cannot be pressed through it.
+	scrim.Active = true
 	-- Opaque, not alpha.panel: at 0.06 the cards under the sheet showed
 	-- through its rows (measured in Play, 2026-09-28).
 	frame.BackgroundTransparency = 0
@@ -1031,15 +1099,17 @@ local function openSheet(u: UI)
 	buy.LayoutOrder = 2
 
 	local working = false
+	local mine: Sheet
 	local function update()
 		local cash = cashNow()
 		priceValue.Text = money(item.price)
 		cashValue.Text = money(cash)
-		afterValue.Text = money(math.max(cash - item.price, 0))
 		local lacking = item.price - cash
+		-- Short: the shortfall in beacon rather than a cash-after of 0.
+		afterValue.Text = if lacking > 0 then `Short {money(lacking)}` else money(cash - item.price)
+		afterValue.TextColor3 = if lacking > 0 then C.beacon else C.paint
 		short.Visible = lacking > 0
-		short.Text = if lacking > 0 then `Not enough cash: you need {money(lacking)} more` else ""
-		afterValue.TextColor3 = if lacking > 0 then C.asphalt500 else C.paint
+		short.Text = if lacking > 0 then "Not enough cash to buy this" else ""
 		UIKit.setDisabled(buy, working or lacking > 0)
 		UIKit.setDisabled(cancel, working)
 	end
@@ -1064,32 +1134,36 @@ local function openSheet(u: UI)
 		update()
 		local slot, id = p.slot, p.id
 		local forCar = carId
+		local myEpoch = epoch
 		local status = invoke("buy", id)
 		if status == "done" or status == "owned" then
 			local fitted = invoke("equip", forCar, slot, id)
-			if inside and carId == forCar then
+			if inside and epoch == myEpoch then
 				local cur = previewing
 				if cur and cur.id == id then
 					previewing = nil
 				end
 				if fitted == "done" then
 					if slotValue(savedLook(), slot) ~= id then
-						want[slot] = id -- shown until the saved look arrives
+						-- Shown until the saved look arrives; already sent.
+						want[slot] = id
+						confirmed[slot] = id
 					end
 					toast(`Bought and fitted: {item.name}`, "done")
 				else
 					toast(`Bought {item.name}. Tap it to fit it`, "info")
 				end
 			end
-		else
+		elseif inside and epoch == myEpoch then
 			toast(MESSAGES[status] or MESSAGES.unavailable, if status == "busy" then "info" else "error")
 		end
 		working = false
-		closeSheet()
+		closeSheet(mine)
 		refresh()
 	end)
 
-	sheet = { frame = frame, scrim = scrim, update = update }
+	mine = { frame = frame, scrim = scrim, update = update }
+	sheet = mine
 	update()
 end
 
@@ -1142,6 +1216,8 @@ end
 local function clearContent(u: UI)
 	closeSheet()
 	press = nil
+	finishRow = nil
+	table.clear(finishPills)
 	table.clear(cards)
 	table.clear(taps)
 	table.clear(u.gridLayouts)
@@ -1157,13 +1233,13 @@ local function clearContent(u: UI)
 	end
 end
 
--- The chips are tapped through the tracker too (they sit in a ScrollingFrame).
+-- The chips go through the tracker too, like every card.
 local function registerChips(u: UI)
 	for _, entry in TABS do
 		local b = u.chipButtons[entry.id]
 		registerTap({
 			gui = b,
-			scroll = u.chips,
+			scroll = nil,
 			onTap = function()
 				if tab ~= entry.id then
 					tab = entry.id
@@ -1178,24 +1254,9 @@ end
 local function paintChips(u: UI)
 	for id, b in u.chipButtons do
 		UIKit.setSelected(b, id == tab)
-		-- UIKit makes a pressable Active; the tracker handles these taps, and
-		-- an Active button in a ScrollingFrame blocks a finger's scroll.
+		-- UIKit makes a pressable Active; the tracker handles these taps.
 		b.Active = false
 	end
-end
-
-local function scrollChipIntoView(u: UI)
-	local b = u.chipButtons[tab]
-	local row = u.chips
-	local left = b.AbsolutePosition.X - row.AbsolutePosition.X + row.CanvasPosition.X
-	local right = left + b.AbsoluteSize.X
-	local x = row.CanvasPosition.X
-	if left < x then
-		x = left
-	elseif right > x + row.AbsoluteSize.X then
-		x = right - row.AbsoluteSize.X
-	end
-	row.CanvasPosition = Vector2.new(math.max(x, 0), 0)
 end
 
 buildTab = function(u: UI)
@@ -1223,17 +1284,26 @@ buildTab = function(u: UI)
 			})
 		end
 	elseif tab == "paint" then
-		-- The finish row above the colours.
-		local row = scroller("Finishes", true)
+		-- The finish row above the colours: it wraps (relayout flows it), so
+		-- every finish shows at any width.
+		local row = Instance.new("Frame")
+		row.Name = "Finishes"
+		row.BackgroundTransparency = 1
 		row.Size = UDim2.new(1, 0, 0, target())
 		row.LayoutOrder = 1
-		list(row, true, space("sm"))
 		row.Parent = u.sub
+		finishRow = row
 		for i, item in CosmeticsConfig.inCategory("finish") do
 			local card = buildPill(row, i, item)
+			table.insert(finishPills, card.frame)
+			card.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+				if ui == u then
+					relayout(u)
+				end
+			end)
 			registerTap({
 				gui = card.frame,
-				scroll = row,
+				scroll = nil,
 				onTap = function()
 					chooseItem("finish", item.id)
 				end,
@@ -1299,16 +1369,28 @@ buildTab = function(u: UI)
 	end
 	sizeGrids(u)
 	relayout(u)
-	task.defer(function()
-		if ui == u then
-			scrollChipIntoView(u)
-		end
-	end)
 end
 
 ------------------------------------------------------------------------
 -- Layout.
 ------------------------------------------------------------------------
+
+-- Lays `items` out left to right, wrapping at `width`; returns the height.
+local function flow(items: { GuiObject }, width: number, gap: number): number
+	local x, y, lineH = 0, 0, 0
+	for _, o in items do
+		local w, h = o.AbsoluteSize.X, o.AbsoluteSize.Y
+		if x > 0 and x + w > width then
+			x = 0
+			y += lineH + gap
+			lineH = 0
+		end
+		o.Position = UDim2.fromOffset(x, y)
+		x += w + gap
+		lineH = math.max(lineH, h)
+	end
+	return y + lineH
+end
 
 relayout = function(u: UI)
 	if relaying then
@@ -1339,9 +1421,22 @@ relayout = function(u: UI)
 	u.header.Size = UDim2.new(1, 0, 0, headerH)
 	local y = headerH + gap
 
+	-- The categories wrap onto as many rows as the width needs (review fix
+	-- round 1: a scrolling row hid DECALS and EXHAUST off the edge).
+	local chipList: { GuiObject } = {}
+	for _, entry in TABS do
+		table.insert(chipList, u.chipButtons[entry.id])
+	end
+	local contentW = u.chips.AbsoluteSize.X
+	local chipsH = flow(chipList, contentW, space("sm"))
 	u.chips.Position = UDim2.fromOffset(0, y)
-	u.chips.Size = UDim2.new(1, 0, 0, target())
-	y += target() + gap
+	u.chips.Size = UDim2.new(1, 0, 0, chipsH)
+	y += chipsH + gap
+
+	local fr = finishRow
+	if fr and fr.Parent then
+		fr.Size = UDim2.new(1, 0, 0, flow(finishPills, contentW, space("sm")))
+	end
 
 	local subH = u.subList.AbsoluteContentSize.Y
 	u.sub.Visible = subH > 0
@@ -1438,15 +1533,18 @@ local function build(): UI
 	titleHolder.Size = UDim2.new(1, 0, 1, 0)
 	titleHolder.Parent = header
 	local titleRow = UIKit.title(titleHolder, "GARAGE", "كراج", "display", touch)
-	local cash = UIKit.text(titleHolder, "0", "price", "sodium", touch, false)
+	-- Your balance is not something to press or pay: paint, not sodium.
+	local cash = UIKit.text(titleHolder, "0", "price", "paint", touch, false)
 	cash.Name = "Cash"
 	local leave = UIKit.button(header, "LEAVE", "secondary", touch)
 	leave.Name = "Leave"
 	leave.AnchorPoint = Vector2.new(1, 0)
 	leave.Position = UDim2.fromScale(1, 0)
 
-	local chips = scroller("Categories", true)
-	list(chips, true, space("sm"))
+	local chips = Instance.new("Frame")
+	chips.Name = "Categories"
+	chips.BackgroundTransparency = 1
+	chips.Size = UDim2.new(1, 0, 0, UITheme.target(touch))
 	chips.Parent = panel
 	local chipButtons: { [Tab]: TextButton } = {}
 	for i, entry in TABS do
@@ -1459,6 +1557,13 @@ local function build(): UI
 		b.LayoutOrder = i
 		b.Active = false
 		chipButtons[entry.id] = b
+		-- The row wraps by measured chip widths: lay out again once known.
+		b:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+			local cur = ui
+			if cur and cur.chipButtons == chipButtons then
+				relayout(cur)
+			end
+		end)
 	end
 
 	local sub = Instance.new("Frame")
@@ -1563,7 +1668,8 @@ local function build(): UI
 		end
 	end)
 
-	local watchedList: { Instance } = { titleRow, leave, subList, g }
+	-- chips: its width (the panel's content width) sets where the row wraps.
+	local watchedList: { Instance } = { titleRow, leave, subList, g, chips }
 	for _, watched in watchedList do
 		local prop = if watched:IsA("UIListLayout") then "AbsoluteContentSize" else "AbsoluteSize"
 		watched:GetPropertyChangedSignal(prop):Connect(function()
@@ -1602,7 +1708,7 @@ local function onEnter(id: string, preview: Model)
 	carId = id
 	previewModel = preview
 	previewing = nil
-	table.clear(want)
+	newEpoch()
 	lastApplied = nil
 	-- The spawn menu can be open over the view (it reopens on stepping out
 	-- of a car); the panel takes the screen.
@@ -1625,7 +1731,7 @@ local function onLeave()
 	teardown()
 	previewModel = nil
 	previewing = nil
-	table.clear(want)
+	newEpoch()
 	SpawnMenu.setOpenButtonHidden(false)
 	UserInputService.ModalEnabled = modalBefore
 end
@@ -1746,10 +1852,9 @@ function GaragePanel.start(remotes: Folder)
 	end
 	-- A plate bought in the spawn menu joins the PLATES list.
 	player:GetAttributeChangedSignal("Plates"):Connect(function()
-		local u = ui
-		if u and inside and tab == "plates" then
-			buildTab(u)
-		end
+		-- Rebuilt by refresh(), and not while a confirm sheet is open (a
+		-- rebuild clears the content, sheet included).
+		platesDirty = true
 		refresh()
 	end)
 end

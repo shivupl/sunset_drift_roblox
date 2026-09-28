@@ -41,6 +41,9 @@ sodium lamp. Colour means something; it is never decoration.
 Rules:
 - **One accent.** Sodium marks what you can press or what is chosen. If two
   things on a screen are sodium, one of them is wrong.
+- **Sodium means pressable, chosen, or a price you are about to pay.** Your
+  own balance is none of these: cash you hold is `paint` (the garage header,
+  a sheet's "Your cash"); an item's price and the BUY button are sodium.
 - **Green only means yours.** Owned, equipped, done. Never a button.
 - **No Roblox blue, no neutral grey, no pure black or white.** Surfaces are
   warm asphalt; text is paint.
@@ -75,8 +78,9 @@ Two families, from Roblox's own font set:
 
 - Touch sizes are desktop × `touchScale` (1.25), via `UITheme.px`.
 - Nothing is smaller than 12 px on desktop, 15 px on touch.
-- Numbers are grouped with commas: 25,000. Cash is written with its unit
-  symbol-free, in sodium: `25,000`.
+- Numbers are grouped with commas: 25,000. Amounts are written without a
+  currency symbol: `25,000`. A price is sodium; your balance is paint (see
+  Colour rules).
 
 ## Arabic with English
 
@@ -88,9 +92,11 @@ the same, in a fixed way:
   size. The Arabic is right-aligned (`TextXAlignment.Right`).
 - **Where a line is too narrow for both** (a phone header), the Arabic goes
   under the English, left-aligned, `body` role × 1.15, in `sand`.
-- **Only titles and tabs are bilingual.** Buttons, prices, item names and
-  running text are English only; doubling every line makes a menu twice as
-  long and half as readable.
+- **Only titles are bilingual** (screen titles, sheet titles, section
+  titles). Tabs, chips, buttons, prices, item names and running text are
+  English only; doubling every line makes a menu twice as long and half as
+  readable. (Ruled 2026-09-28 in the garage panel review: the spawn menu's
+  tabs and the garage's category chips were already English only.)
 - Arabic is never set in CAPS logic, never letter-spaced, and never in
   Oswald's condensed metrics: Roblox renders Arabic glyphs through its own
   Arabic face, at the weight asked for.
@@ -161,5 +167,5 @@ over a panel of cards, 6% see-through let the cards show through its rows.
 
 - No literal `Color3`, font or size in UI code: read `UITheme`.
 - No gradients on controls, no drop shadows on text, no emoji.
-- No sodium on anything that cannot be pressed or chosen.
+- No sodium on anything that cannot be pressed, chosen or paid (a price).
 - No text on the world without a surface behind it.
