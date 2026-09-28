@@ -482,6 +482,14 @@ you face the doors; v into the building; metres from its centre). The
 view's camera, spin and four lights are in the shared
 `src/shared/GarageConfig.luau`, because the client runs the view.
 
+**Driving in.** A player driving their own car slowly through the open
+door gets the same view (client `GarageView`, server `GarageService`): the
+car parks 7 m straight out from the DoorZone's centre, facing the road, on
+the keep-clear hatch (no marker part: the spot is computed from DoorZone and
+`GarageConfig.driveIn.outM`), and leaving seats them back in it. The tail
+of a 5 m car stays clear of ExitSpot (3.15 m out) and the nose short of the
+painted arrow (8.4 m out).
+
 **Why there.** The pad's left wing (X -84..-36 m, Z -1700..-1300 m) is 48 x
 400 m of flat, collidable, empty asphalt straight across the highway from
 the spawn bay and the station. The garage stands in the middle of it at

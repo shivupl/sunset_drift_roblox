@@ -42,7 +42,8 @@ GarageConfig.screenOffset = 0.18
 
 -- Entering and leaving (spec section 2).
 -- The threshold is only watched while the character's root is this close
--- to the doorway, and never while seated (driving in does nothing).
+-- to the doorway; while seated the car's chassis is watched instead
+-- (driveIn below).
 GarageConfig.thresholdRangeM = 12
 GarageConfig.fadeSeconds = 0.2 -- to asphalt950 and back, each way
 -- How long a short message (the car could not be shown) stays up.
@@ -51,6 +52,33 @@ GarageConfig.noticeSeconds = 3
 -- standing at ExitSpot (facing out), so it does not swing round from the
 -- turntable framing. The default camera takes over from there.
 GarageConfig.exitCamera = { backM = 4, upM = 1.6 }
+
+-- Driving in (garage round 2 §3; the owner, 2026-09-28: "also add the
+-- ability to not only walk in but drive a car in as well"). While seated
+-- as the driver of your own car, the chassis's centre crossing DoorZone
+-- inward below maxKmh opens the view with that car; faster does nothing
+-- and the walls stop the car as before.
+--   maxKmh: the spec's "~20 km/h", a crawl through a 5 m door. Higher lets
+--     a quicker entry count; lower asks for a slower one.
+--   serverSlack: the server checks the replicated speed against
+--     maxKmh * this, so a car the client saw at 19.9 is not refused for
+--     reading 20.5 a moment later.
+--   zoneMarginM: how far past DoorZone's box (sideways, and along the
+--     car's travel) the chassis may be when the server checks; the car
+--     keeps rolling while the request is in flight (5.5 m/s at 20 km/h,
+--     about 0.5 m over 100 ms of ping), so 3 m is generous.
+--   outM: the drive-out spot, measured from DoorZone's centre straight out
+--     of the door along the ground; the car's middle parks there facing
+--     away from the door. 7, so that a 5 m car's tail (2.5 m) stays clear
+--     of ExitSpot (3.15 m from the zone's centre) with room to stand, and
+--     the nose short of the painted arrow (8.4 m out) - the car sits on the
+--     keep-clear hatch in front of the open door.
+--   clearM: a car of anyone else's within this box (the parking spot's
+--     footprint, width x length, metres) refuses the drive-in, so two
+--     parked cars never overlap there.
+GarageConfig.driveIn = { maxKmh = 20, serverSlack = 1.25, zoneMarginM = 3, outM = 7, clearM = Vector2.new(3, 6) }
+-- Shown when the drive-out spot is taken and the drive-in is refused.
+GarageConfig.driveInBlockedText = "Someone's parked out front. Try again in a moment."
 
 -- Turntable.
 GarageConfig.spinDegPerSec = 8

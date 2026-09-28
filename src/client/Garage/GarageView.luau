@@ -22,6 +22,18 @@
 -- the player is not driving, and the lift car is never anyone's; one path
 -- serves all three. The rig costs a handful of invisible instances.
 --
+-- Driving in (garage round 2 §3, the owner on 2026-09-28: "also add the
+-- ability to not only walk in but drive a car in as well"): seated as the
+-- driver of your own car, the chassis's centre crossing DoorZone inward
+-- below GarageConfig.driveIn.maxKmh fades out and asks the server
+-- (GarageAction "driveIn", server/GarageService), which unseats the player
+-- and parks the car on the drive-out spot facing out; the view then opens
+-- with that car. Leaving after a drive-in asks for "driveOut", which seats
+-- the player back in the car there, ready to drive away; if that fails (the
+-- car was replaced or taken) they stand at ExitSpot as after a walk-in.
+-- Closing the view any other way (died, respawned, seated elsewhere) sends
+-- "release", so the parked car's prompt comes back.
+--
 -- The panel is the GaragePanel's (Task 7); this module only offers the
 -- hooks below and a fallback LEAVE button the panel can hide.
 local Players = game:GetService("Players")
@@ -50,6 +62,7 @@ local CarPlates = require(Client:WaitForChild("CarPlates"))
 local UIKit = require(Client:WaitForChild("UIKit"))
 local WorldLights = require(Client:WaitForChild("WorldLights"))
 local Sky = require(Client:WaitForChild("Sky"))
+local VehicleController = require(Client:WaitForChild("VehicleController"))
 
 local GarageView = {}
 
@@ -90,6 +103,8 @@ local preview: Preview? = nil
 local lightsFolder: Folder? = nil
 local plateHome: CFrame? = nil -- the turntable plate's CFrame before any spin
 local savedFov: number? = nil
+-- The view was opened by driving in: leaving asks to be seated again.
+local drivenIn = false
 local connections: { RBXScriptConnection } = {}
 
 -- The spin, radians about the turntable's axis.
@@ -897,6 +912,54 @@ local function forgetFov()
 	savedFov = nil
 end
 
+-- GarageAction (server/GarageService) -> its status, or "unavailable".
+local function garageAction(what: string): string
+	local folder = ReplicatedStorage:FindFirstChild("Remotes")
+	local remote = folder and folder:FindFirstChild("GarageAction")
+	if not remote or not remote:IsA("RemoteFunction") then
+		return "unavailable"
+	end
+	local ok, reply = pcall(function(): any
+		return remote:InvokeServer(what)
+	end)
+	if ok and type(reply) == "table" and type(reply.status) == "string" then
+		return reply.status
+	end
+	return "unavailable"
+end
+
+-- Stand the character at ExitSpot, facing out, with the camera behind it
+-- (not when it is seated, dead or gone).
+local function standAtExit()
+	local g = garage
+	local character, hum, root = characterParts()
+	if g and g.exit.Parent and character and root and hum and not hum.SeatPart and hum.Health > 0 then
+		character:PivotTo(g.exit.CFrame)
+		local c = GarageConfig.exitCamera
+		local s = mps()
+		local cam = Workspace.CurrentCamera
+		if cam then
+			local eye = g.exit.CFrame * Vector3.new(0, c.upM / s, c.backM / s)
+			cam.CFrame = CFrame.lookAt(eye, g.exit.Position)
+		end
+	end
+end
+
+-- After a drive-in: back in the parked car ("driveOut"), and true once the
+-- car controller has it; false (nothing changed) when the server could not.
+local function driveBackOut(): boolean
+	if garageAction("driveOut") ~= "ok" then
+		return false
+	end
+	-- DriveStart follows the seat; wait for the car camera before the fade
+	-- lifts, so the default camera does not show for a frame.
+	local deadline = os.clock() + 3
+	while not VehicleController.isDriving() and os.clock() < deadline do
+		task.wait()
+	end
+	return true
+end
+
 -- Everything the view changed, put back. `outside`: stand the character at
 -- ExitSpot (not when it is seated, dead or gone).
 local function restore(outside: boolean)
@@ -915,16 +978,8 @@ local function restore(outside: boolean)
 		g.turntable.CFrame = home
 	end
 	WorldLights.resume()
-	local character, hum, root = characterParts()
-	if outside and g and character and root and hum and not hum.SeatPart and hum.Health > 0 then
-		character:PivotTo(g.exit.CFrame)
-		local c = GarageConfig.exitCamera
-		local s = mps()
-		local cam = Workspace.CurrentCamera
-		if cam then
-			local eye = g.exit.CFrame * Vector3.new(0, c.upM / s, c.backM / s)
-			cam.CFrame = CFrame.lookAt(eye, g.exit.Position)
-		end
+	if outside then
+		standAtExit()
 	end
 	restoreCamera()
 	setHidden(false)
@@ -974,6 +1029,8 @@ local function leaveNow(outside: boolean)
 		return
 	end
 	state = "leaving"
+	local driven = drivenIn
+	drivenIn = false
 	if seatedNow() then
 		-- The car camera and the seat weld take over now, not after the fade.
 		pcall(function()
@@ -983,11 +1040,25 @@ local function leaveNow(outside: boolean)
 	end
 	local ok, err = xpcall(function(): any
 		fade(0)
-		restore(outside)
+		-- After a drive-in the player goes back into the car, so not to
+		-- ExitSpot first; only if the car is not there to go back to.
+		restore(outside and not driven)
+		if driven then
+			if outside and not seatedNow() then
+				if not driveBackOut() then
+					standAtExit()
+				end
+			else
+				task.spawn(garageAction, "release")
+			end
+		end
 		return nil
 	end, debug.traceback)
 	if not ok then
 		warn("[GarageView] leaving failed:", err)
+		if driven then
+			task.spawn(garageAction, "release")
+		end
 	end
 	-- Always, even after an error: the player walks away free.
 	restoreEssentials()
@@ -1000,7 +1071,7 @@ local function leaveNow(outside: boolean)
 	end
 end
 
-local function enter(g: Garage)
+local function enter(g: Garage, carIdArg: string?)
 	if state ~= "outside" then
 		return
 	end
@@ -1026,7 +1097,7 @@ local function enter(g: Garage)
 			end
 		end))
 	end
-	local carId = currentCarId()
+	local carId = carIdArg or currentCarId()
 	local p: Preview? = nil
 	local ok, err = xpcall(function(): any
 		fade(0)
@@ -1058,6 +1129,12 @@ local function enter(g: Garage)
 		end
 		restoreEssentials()
 		forgetFov()
+		if drivenIn then
+			drivenIn = false
+			if not driveBackOut() then
+				standAtExit()
+			end
+		end
 		pcall(fade, 1)
 		state = "outside"
 		return
@@ -1134,6 +1211,83 @@ local function watchThreshold()
 	if was and was <= 0 and side > 0 and inDoorway then
 		lastSide = nil
 		task.spawn(enter, g)
+	end
+end
+
+-- Driving in: the car's chassis, while this player drives their own car.
+local lastCarSide: number? = nil
+
+local function driveIn(g: Garage, carId: string)
+	if state ~= "outside" then
+		return
+	end
+	state = "entering"
+	-- Black first, while the server parks the car, so the jump to the apron
+	-- and the step out of the seat are not seen.
+	local fading = true
+	task.spawn(function()
+		pcall(fade, 0)
+		fading = false
+	end)
+	local status = garageAction("driveIn")
+	while fading do
+		task.wait()
+	end
+	if status ~= "ok" then
+		if status == "blocked" then
+			notice(GarageConfig.driveInBlockedText)
+		end
+		pcall(fade, 1)
+		state = "outside"
+		return
+	end
+	drivenIn = true
+	-- Out of the seat and the car controller stopped (DriveStop) before the
+	-- view takes the camera and the character.
+	local _, hum = characterParts()
+	local deadline = os.clock() + 2
+	while os.clock() < deadline and ((hum and hum.SeatPart) or VehicleController.isDriving()) do
+		task.wait()
+	end
+	state = "outside"
+	enter(g, carId)
+end
+
+local function watchDriveIn()
+	local g = garage
+	local car = VehicleController.currentCar()
+	local _, hum = characterParts()
+	if state ~= "outside" or not g or not g.door.Parent or not car or not hum or not hum.SeatPart or hum.Health <= 0 then
+		lastCarSide = nil
+		return
+	end
+	-- Only your own car: the view and the parking are for the owner.
+	if car:GetAttribute("OwnerUserId") ~= player.UserId or not hum.SeatPart:IsDescendantOf(car) then
+		lastCarSide = nil
+		return
+	end
+	local chassis = car.PrimaryPart
+	if not chassis then
+		lastCarSide = nil
+		return
+	end
+	local rel = g.door.CFrame:PointToObjectSpace(chassis.Position)
+	if rel.Magnitude > GarageConfig.thresholdRangeM / mps() then
+		lastCarSide = nil
+		return
+	end
+	local side = -rel.Z
+	local half = g.door.Size / 2
+	local inDoorway = math.abs(rel.X) <= half.X and math.abs(rel.Y) <= half.Y
+	local was = lastCarSide
+	lastCarSide = side
+	if was and was <= 0 and side > 0 and inDoorway then
+		local kmh = chassis.AssemblyLinearVelocity.Magnitude * mps() * 3.6
+		if kmh <= GarageConfig.driveIn.maxKmh then
+			lastCarSide = nil
+			local id = car:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+			task.spawn(driveIn, g, ConfigLoader.resolveCarId(if type(id) == "string" then id else nil))
+		end
 	end
 end
 
@@ -1245,6 +1399,7 @@ function GarageView.start()
 	RunService.Heartbeat:Connect(function()
 		if garage then
 			watchThreshold()
+			watchDriveIn()
 		end
 	end)
 	task.spawn(function()

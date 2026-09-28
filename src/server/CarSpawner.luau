@@ -336,6 +336,24 @@ local function seatIn(entry: Entry, player: Player): boolean
 	return entry.seat.Occupant == hum
 end
 
+-- The player's current car, if any (GarageService checks a parked car is
+-- still this one).
+function CarSpawner.carOf(player: Player): Model?
+	local entry = cars[player]
+	return if entry then entry.model else nil
+end
+
+-- Seats a player in their current car where it stands (GarageService's
+-- drive-out), the way a spawn seats them. False if there is no car or the
+-- seat did not hold.
+function CarSpawner.seatOwner(player: Player): boolean
+	local entry = cars[player]
+	if not entry then
+		return false
+	end
+	return seatIn(entry, player)
+end
+
 -- The spawn menu's request: replace this player's car with catalog car
 -- carId and put them in it. Everything from the client is checked: an id
 -- the catalog does not have, a request while one is still building, or one
