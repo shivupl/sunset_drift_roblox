@@ -612,7 +612,7 @@ Haze and glow round the backdrop skyline (`Cityscape.luau`). Every layer is a li
 | grade.contrast / saturation / tint | A light colour grade over the whole frame. |
 
 ## SkyConfig (the player's time of day)
-`src/shared/SkyConfig.luau`. The times of day a player can pick in the menu's Settings tab (Sunset, Night). Each client sets `ClockTime` and `ExposureCompensation` over the world's preset, on that player's screen only; the choice is saved in the profile. Everything else (brightness, ambient, haze, the skybox) is the active `timesOfDay` preset. Studio's Properties panel edits of those two fields in Play are undone by the client, so try values here.
+`src/shared/SkyConfig.luau`. The times of day a player can pick in the menu's Settings tab (Sunset, Night). Each client sets `ClockTime` and `ExposureCompensation` over the world's preset, on that player's screen only; the choice is saved in the profile. Everything else (brightness, ambient, haze, the skybox) is the active `timesOfDay` preset. The client puts those two fields back whenever they change, which also undoes Properties-panel edits in Play. **To try values live in Studio:** in Play, switch the Explorer to the Client view, select Players > your name, and tick the `SkyFree` attribute. `ClockTime` and `ExposureCompensation` on Lighting then keep whatever you type; untick it and the chosen option returns. It exists only in Studio. Put the numbers you like into SkyConfig.
 | Field | What it does |
 |---|---|
 | default | What a new player sees (`sunset`). Keep `goldenHour`'s clockTime and exposure equal to it, or the world changes as a client starts. |
