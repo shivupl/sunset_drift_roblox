@@ -31,6 +31,7 @@ local RoadNetwork = require(script.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.AssetRegistry)
 local Relief = require(script.Parent.Relief)
 local Station = require(script.Parent.Station)
+local Garage = require(script.Parent.Garage)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -106,7 +107,7 @@ function DuneLife.build(cfg: Config, ctx: Context, path: Path, parent: Instance)
 				continue
 			end
 			local flat, frame = world(along, lateral)
-			if stationDistance(flat) < radiusM + dl.stationGapM then
+			if stationDistance(flat) < radiusM + dl.stationGapM or Garage.keepOut(cfg, ctx, path, flat, radiusM + dl.stationGapM) then
 				continue
 			end
 			local r = s(radiusM)

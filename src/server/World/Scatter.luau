@@ -18,6 +18,7 @@ local RoadNetwork = require(script.Parent.RoadNetwork)
 local AssetRegistry = require(script.Parent.AssetRegistry)
 local Relief = require(script.Parent.Relief)
 local Station = require(script.Parent.Station)
+local Garage = require(script.Parent.Garage)
 
 type Config = WorldConfig.Config
 type Context = RoadNetwork.Context
@@ -181,8 +182,11 @@ function Scatter.build(cfg: Config, ctx: Context, path: Path, parent: Instance):
 
 	-- Occupied spots, so two props never land on top of each other.
 	local taken: { Vector3 } = {}
-	-- Nothing lands on the petrol station's site.
-	local onStation = Station.keepOut(cfg, ctx, path)
+	-- Nothing lands on the petrol station's site, nor on the garage's.
+	local onStationOnly = Station.keepOut(cfg, ctx, path)
+	local function onStation(pos: Vector3): boolean
+		return onStationOnly(pos) or Garage.keepOut(cfg, ctx, path, pos)
+	end
 	-- Nor on the border dunes: a palm or a camp on a dune face reads as
 	-- floating, and anything past the crest is out of sight. Scrub is the
 	-- exception and climbs part way up the windward slope.

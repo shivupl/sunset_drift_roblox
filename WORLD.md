@@ -14,6 +14,7 @@ only in the place file. Change a number in the config and restart the server.
 | `Lighting.luau` | Lamp posts on both shoulders and down the median (one store mesh each), sky, atmosphere, every Lighting setting. |
 | `Signage.luau` | Lattice gantries with a framed board over each carriageway, roadside boards on twin posts, speed-limit signs. |
 | `Station.luau` | The petrol station beside the parking bay: canopy, pump islands, shop, forecourt, aprons, price totem, parked cars, palms. Primitives only. |
+| `Garage.luau` | The two-bay workshop on the pad's left wing, across the road from the bay: turntable, backdrop, lift, dressing, apron. Primitives only. |
 | `Cityscape.luau` | The backdrop skyline: a band along the right of the road, a downtown cluster near the start, two landmarks. |
 | `Scatter.luau` | Palms, scrub clusters, acacia trees, rocks, debris, dune ridges, and the roadside camps: tent, carpet, camels. |
 | `Dunes.luau` | The far dune field on the sunset side: sheets, ridges, seifs, crescents, mounds, sandstone outcrops. Persistent. |
@@ -470,6 +471,90 @@ Roblox's `Stats.SceneTriangleCount` does not count plain parts at all
 (adding 100 boxes changed it by 0), so it cannot be used to check this. 56
 parts cast shadows: canopy, columns, shop shell, totem, palms. 60 fps with
 Studio focused, under the canopy and on the bay, vsync-capped either way.
+
+## The garage (`Garage.luau`)
+
+A two-bay workshop the player walks into on foot, where the customisation
+view takes over (asked by the owner on 2026-09-28; the design is
+`docs/superpowers/specs/2026-09-28-garage-design.md`). Everything comes from
+`WorldConfig.garage` in a local frame (u along the front, + to your right as
+you face the doors; v into the building; metres from its centre). The
+view's camera, spin and four lights are in the shared
+`src/shared/GarageConfig.luau`, because the client runs the view.
+
+**Why there.** The pad's left wing (X -84..-36 m, Z -1700..-1300 m) is 48 x
+400 m of flat, collidable, empty asphalt straight across the highway from
+the spawn bay and the station. The garage stands in the middle of it at
+along 1,530 m, 60 m left (world X -60, Z -1530), doors facing the road
+(+X), so it is the first building a player sees on the left and one
+carriageway's walk away. The right wing is full.
+
+**The building.** 26 x 16 m, 6.5 m eaves, sandstone-rendered block (the
+station's palette) with a darker plinth, a ribbed steel roof edge, downpipes
+and an AC unit on the end the spawn sees, which also carries the painted
+trades. Two 5 x 4 m roller-door openings: the display bay's (left, nearer
+the spawn) is open, its shutter rolled into the box over it; the lift bay's
+is shut. Over them a dark fascia (UITheme asphalt900) with GARAGE and كراج
+in the UI's display face (Oswald), the Arabic in sodium, lit by three
+sodium lamps on arms. One high window strip in the lift bay's back wall.
+
+**Inside.** Sealed concrete floor (#8C8A84) with saw cuts, tyre-mark arcs
+from both doors and oil under the lift; pale painted block with a dark dado
+and a yellow line; two steel columns and roof beams; eight warm strip
+fittings on hangers, two rows per bay. The display bay is kept clean: a
+flat warm-grey backdrop (#6E6A64) with a 45 degree cove at the floor, and a
+5.4 m diamond-plate turntable flush in a darker ring, 3 m in front of it.
+The lift bay has a blue two-post lift with arms out to pads (the client
+builds a raised kamri07 on `LiftCarSpot`), a bench with a vice under a
+shadow board of spanners, a hammer and screwdrivers, a red roll cab, a
+compressor piped to a hose reel, a tyre rack, a rack of stock, two tyre
+stacks, an oil drum and a trolley jack. A second tyre rack, a tool board
+and an extinguisher sit in the display bay by the door.
+
+**Detail as paint, not Decals.** The spec asked for tyre marks and oil
+stains as flat parts; they are Frames on the floor's SurfaceGui instead
+(two triangles each, no sorting of dozens of see-through parts on a
+phone). No image assets anywhere.
+
+**Painted-on light.** The strip lenses are `HajwalaLamp` lamp heads, so the
+client pool lights them at night when a player is near. At golden hour
+the pool's lamps are dark, and with the back wall toward the low sun the
+inside rendered near black through the open door (the floor about 50/255).
+So the floor, the linings, the backdrop, the ceiling, the tool boards and
+the turntable carry a SurfaceGui of their own colour at a LightInfluence
+below 1 (`bakedLight`): a lit tone that needs no Light. The view's own four
+lights add on top. The garage creates no Light instances.
+
+**The apron.** Painted on one transparent sheet over the pad: three
+nose-in bays with wheel stops in front of the lift bay, a yellow hatched
+keep-clear box in front of the open door, an arrow to it and GARAGE / كراج
+on the road side, reading for someone facing the doors. A 2.4 m concrete
+strip runs along the front. Yellow bollards guard the piers.
+
+**Collision.** Walls, piers, lintels, the closed shutter, the window, the
+roof, the columns, the backdrop, the floor, the door strip and the
+turntable and its ring collide (22 parts); nothing else does.
+
+**The client's handles** (directly under the `Garage` folder, which has
+`GarageRoot = true`): `Turntable` (`GarageRole = "turntable"`, and
+`ViewFrame`: its top centre looking into the garage), `DoorZone` (invisible
+5 x 4 x 0.6 m box in the doorway, LookVector into the garage), `ExitSpot`
+(3 m outside the door, facing out, at root height 0.9 m), `LiftCarSpot`
+(the raised car's tyre-bottom centre, 1.8 m up, nose to the back wall) and
+`Backdrop`.
+
+**Keep-out.** `Garage.keepOut(cfg, ctx, path, p, marginM)` is the building
+plus the apron out to the lettering, with an 8 m margin. The scatter and
+dune life ask it. Measured on a full build: no scatter or dune-life part
+inside it except one sand drift at the carriageway edge, 6 m past the
+building's end (the drifts loop does not ask the station's keep-out
+either).
+
+**Cost.** 308 parts, ~5,900 triangles by the build estimate (23 cylinders
+at 108: the turntable and ring, 16 tyres, the compressor tank, drum and
+funnel, the extinguisher, the hose reel), plus 421 painted frames and 10
+labels (about 860 triangles of quads and the glyphs). 27 parts cast shadows
+(the shell, the roof, the lift, the sign). Built in 0.02 to 0.14 s.
 
 ## The city section (`src/server/World/City/`)
 

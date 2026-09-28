@@ -659,6 +659,41 @@ The petrol station (`Station.luau`). Metres in a local frame: u across the road 
 | palms / parkedCars | Palm positions (from parts, 96 triangles each) and how many parked cars (100 each). |
 | colors.* | Every station colour: concrete and apron tints, brand green and gold, sandstone, glass, the warm strip lenses. |
 
+## garage
+The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local frame: u along the front (+ to your right as you face the doors), v into the building (the front wall is at -depthM/2), from the building's centre.
+| Field | What it does |
+|---|---|
+| enabled / alongM / lateralM / yawDeg / seed | Where it stands: 1,530 m along, 60 m left (the middle of the pad's left wing, across from the bay), doors turned yawDeg right of the direction of travel (90 faces the road from the left). Seed for tints, tyre marks, stains, stock. |
+| widthM / depthM / eavesM / wallM / plinthM | Footprint (26 x 16), wall height (6.5), wall thickness, the darker base band. |
+| displayU / liftU | Centres of the two bays: the open door and turntable, the shut door and lift. |
+| door.widthM / door.heightM | The roller-door openings (5 x 4). The DoorZone is the open one. |
+| shutterBox / shutterSlatM | The rolled-shutter box over each opening, and the closed shutter's painted slat pitch. |
+| fascia.* | The sign over the doors: height, depth, projection, and the English / Arabic text (UITheme display font). |
+| roof.* | Roof slab thickness, overhang, the ribbed edge's depth and rib pitch (ribs are painted frames: a smaller pitch costs frames). |
+| window.* | The high window strip in the lift bay's back wall and its mullion pitch. |
+| columns.* / beams.* | The two steel columns on the line between the bays, and the roof beams' positions and section. |
+| floor.* / doorApronM | The slab (2 cm proud of the pad), its saw-cut pitch, and the concrete strip outside the doors. |
+| turntable.* | Where along v, diameter (5.4 m), ring width, and the plate / ring top heights. Its spin rate is `GarageConfig.spinDegPerSec`. |
+| backdrop.coveM | The 45 degree cove where the backdrop meets the floor. |
+| lift.* | The two-post lift: along v, how high the car is raised (1.8 m; LiftCarSpot), post spacing and height. |
+| doorZoneDepthM / exitSpot.* | The threshold box's depth; where a leaving player stands (outM outside the door) and the root height of that spot. |
+| bakedLight.* | LightInfluence of the painted-on lit tone over the floor, linings, backdrop, ceiling and turntable: 0 fully self-lit, 1 only real light. Lower is brighter inside. Needed because the pool's lamps are dark at golden hour. |
+| strips.* | Warm strip fittings: row offset from each bay's centre, fittings per row, length, spacing, hanger drop. Each lens is a pooled lamp head. |
+| apron.* | Painted apron: number of bays, where they start, bay width and depth, line width, the lettering and arrow positions, the hatch depth. |
+| tyreMarks.* / oilStains.* | How many, their transparency range, width / size range. Painted frames, not parts. |
+| props | The workshop dressing: `{ kind, u, v, yawDeg, y?, widthM?, heightM?, load?, count? }`. Kinds: workbench, toolBoard, rollCab, compressor, hoseReel, shelf (load "tyres" or "boxes"), tyreStack, drum, jack, extinguisher. (u, v) is the back edge's middle for wall things (lined faces at u = +-12.66, v = +-7.66), the centre otherwise; yawDeg 0 backs onto the back wall, 90 the right, -90 the left, 180 the front. |
+| keepOutMarginM | How far scatter and dune life stay off the building and apron (8). |
+| colors.* | Every colour: sandstone (the station's), lining and dado, floor #8C8A84, backdrop #6E6A64, turntable #4A4C50, ring #2A2A2C, the sign (UITheme asphalt900, paint, sodium), strip #FFECC8, the lift, roll cab, compressor, racks, stock. |
+
+## GarageConfig (the customisation view, shared)
+`src/shared/GarageConfig.luau`, read by the client. Light positions are metres from the turntable's top centre in the view frame: -Z into the garage (DoorZone's LookVector), +X right as you look in, +Y up.
+| Field | What it does |
+|---|---|
+| fovDeg / eyeHeightM / yawDeg / framingMargin / screenOffset | The one camera: 40 degree lens, eye 1.5 m, 35 degrees round from the nose toward the right (3/4 front right), margin round the car's bounding box, and how far right of centre the car sits (0.18 of the width) so the panel does not cover it. |
+| spinDegPerSec / dragDegPerPixel / inertiaSeconds / resumeAfterSeconds | Turntable: 8 degrees a second, drag rate, flick decay, and the pause before auto-spin resumes. |
+| aimHeightM | Spot lights aim at the turntable centre this high (the car's middle). |
+| lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color. Four with the pool suspended keeps the client under maxLiveLights (12). |
+
 ## cityscape
 | Field | What it does |
 |---|---|

@@ -40,6 +40,18 @@ export type Preset = {
 	segments: { Segment }?,
 	waypoints: { Waypoint }?,
 }
+-- One piece of the garage's workshop dressing (WorldConfig.garage.props).
+export type GarageProp = {
+	kind: string, -- a builder in Garage.luau
+	u: number,
+	v: number,
+	yawDeg: number,
+	y: number?, -- wall-hung things: height of the bottom edge
+	widthM: number?,
+	heightM: number?,
+	load: string?, -- shelf: "tyres" | "boxes"
+	count: number?, -- tyre stack height
+}
 
 local config = {
 	-- Which road layout to build. Presets live at the bottom of this file.
@@ -594,7 +606,163 @@ local config = {
 		},
 	},
 
-	-- THE BORDER: a chain-link fence either side of the highway, 250 m
+	-- THE GARAGE. A two-bay workshop the player walks into on foot, where
+	-- the customisation view takes over (asked by the owner on 2026-09-28;
+	-- docs/superpowers/specs/2026-09-28-garage-design.md section 1). On the
+	-- transition pad's left wing, straight across the highway from the
+	-- spawn bay and the station, doors facing the road, so it is the first
+	-- building a player sees on the left. The wing is flat, collidable and
+	-- otherwise empty. Built from primitives by Garage.luau.
+	--
+	-- Local frame, metres from the building's centre on the ground: u runs
+	-- along the front (+ to your right as you face the doors from the road,
+	-- which is down the road toward the city), v runs into the building
+	-- (+ deeper; the front wall is at v = -depthM/2, the apron at more
+	-- negative v), y is up. The display bay (turntable) is the left one as
+	-- you face the doors, nearer the spawn; the lift bay is the right one.
+	-- The view's camera and its four lights are in the shared
+	-- GarageConfig, which the client reads.
+	garage = {
+		enabled = true,
+		alongM = 1530, -- 30 m past the spawn bay's centre, inside the pad (1300..1700)
+		lateralM = -60, -- left of the centreline: the middle of the 48 m left wing (-84..-36)
+		-- Which way the doors face, degrees right of the direction of travel.
+		-- 90 on the left wing faces them across the highway at the bay.
+		yawDeg = 90,
+		seed = 5307,
+
+		widthM = 26, -- along the road: two 13 m bays
+		depthM = 16,
+		eavesM = 6.5, -- wall height to the roof's underside
+		wallM = 0.3,
+		plinthM = 0.45, -- darker base band outside, 5 cm proud
+		displayU = -6.5, -- the display bay's centre (turntable, open door)
+		liftU = 6.5, -- the lift bay's centre (lift, closed shutter)
+
+		-- Roller-door openings, one over each bay's centre. The display
+		-- bay's is open (walk in), the lift bay's is closed.
+		door = { widthM = 5, heightM = 4 },
+		-- The rolled-up shutter's box on the outside face above each
+		-- opening, and the closed shutter's slat pitch (painted lines).
+		shutterBox = { heightM = 0.55, depthM = 0.45 },
+		shutterSlatM = 0.16,
+		-- The sign over the doors, the full width of the front.
+		fascia = { bottomM = 4.75, heightM = 1.45, projectM = 0.2, english = "GARAGE", arabic = "كراج" },
+		roof = { thicknessM = 0.3, overhangM = 0.35, edgeM = 0.55, ribPitchM = 0.3 },
+		-- One high window strip in the lift bay's back wall.
+		window = { u0 = 1.4, u1 = 11.6, bottomM = 5.0, heightM = 0.7, mullionM = 1.7 },
+		-- Two steel columns on the line between the bays, a beam along it,
+		-- and steel roof beams running front to back.
+		columns = { v = { -2.5, 3.5 }, sizeM = 0.3 },
+		beams = { u = { -9.75, -3.25, 3.25, 9.75 }, depthM = 0.4, widthM = 0.2 },
+		floor = { thicknessM = 0.3, topM = 0.02, jointM = 4.33 }, -- sealed slab, 2 cm proud of the pad; saw-cut joints
+		doorApronM = 2.4, -- concrete strip outside the doors, before the asphalt
+
+		-- A steel plate flush in a darker ring, 3 m in front of the
+		-- backdrop. Its top centre is where the preview car stands. The
+		-- spin rate is the view's (GarageConfig.spinDegPerSec).
+		turntable = { v = 1.6, diameterM = 5.4, ringM = 0.22, topM = 0.05, ringTopM = 0.035, thicknessM = 0.2 },
+		backdrop = { coveM = 0.7 }, -- the flat grey wall behind it, with a studio cove at the floor
+
+		-- Two-post lift in the lift bay; the client builds a car on
+		-- LiftCarSpot, its tyres raiseM off the floor, nose to the back wall.
+		lift = { v = 1.2, raiseM = 1.8, postSpanM = 3.7, heightM = 3.9 },
+
+		doorZoneDepthM = 0.6, -- the invisible threshold box across the open door
+		-- Where a leaving player stands: outM outside the door, facing
+		-- out, the box's centre at a character's root height.
+		exitSpot = { outM = 3, rootHeightM = 0.9 },
+
+		-- Warm strip fittings under the roof: two rows per bay, running
+		-- front to back. The lenses are lamp heads to the client light pool.
+		-- The interior's lit tone, painted on. The strip lenses only become
+		-- real lights when the client pool lights them (at night, near), and
+		-- at golden hour the lamps are dark, so the inside rendered near black
+		-- through the open door (measured: floor about 50/255). The floor,
+		-- linings, backdrop and ceiling carry a SurfaceGui of their own colour
+		-- at this LightInfluence: 0 is fully self-lit, 1 only real light.
+		-- Lower is brighter inside; the view's own lights still add on top.
+		bakedLight = { floor = 0.5, lining = 0.45, backdrop = 0.1, ceiling = 0.55, turntable = 0.4 },
+		strips = { rowOffsetM = 2.0, perRow = 2, lengthM = 2.4, spacingM = 6.4, dropM = 0.35 },
+
+		-- The parking apron painted on the pad in front: three nose-in bays
+		-- in front of the lift bay, a keep-clear hatch in front of the open
+		-- door, and GARAGE with an arrow on the road side of it.
+		apron = { bays = 3, bayU0 = 1.2, bayWidthM = 3.6, bayDepthM = 5.6, lineM = 0.12, textV = -21.2, arrowV = -16.4, hatchDepthM = 3.2 },
+
+		-- Dirt on the workshop floor, painted (Frames on the floor's
+		-- SurfaceGui, not Decals: no image assets).
+		tyreMarks = { count = 5, transparency = { 0.7, 0.85 }, widthM = 0.2 },
+		oilStains = { count = 7, transparency = { 0.6, 0.8 }, sizeM = { 1, 2 } },
+
+		-- The workshop's dressing, each a builder in Garage.luau placed at
+		-- (u, v) and turned yawDeg: 0 has its back to the back wall, 90 to
+		-- the right-hand wall, -90 to the left-hand one, 180 to the front.
+		-- (u, v) is the middle of the back edge for things against a wall
+		-- (the lined walls' faces are at u = +-12.66, v = 7.66 and -7.66),
+		-- the centre for free-standing ones; y lifts wall-hung things.
+		-- Nothing here collides.
+		props = {
+			{ kind = "workbench", u = 3.2, v = 7.66, yawDeg = 0 },
+			{ kind = "toolBoard", u = 3.2, v = 7.66, yawDeg = 0, y = 1.25, widthM = 2.4, heightM = 1.15 },
+			{ kind = "rollCab", u = 6.3, v = 7.66, yawDeg = 0 },
+			{ kind = "toolBoard", u = 6.3, v = 7.66, yawDeg = 0, y = 1.75, widthM = 1.6, heightM = 0.9 },
+			{ kind = "compressor", u = 11.5, v = 7.66, yawDeg = 0 },
+			{ kind = "hoseReel", u = 9.6, v = 7.66, yawDeg = 0, y = 1.9 },
+			{ kind = "shelf", u = 12.66, v = 4.6, yawDeg = 90, load = "tyres" },
+			{ kind = "shelf", u = 12.66, v = 2.2, yawDeg = 90, load = "boxes" },
+			{ kind = "tyreStack", u = 11.7, v = -1.4, yawDeg = 0, count = 4 },
+			{ kind = "tyreStack", u = 12.2, v = -2.3, yawDeg = 0, count = 2 },
+			{ kind = "drum", u = 11.9, v = -6.9, yawDeg = 0 },
+			{ kind = "jack", u = 9.9, v = -3.6, yawDeg = 35 },
+			{ kind = "shelf", u = -12.66, v = -5.2, yawDeg = -90, load = "tyres" },
+			{ kind = "toolBoard", u = -12.66, v = -2.2, yawDeg = -90, y = 1.3, widthM = 1.8, heightM = 1.0 },
+			{ kind = "extinguisher", u = -3.4, v = -7.66, yawDeg = 180, y = 0.8 },
+		} :: { GarageProp },
+
+		keepOutMarginM = 8, -- scatter and dune life stay this far clear of building and apron
+
+		colors = {
+			sandstone = Color3.fromRGB(210, 182, 138), -- the station's walls
+			sandstoneDark = Color3.fromRGB(176, 148, 108), -- plinth, lintels
+			lining = Color3.fromRGB(214, 208, 194), -- painted block inside
+			dado = Color3.fromRGB(120, 116, 108), -- the dark band to 1.2 m inside
+			floor = Color3.fromRGB(140, 138, 132), -- #8C8A84 sealed concrete
+			doorApron = Color3.fromRGB(176, 170, 158), -- the station's concrete
+			joint = Color3.fromRGB(96, 94, 90),
+			backdrop = Color3.fromRGB(110, 106, 100), -- #6E6A64 flat warm grey
+			turntable = Color3.fromRGB(74, 76, 80), -- #4A4C50 steel
+			ring = Color3.fromRGB(42, 42, 44), -- #2A2A2C
+			steel = Color3.fromRGB(58, 60, 64), -- beams, columns, rails
+			shutter = Color3.fromRGB(168, 170, 166),
+			shutterLine = Color3.fromRGB(118, 120, 118),
+			roofEdge = Color3.fromRGB(150, 152, 150),
+			ceiling = Color3.fromRGB(178, 176, 170), -- the roof sheet's underside
+			glass = Color3.fromRGB(150, 170, 172),
+			fascia = Color3.fromRGB(21, 19, 15), -- UITheme asphalt900
+			fasciaText = Color3.fromRGB(232, 226, 205), -- UITheme paint
+			fasciaArabic = Color3.fromRGB(255, 186, 92), -- UITheme sodium
+			sodium = Color3.fromRGB(255, 186, 92), -- the lamps over the sign
+			strip = Color3.fromRGB(255, 236, 200), -- #FFECC8 warm white lens
+			housing = Color3.fromRGB(228, 226, 220),
+			paint = Color3.fromRGB(236, 232, 214), -- apron lines and text
+			hatch = Color3.fromRGB(232, 184, 40), -- keep-clear yellow
+			tyre = Color3.fromRGB(26, 26, 28),
+			stain = Color3.fromRGB(26, 24, 22),
+			lift = Color3.fromRGB(44, 79, 124),
+			rollCab = Color3.fromRGB(176, 32, 28),
+			compressor = Color3.fromRGB(44, 79, 124),
+			board = Color3.fromRGB(196, 200, 196),
+			tool = Color3.fromRGB(70, 72, 76),
+			rack = Color3.fromRGB(57, 80, 107),
+			shelf = Color3.fromRGB(154, 156, 152),
+			cardboard = Color3.fromRGB(167, 126, 82),
+			wood = Color3.fromRGB(122, 92, 62),
+			red = Color3.fromRGB(196, 30, 26),
+		},
+	},
+
+	-- THE BORDER:a chain-link fence either side of the highway, 250 m
 	-- past each road edge, well behind the low dunes. Galvanised square
 	-- posts, a top rail, the mesh as a see-through texture (the desert and
 	-- the skyline show through it), and two strands of barbed wire, the

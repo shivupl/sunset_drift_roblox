@@ -23,6 +23,7 @@ local Scatter = require(script.Scatter)
 local DuneLife = require(script.DuneLife)
 local City = require(script.City)
 local Station = require(script.Station)
+local Garage = require(script.Garage)
 
 type Config = WorldConfig.Config
 
@@ -117,6 +118,16 @@ function World.build(): Result
 		tally("station", folder)
 		if cfg.debug.report then
 			print(string.format("[World] station: %d parts, ~%d tris by estimate, %.2f s", Build.countParts(folder), Build.estimateTriangles(folder), os.clock() - t0))
+		end
+	end
+
+	-- The garage on the pad's left wing, across the road from the bay.
+	if cfg.garage.enabled then
+		local t0 = os.clock()
+		local folder = Garage.build(cfg, ctx, path, world)
+		tally("garage", folder)
+		if cfg.debug.report then
+			print(string.format("[World] garage: %d parts, ~%d tris by estimate, %.2f s", Build.countParts(folder), Build.estimateTriangles(folder), os.clock() - t0))
 		end
 	end
 
