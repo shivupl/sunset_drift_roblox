@@ -785,7 +785,7 @@ function Roundabouts.build(ctx: Context, c: CCfg, plan: Plan, parent: Instance, 
 				local dir = Vector3.new(math.cos(a), 0, math.sin(a))
 				local foot = centre + dir * ctx.s(lampR) + Vector3.new(0, ctx.s(s.pavementHeightM), 0)
 				local lampFolder = Build.folder("Lamp", ring)
-				WorldLighting.meshLamp(WorldConfig, ctx, lampFolder, foot, -dir, c.furniture.lampMeshScale * 1.1, false)
+				WorldLighting.meshLamp(WorldConfig, ctx, lampFolder, foot, -dir, c.furniture.lampMeshScale * 1.1, false, true)
 			end
 			a += step
 		end

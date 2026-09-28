@@ -259,7 +259,7 @@ windows and strips float free of the towers they belong to.
 - **How they are built:** every layer is a line of invisible panels facing the road, each carrying an unlit SurfaceGui with a UIGradient. There is no texture to upload and no edge to give it away. Toward either end of the band a panel is cut into 16 strips that fade out sideways over 900 m.
 - **Lights:** the lights are thicker and more numerous (LED strips 2.4 m, rings 2.1 m on seven in ten towers, four to eight window bands, near-white window colours). The building bodies are darker (62/56/54, towers 36/42/60), so the lights have something to stand out from.
 - **Bloom and grade:** every time of day now carries a Bloom effect and a light colour grade (`bloom`, `grade`).
-- **Hour:** golden hour moved very slightly toward night: ClockTime 17.68 (sun about 3.9 degrees up, was 5), brightness 1.95, exposure -0.25, ambient a touch lower.
+- **Hour:** golden hour moved very slightly toward night: ClockTime 17.68 (sun about 3.9 degrees up, was 5), brightness 1.95, exposure -0.25, ambient a touch lower. Undone on 2026-09-27, when the owner wanted the sky "slightly more daytime like it was before": back to ClockTime 17.55, brightness 2.2, exposure -0.15 and the earlier ambient.
 
 Two things found on the way:
 - **SurfaceGuis render at 9,000 studs.** The first dome looked missing only because it stood behind the towers with its top nearly clear.
@@ -390,6 +390,10 @@ twelve pooled lights are SpotLights now, hung under the lens and shining
 straight down in a 120 degree cone, so the light lands on the road as a pool
 rather than glowing the air above the head; brightness and range still come
 from the time of day, so night is brighter and longer than golden hour.
+The owner then asked for the highway's downlights to go (2026-09-27):
+`lamps.highwayDownlights = false` leaves the highway lenses untagged, so
+they glow but the pool never reaches them and nothing lights the road. The
+city's street lamps and the station canopy still share the twelve lights.
 
 ### Two settings a script cannot touch
 

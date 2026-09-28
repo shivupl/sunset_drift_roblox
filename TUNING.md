@@ -567,6 +567,7 @@ Sparse palms and scenes out in the dune field (`DuneLife.luau`). Counts are for 
 | lensSizeM / lensLitColor / lensLitTransparency / lensOffColor / lensOffTransparency | The lit panel under the head: a thin slab, warm-white Neon at an hour whose lamps are lit, pale glass otherwise. The light manager hangs its SpotLight from it. |
 | poleHeightM / poleWidthM / armLengthM / headSizeM / poleColor / bulbColor / headOffColor | The box stand-in only. |
 | jitterSeed / yawJitterDeg / heightJitter | Per-lamp variation. Zero makes a row read as a copied object. |
+| highwayDownlights | Whether highway lamps take a pooled SpotLight. Off: the owner asked for no pools of light on the highway, so the lenses glow and nothing lights the road. City street lamps and the station canopy keep their lights either way. |
 | lightColor / lightAngleDeg | Colour and cone of the pooled SpotLights (120 degrees, shining straight down from the lens: a pool on the road rather than a glow in the air). Brightness and range come from the time of day. |
 | maxLiveLights | **Hard cap on Light instances in the whole client.** The pool is this size, so the cap cannot be violated. Raising it past about 16 is where Roblox starts to hurt. |
 | lightUpdateInterval | How often the client re-picks which lamps are lit. Lower = tighter following, more CPU. Never per frame. |

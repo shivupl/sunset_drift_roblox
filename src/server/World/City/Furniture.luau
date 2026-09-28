@@ -69,7 +69,7 @@ local function lamp(ctx: Context, c: CCfg, parent: Instance, xM: number, zM: num
 	local f = c.furniture
 	local base = CFrame.new(at(ctx, xM, zM, yM)) * CFrame.Angles(0, faceYaw, 0)
 	local armDir = CFrame.Angles(0, faceYaw, 0):VectorToWorldSpace(Vector3.new(0, 0, 1))
-	if WorldLighting.meshLamp(WorldConfig, ctx, parent, base.Position, armDir, f.lampMeshScale, c.shadows.lamps) then
+	if WorldLighting.meshLamp(WorldConfig, ctx, parent, base.Position, armDir, f.lampMeshScale, c.shadows.lamps, true) then
 		return
 	end
 	-- Box fallback.

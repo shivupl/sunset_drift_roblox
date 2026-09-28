@@ -494,6 +494,11 @@ local config = {
 		poleColor = Color3.fromRGB(74, 76, 80),
 		bulbColor = Color3.fromRGB(255, 186, 92),
 		headOffColor = Color3.fromRGB(58, 58, 62), -- unlit housing in daylight
+		-- Whether highway lamps take a pooled SpotLight. Off (2026-09-27): the
+		-- owner asked to remove the lamps' downlight on the highway. The lens
+		-- still glows; only the pool of light on the road is gone. City street
+		-- lamps and the station canopy keep theirs.
+		highwayDownlights = false,
 		-- Live SpotLight settings. Only maxLiveLights of these exist at once.
 		-- Warm white to match the lens; the cone is wide so a 12 m post
 		-- lights a pool the width of a carriageway.
@@ -1120,15 +1125,16 @@ local config = {
 			-- to the left, so the warm sky is in the windscreen and every palm
 			-- throws its shadow diagonally across the asphalt toward you.
 			-- Measured with Lighting:GetSunDirection; see WORLD.md.
-			-- 17.68 and a little darker, from 17.55 at brightness 2.2: the owner
-			-- wanted the hour very slightly nearer night, so the skyline's
-			-- lights carry more.
-			clockTime = 17.68, -- about 3.5 degrees up
+			-- Back to 17.55 at brightness 2.2 (2026-09-27): the owner had moved
+			-- the hour slightly toward night (17.68, brightness 1.95, exposure
+			-- -0.25, ambient 88/78/80 and 116/100/96) for the skyline's lights,
+			-- then asked for it "slightly more daytime like it was before".
+			clockTime = 17.55, -- about 5 degrees up
 			geographicLatitude = 60,
-			ambient = Color3.fromRGB(88, 78, 80),
-			outdoorAmbient = Color3.fromRGB(116, 100, 96),
-			brightness = 1.95,
-			exposureCompensation = -0.25,
+			ambient = Color3.fromRGB(96, 84, 82),
+			outdoorAmbient = Color3.fromRGB(128, 110, 100),
+			brightness = 2.2,
+			exposureCompensation = -0.15,
 			colorShiftTop = Color3.fromRGB(255, 196, 140),
 			colorShiftBottom = Color3.fromRGB(92, 82, 88),
 			globalShadows = true,

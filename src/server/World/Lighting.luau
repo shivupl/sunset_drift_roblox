@@ -143,9 +143,10 @@ end
 -- part under the head, Neon when the hour lights the lamps and dark glass
 -- otherwise, and it carries the tag the client light manager looks for;
 -- its bottom face points down, which is where the pooled SpotLight shines
--- from. Used by the highway and by the city. Returns false if the mesh is
--- not available, so the caller can build its box stand-in.
-function WorldLighting.meshLamp(cfg: Config, ctx: Context, parent: Instance, foot: Vector3, armDir: Vector3, scale: number, castShadow: boolean): boolean
+-- from. Used by the highway and by the city. downlight false leaves the tag
+-- off, so the lens glows but never gets a light. Returns false if the mesh
+-- is not available, so the caller can build its box stand-in.
+function WorldLighting.meshLamp(cfg: Config, ctx: Context, parent: Instance, foot: Vector3, armDir: Vector3, scale: number, castShadow: boolean, downlight: boolean): boolean
 	local l = cfg.lamps
 	if not l.useMesh or not AssetRegistry.hasProp("highwayLamp") then
 		return false
@@ -169,7 +170,9 @@ function WorldLighting.meshLamp(cfg: Config, ctx: Context, parent: Instance, foo
 		parent = parent,
 		transparency = if lit then l.lensLitTransparency else l.lensOffTransparency,
 	})
-	CollectionService:AddTag(lens, WorldLighting.LAMP_TAG)
+	if downlight then
+		CollectionService:AddTag(lens, WorldLighting.LAMP_TAG)
+	end
 	return true
 end
 
@@ -227,7 +230,9 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 				parent = lamp,
 				castShadow = castShadow,
 			})
-			CollectionService:AddTag(head, WorldLighting.LAMP_TAG)
+			if l.highwayDownlights then
+				CollectionService:AddTag(head, WorldLighting.LAMP_TAG)
+			end
 		end
 	end
 
@@ -245,7 +250,7 @@ function WorldLighting.buildLamps(cfg: Config, ctx: Context, path: Path, parent:
 		for i, dir in arms do
 			local foot = base + p.cframe.LookVector * ((i - 1) * ctx.s(l.pairGapM))
 			local armDir = yawed:VectorToWorldSpace(p.cframe.RightVector * dir)
-			ok = WorldLighting.meshLamp(cfg, ctx, lamp, foot, armDir, l.meshScale * heightScale, castShadow) and ok
+			ok = WorldLighting.meshLamp(cfg, ctx, lamp, foot, armDir, l.meshScale * heightScale, castShadow, l.highwayDownlights) and ok
 		end
 		if ok then
 			return
