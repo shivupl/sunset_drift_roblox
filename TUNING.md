@@ -612,14 +612,15 @@ Haze and glow round the backdrop skyline (`Cityscape.luau`). Every layer is a li
 | grade.contrast / saturation / tint | A light colour grade over the whole frame. |
 
 ## SkyConfig (the player's time of day)
-`src/shared/SkyConfig.luau`. The times of day a player can pick in the menu's Settings tab (Sunset, Night). Each client sets `ClockTime` and `ExposureCompensation` over the world's preset, on that player's screen only; the choice is saved in the profile. Everything else (brightness, ambient, haze, the skybox) is the active `timesOfDay` preset. The client puts those two fields back whenever they change, which also undoes Properties-panel edits in Play. **To try values live in Studio:** in Play, switch the Explorer to the Client view, select Players > your name, and tick the `SkyFree` attribute. `ClockTime` and `ExposureCompensation` on Lighting then keep whatever you type; untick it and the chosen option returns. It exists only in Studio. Put the numbers you like into SkyConfig.
+`src/shared/SkyConfig.luau`. The times of day a player can pick in the menu's Settings tab (Sunset, Night). Each client sets `ClockTime`, `Brightness` and `ExposureCompensation` over the world's preset, on that player's screen only; the choice is saved in the profile. Everything else (ambient, haze, the skybox) is the active `timesOfDay` preset. The client puts those three fields back whenever they change, which also undoes Properties-panel edits in Play. **To try values live in Studio:** in Play, switch the Explorer to the Client view, select Players > your name, and tick the `SkyFree` attribute. `ClockTime`, `Brightness` and `ExposureCompensation` on Lighting then keep whatever you type; untick it and the chosen option returns. It exists only in Studio. Put the numbers you like into SkyConfig.
 | Field | What it does |
 |---|---|
-| default | What a new player sees (`sunset`). Keep `goldenHour`'s clockTime and exposure equal to it, or the world changes as a client starts. |
+| default | What a new player sees (`sunset`). Keep `goldenHour`'s clockTime, brightness and exposure equal to it, or the world changes as a client starts. |
 | options[].id | Saved in the profile. Never rename one that players may have saved; an unknown id falls back to the default. |
 | options[].label | The button text. A new row adds a button. |
-| options[].clockTime | The hour. Sunset 17.68 (sun about 3.5° up), Night 19.2 (below the horizon). Lower = more daytime; 0.05 is a visible step. |
-| options[].exposureCompensation | Overall exposure for that hour. Sunset −0.12, Night 0.14 (raised so the road reads between lamps). ±0.1 is a small step. |
+| options[].clockTime | The hour. Sunset 17.68 (sun about 3.5° up), Night 18.9 (just below the horizon). Lower = more daytime; 0.05 is a visible step. |
+| options[].brightness | The sun's strength. Sunset 1.36, Night 0.5. |
+| options[].exposureCompensation | Overall exposure for that hour. Sunset −0.3, Night 0.1 (raised so the road reads between lamps). ±0.1 is a small step. |
 
 ## shadows
 Per-type switch. Shadow cost scales with the **number** of casters, not size.

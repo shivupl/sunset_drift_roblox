@@ -10,6 +10,7 @@ return function(t: T)
 		seen[o.id] = true
 		t.ok(o.label ~= "", `{o.id} has a label`)
 		t.ok(o.clockTime >= 0 and o.clockTime < 24, `{o.id} clockTime is an hour of the day`)
+		t.ok(o.brightness >= 0, `{o.id} brightness is not negative`)
 	end
 	t.ok(SkyConfig.find(SkyConfig.default) ~= nil, "the default is one of the options")
 	t.eq(SkyConfig.resolve("night").id, "night", "a known id resolves to itself")

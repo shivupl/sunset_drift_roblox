@@ -47,7 +47,7 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
   - Spawn with `ReplicatedStorage.Remotes.SpawnCar:FireServer(id)`; the car is `Humanoid.SeatPart.Parent.Parent`.
   - Reset the car from the client with `PivotTo` and zeroed velocities, and turn `InputOverride` off afterwards.
   - Live config reload: set `OvReload = true` from the Client datamodel.
-- **Trying sky values live:** the client resets `Lighting.ClockTime` and `ExposureCompensation` to the player's Sunset/Night choice (`SkyConfig`, `client/Sky.luau`). In Studio, tick the LocalPlayer attribute `SkyFree` (Client view: Players > you > Attributes) to stop that; untick to restore. Tell the owner about it when they want to experiment with the sky.
+- **Trying sky values live:** the client resets `Lighting.ClockTime`, `Brightness` and `ExposureCompensation` to the player's Sunset/Night choice (`SkyConfig`, `client/Sky.luau`). In Studio, tick the LocalPlayer attribute `SkyFree` (Client view: Players > you > Attributes) to stop that; untick to restore. Tell the owner about it when they want to experiment with the sky.
 - **Debug readouts:** `Dbg*` attributes on the LocalPlayer, updated at 30 Hz.
 - **Focus Studio first** (`osascript -e 'tell application "RobloxStudio" to activate'`) before builds, captures or timing.
 - **Check `DriverSeat.Occupant` before taking the car:** the owner often leaves Play running to test by hand.

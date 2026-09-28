@@ -6,30 +6,35 @@
 --
 -- Asked by the owner on 2026-09-28, after trying values live in Play: "i
 -- like 2 times/settings ... is there a way i can let users choose". Both
--- are the golden-hour preset (WorldConfig.timesOfDay.goldenHour: brightness
--- 2.2, the painted sunset skybox, the same haze and ambient) with only the
--- hour and the exposure changed, at the values the owner picked.
+-- are the golden-hour preset (WorldConfig.timesOfDay.goldenHour: the painted
+-- sunset skybox, the same haze and ambient) with the hour, the sun's
+-- brightness and the exposure changed, at the values the owner picked live
+-- (hour and exposure first; brightness added and all three retuned the same
+-- day with the SkyFree switch).
 --
 -- To add an option, add a row: it shows up as a button in the menu.
 export type Option = {
 	id: string, -- stored in the profile; never rename one players may have saved
 	label: string, -- the button text
 	clockTime: number, -- Lighting.ClockTime. Lower is more daytime; 0.05 is a visible step
+	brightness: number, -- Lighting.Brightness: the sun's strength
 	exposureCompensation: number, -- Lighting.ExposureCompensation; +-0.1 is a small step
 }
 
 local SkyConfig = {
 	-- What a new player sees, and what an unknown stored id falls back to.
-	-- Keep WorldConfig's goldenHour clockTime and exposure equal to this
+	-- Keep WorldConfig's goldenHour clockTime, brightness and exposure equal to this
 	-- option, so the world does not change as a player's client starts.
 	default = "sunset",
 	options = {
 		-- Sun about 3.5 degrees up: the sunset band in the windscreen, long
 		-- shadows across the road.
-		{ id = "sunset", label = "Sunset", clockTime = 17.68, exposureCompensation = -0.12 },
-		-- Sun below the horizon. The exposure is raised so the road still
-		-- reads between the lamps; headlights carry the rest.
-		{ id = "night", label = "Night", clockTime = 19.2, exposureCompensation = 0.14 },
+		-- Retuned 2026-09-28 from brightness 2.2, exposure -0.12.
+		{ id = "sunset", label = "Sunset", clockTime = 17.68, brightness = 1.36, exposureCompensation = -0.3 },
+		-- Sun just below the horizon, the sun's light turned well down, the
+		-- exposure raised so the road still reads between the lamps.
+		-- Retuned 2026-09-28 from 19.2, brightness 2.2, exposure 0.14.
+		{ id = "night", label = "Night", clockTime = 18.9, brightness = 0.5, exposureCompensation = 0.1 },
 	} :: { Option },
 }
 

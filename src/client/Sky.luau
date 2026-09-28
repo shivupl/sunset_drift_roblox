@@ -2,14 +2,14 @@
 -- The time of day this player sees (SkyConfig; the Settings tab picks it).
 --
 -- The world build sets Lighting on the server and it replicates; this sets
--- ClockTime and ExposureCompensation over it on this client only, so each
+-- ClockTime, Brightness and ExposureCompensation over it on this client only, so each
 -- player can drive at their own hour. The server writes those fields again
 -- only when it builds the world, and a client can join before the build is
 -- done, so whenever they change to anything but the choice, the choice is put
 -- back. That also undoes edits in Studio's Properties panel during Play, so
 -- in Studio the player carries a SkyFree checkbox: tick it (Players > you >
--- Attributes) and the choice stops being put back, so ClockTime and exposure
--- can be tried live; untick it and the choice returns. The owner found the
+-- Attributes) and the choice stops being put back, so those three can be
+-- tried live; untick it and the choice returns. The owner found the
 -- snapping "so irritating" (2026-09-28). Never on a live server.
 --
 -- The choice is saved in the player's profile (SkyService) and comes back as
@@ -44,6 +44,9 @@ local function apply()
 	end
 	if math.abs(Lighting.ClockTime - chosen.clockTime) > 1e-3 then
 		Lighting.ClockTime = chosen.clockTime
+	end
+	if math.abs(Lighting.Brightness - chosen.brightness) > 1e-3 then
+		Lighting.Brightness = chosen.brightness
 	end
 	if math.abs(Lighting.ExposureCompensation - chosen.exposureCompensation) > 1e-3 then
 		Lighting.ExposureCompensation = chosen.exposureCompensation
@@ -89,7 +92,7 @@ function Sky.start(remotes: Folder)
 	end
 	chosen = SkyConfig.resolve(player:GetAttribute("Sky") :: string?)
 	apply()
-	for _, prop in { "ClockTime", "ExposureCompensation" } do
+	for _, prop in { "ClockTime", "Brightness", "ExposureCompensation" } do
 		Lighting:GetPropertyChangedSignal(prop):Connect(apply)
 	end
 	player:GetAttributeChangedSignal("Sky"):Connect(function()
