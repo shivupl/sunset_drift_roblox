@@ -108,6 +108,8 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
   leans the top in toward the car.
 - **Format:** `short` (33.5 × 15.5 cm) or `long` (55 × 11 cm),
   whichever fills the recess. The plate is that size times the car's scale.
+  Every plate style (Saudi, Dubai: `2026-09-27-dubai-plates-design.md`)
+  comes in both sizes, so a spot takes any style with no per-car work.
 - **Plate spot on the body:** keep the recess or bracket bare and
   uncovered (the body standard above). The plate goes on it.
 - **Measuring, exact:** when the store model has a plate part, run

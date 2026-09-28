@@ -1,6 +1,8 @@
 --!strict
--- The Plates tab of the car menu (docs/superpowers/specs/2026-09-26-number-plates-design.md §5).
+-- The Plates tab of the car menu (docs/superpowers/specs/2026-09-26-number-plates-design.md §5;
+-- Dubai: 2026-09-27-dubai-plates-design.md).
 -- SpawnMenu owns the panel and shows this in place of the car list.
+--   * A KSA / DUBAI switch picks the plate style being searched.
 --   * Search: letters and digits in either script. PlateText answers at
 --     once here; the server is asked (PlateQuery) for the price and whether
 --     the plate is free once typing pauses.
@@ -49,6 +51,14 @@ local carId: string? = nil
 local current: { key: string?, price: number?, free: boolean } = { key = nil, price = nil, free = false }
 local asked = 0
 local touch = false
+local style = "SA" -- the style being searched (PlateText.STYLES)
+local styleButtons: { [string]: TextButton } = {}
+
+-- What each style's search box expects, as a hint.
+local HINTS: { [string]: { placeholder: string, empty: string } } = {
+	SA = { placeholder = "ABJ 7   ·   حبأ ٧", empty = "Type 3 letters and a number, in Arabic or English" },
+	DU = { placeholder = "A 12345", empty = "Type the code (A to Z, or AA to EE) and a number of up to 5 digits" },
+}
 
 local function t(): Theme
 	return theme :: Theme
@@ -58,9 +68,19 @@ local function money(n: number): string
 	return (tostring(math.floor(n)):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
 end
 
+-- A plate as a player reads it, with its country: "KSA ABJ 7", "DUBAI A 12345".
 local function shown(key: string): string
-	local p = PlateText.parts(key)
-	return if p then `{table.concat(p.latin)} {p.digits}` else key
+	local typed = PlateText.typed(key)
+	if not typed then
+		return key
+	end
+	local code = PlateText.styleOf(key)
+	for _, st in PlateText.STYLES do
+		if st.code == code then
+			return `{st.name} {typed}`
+		end
+	end
+	return typed
 end
 
 local function format(): PlateStyles.Format
@@ -140,10 +160,12 @@ local function doAction(what: string, key: string)
 	setInfo(MESSAGES.busy, t().muted)
 	-- The server normalises what it is sent as typed text, and a canonical
 	-- key ("SA:ABJ-7") is not typed text (its colon is refused), so send the
-	-- plate as a player would type it: "ABJ 7" normalises back to the same key.
-	local typed = if key == "" then "" else shown(key)
+	-- plate as a player would type it, with its style: "ABJ 7" in "SA"
+	-- normalises back to the same key.
+	local typed = if key == "" then "" else (PlateText.typed(key) or "")
+	local keyStyle = if key == "" then nil else PlateText.styleOf(key)
 	local ok, reply = pcall(function()
-		return remote:InvokeServer(what, typed)
+		return remote:InvokeServer(what, typed, keyStyle)
 	end)
 	local status = if ok and type(reply) == "table" then reply.status else "unavailable"
 	if status == "invalid" then
@@ -170,10 +192,11 @@ local function onSearch()
 	refreshBuy()
 	if text == "" then
 		drawPreview(nil)
-		setInfo("Type 3 letters and a number, in Arabic or English", t().muted)
+		setInfo(HINTS[style].empty, t().muted)
 		return
 	end
-	local key, reason = PlateText.normalise("SA", text)
+	local searching = style
+	local key, reason = PlateText.normalise(searching, text)
 	if not key then
 		drawPreview(nil)
 		setInfo(reason or "Not a plate", t().hot)
@@ -194,7 +217,7 @@ local function onSearch()
 			return
 		end
 		local ok, reply = pcall(function()
-			return remote:InvokeServer(text)
+			return remote:InvokeServer(text, searching)
 		end)
 		if mine ~= asked then
 			return
@@ -298,6 +321,29 @@ refreshOwned = function()
 	end
 end
 
+local function paintStyles()
+	for code, b in styleButtons do
+		local on = code == style
+		b.BackgroundColor3 = if on then t().hot else t().card
+		b.TextColor3 = if on then Color3.fromRGB(15, 15, 18) else t().muted
+	end
+	if search then
+		(search :: TextBox).PlaceholderText = HINTS[style].placeholder
+	end
+end
+
+local function setStyle(code: string)
+	if code == style then
+		return
+	end
+	style = code
+	paintStyles()
+	onSearch()
+end
+
+-- Width of the style switch at the left of the search row.
+local SWITCH_W = 150
+
 function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Frame
 	theme = th
 	local f = Instance.new("Frame")
@@ -328,7 +374,8 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	box.PlaceholderColor3 = th.muted
 	box.Text = ""
 	box.TextXAlignment = Enum.TextXAlignment.Left
-	box.Size = UDim2.new(1, -170, 1, 0)
+	box.Position = UDim2.fromOffset(SWITCH_W + 8, 0)
+	box.Size = UDim2.new(1, -(SWITCH_W + 8 + 170), 1, 0)
 	corner(box, 8)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, 12)
@@ -336,6 +383,18 @@ function PlatesPanel.build(parent: Instance, th: Theme, layoutOrder: number): Fr
 	box.Parent = top
 	box:GetPropertyChangedSignal("Text"):Connect(onSearch)
 	search = box
+	for i, st in PlateText.STYLES do
+		local sb = button(top, st.name)
+		sb.Name = "Style" .. st.code
+		sb.TextSize = 13
+		sb.Position = UDim2.fromOffset((i - 1) * (SWITCH_W / #PlateText.STYLES), 0)
+		sb.Size = UDim2.new(0, SWITCH_W / #PlateText.STYLES - 4, 1, 0)
+		sb.Activated:Connect(function()
+			setStyle(st.code)
+		end)
+		styleButtons[st.code] = sb
+	end
+	paintStyles()
 	local buy = button(top, "BUY")
 	buy.AnchorPoint = Vector2.new(1, 0)
 	buy.Position = UDim2.fromScale(1, 0)

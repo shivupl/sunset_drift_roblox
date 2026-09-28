@@ -11,8 +11,8 @@ export type RemoteTable = {
 	SlideResult: RemoteEvent, -- server -> client (points banked, cash earned; 0,0 = dropped)
 	CarLamps: RemoteEvent, -- client -> server (head, brake, reverse: booleans for the car I drive)
 	Horn: RemoteEvent, -- client -> server (true while held)
-	PlateQuery: RemoteFunction, -- client -> server (typed plate text) -> { status, key, price, available, reason } (PlateService)
-	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text) -> { status, reason } (PlateService)
+	PlateQuery: RemoteFunction, -- client -> server (typed plate text, style "SA" | "DU", default "SA") -> { status, key, price, available, reason } (PlateService)
+	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text, style) -> { status, reason } (PlateService)
 }
 
 local Remotes = {}

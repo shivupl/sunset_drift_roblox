@@ -9,6 +9,8 @@ was merged into `main` and deleted on 2026-09-25.
 `car-crownvic` (the Krown Vik and Krown Vik Fleet) was merged into `main` and deleted on 2026-09-26.
 `plates` (number plates: Saudi, cash, unique registry; spec and plan in docs/superpowers) was
 merged into `main` and deleted on 2026-09-27.
+`plates-dubai` (Dubai as a second plate style; design in docs/superpowers/specs/2026-09-27-dubai-plates-design.md)
+is the current short-lived branch, to merge into `main` when the owner has checked it.
 
 ## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 

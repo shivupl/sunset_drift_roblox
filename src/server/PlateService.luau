@@ -140,14 +140,27 @@ local function readBudgetLow(): boolean
 	return budget < PlateConfig.minReadBudget
 end
 
-local function query(player: Player, input: any): Reply
+-- The plate style a remote call asked for: "SA" when none is given (the
+-- first clients sent none), nil for anything unknown.
+local function requestedStyle(style: any): string?
+	if style == nil then
+		return "SA"
+	end
+	return if PlateText.isStyle(style) then style else nil
+end
+
+local function query(player: Player, input: any, styleArg: any): Reply
 	if not allowed("query", player, PlateConfig.queriesPerSecond) then
 		return { status = "busy" }
 	end
 	if type(input) ~= "string" then
 		return { status = "invalid", reason = "Type a plate" }
 	end
-	local key, reason = PlateText.normalise("SA", input)
+	local style = requestedStyle(styleArg)
+	if not style then
+		return { status = "invalid", reason = "Unknown plate style" }
+	end
+	local key, reason = PlateText.normalise(style, input)
 	if not key then
 		return { status = "invalid", reason = reason }
 	end
@@ -163,7 +176,7 @@ local function query(player: Player, input: any): Reply
 	return { status = "ok", key = key, price = price, available = free }
 end
 
-local function action(player: Player, what: any, input: any): Reply
+local function action(player: Player, what: any, input: any, styleArg: any): Reply
 	if not allowed("action", player, PlateConfig.actionsPerSecond) then
 		return { status = "busy" }
 	end
@@ -184,7 +197,11 @@ local function action(player: Player, what: any, input: any): Reply
 	if type(input) ~= "string" then
 		return { status = "invalid", reason = "Type a plate" }
 	end
-	local key, reason = PlateText.normalise("SA", input)
+	local style = requestedStyle(styleArg)
+	if not style then
+		return { status = "invalid", reason = "Unknown plate style" }
+	end
+	local key, reason = PlateText.normalise(style, input)
 	if not key then
 		return { status = "invalid", reason = reason }
 	end
@@ -248,12 +265,12 @@ function PlateService.start(remotes: Remotes.RemoteTable)
 	-- Set before Economy starts, so no profile load is missed.
 	Economy.onLoaded = onLoaded
 
-	remotes.PlateQuery.OnServerInvoke = function(player: Player, input: any): any
-		local ok, reply = pcall(query, player, input)
+	remotes.PlateQuery.OnServerInvoke = function(player: Player, input: any, style: any): any
+		local ok, reply = pcall(query, player, input, style)
 		return if ok then reply else { status = "unavailable" }
 	end
-	remotes.PlateAction.OnServerInvoke = function(player: Player, what: any, input: any): any
-		local ok, reply = pcall(action, player, what, input)
+	remotes.PlateAction.OnServerInvoke = function(player: Player, what: any, input: any, style: any): any
+		local ok, reply = pcall(action, player, what, input, style)
 		return if ok then reply else { status = "unavailable" }
 	end
 
