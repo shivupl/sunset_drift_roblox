@@ -759,6 +759,11 @@ local cars: { [string]: CarEntry } = {
 				{ name = "Indicators_P35", meshId = 1579962001, color = Color3.fromRGB(208, 142, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.693, 0.1134, 0.2075 }, offsetM = { -0.0018, 0.7415, -1.8222 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P37", meshId = 1579933123, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.35, castShadow = false, sizeM = { 1.476, 0.433, 0.9045 }, offsetM = { -0.0018, 1.1649, -0.765 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P38", meshId = 1578419470, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.4564, 0.154, 0.0946 }, offsetM = { -0.002, 0.6511, -2.2573 }, rotationDeg = { 0, -180, 0 } },
+				-- The grille's badge spot, empty since the badge was removed, showed a
+				-- black hole (owner, 2026-09-27): the badge's own backing oval, turned
+				-- to face out, flattened, tilted 30 degrees so all of it catches the
+				-- light, and painted, fills it as a plain debadged grille.
+				{ name = "Trim_Badge", meshId = 1579969758, paint = true, sizeM = { 0.1525, 0.0915, 0.004 }, offsetM = { -0.002, 0.7139, -2.2916 }, rotationDeg = { 30, 0, 0 } },
 				{ name = "P40", meshId = 1578410642, paint = true, sizeM = { 1.8057, 0.5801, 0.8856 }, offsetM = { -0.0018, 0.5514, 2.0372 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P41", meshId = 1578435612, color = Color3.fromRGB(5, 5, 5), material = Enum.Material.SmoothPlastic, sizeM = { 1.8038, 0.5426, 4.681 }, offsetM = { -0.0018, 0.4721, 0.0659 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P42", meshId = 1578483202, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.Plastic, sizeM = { 1.3747, 0.468, 0.7265 }, offsetM = { -0.003, 0.8232, -0.8483 }, rotationDeg = { 0, -180, 0 } },

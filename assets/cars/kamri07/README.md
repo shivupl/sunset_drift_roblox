@@ -21,7 +21,7 @@ engine bay, the boot; never the interior):
 | Engine bay | P173, P191, P39, P171 | 4,900 |
 | Boot interior | P175 | 1,042 |
 | Under the car (floor pan, tray) | P31, P49 | 2,556 |
-| Front badge | 2 parts | - |
+| Front badge | 2 parts | - (its backing oval is back, turned out, flattened and painted, as `Trim_Badge`: the empty badge spot showed as a black hole, 2026-09-27) |
 | Chrome boot strip carrying the maker's oval and lettering | P169 | 4,642 |
 | Sunroof glass and a bracket (plain blocks, no mesh id) | P126, P195 | 24 |
 

@@ -60,7 +60,9 @@ CarPlateMounts.cars = {
 	-- between the chrome strip and the lower intake, too shallow for a short
 	-- plate.
 	lekzas = {
-		front = { posM = { 0, 0.52, -2.36 }, format = "long" },
+		-- Front moved 6 cm back and leaned 8 degrees onto the bumper: it stood
+		-- off the bumper, seen from the side (owner, 2026-09-27).
+		front = { posM = { 0, 0.52, -2.30 }, format = "long", tiltDeg = 8 },
 		rear = { posM = { 0, 0.76, 2.555 }, format = "short", tiltDeg = 9 },
 	},
 	-- By eye in Studio (2026-09-27): rear, the tailgate recess left of the
@@ -73,7 +75,9 @@ CarPlateMounts.cars = {
 	-- garnish (about 54 x 19 cm), which slopes about 12°; front, the bumper
 	-- between the grille and the lower intake.
 	kamri07 = {
-		front = { posM = { 0, 0.46, -2.38 }, format = "short" },
+		-- Front moved 2.5 cm back and leaned 12 degrees with the bumper: it
+		-- stood upright off the curved bumper (owner, 2026-09-27).
+		front = { posM = { 0, 0.46, -2.355 }, format = "short", tiltDeg = 12 },
 		rear = { posM = { 0, 0.85, 2.37 }, format = "short", tiltDeg = 12 },
 	},
 } :: { [string]: Mounts }
