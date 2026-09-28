@@ -50,8 +50,12 @@ return function(t: T)
 			t.eq(#o.posM, 3, `{id} stock {i}: x, y, z`)
 			t.ok(o.posM[3] >= axleZ, `{id} stock {i}: behind the rear axle`)
 			t.ok(o.posM[2] > 0.1 and o.posM[2] < lowY, `{id} stock {i}: low at the rear`)
+			t.ok(o.posM[3] <= e.bumperZ + 0.05, `{id} stock {i}: not far behind the car`)
 			if o.dir then
 				t.eq(#o.dir, 3, `{id} stock {i}: dir x, y, z`)
+			end
+			if o.pipeLengthM then
+				t.ok(o.pipeLengthM > 0, `{id} stock {i}: a factory pipe length`)
 			end
 		end
 		if #e.stock >= 2 then
@@ -69,32 +73,30 @@ return function(t: T)
 		t.ok(tips.posM[2] - R.tipRadiusM > 0.08, `{id} tips: clear of the ground`)
 		t.ok(tips.posM[3] - R.tipLengthM - tips.pipeLengthM > axleZ, `{id} tips: the pipe stops short of the rear axle`)
 
-		-- One outlet per pipe mouth that shows, for every exhaust item, all
-		-- pointing back: the tips, plus any of the car's own pipes no tip covers.
+		-- The outlets: with tips on, one per tip and nothing else (the tips
+		-- replace the whole exhaust); stock, one per stock outlet. All point
+		-- back, upright, behind the axle and low.
 		for _, n in { 0, 1, 2, 4 } do
-			local frames = CarCosmeticMounts.outletFrames(e, n, R.quadPairGapM, R.tipRadiusM)
-			local shown = 0
-			for _, o in e.stock do
-				if CarCosmeticMounts.stockShows(e, o, n, R.quadPairGapM, R.tipRadiusM) then
-					shown += 1
-				end
-				if n > 0 then
-					t.ok(not o.factory or not CarCosmeticMounts.stockShows(e, o, n, R.quadPairGapM, R.tipRadiusM), `{id}: a factory pipe goes when tips go on`)
-				end
-			end
-			t.eq(#frames, n + shown, `{id}: {n} tips give an outlet per showing mouth`)
+			local frames = CarCosmeticMounts.outletFrames(e, n, R.quadPairGapM)
+			t.eq(#frames, if n > 0 then n else #e.stock, `{id}: {n} tips give that many outlets`)
 			for i, f in frames do
 				t.ok(f.LookVector.Z > 0.5, `{id} outlet {i} of {n} tips: points out the back`)
 				t.ok(f.UpVector.Y > 0.5, `{id} outlet {i} of {n} tips: upright`)
 				t.ok(f.Position.Z >= axleZ, `{id} outlet {i} of {n} tips: behind the rear axle`)
 				t.ok(f.Position.Y < lowY, `{id} outlet {i} of {n} tips: below the boot line`)
 			end
+			-- Every tip mouth 2-5 cm past the bumper above it, the quad's outer two
+			-- included (where the bumper curves forward: quadOuterBumperZ).
+			for i, p in CarCosmeticMounts.tipMouths(e, n, R.quadPairGapM) do
+				local pastI = p.Z - CarCosmeticMounts.bumperAt(e, i, n)
+				t.ok(pastI >= PAST_MIN and pastI <= PAST_MAX, `{id} tip {i} of {n}: 2-5 cm past the bumper (got {math.round(pastI * 1000)} mm)`)
+			end
 		end
-		-- A one-pipe car's own pipe is under a tip for every tip count, so
-		-- flames never come out of a pipe hidden inside a tip.
+		-- A one-pipe car's own pipe is under a tip for every tip count, so no
+		-- stock pipe peeks out beside the tips.
 		if #e.stock == 1 and not e.stock[1].factory then
 			for _, n in { 1, 2, 4 } do
-				t.ok(not CarCosmeticMounts.stockShows(e, e.stock[1], n, R.quadPairGapM, R.tipRadiusM), `{id}: {n} tips sit over its own pipe`)
+				t.ok(CarCosmeticMounts.tipCovers(e, e.stock[1], n, R.quadPairGapM, R.tipRadiusM), `{id}: {n} tips sit over its own pipe`)
 			end
 		end
 		-- A single tip goes on stock[1]'s side (over a one-pipe car's own pipe).

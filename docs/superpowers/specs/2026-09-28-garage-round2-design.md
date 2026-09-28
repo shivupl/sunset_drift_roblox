@@ -41,8 +41,10 @@ exhaust = {
   distance.
 - **Outlets are the flame contract.** Whatever exhaust is on the car (stock
   or tips), the client puts one Attachment named `ExhaustOutlet` per pipe
-  mouth under the car's body, its +Z (Axis/LookVector per the code comment)
-  pointing out of the pipe. Flames and any future exhaust effect use only
+  mouth under the car's body, at the centre of the mouth, with the
+  attachment's LookVector (its -Z, `Enum.NormalId.Front`) pointing out of
+  the pipe. With aftermarket tips fitted the tips are the only outlets (they
+  replace the whole exhaust). Flames and any future exhaust effect use only
   these. Switching the exhaust item moves the outlets.
 - A spec holds every catalog car to the standard: at least one stock
   outlet, tips behind the bumper by 2–5 cm, pipe length positive, all

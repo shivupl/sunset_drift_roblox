@@ -15,7 +15,8 @@
 -- The exhaust follows one standard on every car (CarCosmeticMounts, garage
 -- round 2 §1): the car's own pipes or a built factory one, or aftermarket
 -- tips on pipes running forward into the body; either way an ExhaustOutlet
--- Attachment at every pipe mouth, LookVector out of the pipe (outlets()).
+-- Attachment at each mouth of the exhaust fitted (only the tips once tips
+-- are on), LookVector out of the pipe (outlets()).
 --
 -- Paint and finish need `paint = true` body pieces. The pickup and cruiser
 -- are single textured shells with none, so paint does nothing on them;
@@ -255,7 +256,9 @@ end
 -- none (factory = true) and leaves the car's own pipes be; tips build each
 -- tip, its bore and the pipe it sits on, running forward under the car (a
 -- tip over one of the car's own pipes hides that pipe's mouth inside it).
--- Either way one ExhaustOutlet Attachment goes at every pipe mouth that shows
+-- One ExhaustOutlet Attachment goes at each mouth of the exhaust fitted: the
+-- stock outlets, or with tips on only the tips (they replace the whole
+-- exhaust; an own pipe left showing, like the hatch's, gets none)
 -- (CarCosmeticMounts.outletFrames), on an invisible part welded at the body
 -- mount: flames and any other exhaust effect use only those (outlets()).
 local function exhaust(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
@@ -278,9 +281,9 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	folder.Name = "LookExhaust"
 	if n > 0 then
 		local tips = spot.tips
-		local y, mouthZ = tips.posM[2], tips.posM[3]
-		local frontZ = mouthZ - R.tipLengthM
-		for i, x in CarCosmeticMounts.tipXs(spot, n, R.quadPairGapM) do
+		for i, mouth in CarCosmeticMounts.tipMouths(spot, n, R.quadPairGapM) do
+			local x, y, mouthZ = mouth.X, mouth.Y, mouth.Z
+			local frontZ = mouthZ - R.tipLengthM
 			local tip = cylinder(`Tip{i}`, handles, sc, Vector3.new(x, y, mouthZ - R.tipLengthM / 2), R.tipLengthM, R.tipRadiusM)
 			tip.Color = item.tipColor or Color3.fromRGB(200, 200, 200)
 			tip.Material = item.tipMaterial or Enum.Material.Metal
@@ -300,7 +303,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 				continue
 			end
 			local x, y, z = o.posM[1], o.posM[2], o.posM[3]
-			local len = spot.tips.pipeLengthM
+			local len = o.pipeLengthM or spot.tips.pipeLengthM
 			local pipe = cylinder(`FactoryPipe{i}`, handles, sc, Vector3.new(x, y, z - len / 2), len, R.factoryPipeRadiusM)
 			pipe.Color = R.factoryPipeColor
 			pipe.Material = Enum.Material.Metal
@@ -313,7 +316,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	local holder = visualPart(OUTLETS, handles, CFrame.identity)
 	holder.Size = Vector3.one * 0.05
 	holder.Transparency = 1
-	for _, frame in CarCosmeticMounts.outletFrames(spot, n, R.quadPairGapM, R.tipRadiusM) do
+	for _, frame in CarCosmeticMounts.outletFrames(spot, n, R.quadPairGapM) do
 		local a = Instance.new("Attachment")
 		a.Name = OUTLET
 		a.CFrame = CarCosmeticMounts.toStuds(frame, k, mps)

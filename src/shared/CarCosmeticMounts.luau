@@ -14,8 +14,10 @@
 --   stock: the car's own pipe mouth(s). posM is the centre of the mouth;
 --     dir (optional, default straight back, {0, 0, 1}) the way the pipe points
 --     out of it, as the pipe runs on the mesh; factory = true where the body
---     mesh has no pipe, so CarCosmetics builds a plain one there. Listed
---     left (-X) first: a single aftermarket tip goes on stock[1]'s side.
+--     mesh has no pipe, so CarCosmetics builds a plain one there, pipeLengthM
+--     long (optional; default tips.pipeLengthM), running forward from the
+--     mouth. Listed left (-X) first: a single aftermarket tip goes on
+--     stock[1]'s side.
 --   tips: where aftermarket tips go. posM is the centre between a twin pair
 --     at the tips' mouth (their open end); spreadM the distance between the
 --     two tips of a twin; pipeLengthM the pipe that runs forward from each
@@ -25,8 +27,14 @@
 --   bumperZ: the rear face of the body just above the tips (the bumper's
 --     lower edge, or a diffuser there). Tip mouths sit 2-5 cm past it, so
 --     nothing overhangs them from behind (CarCosmeticMounts.spec).
+--   quadOuterBumperZ (optional): the same face above the quad's two outer
+--     tips, where a bumper curves forward at its corners. Those two tips move
+--     with it, keeping the same clearance past it as the others.
 -- Where a car has its own pipes, the tips sit over them (same x, the stock
--- mouth inside the tip), like a slip-on tip: no second set of pipes shows.
+-- mouth inside the tip), like a slip-on tip. Fitted tips replace the whole
+-- exhaust: only the tips are outlets. Where tips can't cover the car's own
+-- pipes (the hatch's, too close together at the centre), those stay visible
+-- but are not outlets.
 --
 -- A car with no entry (or no spot) shows no strip or no tips.
 --
@@ -39,9 +47,9 @@
 -- The windscreen strip was lined up with CarCosmetics.apply and front 3/4
 -- captures instead. Each entry says what it was lined up against.
 export type Windscreen = { posM: { number }, widthM: number, heightM: number, tiltDeg: number }
-export type Outlet = { posM: { number }, dir: { number }?, factory: boolean? }
+export type Outlet = { posM: { number }, dir: { number }?, factory: boolean?, pipeLengthM: number? }
 export type Tips = { posM: { number }, spreadM: number, pipeLengthM: number }
-export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number }
+export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number, quadOuterBumperZ: number? }
 export type Mounts = { windscreen: Windscreen?, exhaust: Exhaust? }
 
 local CarCosmeticMounts = {}
@@ -61,7 +69,7 @@ CarCosmeticMounts.cars = {
 		-- side and below), 2 cm past it. Tips 3 cm past that face, their tops
 		-- tucked into the rising underside.
 		exhaust = {
-			stock = { { posM = { -0.55, 0.33, 2.47 }, factory = true } },
+			stock = { { posM = { -0.55, 0.33, 2.47 }, factory = true, pipeLengthM = 0.35 } },
 			tips = { posM = { 0, 0.30, 2.48 }, spreadM = 1.1, pipeLengthM = 0.35 },
 			bumperZ = 2.45,
 		},
@@ -94,7 +102,7 @@ CarCosmeticMounts.cars = {
 		-- past the face; tips the same way, 3 cm past it. Their pipes run under
 		-- the bed to behind the rear tyre.
 		exhaust = {
-			stock = { { posM = { -0.6, 0.415, 2.83 }, factory = true } },
+			stock = { { posM = { -0.6, 0.415, 2.83 }, factory = true, pipeLengthM = 0.8 } },
 			tips = { posM = { 0, 0.415, 2.84 }, spreadM = 1.2, pipeLengthM = 0.8 },
 			bumperZ = 2.81,
 		},
@@ -108,7 +116,7 @@ CarCosmeticMounts.cars = {
 		-- m from below), 2 cm past it; tips 3 cm past, tops in the bumper's
 		-- chamfer.
 		exhaust = {
-			stock = { { posM = { -0.6, 0.37, 2.84 }, factory = true } },
+			stock = { { posM = { -0.6, 0.37, 2.84 }, factory = true, pipeLengthM = 0.4 } },
 			tips = { posM = { 0, 0.32, 2.85 }, spreadM = 1.2, pipeLengthM = 0.4 },
 			bumperZ = 2.82,
 		},
@@ -119,29 +127,33 @@ CarCosmeticMounts.cars = {
 		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
 		-- Exhaust: its own twin pipes (in Underbody) end under the bumper
 		-- corners, tilted about 8° down (side view, Underbody alone; ends at
-		-- 2.67 m from below). Tips over them, 3 cm past the bumper there (2.73 m
-		-- at x ±0.72, from below), pipes back into the mufflers.
+		-- 2.67 m from below). Tips over them, 3 cm past the bumper there (2.75 m
+		-- at x ±0.715, from below, zoomed on the corner), pipes back into the
+		-- mufflers. The bumper curves forward at its corners: 2.715 m over the
+		-- quad's outer tips (x ±0.815).
 		exhaust = {
 			stock = {
 				{ posM = { -0.715, 0.265, 2.655 }, dir = { 0, -0.14, 0.99 } },
 				{ posM = { 0.715, 0.265, 2.655 }, dir = { 0, -0.14, 0.99 } },
 			},
-			tips = { posM = { 0, 0.265, 2.76 }, spreadM = 1.43, pipeLengthM = 0.35 },
-			bumperZ = 2.73,
+			tips = { posM = { 0, 0.265, 2.78 }, spreadM = 1.43, pipeLengthM = 0.35 },
+			bumperZ = 2.75,
+			quadOuterBumperZ = 2.715,
 		},
 	},
 	-- Same body as the krownvik: same spots.
 	krownvikfleet = {
 		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
 		-- Exhaust: as the krownvik, its pipes (in Underbody_6) and bumper about
-		-- 1 cm further back (from below).
+		-- 1 cm further back (from below: 2.76 m at x ±0.715, 2.725 m at ±0.815).
 		exhaust = {
 			stock = {
 				{ posM = { -0.715, 0.265, 2.665 }, dir = { 0, -0.14, 0.99 } },
 				{ posM = { 0.715, 0.265, 2.665 }, dir = { 0, -0.14, 0.99 } },
 			},
-			tips = { posM = { 0, 0.265, 2.77 }, spreadM = 1.43, pipeLengthM = 0.35 },
-			bumperZ = 2.74,
+			tips = { posM = { 0, 0.265, 2.79 }, spreadM = 1.43, pipeLengthM = 0.35 },
+			bumperZ = 2.76,
+			quadOuterBumperZ = 2.725,
 		},
 	},
 	-- Strip: inside the glass, just under the glass's top edge, checked from
@@ -232,49 +244,63 @@ function CarCosmeticMounts.tipXs(e: Exhaust, n: number, quadPairGapM: number): {
 	return {}
 end
 
--- Whether a stock outlet still shows with n aftermarket tips fitted: a built
--- factory pipe goes when tips go on; the car's own pipe stays, unless a tip
--- sits over it: a tip's centre within a tip's diameter of the pipe's,
--- across. That takes in a quad pair, whose two tips sit either side of the
--- twin spot (0.1 m off it): the pair is the Y the pipe splits into.
-function CarCosmeticMounts.stockShows(e: Exhaust, o: Outlet, n: number, quadPairGapM: number, tipRadiusM: number): boolean
-	if n <= 0 then
-		return true
+-- Each aftermarket tip's mouth centre, metres, for n tips: at tips.posM's
+-- height and z, at tipXs; a quad's outer two moved with the bumper there
+-- (quadOuterBumperZ), same clearance past it.
+function CarCosmeticMounts.tipMouths(e: Exhaust, n: number, quadPairGapM: number): { Vector3 }
+	local out: { Vector3 } = {}
+	local y, z = e.tips.posM[2], e.tips.posM[3]
+	local xs = CarCosmeticMounts.tipXs(e, n, quadPairGapM)
+	for i, x in xs do
+		local outer = #xs >= 4 and (i == 1 or i == #xs)
+		local shift = if outer and e.quadOuterBumperZ then e.quadOuterBumperZ - e.bumperZ else 0
+		table.insert(out, Vector3.new(x, y, z + shift))
 	end
-	if o.factory then
-		return false
-	end
-	for _, x in CarCosmeticMounts.tipXs(e, n, quadPairGapM) do
-		if math.abs(x - o.posM[1]) <= 2 * tipRadiusM then
-			return false
-		end
-	end
-	return true
+	return out
 end
 
--- The frame of every pipe mouth that shows with the exhaust fitted (n
--- aftermarket tips, 0 = the car's own), metres in car space: at the centre of
--- the mouth, its LookVector pointing out of the pipe (straight back for tips;
--- the stock pipe's dir), UpVector as near car-up as that allows. With tips,
--- the tips' mouths first, then any of the car's own pipes no tip covers (the
--- hatch's centre pipes, the other pipe of a twin under a single tip), so
--- every visible mouth gets its flame. CarCosmetics puts an ExhaustOutlet
--- Attachment at each one.
-function CarCosmeticMounts.outletFrames(e: Exhaust, n: number, quadPairGapM: number, tipRadiusM: number): { CFrame }
-	local out: { CFrame } = {}
-	if n > 0 then
-		local y, z = e.tips.posM[2], e.tips.posM[3]
-		for _, x in CarCosmeticMounts.tipXs(e, n, quadPairGapM) do
-			local p = Vector3.new(x, y, z)
-			table.insert(out, CFrame.lookAt(p, p + Vector3.zAxis))
+-- The bumper face above tip i of n (tipMouths order): quadOuterBumperZ for
+-- a quad's outer two where set, bumperZ otherwise.
+function CarCosmeticMounts.bumperAt(e: Exhaust, i: number, n: number): number
+	if n >= 4 and (i == 1 or i == n) and e.quadOuterBumperZ then
+		return e.quadOuterBumperZ
+	end
+	return e.bumperZ
+end
+
+-- Whether n aftermarket tips hide one of the car's own pipes: a tip's centre
+-- within a tip's diameter of the pipe's, across. That takes in a quad pair,
+-- whose two tips sit either side of the twin spot (0.1 m off it). Visual
+-- only (the spec keeps a one-pipe car's pipe from peeking out beside its
+-- tips); outlets never come from stock pipes once tips are on.
+function CarCosmeticMounts.tipCovers(e: Exhaust, o: Outlet, n: number, quadPairGapM: number, tipRadiusM: number): boolean
+	for _, x in CarCosmeticMounts.tipXs(e, n, quadPairGapM) do
+		if math.abs(x - o.posM[1]) <= 2 * tipRadiusM then
+			return true
 		end
 	end
-	for _, o in e.stock do
-		if CarCosmeticMounts.stockShows(e, o, n, quadPairGapM, tipRadiusM) then
-			local p = Vector3.new(o.posM[1], o.posM[2], o.posM[3])
-			local d = if o.dir then Vector3.new(o.dir[1], o.dir[2], o.dir[3]).Unit else Vector3.zAxis
-			table.insert(out, CFrame.lookAt(p, p + d))
+	return false
+end
+
+-- The outlet frames for the exhaust fitted, metres in car space: with n > 0
+-- aftermarket tips, one per tip mouth and nothing else (the tips replace the
+-- whole exhaust; any own pipe left showing, like the hatch's, is not an
+-- outlet); with none, one per stock outlet. Each sits at the centre of the
+-- mouth with its LookVector pointing out of the pipe (straight back for tips;
+-- the stock pipe's dir), UpVector as near car-up as that allows.
+-- CarCosmetics puts an ExhaustOutlet Attachment at each one.
+function CarCosmeticMounts.outletFrames(e: Exhaust, n: number, quadPairGapM: number): { CFrame }
+	local out: { CFrame } = {}
+	if n > 0 then
+		for _, p in CarCosmeticMounts.tipMouths(e, n, quadPairGapM) do
+			table.insert(out, CFrame.lookAt(p, p + Vector3.zAxis))
 		end
+		return out
+	end
+	for _, o in e.stock do
+		local p = Vector3.new(o.posM[1], o.posM[2], o.posM[3])
+		local d = if o.dir then Vector3.new(o.dir[1], o.dir[2], o.dir[3]).Unit else Vector3.zAxis
+		table.insert(out, CFrame.lookAt(p, p + d))
 	end
 	return out
 end
