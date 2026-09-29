@@ -19,15 +19,16 @@ wing, the walk-in customisation view and its panel (buy with confirm, equip). Sp
 docs/superpowers. Open owner calls: finish look (mirror chrome needs Future lighting or
 SurfaceAppearance maps), prices, `lights.key.brightness`, paintable pickup and cruiser shells.
 
-Round 2 on `garage` (2026-09-28, commits `dde1061`..`e95b019` plus the docs pass; spec and plan in
+Round 2 on `garage` (2026-09-28, commits `dde1061`..`e95b019`, the docs pass, `992a021` and the drive-out hold fixes; spec and plan in
 docs/superpowers, `2026-09-28-garage-round2-*`): one exhaust standard on all ten cars (stock
 outlets, attached tips and pipes, `ExhaustOutlet` attachments); layered exhaust flames seen by
 everyone (`ExhaustFlames`, relayed by `CarControls`) and the REV preview; driving into the garage
 and leaving seated in the car (`GarageService`); four paints, two rim finishes, two decals and
 window tint, with Economy codec tests. Final Play pass: drive-in, buy and equip, REV, leave
 seated, flames at speed, walk-in and the phone layout all worked; specs 3058 passed, 14 failed
-(the VehicleRig baseline). Still open for the owner: one drive-out in five left the car on its
-side (task-5 report), upshift and limiter pops (off by default), tint's mixed-version rollout,
+(the VehicleRig baseline). One drive-out in five left the car on its side; fixed in `992a021`
+(the car is held anchored through the seat until the driver's sim runs): 16 of 16 clean after,
+dip at most 0.01 m. Still open for the owner: upshift and limiter pops (off by default), tint's mixed-version rollout,
 and the pickup's pipe through its bumper. Not merged, not pushed.
 
 ## Parked, superseded: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)

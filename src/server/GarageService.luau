@@ -18,8 +18,9 @@
 --              hold) and the client stands them at ExitSpot as a walk-in.
 --   "go"       after a drive-out, once the client's car controller runs:
 --              the car, held anchored through the seating, is let go and
---              handed to the driver (CarSpawner.letGo). Without it the car
---              is let go after driveIn.holdSeconds anyway.
+--              handed to the driver (CarSpawner.letGo). "waiting" while the
+--              player is not its driver yet (the client asks again). Without
+--              it the car is let go after driveIn.holdSeconds anyway.
 --   "release"  the view closed without a drive-out (died, respawned,
 --              seated elsewhere): forget the parked car, prompt back on.
 -- One request at a time per player; a second while one runs is "busy".
@@ -254,9 +255,10 @@ local function driveOut(player: Player): string
 	if CarSpawner.seatOwner(player, true) then
 		-- The client says "go" once its sim runs; if it never does, the
 		-- car must not stay anchored under a seated driver.
+		local token = CarSpawner.holdToken(player)
 		task.delay(GarageConfig.driveIn.holdSeconds, function()
-			if player.Parent then
-				CarSpawner.letGo(player)
+			if player.Parent and token then
+				CarSpawner.letGo(player, token, true)
 			end
 		end)
 		return "ok"
@@ -273,7 +275,12 @@ local function action(player: Player, what: any): string
 		return "ok"
 	end
 	if what == "go" then
-		CarSpawner.letGo(player)
+		local r = CarSpawner.letGo(player)
+		-- A "go" ahead of the seat (a late DriveStop left the client's
+		-- controller running): tell the client to ask again.
+		if r == "waiting" or (r == "none" and busy[player]) then
+			return "waiting"
+		end
 		return "ok"
 	end
 	if what ~= "driveIn" and what ~= "driveOut" then

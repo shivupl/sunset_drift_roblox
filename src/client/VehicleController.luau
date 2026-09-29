@@ -108,6 +108,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 	carId = if type(id) == "string" then id else nil
 	exitRemote = remotes:FindFirstChild("ExitCar") :: RemoteEvent
 	local s = VehicleSim.new(model, ConfigLoader.forCar(carId))
+	local chassis = VehicleRig.handles(model).chassis
 	s:setCharacter(Players.LocalPlayer.Character)
 	sim = s
 	setJumpEnabled(false)
@@ -125,6 +126,13 @@ function VehicleController.start(model: Model, remotes: Folder)
 		local input = Input.get(dt, cfg)
 		if input.exit and exitRemote then
 			exitRemote:FireServer()
+		end
+		-- The server holds the car anchored through a drive-out seating
+		-- (CarSpawner.seatOwner) until this client runs; stepping the sim on
+		-- an anchored chassis only yields non-finite forces (a warning a
+		-- step), so wait. Exit above still works during the hold.
+		if chassis.Anchored then
+			return
 		end
 		if input.reset then
 			resetCar(model)

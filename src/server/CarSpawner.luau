@@ -60,7 +60,9 @@ CarSpawner.configChanged = nil :: ((config: Config) -> ())?
 local cars: { [Player]: Entry } = {}
 -- Cars kept anchored through a seating until the driver's client is
 -- simulating them (GarageService's drive-out, see CarSpawner.seatOwner).
-local held: { [Model]: boolean } = {}
+-- The value is the hold's token, so a stale timer cannot end a later hold.
+local held: { [Model]: number } = {}
+local holdCounter = 0
 local slotOf: { [Player]: number } = {} -- each player keeps one bay slot for the session
 local lastSpawnRequest: { [Player]: number } = {}
 local spawning: { [Player]: boolean } = {}
@@ -133,6 +135,10 @@ local function onOccupantChanged(entry: Entry)
 		entry.driver = nil
 		entry.prompt.Enabled = true
 		entry.stillTime = 0
+		-- Out of a held car before it was let go: it stays anchored, parked
+		-- like any settled car, and the next seat un-anchors it as usual
+		-- (without this the prompt's seat left it free but server-owned).
+		held[entry.model] = nil
 		if not entry.chassis.Anchored then
 			entry.chassis:SetNetworkOwner(nil)
 		end
@@ -369,7 +375,8 @@ function CarSpawner.seatOwner(player: Player, hold: boolean?): boolean
 		return false
 	end
 	if hold then
-		held[entry.model] = true
+		holdCounter += 1
+		held[entry.model] = holdCounter
 	end
 	local ok = seatIn(entry, player)
 	if not ok then
@@ -378,22 +385,36 @@ function CarSpawner.seatOwner(player: Player, hold: boolean?): boolean
 	return ok
 end
 
--- Ends a hold: the car is un-anchored and handed to its driver, as a seat
--- does. With no driver (they got out meanwhile) it stays anchored, parked,
--- like any settled car.
-function CarSpawner.letGo(player: Player)
+-- The current hold on this player's car, if any (its token).
+function CarSpawner.holdToken(player: Player): number?
 	local entry = cars[player]
-	if not entry or not held[entry.model] then
-		return
+	return if entry then held[entry.model] else nil
+end
+
+-- Ends a hold: the car is un-anchored and handed to its driver, as a seat
+-- does. Returns "released", "none" (no hold, or token is not the current
+-- one) or "waiting": the owner is not its driver yet (a "go" that raced
+-- ahead of the seat), so the hold stays. `expire` (the server's timer)
+-- ends a driverless hold instead: the car stays anchored and parked.
+function CarSpawner.letGo(player: Player, token: number?, expire: boolean?): string
+	local entry = cars[player]
+	local current = if entry then held[entry.model] else nil
+	if not entry or not current or (token and token ~= current) then
+		return "none"
+	end
+	if entry.driver ~= player then
+		if expire then
+			held[entry.model] = nil
+			return "none"
+		end
+		return "waiting"
 	end
 	held[entry.model] = nil
-	local driver = entry.driver
-	if driver then
-		entry.chassis.Anchored = false
-		entry.chassis.AssemblyLinearVelocity = Vector3.zero
-		entry.chassis.AssemblyAngularVelocity = Vector3.zero
-		entry.chassis:SetNetworkOwner(driver)
-	end
+	entry.chassis.Anchored = false
+	entry.chassis.AssemblyLinearVelocity = Vector3.zero
+	entry.chassis.AssemblyAngularVelocity = Vector3.zero
+	entry.chassis:SetNetworkOwner(player)
+	return "released"
 end
 
 -- The spawn menu's request: replace this player's car with catalog car

@@ -497,8 +497,11 @@ facing out (dot 1.00), its chassis 1.007 m over the pad against 1.003 m for
 the same car settled after a normal spawn, all four tyre bottoms at the
 pad: on its wheels, not floating or sunk. Leaving seated the player in it
 every time, with the car ready to drive (60 km/h 3 s later). Once in five,
-the car was found on its side a few seconds after the leave (see the
-round-2 task-5 report); the other four settled within 0.5 s, upright.
+the car was found on its side a few seconds after the leave: un-anchored at
+the seat, it fell until the client's sim started and the first suspension
+step threw it. Fixed in `992a021` (the car stays anchored through the seat
+until the client's car controller runs): 16 of 16 drive-outs clean after,
+dip at most 0.01 m, tilt 0.6 degrees (round-2 task-3 report).
 
 **Why there.** The pad's left wing (X -84..-36 m, Z -1700..-1300 m) is 48 x
 400 m of flat, collidable, empty asphalt straight across the highway from

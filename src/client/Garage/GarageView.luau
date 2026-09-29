@@ -956,11 +956,12 @@ local function driveBackOut(): boolean
 	-- drives an anchored chassis (BEHAVIOURS.md), so the hold is kept short.
 	task.spawn(function()
 		local deadline = os.clock() + 3
-		while not VehicleController.isDriving() and os.clock() < deadline do
-			task.wait()
-		end
-		if VehicleController.isDriving() then
-			garageAction("go")
+		while os.clock() < deadline do
+			-- "waiting": the seat has not reached the server yet; ask again.
+			if VehicleController.isDriving() and garageAction("go") ~= "waiting" then
+				return
+			end
+			task.wait(0.03)
 		end
 	end)
 	if garageAction("driveOut") ~= "ok" then
