@@ -19,6 +19,14 @@ Builds on `2026-09-28-garage-round2-design.md` (the exhaust standard, the
   (`src/shared/CosmeticMeshes/`, same format as `src/shared/CarMeshes`,
   decoded by `MeshData` into an EditableMesh once per client, one template
   MeshPart per mesh, cloned per car). No uploads.
+  - **As built:** one mesh per style (a client holds only 8 EditableMeshes),
+    each template counted by the cars wearing it and freed when none does,
+    and taken only while enough slots stay free for the catalog's generated
+    car bodies (`render.tipMeshReserve`, derived from the catalog); otherwise,
+    or when a mesh cannot be made, round 2's cylinder tips. An optional
+    per-style `meshAssetId` (controller-directed, Task 1 fix round 1) builds
+    a style from an uploaded mesh instead, with the OBJs in
+    `tools/cosmetics/out`; nothing is uploaded yet.
 - Styles (one per shipping item, plus one new item):
   - **Rolled** (Single / Twin Chrome): round tip, rolled lip, double wall
     with a dark inner face, a band clamp at the inlet, a short flared
@@ -30,6 +38,8 @@ Builds on `2026-09-28-garage-round2-design.md` (the exhaust standard, the
     EditableMesh renders them, else a SurfaceAppearance-free fallback
     (bands of separate parts) — the implementer verifies in Studio and
     records which.
+    - **As built:** vertex colours. They render on an EditableMesh's
+      MeshPart, multiplied by its colour (BEHAVIOURS.md, MeshData).
   - **Oval** (new item `exhaust_oval`, "Big Oval Tip", single): a large oval
     rolled tip.
 - Each mesh has its mouth centre at a known local point and its axis along

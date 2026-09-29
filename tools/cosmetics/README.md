@@ -93,7 +93,8 @@ Blender's previews draw both sides.
 Garage round 3 §3. The sun strip (the `decal` category; the panel says SUN
 STRIPS) is `CosmeticsConfig.render.stripSlats` (14) flat slats, each placed
 and angled on the glass at its spot, so the strip follows the screen's curve
-across and its top edge and stops at the pillars. No EditableMesh: each slat is a Part with a SurfaceGui showing its
+across and its top edge and stops at the pillars. No EditableMesh: each slat
+is a Part with a SurfaceGui showing its
 own slice of the one strip canvas (a clipping frame holding the whole canvas
 shifted to the slat's `fromM`), so text and gradient run on across slats.
 

@@ -376,8 +376,17 @@ local function destroyPreview()
 	end
 end
 
+-- Bumped by every buildPreview. CarCosmetics.apply can yield (building a
+-- tip style's mesh), so two quick MY CARS taps could both build; only the
+-- latest may become the preview, and an older one that finishes after it is
+-- thrown away (garage round 3 final review M4: it stayed on the turntable,
+-- holding its tip template, until the player left).
+local previewBuild = 0
+
 local function buildPreview(g: Garage, carId: string): Preview?
 	destroyPreview()
+	previewBuild += 1
+	local build = previewBuild
 	local model: Model? = nil
 	local ok, err = pcall(function()
 		local m = staticCar(carId, PREVIEW_NAME, g.viewFrame, g.folder)
@@ -394,6 +403,13 @@ local function buildPreview(g: Garage, carId: string): Preview?
 		end
 	end)
 	local m = model
+	if build ~= previewBuild then
+		-- A newer preview was asked for while this one was being built.
+		if m then
+			m:Destroy()
+		end
+		return preview
+	end
 	if not ok or not m then
 		warn(`[GarageView] preview for {carId} failed: {err}`)
 		if m then

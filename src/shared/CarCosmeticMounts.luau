@@ -528,6 +528,9 @@ end
 -- pipes used to key off n >= 4 while the tips keyed off the style).
 function CarCosmeticMounts.pieceFrames(e: Exhaust, n: number, quadPairGapM: number, paired: boolean): { CFrame }
 	if paired then
+		-- A pair mesh holds two tips and a quad is two pairs; any other count
+		-- would give pieces that do not match the outlets (final review M3).
+		assert(n == 4, `[CarCosmeticMounts] a paired tip style needs 4 tips, got {n}`)
 		return CarCosmeticMounts.quadPairFrames(e, quadPairGapM)
 	end
 	return CarCosmeticMounts.tipFrames(e, n, quadPairGapM)

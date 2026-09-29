@@ -67,6 +67,13 @@ type State = {
 	-- the model going): an exhaust build that yielded for a template checks it
 	-- afterwards and drops a stale result (garage round 3 fix 2).
 	exhaustGen: number,
+	-- The exhaust item this car's tips were built for (or are being built
+	-- for, while exhaustBuilding holds that build's generation): a look
+	-- change that leaves the exhaust as it is does not rebuild it (final
+	-- review I1: each paint click rebuilt the tips and, as their only
+	-- wearer, their EditableMesh).
+	exhaustItem: string?,
+	exhaustBuilding: number?,
 }
 
 local states: { [Model]: State } = {}
@@ -394,6 +401,43 @@ type TipTemplate = {
 }
 local tipTemplates: { [string]: TipTemplate } = {}
 local warned: { [string]: boolean } = {}
+-- Set when a slot probe comes up short; cleared when a tip template frees a
+-- slot. Until then no style probes again, so a client at the cap stops
+-- printing the engine's "Failed to create empty EditableMesh" per probe.
+local probeShort = false
+
+-- The EditableMesh slots tips leave free for car bodies: the most any
+-- catalog car's generated pieces take (each distinct generated mesh path is
+-- one template, MeshData / BodyBuilder), or render.tipMeshReserve if that is
+-- more. Worked out once from the catalog, so a car added later is covered.
+local reserveCache: number? = nil
+local function tipMeshReserve(): number
+	if reserveCache then
+		return reserveCache
+	end
+	local most = 0
+	for id in ConfigLoader.catalog().cars do
+		local body = ConfigLoader.entry(id).body
+		local paths: { [string]: boolean } = {}
+		local count = 0
+		local function add(piece: any)
+			if piece.mesh and not piece.meshId and not paths[piece.mesh] then
+				paths[piece.mesh] = true
+				count += 1
+			end
+		end
+		for _, piece in body.pieces do
+			add(piece)
+		end
+		for _, piece in body.wheelPieces do
+			add(piece)
+		end
+		most = math.max(most, count)
+	end
+	local reserve = math.max(most, R.tipMeshReserve)
+	reserveCache = reserve
+	return reserve
+end
 
 -- How many EditableMeshes could still be made, counting to `upTo`: made and
 -- destroyed at once (an empty one is enough; the cap is a count).
@@ -431,8 +475,10 @@ local function buildTip(style: TipStyle): (MeshPart?, EditableMesh?, string?)
 		end
 		return nil, nil, tostring(part)
 	end
-	if freeMeshSlots(R.tipMeshReserve + 1) < R.tipMeshReserve + 1 then
-		return nil, nil, `fewer than {R.tipMeshReserve} EditableMesh slots would stay free`
+	local reserve = tipMeshReserve()
+	if probeShort or freeMeshSlots(reserve + 1) < reserve + 1 then
+		probeShort = true
+		return nil, nil, `fewer than {reserve} EditableMesh slots would stay free`
 	end
 	local okEm, em = pcall(MeshData.editable, tipMesh(style.mesh))
 	if not okEm then
@@ -457,6 +503,7 @@ local function destroyTemplate(name: string, t: TipTemplate)
 	end
 	if t.em then
 		t.em:Destroy()
+		probeShort = false -- a slot came free
 	end
 end
 
@@ -513,6 +560,8 @@ end
 -- exhaust build still waiting on a template for this car is now stale.
 local function clearExhaust(s: State)
 	s.exhaustGen += 1
+	s.exhaustItem = nil
+	s.exhaustBuilding = nil
 	if s.exhaust then
 		s.exhaust:Destroy()
 		s.exhaust = nil
@@ -627,12 +676,34 @@ end
 -- (CarCosmeticMounts.outletFrames), on an invisible part welded at the body
 -- mount: flames and any other exhaust effect use only those (outlets()).
 local function exhaust(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
-	clearExhaust(s)
-	local gen = s.exhaustGen
 	local item = CarLook.item(look, "exhaust")
+	-- Unchanged (same item on the same body, built or being built): leave it.
+	-- A new body or car gets a new state (apply), so only the item can differ.
+	if s.exhaustItem == item.id and (s.exhaustBuilding ~= nil or (s.exhaust ~= nil and s.exhaust.Parent == body)) then
+		return
+	end
+	-- This build supersedes any still waiting on a template. The old tips
+	-- stay on (and keep their hold on their template) until this one is ready,
+	-- so a style going onto its own last wearer is never dropped and rebuilt.
+	s.exhaustGen += 1
+	local gen = s.exhaustGen
+	s.exhaustItem = item.id
+	s.exhaustBuilding = gen
+	local function takeOffOld()
+		if s.exhaust then
+			s.exhaust:Destroy()
+			s.exhaust = nil
+		end
+		if s.tipStyle then
+			releaseTip(s.tipStyle)
+			s.tipStyle = nil
+		end
+	end
 	local mounts = CarCosmeticMounts.cars[carId]
 	local spot = mounts and mounts.exhaust
 	if not spot then
+		takeOffOld()
+		s.exhaustBuilding = nil
 		return
 	end
 	local n = item.tips or 0
@@ -649,9 +720,9 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 		local colour = if style.baked then R.bakedTipColor else item.tipColor or Color3.fromRGB(200, 200, 200)
 		local material = item.tipMaterial or Enum.Material.Metal
 		local template = acquireTip(styleName, style)
-		-- acquireTip may have yielded: if the car was restyled, re-bodied or
-		-- destroyed meanwhile, this build is stale. Let go of what it took and
-		-- leave the newer build (or nothing) in place.
+		-- acquireTip may have yielded: if the car was restyled again, re-bodied
+		-- or destroyed meanwhile, this build is stale. Let go of what it took
+		-- and leave the newer build (or nothing) in place.
 		if s.exhaustGen ~= gen or states[model] ~= s or not body.Parent then
 			if template then
 				releaseTip(styleName)
@@ -659,6 +730,9 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 			folder:Destroy()
 			return
 		end
+		-- The new hold is in; now the old tips can go (same style: its users
+		-- went up then down, so the template stays).
+		takeOffOld()
 		if template then
 			s.tipStyle = styleName
 		end
@@ -711,6 +785,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 			routedPipe(folder, `Pipe{i}`, `Pipe{i}`, handles, sc, route, R.pipeRadiusM, R.pipeColor)
 		end
 	else
+		takeOffOld()
 		for i, o in spot.stock do
 			if not o.factory then
 				continue
@@ -738,6 +813,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	holder.Parent = folder
 	folder.Parent = body
 	s.exhaust = folder
+	s.exhaustBuilding = nil
 end
 
 -- The car's exhaust outlets, for flames and any other exhaust effect: one
@@ -777,7 +853,7 @@ function CarCosmetics.paintable(carId: string): boolean
 end
 
 -- Whether this car has a spot for a windscreen strip, exhaust tips or
--- window tint (CarCosmeticMounts); the garage panel greys DECALS / EXHAUST /
+-- window tint (CarCosmeticMounts); the garage panel greys SUN STRIPS / EXHAUST /
 -- TINT items out on a car without one, like paint on a car with no painted
 -- piece. Every catalog car has a strip and exhaust spot
 -- (CarCosmeticMounts.spec); the hatch, pickup and cruiser have no windows

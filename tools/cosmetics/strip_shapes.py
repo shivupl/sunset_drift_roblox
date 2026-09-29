@@ -713,15 +713,18 @@ def write(shapes):
         "-- left edge at the part's +X side. Each slat's SurfaceGui shows that",
         "-- slice, so text and gradient run on across slats.",
         "export type Slat = { centreM: { number }, normal: { number }, right: { number }, widthM: number, heightM: number, fromM: number }",
-        "export type Shape = { lengthM: number, heightM: number, slats: { Slat } }",
+        "-- side is the windscreen spot's side the slats were fitted for (CarCosmeticMounts):",
+        "-- the spec checks it still matches, so a changed spot without a rerun fails.",
+        "export type Shape = { lengthM: number, heightM: number, side: \"inside\" | \"outside\", slats: { Slat } }",
         "",
         "local shapes: { [string]: Shape } = {",
     ]
-    for car, (slats, length, note) in shapes.items():
+    for car, (slats, length, note, side) in shapes.items():
         lines.append(f"\t-- {note}")
         lines.append(f"\t{car} = {{")
         lines.append(f"\t\tlengthM = {num(length)},")
         lines.append(f"\t\theightM = {num(slats[0]['heightM'])},")
+        lines.append(f'\t\tside = "{side}",')
         lines.append("\t\tslats = {")
         for sl in slats:
             lines.append(
@@ -750,7 +753,7 @@ def main():
             # A generated piece is placed by the working copy's catalog sizeM,
             # which may carry someone's uncommitted change (fix round 1, N4).
             note += "; placed by the working copy's CarCatalog.luau"
-        shapes[car] = (slats, length, note)
+        shapes[car] = (slats, length, note, spot["side"])
         extra = f", spot gap {rep['spotGapM']:.3f}" if "spotGapM" in rep else ""
         print(f"{car:14s} {rep['where']}: {rep['faces']} screen faces, glass x {rep['x'][0]:.3f}..{rep['x'][1]:.3f}, "
               f"strip x {rep['ends'][0]:.3f}..{rep['ends'][1]:.3f}, {length:.3f} m long, smoothing {rep['fitErrM'] * 1000:.1f} mm, widest join overlap {2 * rep['joinExtM'] * 1000:.0f} mm{extra}")

@@ -69,54 +69,64 @@ end
 function MeshData.editable(piece: Piece): EditableMesh
 	local em = AssetService:CreateEditableMesh()
 	assert(em, "[MeshData] editable mesh budget exhausted")
-	local nPos, nNrm, nUv = piece.counts[1], piece.counts[2], piece.counts[3]
-	local hx, hy, hz = piece.sizeM[1] / 2, piece.sizeM[2] / 2, piece.sizeM[3] / 2
-	local pos = MeshData.base64(piece.positions)
-	local nrm = MeshData.base64(piece.normals)
-	local uv = MeshData.base64(piece.uvs)
-	local tri = MeshData.base64(piece.triangles)
-	local colors = if piece.colors then MeshData.base64(piece.colors) else nil
+	-- A client holds only 8 EditableMeshes (BEHAVIOURS.md): if filling this
+	-- one fails (a bad buffer, an engine limit), destroy it before passing the
+	-- error on, or its slot is gone for the session (garage round 3 final
+	-- review M7).
+	local ok, err = pcall(function()
+		local nPos, nNrm, nUv = piece.counts[1], piece.counts[2], piece.counts[3]
+		local hx, hy, hz = piece.sizeM[1] / 2, piece.sizeM[2] / 2, piece.sizeM[3] / 2
+		local pos = MeshData.base64(piece.positions)
+		local nrm = MeshData.base64(piece.normals)
+		local uv = MeshData.base64(piece.uvs)
+		local tri = MeshData.base64(piece.triangles)
+		local colors = if piece.colors then MeshData.base64(piece.colors) else nil
 
-	local vids = table.create(nPos)
-	for i = 0, nPos - 1 do
-		local x = buffer.readi16(pos, i * 6) / 32767 * hx
-		local y = buffer.readi16(pos, i * 6 + 2) / 32767 * hy
-		local z = buffer.readi16(pos, i * 6 + 4) / 32767 * hz
-		vids[i + 1] = em:AddVertex(Vector3.new(x, y, z))
-	end
-	local nids = table.create(nNrm)
-	for i = 0, nNrm - 1 do
-		local n = Vector3.new(buffer.readi8(nrm, i * 3), buffer.readi8(nrm, i * 3 + 1), buffer.readi8(nrm, i * 3 + 2))
-		nids[i + 1] = em:AddNormal(if n.Magnitude > 0 then n.Unit else Vector3.yAxis)
-	end
-	local cids: { number }? = nil
-	if colors then
-		local c = table.create(nPos)
+		local vids = table.create(nPos)
 		for i = 0, nPos - 1 do
-			local col = Color3.fromRGB(buffer.readu8(colors, i * 3), buffer.readu8(colors, i * 3 + 1), buffer.readu8(colors, i * 3 + 2))
-			c[i + 1] = em:AddColor(col, 1)
+			local x = buffer.readi16(pos, i * 6) / 32767 * hx
+			local y = buffer.readi16(pos, i * 6 + 2) / 32767 * hy
+			local z = buffer.readi16(pos, i * 6 + 4) / 32767 * hz
+			vids[i + 1] = em:AddVertex(Vector3.new(x, y, z))
 		end
-		cids = c
-	end
-	local uids = table.create(nUv)
-	for i = 0, nUv - 1 do
-		uids[i + 1] = em:AddUV(Vector2.new(buffer.readu16(uv, i * 4) / 65535, buffer.readu16(uv, i * 4 + 2) / 65535))
-	end
-	for t = 0, piece.triangleCount - 1 do
-		local base = t * 18
-		local function corner(c: number): (number, number, number)
-			local o = base + c * 6
-			return buffer.readu16(tri, o), buffer.readu16(tri, o + 2), buffer.readu16(tri, o + 4)
+		local nids = table.create(nNrm)
+		for i = 0, nNrm - 1 do
+			local n = Vector3.new(buffer.readi8(nrm, i * 3), buffer.readi8(nrm, i * 3 + 1), buffer.readi8(nrm, i * 3 + 2))
+			nids[i + 1] = em:AddNormal(if n.Magnitude > 0 then n.Unit else Vector3.yAxis)
 		end
-		local p0, n0, u0 = corner(0)
-		local p1, n1, u1 = corner(1)
-		local p2, n2, u2 = corner(2)
-		local f = em:AddTriangle(vids[p0 + 1], vids[p1 + 1], vids[p2 + 1])
-		em:SetFaceNormals(f, { nids[n0 + 1], nids[n1 + 1], nids[n2 + 1] })
-		em:SetFaceUVs(f, { uids[u0 + 1], uids[u1 + 1], uids[u2 + 1] })
-		if cids then
-			em:SetFaceColors(f, { cids[p0 + 1], cids[p1 + 1], cids[p2 + 1] })
+		local cids: { number }? = nil
+		if colors then
+			local c = table.create(nPos)
+			for i = 0, nPos - 1 do
+				local col = Color3.fromRGB(buffer.readu8(colors, i * 3), buffer.readu8(colors, i * 3 + 1), buffer.readu8(colors, i * 3 + 2))
+				c[i + 1] = em:AddColor(col, 1)
+			end
+			cids = c
 		end
+		local uids = table.create(nUv)
+		for i = 0, nUv - 1 do
+			uids[i + 1] = em:AddUV(Vector2.new(buffer.readu16(uv, i * 4) / 65535, buffer.readu16(uv, i * 4 + 2) / 65535))
+		end
+		for t = 0, piece.triangleCount - 1 do
+			local base = t * 18
+			local function corner(c: number): (number, number, number)
+				local o = base + c * 6
+				return buffer.readu16(tri, o), buffer.readu16(tri, o + 2), buffer.readu16(tri, o + 4)
+			end
+			local p0, n0, u0 = corner(0)
+			local p1, n1, u1 = corner(1)
+			local p2, n2, u2 = corner(2)
+			local f = em:AddTriangle(vids[p0 + 1], vids[p1 + 1], vids[p2 + 1])
+			em:SetFaceNormals(f, { nids[n0 + 1], nids[n1 + 1], nids[n2 + 1] })
+			em:SetFaceUVs(f, { uids[u0 + 1], uids[u1 + 1], uids[u2 + 1] })
+			if cids then
+				em:SetFaceColors(f, { cids[p0 + 1], cids[p1 + 1], cids[p2 + 1] })
+			end
+		end
+	end)
+	if not ok then
+		em:Destroy()
+		error(err, 0)
 	end
 	return em
 end

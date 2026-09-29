@@ -122,11 +122,18 @@ CosmeticsConfig.render = {
 	-- disc rather than a hole.
 	tipBoreColor = Color3.fromHex("#060607"),
 	-- A tip style takes an EditableMesh only if at least this many stay free
-	-- after it, so generated car bodies always come first: 4 is the krownvik's
-	-- pieces, the most any car needs besides the kamri's 5 (the kamri loads
-	-- with the spawn, before tips are usually asked for). Otherwise the style
-	-- uses cylinder tips. A style's mesh is freed when no car on the client
-	-- wears it. Lower it to let tips take more slots; 0 lets tips fill them.
+	-- after it, so car bodies always come first: CarCosmetics uses the most
+	-- EditableMeshes any catalog car's generated pieces need (worked out from
+	-- the catalog at runtime) or this, whichever is more. Measured in Play
+	-- 2026-09-29 on the working-copy catalog (final review M1): kamri 5 (Body, Glass, Interior, Rim,
+	-- Tyre), krownvik 4, lekzas 1, batrol 1, krownvikfleet 1; kamri07 (the
+	-- default car), hatch, pickup, cruiser and kruzer80 none (store meshes).
+	-- So the reserve is 5 today: a client with no generated car in view can
+	-- have 3 tip styles as meshes at once, and one with a kamri none
+	-- (cylinder tips). The old 4 left a kamri arriving after four tip styles
+	-- one piece short, a grey box for the session. Otherwise the style uses
+	-- cylinder tips; a style's mesh is freed when no car on the client wears
+	-- it. This number is only a floor now.
 	tipMeshReserve = 4,
 	-- The round tips' outer radius (the generator builds Rolled and Quad at
 	-- it: CosmeticsConfig.spec), 0.09 m before the car's scale. Quad tips

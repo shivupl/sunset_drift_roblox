@@ -30,6 +30,9 @@ return function(t: T)
 		t.eq(#shape.slats, R.stripSlats, `{id}: stripSlats slats`)
 		if spot then
 			t.near(shape.heightM, spot.heightM, 1e-4, `{id}: the spot's height`)
+			-- Fitted for the spot's side of the glass: a spot flipped without
+			-- rerunning strip_shapes.py fails here (final review M3).
+			t.eq(shape.side, spot.side, `{id}: fitted for the spot's side ({spot.side})`)
 		end
 		t.ok(shape.lengthM > 0.8 and shape.lengthM < 1.6, `{id}: a windscreen's width ({shape.lengthM} m)`)
 		for i, s in shape.slats do

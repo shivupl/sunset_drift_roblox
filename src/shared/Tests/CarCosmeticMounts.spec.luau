@@ -1,6 +1,6 @@
 --!strict
 -- Every car carries a windscreen strip spot and an exhaust spot, so the
--- garage's DECALS and EXHAUST show on every car (final review fix 5,
+-- garage's SUN STRIPS and EXHAUST show on every car (final review fix 5,
 -- 2026-09-28). The garage greys those items out on a car without one
 -- (CarCosmetics.hasSpot); this keeps a new car from shipping that way.
 --
@@ -209,6 +209,22 @@ return function(t: T)
 			local style = R.tipStyles[item.tipStyle or "rolled"]
 			local mesh = ExhaustTips.pieces[style.mesh]
 			local inletM = Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3])
+			-- Every mesh mouth (each piece's frame at each of its bores) sits
+			-- on its outlet, in order, pointing the same way: the flames leave
+			-- the modelled mouths (final review M3; Studio had 0.12 mm).
+			local pieces = CarCosmeticMounts.pieceFrames(e, n, R.quadPairGapM, style.pair == true)
+			local outlets = CarCosmeticMounts.outletFrames(e, n, R.quadPairGapM)
+			t.eq(#pieces * #mesh.bores, #outlets, `{id} {item.id}: a mesh mouth per outlet`)
+			for i, frame in pieces do
+				for j, b in mesh.bores do
+					local o = outlets[(i - 1) * #mesh.bores + j]
+					if o then
+						local mouth = frame * CFrame.new(b.xM, 0, 0)
+						t.ok((mouth.Position - o.Position).Magnitude < 1e-4, `{id} {item.id} mouth {i}.{j}: on its outlet`)
+						t.ok(mouth.ZVector:Dot(o.LookVector) > 0.9999, `{id} {item.id} mouth {i}.{j}: its outlet points out of it`)
+					end
+				end
+			end
 			for _, way in { "mesh", "fallback" } do
 				local at = if way == "mesh" then inletM else fallbackBack
 				local inlets = CarCosmeticMounts.pipeInlets(e, n, R, at, style.pair == true)

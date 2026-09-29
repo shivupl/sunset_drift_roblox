@@ -15,13 +15,16 @@
 -- left edge at the part's +X side. Each slat's SurfaceGui shows that
 -- slice, so text and gradient run on across slats.
 export type Slat = { centreM: { number }, normal: { number }, right: { number }, widthM: number, heightM: number, fromM: number }
-export type Shape = { lengthM: number, heightM: number, slats: { Slat } }
+-- side is the windscreen spot's side the slats were fitted for (CarCosmeticMounts):
+-- the spec checks it still matches, so a changed spot without a rerun fails.
+export type Shape = { lengthM: number, heightM: number, side: "inside" | "outside", slats: { Slat } }
 
 local shapes: { [string]: Shape } = {
 	-- kamri: MeshData Kamri/Glass, outside the glass, ends at the glass's outline; placed by the working copy's CarCatalog.luau
 	kamri = {
 		lengthM = 1.2705,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.5863, 1.3974, 0.0175 }, normal = { -0.1129, 0.9788, -0.1708 }, right = { 0.9934, 0.1145, -0.0002 }, widthM = 0.0953, heightM = 0.12, fromM = 1.1752 },
 			{ centreM = { -0.4978, 1.4069, 0.0175 }, normal = { -0.0963, 0.9799, -0.1748 }, right = { 0.9952, 0.0978, -0.0001 }, widthM = 0.0993, heightM = 0.12, fromM = 1.0843 },
@@ -39,10 +42,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.5863, 1.3975, 0.0175 }, normal = { 0.1137, 0.9786, -0.1716 }, right = { 0.9933, -0.1153, 0.0004 }, widthM = 0.0953, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- hatch: store mesh 9339153338 (cache 63f616178390453bf6f43c8f113d6638), outside the glass, ends at the glass's outline
+	-- hatch: store mesh 9339153338 (cache 1e4dd4be8e07aa43675290ff409fd292), outside the glass, ends at the glass's outline
 	hatch = {
 		lengthM = 1.0402,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.4689, 1.0143, -0.4813 }, normal = { -0.1296, 0.9601, -0.2478 }, right = { 0.9915, 0.1235, -0.0402 }, widthM = 0.0803, heightM = 0.12, fromM = 0.9599 },
 			{ centreM = { -0.3968, 1.02, -0.4841 }, normal = { -0.0424, 0.9665, -0.2531 }, right = { 0.9987, 0.0342, -0.0367 }, widthM = 0.0834, heightM = 0.12, fromM = 0.8859 },
@@ -60,10 +64,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.4889, 1.0143, -0.4813 }, normal = { 0.1296, 0.9601, -0.2478 }, right = { 0.9915, -0.1235, 0.0402 }, widthM = 0.0803, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- pickup: store mesh 7408695235 (cache fdd2e20ec2002c836212b31f582c9fe3), outside the glass, ends by eye (1.25 m wide)
+	-- pickup: store mesh 7408695235 (cache 5b4e0a4270a69996b38d2763f7502d56), outside the glass, ends by eye (1.25 m wide)
 	pickup = {
 		lengthM = 1.2538,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.5785, 1.5788, -0.6834 }, normal = { -0.0722, 0.6598, -0.748 }, right = { 0.9938, 0.1115, 0.0025 }, widthM = 0.0959, heightM = 0.12, fromM = 1.1579 },
 			{ centreM = { -0.4921, 1.5843, -0.682 }, normal = { 0.0094, 0.6744, -0.7383 }, right = { 0.9994, 0.0181, 0.0292 }, widthM = 0.1002, heightM = 0.12, fromM = 1.069 },
@@ -81,10 +86,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.5785, 1.5788, -0.6834 }, normal = { 0.0722, 0.6598, -0.748 }, right = { 0.9938, -0.1115, -0.0025 }, widthM = 0.0959, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- cruiser: store mesh 5991320872 (cache dc2d5cddc68fcb03826acdbca4833458), outside the glass, ends by eye (1.26 m wide)
+	-- cruiser: store mesh 5991320872 (cache 1c45a4febbb3096be023cd15c8da21b6), outside the glass, ends by eye (1.26 m wide)
 	cruiser = {
 		lengthM = 1.2716,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.5842, 1.3541, -0.4847 }, normal = { -0.1432, 0.8643, -0.4821 }, right = { 0.9806, 0.0581, -0.187 }, widthM = 0.0965, heightM = 0.12, fromM = 1.1751 },
 			{ centreM = { -0.4957, 1.3587, -0.5007 }, normal = { -0.1233, 0.8625, -0.4909 }, right = { 0.9844, 0.0437, -0.1704 }, widthM = 0.1009, heightM = 0.12, fromM = 1.0829 },
@@ -102,10 +108,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.5842, 1.3541, -0.4847 }, normal = { 0.1432, 0.8643, -0.4821 }, right = { 0.9806, -0.0582, 0.187 }, widthM = 0.0965, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- krownvik: store mesh 1080666644 (cache db:7B180F278DD240A1C3C7E8DBAA81E45B), outside the glass, ends at the glass's outline
+	-- krownvik: store mesh 1080666644 (cache db:2D3C288A2758037765B955491DB87704), outside the glass, ends at the glass's outline
 	krownvik = {
 		lengthM = 1.1855,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.5467, 1.2958, -0.2954 }, normal = { -0.1404, 0.8637, -0.484 }, right = { 0.9901, 0.125, -0.0642 }, widthM = 0.0898, heightM = 0.12, fromM = 1.0957 },
 			{ centreM = { -0.4645, 1.3045, -0.3003 }, normal = { -0.101, 0.8643, -0.4928 }, right = { 0.9949, 0.0851, -0.0546 }, widthM = 0.0935, heightM = 0.12, fromM = 1.011 },
@@ -123,10 +130,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.5463, 1.2958, -0.2954 }, normal = { 0.1404, 0.8637, -0.484 }, right = { 0.9901, -0.125, 0.0642 }, widthM = 0.0898, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- krownvikfleet: store mesh 14406441009 (cache db:E88047181A17DE6C93F5C4DD53A98D00), inside the glass, ends at the glass's outline
+	-- krownvikfleet: store mesh 14406441009 (cache db:19CAAA44CAF7B60573002CA138FD25F9), inside the glass, ends at the glass's outline
 	krownvikfleet = {
 		lengthM = 1.217,
 		heightM = 0.12,
+		side = "inside",
 		slats = {
 			{ centreM = { -0.5637, 1.3077, -0.2845 }, normal = { -0.128, 0.8687, -0.4785 }, right = { 0.9917, 0.1072, -0.0706 }, widthM = 0.0915, heightM = 0.12, fromM = 1.1255 },
 			{ centreM = { -0.4791, 1.3159, -0.29 }, normal = { -0.1045, 0.8673, -0.4868 }, right = { 0.9945, 0.0874, -0.0578 }, widthM = 0.0954, heightM = 0.12, fromM = 1.0384 },
@@ -148,6 +156,7 @@ local shapes: { [string]: Shape } = {
 	lekzas = {
 		lengthM = 1.1665,
 		heightM = 0.12,
+		side = "inside",
 		slats = {
 			{ centreM = { -0.5357, 1.2859, -0.4199 }, normal = { -0.1384, 0.8918, -0.4308 }, right = { 0.9813, 0.0649, -0.1811 }, widthM = 0.0889, heightM = 0.12, fromM = 1.0776 },
 			{ centreM = { -0.4554, 1.2907, -0.4335 }, normal = { -0.1152, 0.8946, -0.4318 }, right = { 0.9868, 0.0534, -0.1526 }, widthM = 0.0932, heightM = 0.12, fromM = 0.9939 },
@@ -169,6 +178,7 @@ local shapes: { [string]: Shape } = {
 	kamri07 = {
 		lengthM = 1.2316,
 		heightM = 0.12,
+		side = "inside",
 		slats = {
 			{ centreM = { -0.5648, 1.2892, -0.4694 }, normal = { -0.1683, 0.8962, -0.4104 }, right = { 0.9705, 0.0777, -0.2284 }, widthM = 0.0944, heightM = 0.12, fromM = 1.1371 },
 			{ centreM = { -0.4802, 1.2953, -0.4877 }, normal = { -0.1374, 0.9039, -0.4051 }, right = { 0.9791, 0.0619, -0.194 }, widthM = 0.0986, heightM = 0.12, fromM = 1.0483 },
@@ -190,6 +200,7 @@ local shapes: { [string]: Shape } = {
 	batrol = {
 		lengthM = 1.284,
 		heightM = 0.12,
+		side = "outside",
 		slats = {
 			{ centreM = { -0.5893, 1.6905, -0.436 }, normal = { -0.2005, 0.7506, -0.6296 }, right = { 0.9759, 0.0961, -0.1961 }, widthM = 0.097, heightM = 0.12, fromM = 1.187 },
 			{ centreM = { -0.5004, 1.6973, -0.4524 }, normal = { -0.1475, 0.7655, -0.6263 }, right = { 0.9847, 0.0542, -0.1657 }, widthM = 0.1011, heightM = 0.12, fromM = 1.0943 },
@@ -207,10 +218,11 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.5892, 1.6905, -0.436 }, normal = { 0.2005, 0.7506, -0.6296 }, right = { 0.9759, -0.0961, 0.1961 }, widthM = 0.097, heightM = 0.12, fromM = 0 },
 		},
 	},
-	-- kruzer80: store mesh 7183513741 (cache db:F1765CCB682A9E3F7D6AFC0DB827695F), inside the glass, ends at the glass's outline
+	-- kruzer80: store mesh 7183513741 (cache db:433DE667DBF581DFE13FACB3C2C1B9E0), inside the glass, ends at the glass's outline
 	kruzer80 = {
 		lengthM = 1.2082,
 		heightM = 0.12,
+		side = "inside",
 		slats = {
 			{ centreM = { -0.5602, 1.9228, -0.3392 }, normal = { -0.0623, 0.7655, -0.6404 }, right = { 0.9968, 0.0804, -0.0009 }, widthM = 0.09, heightM = 0.12, fromM = 1.1182 },
 			{ centreM = { -0.4765, 1.9285, -0.3387 }, normal = { -0.0347, 0.7746, -0.6315 }, right = { 0.9984, 0.0546, 0.0121 }, widthM = 0.0949, heightM = 0.12, fromM = 1.0319 },
