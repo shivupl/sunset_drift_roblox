@@ -58,6 +58,9 @@ CarSpawner.driverChanged = nil :: ((player: Player, model: Model?) -> ())?
 CarSpawner.configChanged = nil :: ((config: Config) -> ())?
 
 local cars: { [Player]: Entry } = {}
+-- Cars kept anchored through a seating until the driver's client is
+-- simulating them (GarageService's drive-out, see CarSpawner.seatOwner).
+local held: { [Model]: boolean } = {}
 local slotOf: { [Player]: number } = {} -- each player keeps one bay slot for the session
 local lastSpawnRequest: { [Player]: number } = {}
 local spawning: { [Player]: boolean } = {}
@@ -112,8 +115,13 @@ local function onOccupantChanged(entry: Entry)
 		end
 		entry.driver = player
 		entry.prompt.Enabled = false
-		entry.chassis.Anchored = false
-		entry.chassis:SetNetworkOwner(player)
+		-- A held car (seatOwner with hold) stays anchored and the server's
+		-- until letGo: nothing holds a free car up until the new driver's
+		-- client runs its suspension.
+		if not held[entry.model] then
+			entry.chassis.Anchored = false
+			entry.chassis:SetNetworkOwner(player)
+		end
 		-- The name too: a car spawned a moment ago may not have reached the
 		-- client yet, and an instance that has not arrives as nil.
 		remotes.DriveStart:FireClient(player, entry.model, entry.model.Name)
@@ -276,6 +284,7 @@ despawn = function(player: Player)
 		return
 	end
 	cars[player] = nil
+	held[entry.model] = nil
 	-- Taking a car away from under its driver: tell the scoring and the
 	-- client the drive is over, the way getting out would.
 	local driver = entry.driver
@@ -320,7 +329,9 @@ local function seatIn(entry: Entry, player: Player): boolean
 	while (hum.SeatPart or hum:GetState() == Enum.HumanoidStateType.Seated) and os.clock() < clearBy do
 		task.wait()
 	end
-	entry.chassis.Anchored = false
+	if not held[entry.model] then
+		entry.chassis.Anchored = false
+	end
 	-- Then sit, and check it held; a late unseat gets another go.
 	for _ = 1, 3 do
 		if cars[player] ~= entry or hum.Health <= 0 or not entry.seat.Parent then
@@ -346,12 +357,43 @@ end
 -- Seats a player in their current car where it stands (GarageService's
 -- drive-out), the way a spawn seats them. False if there is no car or the
 -- seat did not hold.
-function CarSpawner.seatOwner(player: Player): boolean
+--
+-- hold: the car stays anchored (and the server's) through the seating,
+-- until letGo. Un-anchored at the seat, a parked car fell freely until the
+-- driver's client started its sim a network trip later: 20 to 75 ms, a
+-- 0.02 to 0.29 m drop, and the first suspension step on that compression
+-- threw it up to 4.6 m/s and onto its side (measured in Play, 2026-09-28).
+function CarSpawner.seatOwner(player: Player, hold: boolean?): boolean
 	local entry = cars[player]
 	if not entry then
 		return false
 	end
-	return seatIn(entry, player)
+	if hold then
+		held[entry.model] = true
+	end
+	local ok = seatIn(entry, player)
+	if not ok then
+		held[entry.model] = nil
+	end
+	return ok
+end
+
+-- Ends a hold: the car is un-anchored and handed to its driver, as a seat
+-- does. With no driver (they got out meanwhile) it stays anchored, parked,
+-- like any settled car.
+function CarSpawner.letGo(player: Player)
+	local entry = cars[player]
+	if not entry or not held[entry.model] then
+		return
+	end
+	held[entry.model] = nil
+	local driver = entry.driver
+	if driver then
+		entry.chassis.Anchored = false
+		entry.chassis.AssemblyLinearVelocity = Vector3.zero
+		entry.chassis.AssemblyAngularVelocity = Vector3.zero
+		entry.chassis:SetNetworkOwner(driver)
+	end
 end
 
 -- The spawn menu's request: replace this player's car with catalog car

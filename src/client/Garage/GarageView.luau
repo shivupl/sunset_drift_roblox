@@ -948,6 +948,21 @@ end
 -- After a drive-in: back in the parked car ("driveOut"), and true once the
 -- car controller has it; false (nothing changed) when the server could not.
 local function driveBackOut(): boolean
+	-- The server holds the car anchored through the seating until "go": let
+	-- go before this client's sim runs, it fell and could land on its side
+	-- (GarageConfig.driveIn.holdSeconds). "go" goes as soon as the car
+	-- controller runs, not after "driveOut" returns (the server's seating
+	-- checks the seat held for 0.3 s first): VehicleSim warns every step it
+	-- drives an anchored chassis (BEHAVIOURS.md), so the hold is kept short.
+	task.spawn(function()
+		local deadline = os.clock() + 3
+		while not VehicleController.isDriving() and os.clock() < deadline do
+			task.wait()
+		end
+		if VehicleController.isDriving() then
+			garageAction("go")
+		end
+	end)
 	if garageAction("driveOut") ~= "ok" then
 		return false
 	end

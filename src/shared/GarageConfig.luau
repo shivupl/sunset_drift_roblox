@@ -82,6 +82,12 @@ GarageConfig.exitCamera = { backM = 4, upM = 1.6 }
 --     at ExitSpot (3 m), so 20 is generous; anything farther is not a
 --     leave from the garage and gets the walk-in exit instead.
 --   blockedText: shown when the spot is taken and the drive-in refused.
+--   holdSeconds: on driving out the car stays anchored, seated, until the
+--     client's car controller runs and says "go" (a free car fell until
+--     then and 2 in 5 drive-outs ended on their side, 2026-09-28); if the
+--     client never says so, the server lets go after this long. Longer
+--     only matters for a client that hangs; shorter risks the fall again
+--     on a slow one.
 GarageConfig.driveIn = {
 	maxKmh = 20,
 	serverSlack = 1.25,
@@ -90,6 +96,7 @@ GarageConfig.driveIn = {
 	clearM = Vector2.new(3, 6),
 	leaveRangeM = 20,
 	blockedText = "Someone's parked out front. Try again in a moment.",
+	holdSeconds = 2,
 }
 
 -- Turntable.
