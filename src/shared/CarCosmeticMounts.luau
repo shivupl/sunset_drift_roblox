@@ -297,10 +297,13 @@ CarCosmeticMounts.cars = {
 	},
 	-- Strip: outside the dark all-round glass (Glass material: a SurfaceGui
 	-- behind it does not show, BEHAVIOURS.md), from its windscreen's top edge.
+	-- 5.5 cm in from each end: the glass runs on under the A-pillar trim, and
+	-- the mesh's own outline put the strip's ends over the pillars (fix round
+	-- 1, from a close front capture).
 	batrol = {
 		-- Windows: Glass is every window in one piece.
 		windows = { side = {}, screen = {}, whole = { "Glass" } },
-		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh" },
+		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh", endInsetM = 0.055 },
 		-- Exhaust: its own single pipe (in Trim) runs back and out to the left
 		-- rear corner, about 29° outward (from below), ending under the bumper
 		-- (bottom 0.52 m, face 2.49 m, side view). Tips over it and its mirror,

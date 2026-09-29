@@ -103,9 +103,13 @@ Run from the repo root, with numpy and DracoPy (see `tools/carbody/rbxcache.py`)
 
 It needs every car's windscreen mesh in Studio's local cache: render the
 cars in Studio first (Edit; a MeshPart with the piece's mesh id in view is
-enough). Store meshes are found by their proportions against the piece's
-`sizeM` (a MeshPart scales its bounds to its Size); the Kamri's generated
-glass is read from its MeshData module. Each piece is placed in car space as
+enough). Store meshes are found by the catalog's mesh id:
+`glass_meshes.json` records each id's MeshSize (its own bounds) and face
+count, and exactly one distinct cached mesh must match both, or the script
+stops and says which (it never fits a look-alike). A new car's glass needs a
+line there. The Kamri's generated glass is read from its MeshData module.
+The hatch is a pack car, but its glass is a black glass piece of its own, so
+its ends come from the mesh like the store cars'. Each piece is placed in car space as
 BodyBuilder places it (bounds scaled to `sizeM`, `rotationDeg` YXZ,
 `offsetM`), from the working copy of `CarCatalog.luau`.
 
@@ -117,10 +121,15 @@ Per car (the inputs are `CarCosmeticMounts` `windscreen`, TUNING.md):
    shell the patch at the spot.
 2. Profiles: the screen cut at constant x, top edge first (the longest chain
    in the slice, which skips a shell's roof lip).
-3. The header: the top edge across the middle half, a quadratic in x carried
-   to the pillars. The band (topGapM, then heightM, down the glass from the
-   header) must lie on the glass; the ends are where it stops fitting (the
-   glass turning down the pillar), or the spot's width on a shell.
+3. The header: the top edge across the middle half, fitted in 3D (y and z
+   each a quadratic in x) and carried to the pillars; each slice places the
+   band from the point nearest it. (Fitted in height alone, a few mm of
+   misfit became ~4x that along a nearly level screen, and the hatch's strip
+   waved.) The band (topGapM, then heightM, down the glass from the header)
+   must lie on the glass; the ends are where it stops fitting (the glass
+   turning down the pillar), or the spot's width on a shell. An outside strip
+   never starts above a slice's own top edge (it would sit over trim the
+   script does not clear).
 4. The centre line, sampled 8 times per slat and smoothed (a degree-6
    polynomial in x; the fit's error is printed, a few mm), split into slats
    whose ends are shared, so the chain stays joined. Each slat's normal comes
@@ -129,10 +138,18 @@ Per car (the inputs are `CarCosmeticMounts` `windscreen`, TUNING.md):
    highest (outside) or lowest (inside) point of the piece's whole mesh under
    it, sampled every 4 mm; the shared ends move by the larger of their two
    slats' needs.
+6. Joins: each join is widened until even the slats' top and bottom corners
+   overlap by 2 x `stripOverlapM` (where the strip bends in the glass's
+   plane a wedge opens at one edge); the strip's outer ends are not widened.
+7. Canvas order: a Front-face SurfaceGui's canvas starts at the part's +X
+   side, so each slat's slice (`fromM`) counts from the strip's +X end. The
+   runtime places and sizes the slice in scale, so neighbours agree to the
+   sub-pixel.
 
 The output, `src/shared/CarStripShapes.luau`, says per car which mesh and
 cache entry it came from. `CarStripShapes.spec` checks every catalog car has
-14 slats, left to right, overlapping their neighbour a little with no gap,
+14 slats, left to right, overlapping their neighbour (corners included) with no
+gap and no step along the normal,
 unit normals facing forward and up, and canvas slices that tile the strip.
 
 Rerun it when a car's glass, its catalog placement, its windscreen spot, or

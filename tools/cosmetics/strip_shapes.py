@@ -20,11 +20,14 @@ For each car in CarCosmeticMounts with a windscreen spot it:
   3. walks down each profile from its top edge by topGapM plus half the
      strip height: that point is the strip's centre line there, and the
      profile's direction there is the strip's up;
-  4. splits the centre line between the ends into CosmeticsConfig.render.stripSlats slats; each slat
-     spans the chord between its two end points (so neighbours share their
-     ends and the chain follows the screen's curve across), takes its normal
-     from the surface (orthogonal to the chord), and is widened by stripOverlapM at each end
-     so neighbours overlap a hair and no seam shows;
+  4. splits the centre line between the ends into CosmeticsConfig.render
+     .stripSlats slats; each slat spans the chord between its two end points
+     (so neighbours share their ends and the chain follows the screen's curve
+     across) and takes its normal from the surface (orthogonal to the chord).
+     Each join is widened until even the slats' corners overlap by 2 x
+     stripOverlapM (more where the strip bends in the glass's plane); the
+     strip's two outer ends are not widened. Canvas slices count from the
+     car's right (+X) end, where a Front-face SurfaceGui's canvas starts;
   5. moves each slat off the glass along its normal (outside, on opaque
      glass) or behind it (inside, behind see-through glass), and writes
      src/shared/CarStripShapes.luau.
@@ -34,7 +37,11 @@ the glass ends at the pillars (the outline, less endInsetM where the glass
 runs on under the pillar trim). Shell cars (pickup, cruiser) have their
 glass painted into a textured shell, so the mesh has no outline there:
 `ends = "spot"` takes the ends from the spot's by-eye widthM, and only the
-curve and normals come from the mesh.
+curve and normals come from the mesh. The hatch is a pack car too, but its
+glass is a black glass piece of its own, so it takes its ends from the mesh.
+
+Store meshes are found by mesh id: glass_meshes.json records each id's
+MeshSize and face count, and exactly one cached mesh must match them.
 """
 
 from __future__ import annotations
@@ -65,7 +72,8 @@ def render_number(key):
     the same ones."""
     text = open(COSMETICS).read()
     m = re.search(r"\n\t" + key + r"\s*=\s*([\d.]+)", text)
-    assert m, f"CosmeticsConfig.render.{key} missing"
+    if not m:
+        raise ValueError(f"CosmeticsConfig.render.{key} missing")
     return float(m.group(1))
 
 
@@ -83,9 +91,15 @@ NEAR_M = 0.05
 TOP_TOL_M = 0.012
 # Profile slices across the screen when finding the ends and the curve.
 SLICES = 240
-# A face is windscreen if its normal is this close to the screen's own
-# facing (forward and up): cos 60°.
-FACING_MIN = 0.5
+# Which faces are windscreen: outward normal looking forward (z below
+# SCREEN_FWD_MAX, so the roof's crown, up to ~81° from vertical, still counts,
+# and the top edge is where the glass turns into the roof), up (y above
+# SCREEN_UP_MIN, not the bumper or a straight-ahead roof lip) and not sideways
+# (|x| below SCREEN_SIDE_MAX, not the side windows; a curved screen's corners
+# look out up to ~58° to the side).
+SCREEN_FWD_MAX = -0.15
+SCREEN_UP_MIN = 0.1
+SCREEN_SIDE_MAX = 0.85
 
 
 # --------------------------------------------------------------------------
@@ -118,11 +132,14 @@ def lua_vec(s, key):
 def catalog_piece(car, name):
     text = open(CATALOG).read()
     m = re.search(r"\n\t" + re.escape(car) + r" = \{", text)
-    assert m, f"no catalog entry {car}"
+    if not m:
+        raise ValueError(f"no catalog entry {car}")
     entry = lua_block(text, car, m.start())
     scale = float(re.search(r"\bscale\s*=\s*([\d.]+)", entry).group(1))
     for line in entry.splitlines():
         if re.search(r'name\s*=\s*"' + re.escape(name) + '"', line):
+            if lua_vec(line, "sizeM") is None or lua_vec(line, "offsetM") is None:
+                raise ValueError(f"{car} {name}: sizeM and offsetM must be on the piece's one line in CarCatalog.luau")
             mesh_id = re.search(r"\bmeshId\s*=\s*(\d+)", line)
             mesh = re.search(r'\bmesh\s*=\s*"([^"]+)"', line)
             return {
@@ -149,6 +166,9 @@ def mount_spots():
             continue
         pos = lua_vec(ws, "posM")
         width = re.search(r"widthM\s*=\s*([\d.]+)", ws)
+        for key in ("piece", "side", "ends", "heightM"):
+            if not re.search(r"\b" + key + r"\s*=", ws):
+                raise ValueError(f"{car}: CarCosmeticMounts windscreen has no {key}")
         spot = {
             "posM": np.array(pos) if pos else None,
             "widthM": float(width.group(1)) if width else None,
@@ -188,13 +208,23 @@ def meshdata(name):
 
 
 _cache_index = None
+GLASS = os.path.join(ROOT, "tools", "cosmetics", "glass_meshes.json")
 
 
-def store_mesh(size):
-    """A store mesh's (points, faces) from Studio's cache, matched by its
-    proportions to the piece's sizeM (the MeshPart scales its bounds to it)."""
+def store_mesh(mesh_id):
+    """A store mesh's (points, faces) from Studio's cache, by mesh id: the
+    cached mesh whose own bounds match the id's recorded MeshSize and whose
+    face count matches (glass_meshes.json). Exactly one distinct mesh must
+    match (the cache often holds the same mesh twice); anything else fails
+    loudly, so a wrong mesh is never fitted (fix round 1, M2)."""
+    import json
+
     import rbxcache
 
+    known = json.load(open(GLASS)).get(str(mesh_id))
+    if known is None:
+        raise LookupError(f"mesh {mesh_id} is not in {os.path.relpath(GLASS, ROOT)}: add its MeshSize and face count")
+    want = np.array(known["meshSize"], dtype=float)
     global _cache_index
     if _cache_index is None:
         _cache_index = []
@@ -205,21 +235,25 @@ def store_mesh(size):
                 continue
             if r is None:
                 continue
-            ext = r[0].max(0) - r[0].min(0)
-            # Some cached meshes decode with NaN bounds; they would poison
-            # the ranking.
-            if not np.isfinite(ext).all() or (ext <= 1e-6).any():
-                continue
-            _cache_index.append((path, ext, r))
-    best = None
+            ext = rbxcache.extents(r[0])
+            if ext is not None:
+                _cache_index.append((path, ext, r))
+    hits = {}
+    near = []
     for path, ext, r in _cache_index:
-        k = size / ext
-        err = float(np.ptp(k) / k.mean())
-        if best is None or err < best[0]:
-            best = (err, path, r)
-    if best is None or best[0] > 0.005:
-        raise LookupError(f"no cached mesh of proportions {size}: render the car in Studio first (best {best and best[0]:.4f})")
-    return best[2], best[1]
+        err = float(np.max(np.abs(ext - want) / want))
+        if err < 0.001 and len(r[1]) == known["faces"]:
+            # The same mesh cached twice decodes the same: one entry per shape.
+            hits.setdefault((len(r[1]), tuple(np.round(ext, 4))), (path, r))
+        elif err < 0.001:
+            near.append(f"{os.path.basename(path)} ({len(r[1])} faces)")
+    if not hits:
+        extra = f"; same bounds but {', '.join(near)} (expected {known['faces']} faces)" if near else ""
+        raise LookupError(f"mesh {mesh_id} ({known['car']} {known['piece']}) is not in Studio's cache: render the car in Studio first{extra}")
+    if len(hits) > 1:
+        raise LookupError(f"mesh {mesh_id}: {len(hits)} different cached meshes match its bounds and face count")
+    path, r = next(iter(hits.values()))
+    return r, path
 
 
 def rot_yxz(deg):
@@ -237,7 +271,7 @@ def piece_in_car(p):
         pts, faces = meshdata(p["mesh"])
         where = f"MeshData {p['mesh']}"
     else:
-        (pts, faces), path = store_mesh(p["sizeM"])
+        (pts, faces), path = store_mesh(p["meshId"])
         where = f"store mesh {p['meshId']} (cache {os.path.basename(path)})"
     lo, hi = pts.min(0), pts.max(0)
     local = (pts - (lo + hi) / 2) / (hi - lo) * p["sizeM"]
@@ -268,7 +302,7 @@ def screen_faces(V, F, spot):
     the connected patch that is the screen (the largest, or for a shell the
     one at the spot's by-eye centre)."""
     n, area, cen = outward_normals(V, F)
-    facing = (n[:, 2] < -0.15) & (n[:, 1] > 0.1) & (np.abs(n[:, 0]) < 0.85)
+    facing = (n[:, 2] < SCREEN_FWD_MAX) & (n[:, 1] > SCREEN_UP_MIN) & (np.abs(n[:, 0]) < SCREEN_SIDE_MAX)
     # Weld corners 1 mm apart: store meshes split vertices at UV seams.
     key = np.round(V / 0.001).astype(np.int64)
     _, weld = np.unique(key, axis=0, return_inverse=True)
@@ -441,26 +475,42 @@ def fit(car, spot, report=None):
         return cache[key]
 
     # The header: the screen's top edge where it runs across (the middle
-    # half), a quadratic in x carried out to the pillars, where the glass's
-    # own top edge turns down the pillar.
+    # half), fitted in 3D (y and z each a quadratic in x) and carried out to
+    # the pillars, where the glass's own top edge turns down the pillar.
+    # Fitting in 3D matters on a nearly level screen: a header fitted in
+    # height alone and found on each slice by height turned a few mm of
+    # misfit into ~4x that along the glass (1 / sin 15° on the hatch), and
+    # the strip waved 1.6 cm up and down it (fix round 1, M3).
     xs = np.linspace(x0, x1, SLICES + 2)[1:-1]
     mid = [x for x in xs if abs(x - (x0 + x1) / 2) < 0.25 * (x1 - x0)]
     tops = [(x, prof(x)[0][0]) for x in mid if prof(x) is not None]
-    cy = np.polyfit([t[0] for t in tops], [t[1][1] for t in tops], 2)
+    tx = [t[0] for t in tops]
+    cy = np.polyfit(tx, [t[1][1] for t in tops], 2)
+    cz = np.polyfit(tx, [t[1][2] for t in tops], 2)
 
     def header_arc(x, p):
-        """Arc from this profile's own top to the header's height. A shell's
-        ends are by eye, inside its screen: there the band just follows the
-        slice's own top edge, rounded corners and all."""
+        """Arc from this profile's own top to the point nearest the header
+        (negative where the header runs above the top edge, at a rounded
+        corner). A shell's ends are by eye, inside its screen: there the
+        band just follows the slice's own top edge, rounded corners and all."""
         if spot["ends"] == "spot":
             return 0.0
-        y_head = np.polyval(cy, x)
-        P = p[0]
-        if P[0][1] >= y_head:
-            a = arc_at_height(p, y_head)
-            return 0.0 if a is None else a
+        head = np.array([np.polyval(cy, x), np.polyval(cz, x)])
+        P, S, _ = p
         _, up, _ = along(p, 0.0)
-        return -(y_head - P[0][1]) / max(up[1], 1e-3)
+        above = (head - P[0][1:]) @ up[1:]
+        if above > 0:
+            return -above
+        best, best_s = math.inf, 0.0
+        for k in range(len(P) - 1):
+            a, b = P[k][1:], P[k + 1][1:]
+            seg = b - a
+            L2 = seg @ seg
+            t = 0.0 if L2 <= 0 else min(max((head - a) @ seg / L2, 0.0), 1.0)
+            dist = np.linalg.norm(a + seg * t - head)
+            if dist < best:
+                best, best_s = dist, S[k] + (S[k + 1] - S[k]) * t
+        return best_s
 
     def band(x):
         """The band's centre arc on this slice's profile, or None where the
@@ -471,6 +521,11 @@ def fit(car, spot, report=None):
         start = header_arc(x, p) + gap
         if start < -TOP_TOL_M or start + H > p[1][-1] + 1e-4:
             return None
+        if spot["side"] == "outside":
+            # A sticker on opaque glass never starts above the glass's own top
+            # edge, where it would sit over roof or pillar trim this script
+            # does not clear (fix round 1, L1). Inside, the roof hides it.
+            start = max(start, 0.0)
         return p, start + H / 2
 
     def on(x):
@@ -482,14 +537,16 @@ def fit(car, spot, report=None):
     if spot["ends"] == "spot":
         xl, xr = xc - spot["widthM"] / 2, xc + spot["widthM"] / 2
         for x in (xl, xr):
-            assert band(x) is not None, f"{car}: the spot's ends are off the screen"
+            if band(x) is None:
+                raise ValueError(f"{car}: the spot's ends are off the screen (x {x:.3f})")
     else:
         # Out from the middle, slice by slice, to the last slice the whole
         # band fits on; then halve the step down to a millimetre.
         def edge(direction):
             step = (x1 - x0) / SLICES
             x = xc
-            assert band(x) is not None, f"{car}: the band does not fit the screen's middle"
+            if band(x) is None:
+                raise ValueError(f"{car}: the band does not fit the screen's middle")
             while step > 0.001:
                 while x0 < x + direction * step < x1 and band(x + direction * step) is not None:
                     x += direction * step
@@ -592,6 +649,9 @@ def fit(car, spot, report=None):
     # the two overlap by 2 x stripOverlapM. The strip's two ends run
     # stripOverlapM past their chords.
     ext = [overlap] * (slats + 1)
+    # The strip's two outer ends have no neighbour to cover: no extension
+    # (4 mm of plain part colour past the canvas otherwise; fix round 1, N1).
+    ext[0] = ext[slats] = 0.0
     for j in range(1, slats):
         s1, s2 = out[j - 1], out[j]
         for _ in range(4):
@@ -686,6 +746,10 @@ def main():
         slats, length = fit(car, spot, report=rep)
         ends = "ends at the glass's outline" if spot["ends"] == "mesh" else f"ends by eye ({num(spot['widthM'])} m wide)"
         note = f"{car}: {rep['where']}, {spot['side']} the glass, {ends}"
+        if "MeshData" in rep["where"]:
+            # A generated piece is placed by the working copy's catalog sizeM,
+            # which may carry someone's uncommitted change (fix round 1, N4).
+            note += "; placed by the working copy's CarCatalog.luau"
         shapes[car] = (slats, length, note)
         extra = f", spot gap {rep['spotGapM']:.3f}" if "spotGapM" in rep else ""
         print(f"{car:14s} {rep['where']}: {rep['faces']} screen faces, glass x {rep['x'][0]:.3f}..{rep['x'][1]:.3f}, "

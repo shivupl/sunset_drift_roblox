@@ -54,6 +54,10 @@ return function(t: T)
 				local over = (a - b):Dot(r)
 				t.ok(over >= 2 * R.stripOverlapM - 1e-3 and over < 0.06, `{id} slat {i}: overlaps the next a little ({over} m)`)
 				t.ok((a - b).Magnitude < 0.06, `{id} slat {i}: meets the next ({(a - b).Magnitude} m apart)`)
+				-- No step off the glass between neighbours: their edges meet in
+				-- depth to 2 mm (fix round 1, L3).
+				local step = math.abs((a - b):Dot(n))
+				t.ok(step < 0.002, `{id} slat {i}: no step to the next along the normal ({step} m)`)
 				-- And at the slats' top and bottom corners, where a bend opens a
 				-- wedge: each corner still lies over the neighbour.
 				local r2 = v(nxt.right)
@@ -72,7 +76,8 @@ return function(t: T)
 			end
 		end
 		local first, last = shape.slats[1], shape.slats[#shape.slats]
-		t.near(last.fromM, -R.stripOverlapM, 1e-3, `{id}: the canvas starts at the right-hand slat`)
-		t.near(first.fromM + first.widthM, shape.lengthM + R.stripOverlapM, 1e-3, `{id}: and ends at the left-hand one`)
+		-- The strip's outer ends run no further than the canvas (fix round 1).
+		t.near(last.fromM, 0, 1e-3, `{id}: the canvas starts at the right-hand slat`)
+		t.near(first.fromM + first.widthM, shape.lengthM, 1e-3, `{id}: and ends at the left-hand one`)
 	end
 end

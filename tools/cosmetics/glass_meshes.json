@@ -1,0 +1,12 @@
+{
+  "_about": "Store windscreen meshes strip_shapes.py reads from Studio's cache, by mesh id: meshSize is the MeshPart's MeshSize (the mesh's own bounds, studs) and faces its full-detail triangle count as rbxcache decodes it. A cached mesh is used only when its bounds match meshSize and its face count matches; exactly one distinct mesh must match. Measured in Studio Edit 2026-09-28: AssetService:CreateMeshPartAsync(Content.fromUri('rbxassetid://<id>')).MeshSize. Add a car's glass here when it gets a strip.",
+  "9339153338": { "car": "hatch", "piece": "Glass", "meshSize": [22.896791, 10.774961, 49.040031], "faces": 548 },
+  "7408695235": { "car": "pickup", "piece": "Shell", "meshSize": [1.890650, 1.325550, 4.366899], "faces": 2974 },
+  "5991320872": { "car": "cruiser", "piece": "Shell", "meshSize": [2.057820, 1.121204, 4.913980], "faces": 1008 },
+  "1080666644": { "car": "krownvik", "piece": "Glass_7", "meshSize": [11.991289, 2.959590, 21.126469], "faces": 108 },
+  "14406441009": { "car": "krownvikfleet", "piece": "Glass_3", "meshSize": [6.225820, 1.520006, 2.500570], "faces": 28 },
+  "4719880211": { "car": "lekzas", "piece": "Glass", "meshSize": [5.320354, 1.454061, 9.992422], "faces": 669 },
+  "1579933123": { "car": "kamri07", "piece": "P37", "meshSize": [149.520004, 43.859989, 91.620003], "faces": 210 },
+  "8941426631": { "car": "batrol", "piece": "Glass", "meshSize": [15.881194, 3.972329, 6.068004], "faces": 520 },
+  "7183513741": { "car": "kruzer80", "piece": "Glass_7", "meshSize": [1.620489, 0.530043, 0.569341], "faces": 48 }
+}

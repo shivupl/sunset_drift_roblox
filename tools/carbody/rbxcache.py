@@ -142,6 +142,17 @@ def decode(path, with_uvs=False):
     return r if with_uvs else r[:2]
 
 
+def extents(points):
+    """A decoded mesh's bounding-box size, or None where it is unusable: some
+    cached meshes decode with NaN bounds (one NaN error scrambles a whole
+    ranking, so a mesh that matched exactly ranked below misses), and flat
+    ones have a zero side."""
+    ext = points.max(0) - points.min(0)
+    if not np.isfinite(ext).all() or (ext <= 1e-6).any():
+        return None
+    return ext
+
+
 def find(size, cache=CACHE):
     """Cached meshes ranked by how well their bounds match `size` (studs)
     up to one uniform scale: [(error, path, triangles, scale)]."""
@@ -154,10 +165,8 @@ def find(size, cache=CACHE):
             continue
         if r is None:
             continue
-        ext = r[0].max(0) - r[0].min(0)
-        # Some cached meshes decode with NaN bounds; one NaN error scrambles
-        # the whole sort (a mesh that matched exactly ranked below misses).
-        if not np.isfinite(ext).all() or (ext <= 1e-6).any():
+        ext = extents(r[0])
+        if ext is None:
             continue
         k = size / ext
         ranked.append((float(np.ptp(k) / k.mean()), path, len(r[1]), float(k.mean())))

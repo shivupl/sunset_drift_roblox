@@ -266,8 +266,11 @@ local function slat(shape: CarStripShapes.Shape, sl: CarStripShapes.Slat, i: num
 	clip.ClipsDescendants = true
 	clip.Parent = gui
 	local canvas = Instance.new("Frame")
-	canvas.Size = UDim2.fromOffset(shape.lengthM * R.stripPixelsPerM, shape.heightM * R.stripPixelsPerM)
-	canvas.Position = UDim2.fromOffset(-sl.fromM * R.stripPixelsPerM, 0)
+	-- In scale, not pixels: UDim offsets are whole pixels, so each slat's
+	-- shift would round on its own and neighbours could repeat or skip a
+	-- column (up to 2.5 mm) where a letter crosses a join (fix round 1, M1).
+	canvas.Size = UDim2.fromScale(shape.lengthM / sl.widthM, 1)
+	canvas.Position = UDim2.fromScale(-sl.fromM / sl.widthM, 0)
 	canvas.BorderSizePixel = 0
 	canvas.Parent = clip
 	local gradient = Instance.new("UIGradient")
