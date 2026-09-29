@@ -40,9 +40,8 @@ templates with a cylinder fallback and an optional uploaded-mesh path; pipes rou
 in the panel (ids and the `decal` slot key unchanged). Final Play pass: drive-in, walk-in and two
 drive-outs worked; every exhaust item's outlets sat on its tip mouths (0.12 mm at worst) and REV
 flamed from them; strips shown on five cars; lift-off pops and flames on the same frame; specs 10189
-passed, 14 failed (the VehicleRig baseline). Open for the owner: upload the four tip meshes
-(`meshAssetId`), since a client that has shown a Krown Vik and a Batrol has too few EditableMesh slots
-left for mesh tips and falls back to cylinders; prices of the new items; once the owner's CarCatalog
+passed, 14 failed (the VehicleRig baseline). The four tip meshes are uploaded (2026-09-29, `meshAssetId`, the slash with its heat
+colours as a texture), so tips no longer use EditableMesh slots. Open for the owner: prices of the new items; once the owner's CarCatalog
 changes (the kamri's new Body, Glass and Interior) are committed, rerun `python3 tools/cosmetics/strip_shapes.py`:
 the committed kamri strip was fitted to the working copy's Glass, and on the committed catalog's Glass
 it floats about 3.5 cm off the screen. With a kamri in view a client now keeps 5 EditableMesh slots

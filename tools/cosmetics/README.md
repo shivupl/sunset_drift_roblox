@@ -82,9 +82,9 @@ What the importer does to these files (Studio, 2026-09-29):
   `textureAssetId`; the game puts it on the uploaded mesh as `TextureID`.
 
 Uploaded 2026-09-29: Rolled 120516588176242, QuadPair 104062955067546,
-Oval 103926423140060; Slash_ramp.png 81508963160342. The first Slash upload
-(102623740780891) has no texture coordinates and is unused: the Slash stays
-on its generated mesh until the textured `Slash.obj` is imported.
+Oval 103926423140060, Slash (textured) 119518854633085; Slash_ramp.png
+81508963160342. The first Slash upload (102623740780891) has no texture
+coordinates and is unused.
 
 Re-upload whenever the generator changes a shape; `offsetM` and the bores in
 the generated module must match the uploaded mesh.

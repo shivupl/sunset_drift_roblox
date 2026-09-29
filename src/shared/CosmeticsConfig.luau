@@ -114,9 +114,9 @@ CosmeticsConfig.render = {
 		-- The slash's heat colours: Studio's importer drops OBJ vertex colours
 		-- (its first upload, 102623740780891, came in plain), so its OBJ carries
 		-- texture coordinates into a colour strip (tools/cosmetics/out
-		-- Slash_ramp.png, uploaded as textureAssetId). Until the textured OBJ is
-		-- uploaded (meshAssetId), it stays on its generated mesh.
-		slash = { mesh = "Slash", baked = true, textureAssetId = 81508963160342 },
+		-- Slash_ramp.png, uploaded as textureAssetId); the textured OBJ was
+		-- imported 2026-09-29 as meshAssetId.
+		slash = { mesh = "Slash", baked = true, meshAssetId = 119518854633085, textureAssetId = 81508963160342 },
 		-- tileAspect: the garage panel draws its tip this many times wider than
 		-- tall (the barrel is 25 x 16 cm).
 		oval = { mesh = "Oval", tileAspect = 1.56, meshAssetId = 103926423140060 },
