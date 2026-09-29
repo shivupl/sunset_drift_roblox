@@ -2,7 +2,7 @@
 -- The garage panel: the side panel of the customisation view (garage spec
 -- docs/superpowers/specs/2026-09-28-garage-design.md §4 and §5). The owner's
 -- rules, 2026-09-28: "Down one side, car fills the rest. Categories: my cars,
--- paint, wheels, plates, lights, decals, exhaust. Every change previews live
+-- paint, wheels, plates, lights, sun strips, exhaust. Every change previews live
 -- on the car. No confirm step until money is involved. Owned versus unowned
 -- is unmistakable. Unowned previews with a price. Nothing is bought without
 -- an explicit confirm. The panel collapses so the player can just look at the
@@ -102,7 +102,9 @@ local TABS: { { id: Tab, label: string } } = {
 	{ id = "rims", label = "WHEELS" },
 	{ id = "plates", label = "PLATES" },
 	{ id = "lights", label = "LIGHTS" },
-	{ id = "decal", label = "DECALS" },
+	-- "decal" stays the slot key (stored on profiles); the player reads SUN
+	-- STRIPS, the banner across a windscreen's top (garage round 3 §4).
+	{ id = "decal", label = "SUN STRIPS" },
 	{ id = "exhaust", label = "EXHAUST" },
 }
 
@@ -113,7 +115,7 @@ local CATEGORY_NAMES: { [string]: string } = {
 	rims = "Wheel finish",
 	head = "Headlight colour",
 	tail = "Tail light colour",
-	decal = "Windscreen strip",
+	decal = "Sun strip",
 	exhaust = "Exhaust",
 	tint = "Window tint",
 }
@@ -1424,12 +1426,14 @@ buildTab = function(u: UI)
 		tail.LayoutOrder = 3
 		itemCards(u, newGrid(u, u.grid, 4), "tail", 0)
 	elseif tab == "decal" then
+		local title = UIKit.title(u.grid, "SUN STRIPS", "شريط", "title", touch)
+		title.LayoutOrder = 1
 		if not shows("decal") then
-			local note = UIKit.text(u.sub, "This car has no spot for a windscreen strip yet", "caption", "sand", touch, true)
+			local note = UIKit.text(u.sub, "This car has no spot for a sun strip yet", "caption", "sand", touch, true)
 			note.Name = "NoSpot"
 			note.LayoutOrder = 1
 		end
-		itemCards(u, newGrid(u, u.grid, 1), "decal", 0)
+		itemCards(u, newGrid(u, u.grid, 2), "decal", 0)
 	elseif tab == "exhaust" then
 		if not shows("exhaust") then
 			local note = UIKit.text(u.sub, "This car has no spot for exhaust tips yet", "caption", "sand", touch, true)
@@ -1554,7 +1558,8 @@ relayout = function(u: UI)
 	local y = headerH + gap
 
 	-- The categories wrap onto as many rows as the width needs (review fix
-	-- round 1: a scrolling row hid DECALS and EXHAUST off the edge).
+	-- round 1: a scrolling row hid DECALS, now SUN STRIPS, and EXHAUST off the
+	-- edge).
 	local chipList: { GuiObject } = {}
 	for _, entry in TABS do
 		table.insert(chipList, u.chipButtons[entry.id])

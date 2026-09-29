@@ -211,7 +211,7 @@ return function(t: T)
 			local inletM = Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3])
 			for _, way in { "mesh", "fallback" } do
 				local at = if way == "mesh" then inletM else fallbackBack
-				local inlets = CarCosmeticMounts.pipeInlets(e, n, R, at, at)
+				local inlets = CarCosmeticMounts.pipeInlets(e, n, R, at, style.pair == true)
 				t.eq(#inlets, if n >= 4 then 2 else n, `{id} {item.id} {way}: one pipe per tip, one per quad pair`)
 				for i, inlet in inlets do
 					local what = `{id} {item.id} {way} pipe {i}`

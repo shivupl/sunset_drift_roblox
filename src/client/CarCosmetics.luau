@@ -662,26 +662,24 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 		if template then
 			s.tipStyle = styleName
 		end
-		-- What each mesh sits at: a tip's own frame, or a quad pair's frame.
-		local frames: { CFrame }
-		if style.pair then
-			frames = CarCosmeticMounts.quadPairFrames(spot, R.quadPairGapM)
-		else
-			frames = CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM)
-		end
+		-- Pair or single comes from the style alone (CosmeticsConfig.spec
+		-- holds pair to exactly the quad items): the pieces, their pipes and
+		-- the fallback's pipes all follow it (CarCosmeticMounts.pieceFrames).
+		local paired = style.pair == true
 		-- Each pipe's inlet frame (CarCosmeticMounts.pipeInlets, the same the
 		-- spec walks): one per tip, or one per quad pair.
 		local inlets: { CFrame }
 		if template then
 			local inletM = Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3])
-			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, inletM, inletM)
+			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, inletM, paired)
+			local frames = CarCosmeticMounts.pieceFrames(spot, n, R.quadPairGapM, paired)
 			for i, frame in frames do
-				local tip = meshAt(if style.pair then `TipPair{i}` else `Tip{i}`, template, mesh, handles, sc, frame)
+				local tip = meshAt(if paired then `TipPair{i}` else `Tip{i}`, template, mesh, handles, sc, frame)
 				tip.Color = colour
 				tip.Material = material
 				tip.Parent = folder
 				for j, b in mesh.bores do
-					local id = if style.pair then (i - 1) * 2 + j else i
+					local id = if paired then (i - 1) * 2 + j else i
 					boreDisc(`Bore{id}`, handles, sc, frame, b).Parent = folder
 				end
 			end
@@ -693,7 +691,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 			-- starts between the pair's two cylinders, overlapping both).
 			local len = -tipMesh("Rolled").inletM[3]
 			local back = Vector3.new(0, 0, -len)
-			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, back, back)
+			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, back, paired)
 			for i, f in CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM) do
 				local tip = cylinderAt(`Tip{i}`, handles, sc, f * CFrame.new(0, 0, -len / 2), len, R.tipRadiusM)
 				tip.Color = colour

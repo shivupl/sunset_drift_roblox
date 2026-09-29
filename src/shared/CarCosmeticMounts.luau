@@ -297,9 +297,13 @@ CarCosmeticMounts.cars = {
 	},
 	-- Strip: outside the dark all-round glass (Glass material: a SurfaceGui
 	-- behind it does not show, BEHAVIOURS.md), from its windscreen's top edge.
-	-- 5.5 cm in from each end: the glass runs on under the A-pillar trim, and
-	-- the mesh's own outline put the strip's ends over the pillars (fix round
-	-- 1, from a close front capture).
+	-- 5.5 cm in from each end: the glass runs on under the A-pillar trim. At
+	-- the mesh's own outline (1.40 m) the strip stopped about 1 cm short of
+	-- the pillar head-on, but from the garage's front 3/4 its far end poked
+	-- about 2-3 cm over the A-pillar: the flat end slat stands off where the
+	-- glass wraps round. A 2 cm inset still touched the pillar from there;
+	-- 5.5 cm clears it with a margin (measured 2026-09-29, ruler balls and
+	-- strip mock-ups at 0, 2 and 5.5 cm).
 	batrol = {
 		-- Windows: Glass is every window in one piece.
 		windows = { side = {}, screen = {}, whole = { "Glass" } },
@@ -516,21 +520,28 @@ function CarCosmeticMounts.pipeFrontZ(e: Exhaust, k: PipeKnobs): number
 	return e.tips.posM[3] - k.pipeRunFromM - e.tips.pipeLengthM
 end
 
--- Each tip pipe's inlet frame, car metres, +Z out of the tip, for n tips:
--- one per tip at `inletM` in its tip frame, except a quad (n >= 4), which
--- has one pipe per pair at `pairInletM` in its pair frame (quadPairFrames).
--- The mesh quad's inlet is its Y; the cylinder fallback's pair pipe starts
--- between the pair's two cylinders, overlapping both (fix round 1: four
--- pipes at the tips' own x ran the pickup's outer two through its tyres).
-function CarCosmeticMounts.pipeInlets(e: Exhaust, n: number, k: PipeKnobs, inletM: Vector3, pairInletM: Vector3): { CFrame }
-	local out: { CFrame } = {}
-	if n >= 4 then
-		for _, f in CarCosmeticMounts.quadPairFrames(e, k.quadPairGapM) do
-			table.insert(out, f * CFrame.new(pairInletM))
-		end
-		return out
+-- Where each tip piece sits, car metres, +Z out of its mouth(s): one frame
+-- per quad pair (quadPairFrames) when the style is a pair (CosmeticsConfig
+-- render.tipStyles[].pair, QuadPair: one mesh and one Y inlet per pair),
+-- one per tip (tipFrames) otherwise. The one place that decides pair or
+-- single, so the tips, their pipes and the spec agree (final review: the
+-- pipes used to key off n >= 4 while the tips keyed off the style).
+function CarCosmeticMounts.pieceFrames(e: Exhaust, n: number, quadPairGapM: number, paired: boolean): { CFrame }
+	if paired then
+		return CarCosmeticMounts.quadPairFrames(e, quadPairGapM)
 	end
-	for _, f in CarCosmeticMounts.tipFrames(e, n, k.quadPairGapM) do
+	return CarCosmeticMounts.tipFrames(e, n, quadPairGapM)
+end
+
+-- Each tip pipe's inlet frame, car metres, +Z out of the tip: one per piece
+-- (pieceFrames) at `inletM` in that piece's frame, so a paired style has one
+-- pipe per pair. The mesh quad's inlet is its Y; the cylinder fallback's
+-- pair pipe starts between the pair's two cylinders, overlapping both (fix
+-- round 1: four pipes at the tips' own x ran the pickup's outer two through
+-- its tyres).
+function CarCosmeticMounts.pipeInlets(e: Exhaust, n: number, k: PipeKnobs, inletM: Vector3, paired: boolean): { CFrame }
+	local out: { CFrame } = {}
+	for _, f in CarCosmeticMounts.pieceFrames(e, n, k.quadPairGapM, paired) do
 		table.insert(out, f * CFrame.new(inletM))
 	end
 	return out

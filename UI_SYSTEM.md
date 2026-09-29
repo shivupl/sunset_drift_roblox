@@ -158,6 +158,13 @@ unmistakable at a glance:
 | **Previewing** (for sale, on the car now) | As for sale plus the sodium stroke, and a bar across the panel's foot: `PREVIEWING` and the price, with a primary `BUY` button |
 | **Rare** | A small `dusk` diamond before the name; nothing else changes |
 
+A category is named for what a player knows it as: the windscreen banner
+is `SUN STRIPS` (chip) with a `title` row `SUN STRIPS` / `شريط` over its
+cards, though the code, the slot key and the stored ids still say `decal`
+(garage round 3 §4; ids are on profiles and never change). The seven chips
+wrap onto two rows on desktop (5 + 2) and with `ForceTouch` (4 + 3), every
+label fitting its chip (measured 2026-09-29).
+
 A category's action that is not an item (the EXHAUST tab's `REV`, which
 plays the flames on the turntable car) is a `secondary` button in the
 category's sub row above the cards, never a card, and it costs nothing. A

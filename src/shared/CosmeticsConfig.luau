@@ -1,11 +1,12 @@
 --!strict
--- Garage cosmetics: paint, finish, rims, head/tail lamp colour, decals and
--- exhaust tips. Asked by the owner on 2026-09-28, alongside the garage and
--- customisation spec (hajwala-project-phases.md / the 2026-09-28 garage
--- design docs): every car should have paint, wheels, lights, a decal and an
--- exhaust to buy and swap, priced in the same economy as PlateConfig's plate
--- prices (10,000 to 1,000,000). The prices below are first guesses for the
--- owner to weigh against how fast cash is earned, same as PlateConfig's.
+-- Garage cosmetics: paint, finish, rims, head/tail lamp colour, sun strips
+-- (the "decal" category) and exhaust tips. Asked by the owner on
+-- 2026-09-28, alongside the garage and customisation spec
+-- (hajwala-project-phases.md / the 2026-09-28 garage design docs): every
+-- car should have paint, wheels, lights, a strip and an exhaust to buy and
+-- swap, priced in the same economy as PlateConfig's plate prices (10,000 to
+-- 1,000,000). The prices below are first guesses for the owner to weigh
+-- against how fast cash is earned, same as PlateConfig's.
 --
 -- Ids are permanent: they are stored on player profiles (as a CarLook
 -- string) and never renamed once shipped, only added to. A stock id per
@@ -69,7 +70,7 @@ CosmeticsConfig.render = {
 	-- value), so braking still reads over the tail lamps. Smoked (#4A0A0C)
 	-- brakes at #670E11, which is dim: raise this if braking gets lost.
 	brakeBrighten = 0.4,
-	-- The windscreen strip: thin cards, their canvas drawn at this many pixels
+	-- The sun strip: thin cards, their canvas drawn at this many pixels
 	-- per metre, not drawn past drawStuds (the text is unreadable by then).
 	stripThicknessM = 0.004,
 	stripPixelsPerM = 400,
@@ -490,7 +491,9 @@ CosmeticsConfig.items = {
 	{ id = "tail_deep", category = "tail", name = "Deep Red", price = 15000, color = Color3.fromHex("#8A0508") },
 	{ id = "tail_smoked", category = "tail", name = "Smoked", price = 25000, color = Color3.fromHex("#4A0A0C") },
 
-	-- DECAL: a windscreen/body strip with text, or none.
+	-- DECAL: the sun strip across the windscreen's top, with text, or none.
+	-- The player reads SUN STRIPS (garage round 3 §4); the category, slot key
+	-- and ids stay "decal" because profiles store them.
 	{ id = "decal_none", category = "decal", name = "None", price = 0 },
 	{ id = "decal_hajwala", category = "decal", name = "Hajwala Strip", price = 20000, text = "هجولة", stripColor = Color3.fromHex("#111111"), textColor = Color3.fromHex("#EDEAE2") },
 	{ id = "decal_sunset", category = "decal", name = "Sunset Drift", price = 20000, text = "SUNSET DRIFT", stripColor = Color3.fromHex("#111111"), textColor = Color3.fromHex("#FFBA5C") },

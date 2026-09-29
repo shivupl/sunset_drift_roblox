@@ -31,6 +31,19 @@ seated, flames at speed, walk-in and the phone layout all worked; specs 3058 pas
 dip at most 0.01 m. Still open for the owner: upshift and limiter pops (off by default), tint's mixed-version rollout,
 and the pickup's pipe through its bumper. Not merged, not pushed.
 
+**`garage-r3` (open, 2026-09-29): garage round 3, branched from `garage`, ready for owner review, not
+merged, not pushed.** Commits `0ee650f` (spec and plan) through the final pass ("Garage round 3: sun
+strips rename, docs, final pass"); spec and plan in docs/superpowers, `2026-09-28-garage-round3-*`.
+Exhaust tips modelled in Blender (rolled, quad pair, slash titanium, the new Big Oval) on EditableMesh
+templates with a cylinder fallback and an optional uploaded-mesh path; pipes routed up into each car
+(`riseM` per car); the windscreen strip moulded to each car's glass as 14 slats and renamed SUN STRIPS
+in the panel (ids and the `decal` slot key unchanged). Final Play pass: drive-in, walk-in and two
+drive-outs worked; every exhaust item's outlets sat on its tip mouths (0.12 mm at worst) and REV
+flamed from them; strips shown on five cars; lift-off pops and flames on the same frame; specs 10189
+passed, 14 failed (the VehicleRig baseline). Open for the owner: upload the four tip meshes
+(`meshAssetId`), since a client that has shown a Krown Vik and a Batrol has too few EditableMesh slots
+left for mesh tips and falls back to cylinders; prices of the new items.
+
 ## Parked, superseded: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 
 Pops and a flame burst at the exhaust tips, from the Kruzer 80 store model's A-Chassis
