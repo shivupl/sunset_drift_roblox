@@ -40,13 +40,17 @@ local R = CosmeticsConfig.render
 local OUTLET = "ExhaustOutlet"
 local OUTLETS = "ExhaustOutlets"
 
-type Original = { part: BasePart, color: Color3, material: Enum.Material, reflectance: number, sa: SurfaceAppearance?, saColor: Color3? }
+type Original = { part: BasePart, color: Color3, material: Enum.Material, reflectance: number, transparency: number, sa: SurfaceAppearance?, saColor: Color3? }
+-- A window piece and its role (CarCosmeticMounts windows).
+type WindowRole = "side" | "screen" | "whole"
+type Window = { o: Original, role: WindowRole }
 
 type State = {
 	body: Instance,
 	carId: string,
 	paint: { Original },
 	rims: { Original },
+	windows: { Window },
 	strip: { part: Part, frame: Frame, gradient: UIGradient, label: TextLabel }?,
 	exhaust: Folder?,
 }
@@ -61,6 +65,7 @@ local function remember(part: BasePart): Original
 		color = part.Color,
 		material = part.Material,
 		reflectance = part.Reflectance,
+		transparency = part.Transparency,
 		sa = sa,
 		saColor = if sa then sa.Color else nil,
 	}
@@ -77,7 +82,25 @@ local function collect(body: Instance, carId: string): State
 			wheelNames[`{piece.name}_{w.name}`] = true
 		end
 	end
-	local s: State = { body = body, carId = carId, paint = {}, rims = {} }
+	local s: State = { body = body, carId = carId, paint = {}, rims = {}, windows = {} }
+	local mounts = CarCosmeticMounts.cars[carId]
+	local windows = mounts and mounts.windows
+	local function addWindows(names: { string }?, role: WindowRole)
+		if not names then
+			return
+		end
+		for _, name in names do
+			local part = body:FindFirstChild(name)
+			if part and part:IsA("BasePart") then
+				table.insert(s.windows, { o = remember(part), role = role })
+			end
+		end
+	end
+	if windows then
+		addWindows(windows.side, "side")
+		addWindows(windows.screen, "screen")
+		addWindows(windows.whole, "whole")
+	end
 	local metal: { Original } = {}
 	for _, part in body:GetChildren() do
 		if not part:IsA("BasePart") then
@@ -137,6 +160,30 @@ local function rims(s: State, look: CarLook.Look)
 		o.part.Color = item.color or o.color
 		o.part.Material = item.material or o.material
 		o.part.Reflectance = if item.material then item.reflectance or 0 else o.reflectance
+	end
+end
+
+-- Window tint (CosmeticsConfig TINT): the film's colour on SmoothPlastic, at
+-- its transparency for the piece's role; an all-round piece takes halfway
+-- between the side and windscreen values. SmoothPlastic whatever the
+-- factory glass was: a Glass-material piece reads by its colour (the
+-- krownvik's is white at 0.3 and looks clear), so a dark film on Glass went
+-- pitch black at the same transparency (lab check, 2026-09-28). Stock puts
+-- every piece back as it was built.
+local function tint(s: State, look: CarLook.Look)
+	local item = CarLook.item(look, "tint")
+	local side, screen = item.glassTransparency, item.screenTransparency
+	for _, w in s.windows do
+		local o = w.o
+		if item.glassColor and side and screen then
+			o.part.Color = item.glassColor
+			o.part.Material = Enum.Material.SmoothPlastic
+			o.part.Transparency = if w.role == "side" then side elseif w.role == "screen" then screen else (side + screen) / 2
+		else
+			o.part.Color = o.color
+			o.part.Material = o.material
+			o.part.Transparency = o.transparency
+		end
 	end
 end
 
@@ -363,16 +410,23 @@ function CarCosmetics.paintable(carId: string): boolean
 	return false
 end
 
--- Whether this car has a spot for a windscreen strip or exhaust tips
--- (CarCosmeticMounts); the garage panel greys DECALS / EXHAUST items out on a
--- car without one, like paint on a car with no painted piece. Every catalog
--- car has both (CarCosmeticMounts.spec), so this guards a car added later.
-function CarCosmetics.hasSpot(carId: string, spot: "windscreen" | "exhaust"): boolean
+-- Whether this car has a spot for a windscreen strip, exhaust tips or
+-- window tint (CarCosmeticMounts); the garage panel greys DECALS / EXHAUST /
+-- TINT items out on a car without one, like paint on a car with no painted
+-- piece. Every catalog car has a strip and exhaust spot
+-- (CarCosmeticMounts.spec); the hatch, pickup and cruiser have no windows
+-- tint can show on.
+function CarCosmetics.hasSpot(carId: string, spot: "windscreen" | "exhaust" | "windows"): boolean
 	local mounts = CarCosmeticMounts.cars[carId]
 	if not mounts then
 		return false
 	end
-	return if spot == "windscreen" then mounts.windscreen ~= nil else mounts.exhaust ~= nil
+	if spot == "windscreen" then
+		return mounts.windscreen ~= nil
+	elseif spot == "exhaust" then
+		return mounts.exhaust ~= nil
+	end
+	return mounts.windows ~= nil
 end
 
 -- Puts this look on a car's built body. Safe to call again with a new look.
@@ -405,6 +459,7 @@ function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 	assert(s)
 	paint(s, look)
 	rims(s, look)
+	tint(s, look)
 	lamps(model, look)
 	strip(s, model, body, carId, look)
 	exhaust(s, model, body, carId, look)

@@ -36,6 +36,15 @@
 -- pipes (the hatch's, too close together at the centre), those stay visible
 -- but are not outlets.
 --
+-- windows: the glass pieces window tint recolours (garage round 2 §4), by
+-- body piece name. side: the side and rear windows, which take a film's
+-- glassTransparency. screen: the windscreen alone, which takes the film's
+-- lighter screenTransparency so it stays legal-looking. whole (optional): a
+-- piece that is the windscreen and other windows in one, which takes
+-- halfway between the two. A car whose glass is opaque or painted into a
+-- textured shell (hatch, pickup, cruiser) has no windows entry, and the
+-- garage greys TINT out on it.
+--
 -- A car with no entry (or no spot) shows no strip or no tips.
 --
 -- How each spot was measured: by eye in Studio Edit, like the plates
@@ -50,7 +59,8 @@ export type Windscreen = { posM: { number }, widthM: number, heightM: number, ti
 export type Outlet = { posM: { number }, dir: { number }?, factory: boolean?, pipeLengthM: number? }
 export type Tips = { posM: { number }, spreadM: number, pipeLengthM: number }
 export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number, quadOuterBumperZ: number? }
-export type Mounts = { windscreen: Windscreen?, exhaust: Exhaust? }
+export type Windows = { side: { string }, screen: { string }, whole: { string }? }
+export type Mounts = { windscreen: Windscreen?, exhaust: Exhaust?, windows: Windows? }
 
 local CarCosmeticMounts = {}
 
@@ -63,6 +73,8 @@ CarCosmeticMounts.cars = {
 	-- the screen's top at the roof, which is far back (z 0.17, the screen rakes
 	-- about 27°); crowned glass, so 2 cm proud of the edge line.
 	kamri = {
+		-- Windows: one generated glass piece all round.
+		windows = { side = {}, screen = {}, whole = { "Glass" } },
 		windscreen = { posM = { 0, 1.446, 0.081 }, widthM = 1.2, heightM = 0.12, tiltDeg = 63 },
 		-- Exhaust: the generated body has no pipe, so a factory one on the left
 		-- under the bumper's lower edge (face 2.45 m at 0.38 m up, from the
@@ -124,6 +136,9 @@ CarCosmeticMounts.cars = {
 	-- Strip: inside the glass, from the fleet car's windscreen piece (Glass_3:
 	-- top 1.375 m at z -0.235, rake 31°), checked from the front.
 	krownvik = {
+		-- Windows: six door and quarter lights; Glass_7 is the windscreen, roof
+		-- line and rear window in one piece.
+		windows = { side = { "Glass", "Glass_2", "Glass_3", "Glass_4", "Glass_5", "Glass_6" }, screen = {}, whole = { "Glass_7" } },
 		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
 		-- Exhaust: its own twin pipes (in Underbody) end under the bumper
 		-- corners, tilted about 8° down (side view, Underbody alone; ends at
@@ -143,6 +158,9 @@ CarCosmeticMounts.cars = {
 	},
 	-- Same body as the krownvik: same spots.
 	krownvikfleet = {
+		-- Windows: Glass_3 the windscreen, Glass_4 the rear window, the rest the
+		-- doors (Glass_6 and _7 are the textured grey upper door bands).
+		windows = { side = { "Glass", "Glass_2", "Glass_4", "Glass_5", "Glass_6", "Glass_7", "Glass_8" }, screen = { "Glass_3" } },
 		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
 		-- Exhaust: as the krownvik, its pipes (in Underbody_6) and bumper about
 		-- 1 cm further back (from below: 2.76 m at x ±0.715, 2.725 m at ±0.815).
@@ -159,6 +177,9 @@ CarCosmeticMounts.cars = {
 	-- Strip: inside the glass, just under the glass's top edge, checked from
 	-- the front.
 	lekzas = {
+		-- Windows: Glass is every window in one piece; Glass_2, the shade band
+		-- at the windscreen's top, is left as it is.
+		windows = { side = {}, screen = {}, whole = { "Glass" } },
 		windscreen = { posM = { 0, 1.33, -0.40 }, widthM = 1.2, heightM = 0.12, tiltDeg = 62 },
 		-- Exhaust: its own twin chrome tips (Chrome_2), turned slightly down,
 		-- in cut-outs of the lower valance (side view, Chrome_2 alone; ends at
@@ -176,6 +197,9 @@ CarCosmeticMounts.cars = {
 	-- Strip: inside the windscreen piece (P37: top 1.375 m at z -0.31, rake
 	-- 25.5°), under the black band at its top.
 	kamri07 = {
+		-- Windows: P37 the windscreen; P72 / P153 the front doors, P34 / P155
+		-- the rear doors, P172 the rear window.
+		windows = { side = { "P34", "P72", "P153", "P155", "P172" }, screen = { "P37" } },
 		windscreen = { posM = { 0, 1.312, -0.413 }, widthM = 1.25, heightM = 0.12, tiltDeg = 64.5 },
 		-- Exhaust: its own twin slash-cut tips (P50) off the mufflers (P31), under
 		-- the bumper (side view, those two alone: 2.28-2.34 m; from below).
@@ -193,6 +217,8 @@ CarCosmeticMounts.cars = {
 	-- Strip: inside the dark glass, between the A-pillars (an upright screen,
 	-- about 50° from level).
 	batrol = {
+		-- Windows: Glass is every window in one piece.
+		windows = { side = {}, screen = {}, whole = { "Glass" } },
 		windscreen = { posM = { 0, 1.71, -0.47 }, widthM = 1.24, heightM = 0.12, tiltDeg = 40 },
 		-- Exhaust: its own single pipe (in Trim) runs back and out to the left
 		-- rear corner, about 29° outward (from below), ending under the bumper
@@ -207,6 +233,9 @@ CarCosmeticMounts.cars = {
 	-- Strip: at the top of the windscreen piece (Glass_7: top 1.99 m at
 	-- z -0.295, rake 43°).
 	kruzer80 = {
+		-- Windows: Glass_7 the windscreen; Glass to Glass_4 the doors, Glass_6
+		-- the rear quarters, Glass_5 the tailgate.
+		windows = { side = { "Glass", "Glass_2", "Glass_3", "Glass_4", "Glass_5", "Glass_6" }, screen = { "Glass_7" } },
 		windscreen = { posM = { 0, 1.95, -0.34 }, widthM = 1.28, heightM = 0.12, tiltDeg = 47 },
 		-- Exhaust: its own single pipe (in Chrome_13) on the right under the
 		-- black bumper, turned a little out and about 8° down (side view,

@@ -214,6 +214,17 @@ local function encode(p: Profile, old: any): any
 	return out
 end
 
+-- The pure halves of a save, for EconomyCodec.spec (garage round 2 §4,
+-- 2026-09-28: "continue to create tests"): how a stored profile is read and
+-- what a write puts back. Exposed as they are, not moved to a shared module,
+-- so the running code is exactly the tested code and the server keeps the
+-- only copy; nothing here touches a store or a player.
+Economy.codec = {
+	fresh = fresh,
+	readProfile = readProfile,
+	encode = encode,
+}
+
 local function lock(player: Player)
 	while writing[player] do
 		task.wait()

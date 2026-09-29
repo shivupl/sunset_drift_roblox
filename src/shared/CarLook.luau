@@ -20,6 +20,7 @@ export type Look = {
 	tail: string?,
 	decal: string?,
 	exhaust: string?,
+	tint: string?, -- garage round 2 §4; absent from every string written before it
 	plate: string?,
 }
 

@@ -49,6 +49,24 @@ return function(t: T)
 	t.eq(cleaned.rims, "rims_stock", "clean keeps a stock id without asking owns")
 	t.eq(cleaned.plate, "SA-1-A-1234", "clean keeps plate")
 
+	-- The tint slot (garage round 2 §4): round trips, sits last in the
+	-- string, and a string written before tint existed decodes the same.
+	local tinted: CarLook.Look = { paint = "paint_teal", exhaust = "exhaust_quad", tint = "tint_limo" }
+	local tintString = CarLook.encode(tinted)
+	t.eq(tintString, "paint=paint_teal;exhaust=exhaust_quad;tint=tint_limo", "tint is written last")
+	local tintBack = CarLook.decode(tintString)
+	t.eq(tintBack.tint, "tint_limo", "round trip keeps tint")
+	t.eq(tintBack.paint, "paint_teal", "round trip with tint keeps paint")
+	t.eq(tintBack.exhaust, "exhaust_quad", "round trip with tint keeps exhaust")
+	local before = CarLook.decode("paint=paint_pearl;rims=rims_gold;decal=decal_hajwala")
+	t.eq(before.paint, "paint_pearl", "an old string still decodes its paint")
+	t.eq(before.decal, "decal_hajwala", "an old string still decodes its decal")
+	t.eq(before.tint, nil, "an old string has no tint")
+	t.eq(CarLook.encode(before), "paint=paint_pearl;rims=rims_gold;decal=decal_hajwala", "an old look re-encodes to the same string")
+	t.eq(CarLook.encode({ tint = "tint_stock" }), "", "the stock tint is not written")
+	t.ok(isEmpty(CarLook.decode("tint=paint_red")), "decode drops a paint in the tint slot")
+	t.eq(CarLook.item({}, "tint").id, "tint_stock", "an empty look's tint is the stock item")
+
 	t.eq(CarLook.item({}, "paint").id, "paint_stock", "an empty look's paint is the stock item")
 	t.eq(CarLook.item({}, "paint").id, CosmeticsConfig.stockId("paint"), "matches CosmeticsConfig.stockId")
 end

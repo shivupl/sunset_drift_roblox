@@ -115,6 +115,7 @@ local CATEGORY_NAMES: { [string]: string } = {
 	tail = "Tail light colour",
 	decal = "Windscreen strip",
 	exhaust = "Exhaust",
+	tint = "Window tint",
 }
 
 -- CosmeticsAction statuses, as the player reads them.
@@ -361,21 +362,24 @@ local function paintable(): boolean
 end
 
 -- Whether this car shows a slot's items at all: paint and finish need a
--- painted piece, the strip and tips a spot (CarCosmetics.hasSpot). Items
--- the car can't show are greyed out and can't be chosen (final review fix 5).
-local function showsSlot(slot: string, canPaint: boolean, hasStrip: boolean, hasTips: boolean): boolean
+-- painted piece, the strip, tips and tint a spot (CarCosmetics.hasSpot).
+-- Items the car can't show are greyed out and can't be chosen (final review
+-- fix 5).
+local function showsSlot(slot: string, canPaint: boolean, hasStrip: boolean, hasTips: boolean, hasWindows: boolean): boolean
 	if slot == "paint" or slot == "finish" then
 		return canPaint
 	elseif slot == "decal" then
 		return hasStrip
 	elseif slot == "exhaust" then
 		return hasTips
+	elseif slot == "tint" then
+		return hasWindows
 	end
 	return true
 end
 
 local function shows(slot: string): boolean
-	return showsSlot(slot, paintable(), CarCosmetics.hasSpot(carId, "windscreen"), CarCosmetics.hasSpot(carId, "exhaust"))
+	return showsSlot(slot, paintable(), CarCosmetics.hasSpot(carId, "windscreen"), CarCosmetics.hasSpot(carId, "exhaust"), CarCosmetics.hasSpot(carId, "windows"))
 end
 
 ------------------------------------------------------------------------
@@ -565,6 +569,23 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 		else
 			tileBlank(tile)
 		end
+	elseif c == "tint" then
+		-- The film over sand, as the desert looks through a side window.
+		if item.glassColor and item.glassTransparency then
+			tile.BackgroundColor3 = C.sand
+			local film = Instance.new("Frame")
+			film.Name = "Film"
+			film.BorderSizePixel = 0
+			film.Size = UDim2.fromScale(1, 1)
+			film.BackgroundColor3 = item.glassColor
+			film.BackgroundTransparency = item.glassTransparency
+			film.Parent = tile
+			-- Limo's film is nearly the card's own colour: an edge keeps the
+			-- swatch from vanishing, as the dark exhaust tips have.
+			UIKit.stroke(tile, "asphalt500", UITheme.stroke.hairline)
+		else
+			tileBlank(tile)
+		end
 	else
 		tileBlank(tile)
 	end
@@ -591,6 +612,7 @@ type Context = {
 	paintable: boolean,
 	hasStrip: boolean,
 	hasTips: boolean,
+	hasWindows: boolean,
 	owned: { [string]: boolean },
 }
 
@@ -603,6 +625,7 @@ local function context(): Context
 		paintable = paintable(),
 		hasStrip = CarCosmetics.hasSpot(carId, "windscreen"),
 		hasTips = CarCosmetics.hasSpot(carId, "exhaust"),
+		hasWindows = CarCosmetics.hasSpot(carId, "windows"),
 		owned = ownedIds(),
 	}
 end
@@ -618,7 +641,7 @@ local function stateOf(card: Card, ctx: Context): CardState
 			driving = ctx.driving == card.key,
 		}
 	end
-	local disabled = not showsSlot(slot, ctx.paintable, ctx.hasStrip, ctx.hasTips)
+	local disabled = not showsSlot(slot, ctx.paintable, ctx.hasStrip, ctx.hasTips, ctx.hasWindows)
 	return {
 		disabled = disabled,
 		onCar = slotValue(ctx.saved, slot) == card.key,
@@ -1380,6 +1403,15 @@ buildTab = function(u: UI)
 			note.LayoutOrder = 2
 		end
 		itemCards(u, newGrid(u, u.grid, 1), "paint", 0)
+		-- Window tint, the third row under PAINT (garage round 2 §4).
+		local tint = UIKit.title(u.grid, "WINDOW TINT", "تظليل", "title", touch)
+		tint.LayoutOrder = 2
+		if not shows("tint") then
+			local note = UIKit.text(u.grid, "This car's windows can't be tinted yet", "caption", "sand", touch, true)
+			note.Name = "NoWindows"
+			note.LayoutOrder = 3
+		end
+		itemCards(u, newGrid(u, u.grid, 4), "tint", 0)
 	elseif tab == "rims" then
 		itemCards(u, newGrid(u, u.grid, 1), "rims", 0)
 	elseif tab == "lights" then

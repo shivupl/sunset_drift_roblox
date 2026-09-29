@@ -56,6 +56,51 @@ return function(t: T)
 		end
 	end
 
+	-- Window tint (garage round 2 §4): every film has a colour and both
+	-- transparencies, the windscreen's always lighter than the sides' (a
+	-- legal-looking windscreen), none opaque, and darker up the ladder.
+	local films = {}
+	for _, item in CosmeticsConfig.inCategory("tint") do
+		if item.price > 0 then
+			table.insert(films, item)
+			local side, screen = item.glassTransparency, item.screenTransparency
+			t.ok(item.glassColor ~= nil, `{item.id} has a glassColor`)
+			t.ok(side ~= nil and side > 0 and side < 1, `{item.id} glassTransparency in (0, 1)`)
+			t.ok(screen ~= nil and screen >= 0.5 and screen < 1, `{item.id} screenTransparency at least 0.5`)
+			t.ok(side ~= nil and screen ~= nil and screen > side, `{item.id} windscreen lighter than the sides`)
+		else
+			t.eq(item.glassColor, nil, "the factory tint has no film")
+		end
+	end
+	t.eq(#films, 3, "three tint films (Light, Dark, Limo)")
+	for i = 2, #films do
+		t.ok((films[i].glassTransparency :: number) < (films[i - 1].glassTransparency :: number), `{films[i].id} is darker than {films[i - 1].id}`)
+	end
+
+	-- Round 2's new items exist in their categories (ids are permanent).
+	for id, category in {
+		paint_clay = "paint", paint_teal = "paint", paint_gulf = "paint", paint_olive = "paint",
+		rims_red = "rims", rims_champagne = "rims",
+		decal_natl = "decal", decal_white = "decal",
+		tint_stock = "tint", tint_light = "tint", tint_dark = "tint", tint_limo = "tint",
+	} :: { [string]: string } do
+		local item = CosmeticsConfig.find(id)
+		t.ok(item ~= nil and (item.category :: string) == category, `{id} is a {category} item`)
+	end
+	-- A decal draws a strip with readable text (or none at all).
+	for _, item in CosmeticsConfig.inCategory("decal") do
+		if item.price > 0 then
+			t.ok(item.stripColor ~= nil, `{item.id} has a stripColor`)
+			t.ok(item.text ~= nil, `{item.id} has text ("" for none)`)
+			if item.text ~= "" then
+				t.ok(item.textColor ~= nil, `{item.id} has a textColor`)
+			end
+		end
+	end
+	-- tint is the last slot, so every look string written before it is
+	-- unchanged.
+	t.eq(CosmeticsConfig.CATEGORIES[#CosmeticsConfig.CATEGORIES], "tint", "tint is the last category")
+
 	-- Flames get bigger up the exhaust ladder: factory smallest, titanium
 	-- largest (the spec's "factory small ... sport tips larger").
 	local size = function(id: string): number

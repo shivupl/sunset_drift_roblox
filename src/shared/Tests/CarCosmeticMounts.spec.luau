@@ -25,8 +25,12 @@ return function(t: T)
 	t.ok(R.pipeRadiusM < R.boreRadiusM, "a tip's pipe hides inside its bore")
 	t.ok(R.quadPairGapM / 2 <= 2 * R.tipRadiusM, "a quad pair sits over the pipe between its tips")
 
+	-- The cars whose glass is opaque or part of a textured shell have no
+	-- windows; every other car does, so a new car can't ship without tint.
+	local NO_WINDOWS = { hatch = true, pickup = true, cruiser = true }
 	for id in ConfigLoader.catalog().cars do
 		local m = CarCosmeticMounts.cars[id]
+		t.eq(m ~= nil and m.windows ~= nil, not NO_WINDOWS[id], `{id}: has windows for tint unless its glass can't take it`)
 		t.ok(m ~= nil, `{id}: has cosmetic spots`)
 		local w = if m then m.windscreen else nil
 		local e = if m then m.exhaust else nil
@@ -36,6 +40,26 @@ return function(t: T)
 			t.eq(#w.posM, 3, `{id} windscreen: x, y, z`)
 			t.ok(w.posM[3] < 0.5, `{id} windscreen: toward the front`)
 			t.ok(w.widthM > 0 and w.heightM > 0, `{id} windscreen: has a size`)
+		end
+		-- Window tint (garage round 2 §4): every named window is a real body
+		-- piece, named once, and something is tinted.
+		local win = if m then m.windows else nil
+		if win then
+			local pieces: { [string]: boolean } = {}
+			for _, piece in ConfigLoader.entry(id).body.pieces do
+				pieces[piece.name] = true
+			end
+			local seen: { [string]: boolean } = {}
+			local n = 0
+			for _, list in { win.side, win.screen, win.whole or {} } do
+				for _, name in list do
+					t.ok(pieces[name] == true, `{id} windows: {name} is a body piece`)
+					t.ok(not seen[name], `{id} windows: {name} listed once`)
+					seen[name] = true
+					n += 1
+				end
+			end
+			t.ok(n > 0, `{id} windows: at least one piece`)
 		end
 		if not e then
 			continue

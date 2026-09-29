@@ -741,11 +741,26 @@ Parts per car are the `LookExhaust` folder: 1 invisible outlet holder, plus per 
 | chrome | Glass, 0.15 | none | pale silver tinted by the paint (0.3 with the colour lightened read as a plain white car) |
 
 - **Rims:** chrome is Glass 0.15 (#B8BCC2) and gold is Glass 0.05 (#B8892E). Gold reads as bright gold with a sheen; chrome reads near white.
+- **Round 2 additions** (2026-09-28, lit bay, kamri07 / lekzas / kruzer80 / krownvik / batrol / fleet): Candy Red rims (Glass 0, #A3161C) read as bright gloss red; Champagne (Glass 0.05, #C4AE84) as cream gold. The bay lifts and warms every paint, so the new paints were picked on the car, not the swatch: Najd Clay #6B4636 renders terracotta (#9A4B30 rendered as a second Sodium Orange), Oasis Teal #1E6B68 a bright teal, Gulf Blue #7A9BB5 a pale blue (it replaced a saffron that rendered as a second Sodium), Wadi Olive #474E36 a military olive (#5C5A3C read mustard beside Dune Gold). Decals: Natl (نطل, green on black) and White Strip (HAJWALA, black on white; the most readable strip from the view).
 - **The knobs:** each finish item's `material`, `reflectance`, `darken` and `desaturate`. Glass reflectance is very steep: 0.04 already washes a colour.
 - **Not reachable under ShadowMap:** a mirror chrome. Red chrome reads salmon.
 
 Paint and finish only show on cars with `paint = true` body pieces. The pickup and cruiser are single textured shells with none, so `CarCosmetics.paintable(carId)` is false for them and the garage panel greys paint and finish out. **Owner follow-up:** split a paintable body piece out of those shells in CarCatalog.
 Likewise a car with no windscreen or exhaust spot in `CarCosmeticMounts` would get its DECALS or EXHAUST items greyed out (`CarCosmetics.hasSpot(carId, "windscreen" | "exhaust")`); every catalog car has both today, and `CarCosmeticMounts.spec` fails if a new car ships without them.
+
+**Window tint** (garage round 2 §4, 2026-09-28; the TINT items, a third row under PAINT). Each car lists its glass pieces in `CarCosmeticMounts` `windows`: `side` (door, quarter and rear windows), `screen` (the windscreen alone) and `whole` (one piece that is the windscreen and other windows together: the lekzas, batrol and kamri all-round glass, and the krownvik's windscreen-roof-rear piece). A film puts every listed piece on SmoothPlastic in its `glassColor`, at `glassTransparency` for side, `screenTransparency` for screen and halfway between for whole. Factory puts each piece's colour, material and transparency back exactly (checked on all ten cars: no body part differs after a full look and back to stock).
+
+| Film | side | screen | whole | Read in the lit bay |
+|---|---|---|---|---|
+| Light | 0.5 | 0.7 | 0.6 | clear, cabin plainly visible; lighter than the kamri07's factory doors (0.2) |
+| Dark | 0.3 | 0.62 | 0.46 | smoked sides, cabin still visible through the windscreen |
+| Limo | 0.12 | 0.55 | 0.335 | near-black sides with a little depth; windscreen still shows the dash and the strip |
+
+- SmoothPlastic whatever the factory glass was: the krownvik's glass is white Glass at 0.3 and reads clear, and a dark colour on Glass at the same transparency went pitch black, strip and all.
+- Absolute, not relative to factory: a film limited to "never clearer than factory" did nothing at all on the kamri07, whose doors are already 0.2.
+- The strip stays readable under every film (inside strips on the lekzas, krownvik and fleet were checked at Limo; the lekzas's all-round glass was also checked at 0.2).
+- The hatch (opaque black glass mesh), pickup and cruiser (glass painted into the shell) have no `windows`; TINT greys out with "This car's windows can't be tinted yet". `CarCosmeticMounts.spec` fails if any other car ships without windows, or lists a piece its body does not have.
+- **The knobs:** each film's `glassTransparency` / `screenTransparency` / `glassColor`. Keep `screenTransparency` at 0.5 or more (the spec checks it and that it is above the side value), so windscreens stay legal-looking.
 
 ## cityscape
 | Field | What it does |
@@ -868,7 +883,7 @@ The garage's items (docs/superpowers/specs/2026-09-28-garage-design.md), read by
 | Field | What it does | Which way |
 |---|---|---|
 | `actionsPerSecond` | Garage actions (buy, equip, plate) a player may send per second through `CosmeticsAction`; more get "busy" (4) | Each is one tap, so 4 is well above a person and below a script. Down if the DataStore budget runs short |
-| `CATEGORIES` | The panel's order of categories, and the chip order inside it | Order only |
+| `CATEGORIES` | The look slots, in the order `CarLook.encode` writes them. `tint` (garage round 2) was added last, so every look string written before it encodes the same | Append only |
 | `items[].id` | The permanent id stored on profiles (in the `Looks` string) | Never rename a shipped id; only add |
 | `items[].price` | Cash price. 0 marks the category's free factory item (`stockId`), exactly one per category | First guesses in PlateConfig's economy (10,000 to 200,000 here); the owner sets them against how fast cash is earned |
 | `items[].rare` | Shows the dusk diamond in the panel; nothing else | |
@@ -877,6 +892,7 @@ The garage's items (docs/superpowers/specs/2026-09-28-garage-design.md), read by
 | `items[].darken` / `desaturate` | Finish only: the paint colour's value and saturation this much lower (0..1). Matte 0.2 / 0.3, metallic 0.25 | Up for a duller, deeper base |
 | `items[].text` / `textColor` / `stripColor` / `stripColor2` | Decal: the windscreen strip's text and colours; a second strip colour makes it a gradient | |
 | `items[].tips` / `tipColor` / `tipMaterial` | Exhaust: how many tips (0, 1, 2 or 4) and their look | |
+| `items[].glassColor` / `glassTransparency` / `screenTransparency` | Tint: the film's colour, and the transparency it gives side windows and the windscreen (an all-round piece takes halfway). Light 0.5 / 0.7, Dark 0.3 / 0.62, Limo 0.12 / 0.55 | Down for darker. Keep screen at least 0.5 and above side (window tint table above) |
 | `items[].engineVolume` / `crackleChance` | Exhaust: multiplies the engine sound's volume and the chance of pops (1.1 to 1.35, 1.3 to 2.5); crackleChance is also the flame profile's pop multiplier, since every pop is a flame | Down if a tip is too loud; crackle scaling is not yet checked by ear |
 | `items[].flameSize` / `flameCore` / `flameColor` | Exhaust: the flame profile. flameSize scales every flame length and size (factory 0.9, single 1.2, twin 1.25, quad 1.4, titanium 1.5); flameCore is the hot core's colour at the mouth (factory #6C8CFF pale blue, sport #3A6BFF, quad #2E62FF, titanium #6A3CFF blue-violet); flameColor the tongue's body (#FF6A1A to #FF8A24) | Keep cores saturated: pale blues read white under bloom |
 

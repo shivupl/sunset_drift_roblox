@@ -13,7 +13,7 @@
 -- back to it when nothing is owned or chosen for that slot.
 local CosmeticsConfig = {}
 
-export type Category = "paint" | "finish" | "rims" | "head" | "tail" | "decal" | "exhaust"
+export type Category = "paint" | "finish" | "rims" | "head" | "tail" | "decal" | "exhaust" | "tint"
 
 export type Item = {
 	id: string,
@@ -43,6 +43,12 @@ export type Item = {
 	flameSize: number?,
 	flameCore: Color3?,
 	flameColor: Color3?,
+	-- Tint only: the film's colour, and the transparency it gives the side
+	-- and rear windows (glassTransparency) and the windscreen
+	-- (screenTransparency) (CarCosmeticMounts windows, CarCosmetics).
+	glassColor: Color3?,
+	glassTransparency: number?,
+	screenTransparency: number?,
 }
 
 -- Garage actions (buy, equip, plate) a player may send per second through
@@ -298,7 +304,9 @@ CosmeticsConfig.flames = {
 }
 
 -- Panel order: also the order categories' chips appear in within the panel.
-CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust" } :: { Category }
+-- tint was added last (garage round 2 §4), so every look string written
+-- before it encodes exactly as it did.
+CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust", "tint" } :: { Category }
 
 -- Ordered as shown in the panel within each category.
 CosmeticsConfig.items = {
@@ -317,6 +325,17 @@ CosmeticsConfig.items = {
 	{ id = "paint_silver", category = "paint", name = "Silver", price = 15000, color = Color3.fromHex("#A9ABAE") },
 	{ id = "paint_gunmetal", category = "paint", name = "Gunmetal", price = 20000, color = Color3.fromHex("#3D4046") },
 	{ id = "paint_rose", category = "paint", name = "Riyadh Rose", price = 40000, rare = true, color = Color3.fromHex("#C77D86") },
+	-- Garage round 2 §4 (2026-09-28: "a handful more options, not many"):
+	-- four colours the list lacked: a clay, a teal, a pale blue and an olive.
+	-- Picked in the lit bay on the kamri07, whose lights lift and warm every
+	-- colour: #9A4B30 clay rendered as a second Sodium Orange and a saffron
+	-- yellow as a second Sodium, so the clay is taken dark and brown and the
+	-- yellow was dropped for the blue; the first olive (#5C5A3C) read
+	-- mustard beside Dune Gold, so it is taken greener.
+	{ id = "paint_clay", category = "paint", name = "Najd Clay", price = 25000, color = Color3.fromHex("#6B4636") },
+	{ id = "paint_teal", category = "paint", name = "Oasis Teal", price = 25000, color = Color3.fromHex("#1E6B68") },
+	{ id = "paint_gulf", category = "paint", name = "Gulf Blue", price = 30000, color = Color3.fromHex("#7A9BB5") },
+	{ id = "paint_olive", category = "paint", name = "Wadi Olive", price = 20000, color = Color3.fromHex("#474E36") },
 
 	-- FINISH. The paint's material, reflectance and darkening; stock is the
 	-- catalog's own material at reflectance 0.
@@ -356,6 +375,10 @@ CosmeticsConfig.items = {
 	{ id = "rims_bronze", category = "rims", name = "Bronze", price = 35000, color = Color3.fromHex("#8C6A3F"), material = Enum.Material.Metal, reflectance = 0.1 },
 	{ id = "rims_gunmetal", category = "rims", name = "Gunmetal", price = 20000, color = Color3.fromHex("#3A3C40"), material = Enum.Material.Metal, reflectance = 0.08 },
 	{ id = "rims_white", category = "rims", name = "White", price = 20000, color = Color3.fromHex("#EDEDEA"), material = Enum.Material.SmoothPlastic, reflectance = 0.08 },
+	-- Garage round 2 §4: two more, both on Glass at the gloss end of the
+	-- FINISH ladder (reflectance 0 keeps the colour, with the lit sheen).
+	{ id = "rims_red", category = "rims", name = "Candy Red", price = 25000, color = Color3.fromHex("#A3161C"), material = Enum.Material.Glass, reflectance = 0 },
+	{ id = "rims_champagne", category = "rims", name = "Champagne", price = 35000, color = Color3.fromHex("#C4AE84"), material = Enum.Material.Glass, reflectance = 0.05 },
 
 	-- HEAD (headlamp colour).
 	{ id = "head_stock", category = "head", name = "Factory", price = 0 },
@@ -375,6 +398,10 @@ CosmeticsConfig.items = {
 	{ id = "decal_sunset", category = "decal", name = "Sunset Drift", price = 20000, text = "SUNSET DRIFT", stripColor = Color3.fromHex("#111111"), textColor = Color3.fromHex("#FFBA5C") },
 	{ id = "decal_tarat", category = "decal", name = "Tarat", price = 25000, text = "طارت", stripColor = Color3.fromHex("#FFBA5C"), textColor = Color3.fromHex("#15130F") },
 	{ id = "decal_gradient", category = "decal", name = "Dusk Gradient", price = 50000, rare = true, text = "", stripColor = Color3.fromHex("#FFBA5C"), stripColor2 = Color3.fromHex("#5A2E6E") },
+	-- Garage round 2 §4: two more strips, a light one (the others are dark or
+	-- sodium) and the game's other move.
+	{ id = "decal_natl", category = "decal", name = "Natl", price = 25000, text = "نطل", stripColor = Color3.fromHex("#111111"), textColor = Color3.fromHex("#6FD39A") },
+	{ id = "decal_white", category = "decal", name = "White Strip", price = 20000, text = "HAJWALA", stripColor = Color3.fromHex("#EDEAE2"), textColor = Color3.fromHex("#15130F") },
 
 	-- EXHAUST: tip count, tip colour/material, and the sound tweaks they buy
 	-- (engineVolume multiplies the engine sound, crackleChance the pops), and
@@ -386,6 +413,26 @@ CosmeticsConfig.items = {
 	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.2, crackleChance = 1.6, flameSize = 1.25, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
 	{ id = "exhaust_quad", category = "exhaust", name = "Quad Tips", price = 60000, tips = 4, tipColor = Color3.fromHex("#2A2A2E"), tipMaterial = Enum.Material.Metal, engineVolume = 1.3, crackleChance = 2, flameSize = 1.4, flameCore = Color3.fromHex("#2E62FF"), flameColor = Color3.fromHex("#FF8A24") },
 	{ id = "exhaust_titanium", category = "exhaust", name = "Burnt Titanium Twin", price = 120000, rare = true, tips = 2, tipColor = Color3.fromHex("#6F5A8C"), tipMaterial = Enum.Material.Metal, engineVolume = 1.35, crackleChance = 2.5, flameSize = 1.5, flameCore = Color3.fromHex("#6A3CFF"), flameColor = Color3.fromHex("#FF6A2A") },
+
+	-- TINT (window film; garage round 2 §4, 2026-09-28: "window tint (glass
+	-- colour and transparency, per car, under PAINT as a third row)"). Each
+	-- is one film, the same on every car: the glass takes its colour on
+	-- SmoothPlastic, the side and rear windows its glassTransparency, the
+	-- windscreen its screenTransparency, and a piece that is both (the
+	-- lekzas' and batrol's all-round glass) halfway between
+	-- (CarCosmetics). screenTransparency stays light on every film, so the
+	-- windscreen reads as legal and the strip and the cabin still show
+	-- through it. Absolute, not relative to the factory glass: on the
+	-- kamri07, whose factory doors are already dark (0.2), Light is lighter
+	-- than factory; a film relative to factory did nothing at all there.
+	-- Limo stops short of opaque (0.12, not 0), so the windows keep a
+	-- little depth rather than turning to flat black plastic. Factory puts
+	-- every piece back as the car was built. The pieces are per car
+	-- (CarCosmeticMounts windows).
+	{ id = "tint_stock", category = "tint", name = "Factory", price = 0 },
+	{ id = "tint_light", category = "tint", name = "Light", price = 15000, glassColor = Color3.fromHex("#1C2328"), glassTransparency = 0.5, screenTransparency = 0.7 },
+	{ id = "tint_dark", category = "tint", name = "Dark", price = 25000, glassColor = Color3.fromHex("#121619"), glassTransparency = 0.3, screenTransparency = 0.62 },
+	{ id = "tint_limo", category = "tint", name = "Limo", price = 45000, rare = true, glassColor = Color3.fromHex("#0A0B0D"), glassTransparency = 0.12, screenTransparency = 0.55 },
 } :: { Item }
 
 local byId: { [string]: Item } = {}
