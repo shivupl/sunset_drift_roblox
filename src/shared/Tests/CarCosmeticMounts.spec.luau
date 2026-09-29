@@ -127,6 +127,15 @@ return function(t: T)
 				t.ok(CarCosmeticMounts.tipCovers(e, e.stock[1], n, R.quadPairGapM, R.tipRadiusM), `{id}: {n} tips sit over its own pipe`)
 			end
 		end
+		-- A quad on a one-pipe car puts a tip, not the gap between a pair's
+		-- tips, over its own pipe (fix round 1: the kruzer80's showed there).
+		if #e.stock == 1 and not e.stock[1].factory then
+			local best = math.huge
+			for _, x in CarCosmeticMounts.tipXs(e, 4, R.quadPairGapM) do
+				best = math.min(best, math.abs(x - e.stock[1].posM[1]))
+			end
+			t.ok(best <= R.tipRadiusM / 2, `{id}: a quad tip, not a gap, over its own pipe (off by {math.round(best * 1000)} mm)`)
+		end
 		-- A single tip goes on stock[1]'s side (over a one-pipe car's own pipe).
 		local single = CarCosmeticMounts.tipXs(e, 1, R.quadPairGapM)[1]
 		local side = if e.stock[1].posM[1] > 0 then 1 else -1

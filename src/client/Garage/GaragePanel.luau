@@ -508,7 +508,7 @@ local function tileBlank(tile: Frame)
 	UIKit.stroke(tile, "asphalt600", UITheme.stroke.hairline)
 end
 
-local function tileCircles(tile: Frame, n: number, color: Color3)
+local function tileCircles(tile: Frame, n: number, color: Color3, aspect: number?)
 	tileBlank(tile)
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
@@ -521,7 +521,8 @@ local function tileCircles(tile: Frame, n: number, color: Color3)
 		local dot = Instance.new("Frame")
 		dot.BackgroundColor3 = color
 		dot.BorderSizePixel = 0
-		dot.Size = UDim2.fromOffset(d, d)
+		-- aspect: a dot this many times wider than tall (the Big Oval Tip).
+		dot.Size = UDim2.fromOffset(math.floor(d * (aspect or 1)), d)
 		dot.LayoutOrder = i
 		UIKit.corner(dot, "pill")
 		-- A dark tip (Quad Tips) would vanish on the tile without an edge.
@@ -565,7 +566,8 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 	elseif c == "exhaust" then
 		local n = item.tips or 0
 		if n > 0 and item.tipColor then
-			tileCircles(tile, n, item.tipColor)
+			local style = if item.tipStyle then CosmeticsConfig.render.tipStyles[item.tipStyle] else nil
+			tileCircles(tile, n, item.tipColor, style and style.tileAspect)
 		else
 			tileBlank(tile)
 		end

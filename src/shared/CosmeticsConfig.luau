@@ -75,33 +75,46 @@ CosmeticsConfig.render = {
 	-- tools/cosmetics/exhaust_tips.py, shipped as MeshData modules in
 	-- src/shared/CosmeticMeshes/ExhaustTips; the plain cylinders with a
 	-- separate dark bore of round 2 are gone). Each item's tipStyle names one
-	-- of these: mesh is the generated shell (outside, band, reducer, rolled
-	-- lip) in the item's tipColor and tipMaterial; bore the inner wall and
-	-- flat floor, 1.6 cm deep, its own part in tipBoreColor on SmoothPlastic
-	-- (Metal and Foil mirror the world whatever the vertex colour, so a dark
-	-- bore on the shell showed the bumper and the car's pipes in it, Studio
-	-- 2026-09-28); pair (quad only) the Y inlet one pair of tips sits on, so a
-	-- quad car has two pipes, not four; baked means the shell carries its own
-	-- colours (the titanium's heat tint), so it takes bakedTipColor instead
-	-- of the item's tipColor (vertex colours multiply the part colour).
+	-- of these. mesh is the generated piece: one mesh per style, so one
+	-- EditableMesh on a client (a client holds only 8, BEHAVIOURS; fix round
+	-- 1 cut the tips from 8 to at most 4). The quad's mesh is a whole pair on
+	-- its Y inlet (pair = true), so a quad car has two pipes. baked means the
+	-- mesh carries its own colours (the titanium's heat tint), so it takes
+	-- bakedTipColor instead of the item's tipColor (vertex colours multiply
+	-- the part colour). meshAssetId (optional): the same mesh uploaded from
+	-- tools/cosmetics/out (README there); when set the tip is built from the
+	-- asset and costs no EditableMesh at all.
 	tipStyles = {
-		rolled = { mesh = "Rolled", bore = "RolledBore" },
-		quad = { mesh = "Quad", bore = "RolledBore", pair = "QuadY" },
-		slash = { mesh = "Slash", bore = "SlashBore", baked = true },
-		oval = { mesh = "Oval", bore = "OvalBore" },
-	} :: { [string]: { mesh: string, bore: string, pair: string?, baked: boolean? } },
+		rolled = { mesh = "Rolled" },
+		quad = { mesh = "QuadPair", pair = true },
+		slash = { mesh = "Slash", baked = true },
+		-- tileAspect: the garage panel draws its tip this many times wider than
+		-- tall (the barrel is 25 x 16 cm).
+		oval = { mesh = "Oval", tileAspect = 1.56 },
+	} :: { [string]: { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, tileAspect: number? } },
 	-- Near white so the baked heat colours show at their own value; pure
 	-- white on Metal read a touch hot under the garage lights.
 	bakedTipColor = Color3.fromHex("#EEEDEA"),
-	-- The bore: its vertex colours run from 0.85 at the lip's inner edge to
-	-- 0.05 on the floor, times this, so the lip's edge catches a little light
-	-- and the floor reads black (round 2's bore was #121214 flat).
-	tipBoreColor = Color3.fromHex("#3A3A3E"),
+	-- Each tip's bore is closed 1.6 cm in by a flat dark disc Part in this colour,
+	-- SmoothPlastic: matte, because Metal and Foil mirror the world through a
+	-- dark vertex colour (a Foil bore showed the bumper and the car's pipes,
+	-- Studio 2026-09-28). The last centimetre of inner wall is on the mesh,
+	-- darkening toward it. Round 2's bore was #121214.
+	-- #141416 read brown-grey under the sunset and the bay lights, a lit
+	-- disc rather than a hole.
+	tipBoreColor = Color3.fromHex("#060607"),
+	-- A tip style takes an EditableMesh only if at least this many stay free
+	-- after it, so generated car bodies always come first: 4 is the krownvik's
+	-- pieces, the most any car needs besides the kamri's 5 (the kamri loads
+	-- with the spawn, before tips are usually asked for). Otherwise the style
+	-- uses cylinder tips. A style's mesh is freed when no car on the client
+	-- wears it. Lower it to let tips take more slots; 0 lets tips fill them.
+	tipMeshReserve = 4,
 	-- The round tips' outer radius (the generator builds Rolled and Quad at
 	-- it: CosmeticsConfig.spec), 0.09 m before the car's scale. Quad tips
 	-- are two pairs, each pair's tips quadPairGapM apart centre to centre (at
 	-- least 2 x tipRadiusM, or they overlap: CarCosmeticMounts.spec; the
-	-- generator's QuadY is built for this gap).
+	-- generator's QuadPair is built for this gap).
 	tipRadiusM = 0.09,
 	quadPairGapM = 0.2,
 	-- The factory pipe's dark bore (below).
@@ -438,19 +451,22 @@ CosmeticsConfig.items = {
 
 	-- EXHAUST: tip count, tip colour/material, and the sound tweaks they buy
 	-- (engineVolume multiplies the engine sound, crackleChance the pops), and
+	-- Chrome tips (single, twin, oval) are light Metal (garage round 3 fix 1:
+	-- #D8DADD Foil crinkled close up and bloomed near white under the garage
+	-- lights). tipMaterial is the knob.
 	-- the flame profile (garage round 2 §2): factory small and orange, the
 	-- sport tips larger and yellower with a bluer core, the burnt titanium
 	-- largest with a blue-violet core, like the heat tint on its tips.
 	{ id = "exhaust_stock", category = "exhaust", name = "Factory", price = 0, tips = 0, engineVolume = 1, crackleChance = 1, flameSize = 0.9, flameCore = Color3.fromHex("#6C8CFF"), flameColor = Color3.fromHex("#FF6A1A") },
-	{ id = "exhaust_single", category = "exhaust", name = "Single Chrome Tip", price = 15000, tips = 1, tipStyle = "rolled", tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.1, crackleChance = 1.3, flameSize = 1.2, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
-	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipStyle = "rolled", tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.2, crackleChance = 1.6, flameSize = 1.25, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
+	{ id = "exhaust_single", category = "exhaust", name = "Single Chrome Tip", price = 15000, tips = 1, tipStyle = "rolled", tipColor = Color3.fromHex("#C2C6CC"), tipMaterial = Enum.Material.Metal, engineVolume = 1.1, crackleChance = 1.3, flameSize = 1.2, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
+	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipStyle = "rolled", tipColor = Color3.fromHex("#C2C6CC"), tipMaterial = Enum.Material.Metal, engineVolume = 1.2, crackleChance = 1.6, flameSize = 1.25, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
 	{ id = "exhaust_quad", category = "exhaust", name = "Quad Tips", price = 60000, tips = 4, tipStyle = "quad", tipColor = Color3.fromHex("#2A2A2E"), tipMaterial = Enum.Material.Metal, engineVolume = 1.3, crackleChance = 2, flameSize = 1.4, flameCore = Color3.fromHex("#2E62FF"), flameColor = Color3.fromHex("#FF8A24") },
 	{ id = "exhaust_titanium", category = "exhaust", name = "Burnt Titanium Twin", price = 120000, rare = true, tips = 2, tipStyle = "slash", tipColor = Color3.fromHex("#6F5A8C"), tipMaterial = Enum.Material.Metal, engineVolume = 1.35, crackleChance = 2.5, flameSize = 1.5, flameCore = Color3.fromHex("#6A3CFF"), flameColor = Color3.fromHex("#FF6A2A") },
 	-- Garage round 3 §1: one big oval rolled chrome tip, priced between the
 	-- twin and the quad. Its flame is the single's, a little bigger (1.3
 	-- against 1.2, still under the titanium's 1.5), and it pops a little
 	-- more; the sound between the single's and the twin's.
-	{ id = "exhaust_oval", category = "exhaust", name = "Big Oval Tip", price = 45000, tips = 1, tipStyle = "oval", tipColor = Color3.fromHex("#D8DADD"), tipMaterial = Enum.Material.Foil, engineVolume = 1.15, crackleChance = 1.4, flameSize = 1.3, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
+	{ id = "exhaust_oval", category = "exhaust", name = "Big Oval Tip", price = 45000, tips = 1, tipStyle = "oval", tipColor = Color3.fromHex("#C2C6CC"), tipMaterial = Enum.Material.Metal, engineVolume = 1.15, crackleChance = 1.4, flameSize = 1.3, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
 
 	-- TINT (window film; garage round 2 §4, 2026-09-28: "window tint (glass
 	-- colour and transparency, per car, under PAINT as a third row)"). Each

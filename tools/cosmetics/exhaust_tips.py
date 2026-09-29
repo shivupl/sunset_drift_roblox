@@ -25,20 +25,22 @@ runtime and the specs read.
 
 Colours are per position, multiplied by the MeshPart's Color (measured in
 Studio 2026-09-28, BEHAVIOURS.md): white outside, so the item's tip colour
-shows; dark inside, so the bore reads from any angle without a separate bore
-part; the slash tip's heat colours (straw, blue, violet from the lip back)
-baked in, on a near-white part.
+shows; dark on the first centimetre of inner wall; the slash tip's heat
+colours (straw, blue, violet from the lip back) baked in, on a near-white
+part. Each bore is left open behind that centimetre; CarCosmetics closes it
+with a flat dark disc Part (the module's `bores`).
 
-Styles (one per shipping item, CosmeticsConfig tipStyle):
-  Rolled  single and twin chrome: round, rolled lip, double wall, band clamp,
-          a flared reducer onto the pipe.
-  Quad    one tip of a quad pair (black), no reducer: a pair sits on QuadY.
-  QuadY   the Y inlet of a quad pair: one round inlet, flaring into a flat
-          collector whose ends hide inside the pair's two tips. One per pair,
-          so a quad car has two pipes, not four.
-  Slash   burnt titanium: the rolled tip, longer, its mouth cut at SLASH_DEG
-          (bottom shorter), heat colours baked in.
-  Oval    Big Oval Tip: a large oval rolled tip on a round reducer.
+One mesh per style (a client holds only 8 EditableMeshes):
+  Rolled    single and twin chrome: round, rolled lip, band clamp, a flared
+            reducer onto the pipe.
+  QuadPair  a pair of black quad tips on one Y inlet, in pair space; a quad
+            car has two pairs, so two pipes.
+  Slash     burnt titanium: the rolled tip, longer, its mouth cut at
+            SLASH_DEG (bottom shorter), heat colours baked in.
+  Oval      Big Oval Tip: a large oval rolled tip on a round reducer.
+
+Also writes tools/cosmetics/out/<Style>.obj for uploading a style as a mesh
+asset (tools/cosmetics/README.md).
 """
 
 from __future__ import annotations
@@ -51,13 +53,16 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "src", "shared", "CosmeticMeshes", "ExhaustTips")
+# OBJs of the same meshes for Studio's 3D Importer (the asset path:
+# CosmeticsConfig.render.tipStyles[style].meshAssetId, tools/cosmetics/README.md).
+OBJ_OUT = os.path.join(ROOT, "tools", "cosmetics", "out")
 
 # The round tips' outer radius: CosmeticsConfig.render.tipRadiusM (0.09 m,
 # garage round 2), which CarCosmeticMounts' spacing checks use; the spec
 # checks the generated Rolled and Quad radius against it.
 TIP_R = 0.09
 # The quad pair's centre-to-centre gap: CosmeticsConfig.render.quadPairGapM
-# (0.2 m). QuadY's collector ends sit under the tips there (spec-checked).
+# (0.2 m). QuadPair's collector ends sit under the tips there (spec-checked).
 QUAD_GAP = 0.2
 # The pipe the tips sit on is CosmeticsConfig.render.pipeRadiusM (0.04 m);
 # every inlet collar is a little wider so the pipe slides inside it.
@@ -125,7 +130,7 @@ def hexrgb(h):
 # ---------------------------------------------------------------------------
 # Profiles: a tip is a stack of rings along its axis. Ring: (ax, ay, h, z,
 # colour) -- the section at z is the ellipse (ax cos t, ay sin t) with its two
-# halves pulled apart by h (a stadium, for QuadY's collector). The stack runs
+# halves pulled apart by h (a stadium, for the quad pair's collector). The stack runs
 # from the front (the inlet) round the lip and back down the inner wall.
 # ---------------------------------------------------------------------------
 
@@ -211,7 +216,7 @@ def rolled(length=0.13, band=True, reducer=True, ax=TIP_R, ay=TIP_R, colour_of_d
     return rings, inlet
 
 
-def build_style(name, rings, front_cap, back_cap, segments, slash_deg=0.0, slash_from=None, h_rings=None):
+def build_style(name, rings, front_cap, back_cap, segments, slash_deg=0.0, slash_from=None, xoff=0.0):
     """Rings to triangles. front_cap: (z, colour) closing the first ring to
     its centre; back_cap: (z, colour) closing the last ring to a point on the
     axis. Returns vertices (x, y, z), colours, triangles (vertex ids)."""
@@ -237,7 +242,7 @@ def build_style(name, rings, front_cap, back_cap, segments, slash_deg=0.0, slash
             x = r["ax"] * c + (r["h"] if c > 0 else -r["h"])
             y = r["ay"] * s
             row.append(len(V))
-            V.append((x, y, slash_z(r["z"], y)))
+            V.append((x + xoff, y, slash_z(r["z"], y)))
             C.append(r["c"])
         ids.append(row)
     for a, b in zip(ids, ids[1:]):
@@ -252,7 +257,7 @@ def build_style(name, rings, front_cap, back_cap, segments, slash_deg=0.0, slash
     if front_cap:
         z, col = front_cap
         cid = len(V)
-        V.append((0.0, 0.0, z))
+        V.append((xoff, 0.0, z))
         C.append(grey(col) if not isinstance(col, tuple) else col)
         row = ids[0]
         for k in range(segments):
@@ -260,7 +265,7 @@ def build_style(name, rings, front_cap, back_cap, segments, slash_deg=0.0, slash
     if back_cap:
         z, col = back_cap
         cid = len(V)
-        V.append((0.0, 0.0, slash_z(z, 0.0)))
+        V.append((xoff, 0.0, slash_z(z, 0.0)))
         C.append(grey(col) if not isinstance(col, tuple) else col)
         row = ids[-1]
         for k in range(segments):
@@ -280,48 +285,69 @@ def signed_volume(V, T):
     return vol
 
 
+def slash_tilt(floor, slash_deg, slash_from):
+    """The slash tip's bore floor lies in the plane z = floor + k * y (the
+    cut, ramped as build_style's slash_z does); the tilt of that plane from
+    upright, degrees, turning the disc about X."""
+    if not slash_deg:
+        return 0.0
+    s = min(1.0, max(0.0, (floor - slash_from) / (-WALL / 2 - slash_from)))
+    return math.degrees(math.atan(math.tan(math.radians(slash_deg)) * s))
+
+
+def tip_stack(rings, inner, floor, front, xoff=0.0):
+    """One tip: the closed stack (for the winding check) and the bore disc
+    that closes its shell. The shell drops the floor (inner's last ring) and
+    the back cap: a plain dark Part closes it in the game (CarCosmetics), a
+    matte one, because Metal mirrors the world through a dark vertex colour
+    (Studio 2026-09-28) and a separate bore mesh would cost an EditableMesh
+    (a client holds 8, BEHAVIOURS.md)."""
+    full = rings + inner
+    return dict(full=full, shell=full[:-1], front=front, back=(floor, DEEP), xoff=xoff,
+                bore=dict(x=xoff, z=floor, rx=inner[0]["ax"], ry=inner[0]["ay"]))
+
+
 def styles():
+    """Each style is one mesh (one EditableMesh on a client): its stacks,
+    their bores, and where its pipe goes in."""
     out = {}
 
     # Rolled: 13 cm from the mouth to the band's back edge (the old
     # cylinder was 16 cm with nothing on it; the band and reducer now carry
     # the front, 20.5 cm overall to the collar).
     rings, inlet = rolled(length=0.13)
-    split = len(rings) - 1
     inner, floor = inner_rings(TIP_R, TIP_R, BORE, inner_grey)
-    rings += inner
-    out["Rolled"] = dict(rings=rings, split=split, front=(inlet, HIDDEN), back=(floor, DEEP), segments=SEGMENTS,
-                         inlet=(0, 0, inlet), inletR=INLET_R, radius=(TIP_R, TIP_R))
+    out["Rolled"] = dict(stacks=[tip_stack(rings, inner, floor, (inlet, HIDDEN))], segments=SEGMENTS,
+                         inlet=(0, 0, inlet), inletR=INLET_R, radius=(TIP_R, TIP_R), tips=1)
 
-    # Quad: a shorter tip with no reducer or band, its closed front sitting
-    # on QuadY's collector; its bore (BORE) is shallow enough that the
-    # collector's end, 11.5 cm in, is behind its floor even on a tip moved
-    # 3.5 cm forward (quadOuterBumperZ).
-    rings, front = rolled(length=0.14, band=False, reducer=False)
-    split = len(rings) - 1
-    inner, floor = inner_rings(TIP_R, TIP_R, BORE, inner_grey)
-    rings += inner
-    out["Quad"] = dict(rings=rings, split=split, bore="RolledBore", front=(front, OUTSIDE), back=(floor, DEEP), segments=SEGMENTS,
-                       inlet=(0, 0, front), inletR=None, radius=(TIP_R, TIP_R))
-
-    # QuadY: in pair space (origin at the pair's centre on its mouth plane):
-    # a round collar 33 cm in, flaring over 13 cm into a stadium whose round
-    # ends (7.5 x 8 cm) sit at x = +-QUAD_GAP/2, straight back to 6 cm in:
-    # inside both tips' barrels (behind their bore floors, even a tip moved
-    # 3.5 cm forward with the bumper, quadOuterBumperZ) and, between them, a
-    # housing that joins the pair. Nearly the tips' height, so it hides the
-    # car's own pipe that ends between a pair's tips (the lekzas' curled pipe
-    # ends showed there over a smaller collector, Studio 2026-09-28).
+    # QuadPair: one pair of black tips on their Y inlet, in pair space (origin
+    # at the pair's centre on its mouth plane, tips at x = +-QUAD_GAP/2). One
+    # mesh for the pair, so the quad costs one EditableMesh; a quad car has
+    # two pairs, so two pipes. Where the bumper curves forward over the outer
+    # tip (quadOuterBumperZ) the whole pair turns a little about Y
+    # (CarCosmeticMounts.quadPairFrames), so both mouths still sit on it.
+    # Each tip: shorter, no reducer or band, its closed front on the Y.
+    # The Y: a round collar 33 cm in, flaring over 13 cm into a stadium whose
+    # round ends (7.5 x 8 cm) sit under the tips, straight back to 6 cm in:
+    # inside both tips (behind their bore floors) and, between them, a housing
+    # that joins the pair and hides the car's own pipe that ends between a
+    # pair's tips (the lekzas' pipe ends showed over a smaller collector).
     half = QUAD_GAP / 2
+    stacks = []
+    for xoff in (-half, half):
+        rings, front = rolled(length=0.14, band=False, reducer=False)
+        inner, floor = inner_rings(TIP_R, TIP_R, BORE, inner_grey)
+        stacks.append(tip_stack(rings, inner, floor, (front, OUTSIDE), xoff))
     AX, AY = 0.075, 0.08
-    rings = [ring(INLET_R, -0.33), ring(INLET_R, -0.305)]
+    yr = [ring(INLET_R, -0.33), ring(INLET_R, -0.305)]
     for t in (0.2, 0.45, 0.7, 0.9, 1.0):
         s = t * t * (3 - 2 * t)
         z = lerp(-0.305, -0.175, t)
-        rings.append(ring(lerp(INLET_R, AX, s), z, ay=lerp(INLET_R, AY, s), h=lerp(0.002, half, s)))
-    rings.append(ring(AX, -0.06, ay=AY, h=half))
-    out["QuadY"] = dict(rings=rings, front=(-0.33, HIDDEN), back=(-0.06, OUTSIDE), segments=SEGMENTS,
-                        inlet=(0, 0, -0.33), inletR=INLET_R, radius=(half + AX, AY))
+        yr.append(ring(lerp(INLET_R, AX, s), z, ay=lerp(INLET_R, AY, s), h=lerp(0.002, half, s)))
+    yr.append(ring(AX, -0.06, ay=AY, h=half))
+    stacks.append(dict(full=yr, shell=yr, front=(-0.33, HIDDEN), back=(-0.06, OUTSIDE), xoff=0.0, bore=None, closed=True))
+    out["QuadPair"] = dict(stacks=stacks, segments=SEGMENTS, inlet=(0, 0, -0.33), inletR=INLET_R,
+                           radius=(TIP_R, TIP_R), tips=2)
 
     # Slash: the rolled tip, 3 cm longer, its mouth cut SLASH_DEG (the
     # bottom 4.4 cm shorter than the middle, the top 4.4 cm longer), heat
@@ -347,28 +373,39 @@ def styles():
     # for with 28 segments round instead of 32.
     rings, inlet = rolled(length=0.16, outer_colour=heat_at, colour_of_depth=slash_inner,
                           barrel_stops=(-0.03, -0.05, -0.09, -0.13))
-    split = len(rings) - 1
     inner, floor = inner_rings(TIP_R, TIP_R, BORE, slash_inner)
-    rings += inner
-    out["Slash"] = dict(rings=rings, split=split, front=(inlet, HIDDEN), back=(floor, DEEP), segments=SEGMENTS_SLASH,
-                        inlet=(0, 0, inlet), inletR=INLET_R, radius=(TIP_R, TIP_R), slash=SLASH_DEG,
-                        slash_from=-0.16)
+    st = tip_stack(rings, inner, floor, (inlet, HIDDEN))
+    st["bore"]["tilt"] = slash_tilt(floor, SLASH_DEG, -0.16)
+    out["Slash"] = dict(stacks=[st], segments=SEGMENTS_SLASH, inlet=(0, 0, inlet), inletR=INLET_R,
+                        radius=(TIP_R, TIP_R), slash=SLASH_DEG, slash_from=-0.16, tips=1)
 
     # Oval: 25 x 16 cm across the barrel, 14 cm to the band, on the same
     # round collar (the reducer blends the oval into it).
     OX, OY = 0.125, 0.08
     rings, inlet = rolled(length=0.14, ax=OX, ay=OY)
-    split = len(rings) - 1
     inner, floor = inner_rings(OX, OY, BORE, inner_grey)
-    rings += inner
-    out["Oval"] = dict(rings=rings, split=split, front=(inlet, HIDDEN), back=(floor, DEEP), segments=SEGMENTS_OVAL,
-                       inlet=(0, 0, inlet), inletR=INLET_R, radius=(OX, OY))
+    out["Oval"] = dict(stacks=[tip_stack(rings, inner, floor, (inlet, HIDDEN))], segments=SEGMENTS_OVAL,
+                       inlet=(0, 0, inlet), inletR=INLET_R, radius=(OX, OY), tips=1)
     return out
 
 
-# ---------------------------------------------------------------------------
-# Blender half: meshes, normals, previews, JSON for the writer.
-# ---------------------------------------------------------------------------
+def build_piece(name, st):
+    """A style's mesh: its stacks' shells merged. Each stack is first built
+    closed and checked to face out (counter-clockwise from outside)."""
+    kw = dict(slash_deg=st.get("slash", 0.0), slash_from=st.get("slash_from"))
+    V, C, T = [], [], []
+    for stack in st["stacks"]:
+        fv, _, ft = build_style(name, stack["full"], stack["front"], stack["back"], st["segments"], xoff=stack["xoff"], **kw)
+        assert signed_volume(fv, ft) > 0, f"{name}: faces point in"
+        closed = stack.get("closed", False)
+        sv, sc, stris = build_style(name, stack["shell"], stack["front"], stack["back"] if closed else None,
+                                    st["segments"], xoff=stack["xoff"], **kw)
+        base = len(V)
+        V += sv
+        C += sc
+        T += [(a + base, b + base, c + base) for a, b, c in stris]
+    assert len(T) / st["tips"] <= MAX_TRIS, f"{name}: {len(T)} triangles for {st['tips']} tips"
+    return V, C, T
 
 
 def blender_main(argv):
@@ -382,56 +419,48 @@ def blender_main(argv):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     dump = {}
     for name, st in styles().items():
-        rings, kw = st["rings"], dict(slash_deg=st.get("slash", 0.0), slash_from=st.get("slash_from"))
-        # The whole tip must be one closed surface facing out.
-        V, C, T = build_style(name, rings, st["front"], st["back"], st["segments"], **kw)
-        assert signed_volume(V, T) > 0, f"{name}: faces point in"
-        assert len(T) <= MAX_TRIS, f"{name}: {len(T)} triangles, over {MAX_TRIS}"
-        # Split at the lip's inner edge: the shell (outside, lip) takes the
-        # item's material, the bore (inner wall, floor) its own matte dark
-        # one. Metal and Foil reflect the world whatever the vertex colour
-        # (Studio 2026-09-28: a dark bore on a Foil tip showed the bumper
-        # and the car's pipes mirrored in it), so the bore is its own part.
-        if "split" in st:
-            k = st["split"]
-            pieces = [
-                (name, rings[: k + 1], st["front"], None, st["inlet"], st["inletR"], st["radius"]),
-                (st.get("bore", name + "Bore"), rings[k:], None, st["back"], (0, 0, 0), None, (rings[k]["ax"], rings[k]["ay"])),
-            ]
-        else:
-            pieces = [(name, rings, st["front"], st["back"], st["inlet"], st["inletR"], st["radius"])]
-        for pname, prings, front, back, inlet, inletR, radius in pieces:
-            if pname in dump:
-                continue  # the quad tip's bore is the rolled one's
-            V, C, T = build_style(pname, prings, front, back, st["segments"], **kw)
-            me = bpy.data.meshes.new(pname)
-            me.from_pydata(V, [], T)
-            me.validate()
-            me.set_sharp_from_angle(angle=math.radians(SHARP_DEG))
-            me.update()
-            col = me.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
-            for i, c in enumerate(C):
-                col.data[i].color = (*[srgb_to_linear(x) for x in c], 1.0)
-            # Per-corner normals, as Blender shades them.
-            corners = []
-            for poly in me.polygons:
-                tri = []
-                for li in range(poly.loop_start, poly.loop_start + poly.loop_total):
-                    vi = me.loops[li].vertex_index
-                    n = me.corner_normals[li].vector
-                    tri.append((vi, (n.x, n.y, n.z)))
-                corners.append(tri)
-            dump[pname] = dict(
-                positions=[list(v) for v in V],
-                colours=[list(c) for c in C],
-                corners=[[[vi, list(n)] for vi, n in tri] for tri in corners],
-                inlet=list(inlet),
-                inletR=inletR,
-                radius=list(radius),
-            )
-            print(f"[tips] {pname}: {len(T)} triangles, {len(V)} vertices")
-            obj = bpy.data.objects.new(pname, me)
-            bpy.context.scene.collection.objects.link(obj)
+        V, C, T = build_piece(name, st)
+        me = bpy.data.meshes.new(name)
+        me.from_pydata(V, [], T)
+        me.validate()
+        me.set_sharp_from_angle(angle=math.radians(SHARP_DEG))
+        me.update()
+        col = me.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
+        for i, c in enumerate(C):
+            col.data[i].color = (*[srgb_to_linear(x) for x in c], 1.0)
+        # Per-corner normals, as Blender shades them.
+        corners = []
+        for poly in me.polygons:
+            tri = []
+            for li in range(poly.loop_start, poly.loop_start + poly.loop_total):
+                vi = me.loops[li].vertex_index
+                n = me.corner_normals[li].vector
+                tri.append((vi, (n.x, n.y, n.z)))
+            corners.append(tri)
+        bores = [dict(s["bore"]) for s in st["stacks"] if s["bore"]]
+        dump[name] = dict(
+            positions=[list(v) for v in V],
+            colours=[list(c) for c in C],
+            corners=[[[vi, list(n)] for vi, n in tri] for tri in corners],
+            inlet=list(st["inlet"]),
+            inletR=st["inletR"],
+            radius=list(st["radius"]),
+            tips=st["tips"],
+            bores=bores,
+        )
+        print(f"[tips] {name}: {len(T)} triangles, {len(V)} vertices")
+        obj = bpy.data.objects.new(name, me)
+        bpy.context.scene.collection.objects.link(obj)
+        # The bore discs, for the previews only (the game builds them as Parts).
+        for k, b in enumerate(bores):
+            n = 32
+            dv = [(b["x"], 0.0, b["z"])] + [(b["x"] + b["rx"] * math.cos(2 * math.pi * i / n), b["ry"] * math.sin(2 * math.pi * i / n), b["z"]) for i in range(n)]
+            tilt = math.radians(b.get("tilt", 0.0))
+            dv = [(x, y, z + math.tan(tilt) * y) for x, y, z in dv]
+            dm = bpy.data.meshes.new(f"{name}Disc{k}")
+            dm.from_pydata(dv, [], [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)])
+            dobj = bpy.data.objects.new(f"{name}Disc{k}", dm)
+            bpy.context.scene.collection.objects.link(dobj)
 
     if preview:
         render_previews(preview)
@@ -490,17 +519,14 @@ def render_previews(folder):
 
     looks = {
         "Rolled": material("chrome", (0.7, 0.71, 0.73, 1), 1.0, 0.12, True),
-        "Quad": material("black", (0.025, 0.025, 0.03, 1), 0.8, 0.35, True),
-        "QuadY": material("black2", (0.025, 0.025, 0.03, 1), 0.8, 0.35, True),
+        "QuadPair": material("black", (0.025, 0.025, 0.03, 1), 0.8, 0.35, True),
         "Slash": material("ti", (0.85, 0.85, 0.85, 1), 1.0, 0.25, True),
         "Oval": material("chrome2", (0.7, 0.71, 0.73, 1), 1.0, 0.12, True),
     }
-    bore = material("bore", (0.23, 0.23, 0.24, 1), 0.0, 0.9, True)
-    for name in ("Rolled", "Slash", "Oval"):
-        looks[name + "Bore"] = bore
+    bore = material("bore", (0.02, 0.02, 0.022, 1), 0.0, 0.9, False)
     objs = {o.name: o for o in scene.objects}
     for name, o in objs.items():
-        o.data.materials.append(looks[name])
+        o.data.materials.append(looks.get(name, bore))
         o.rotation_euler = (math.radians(90), 0, 0)  # tip space (y up, z back) to Blender (z up, -y back)
 
     floor_me = bpy.data.meshes.new("floor")
@@ -530,20 +556,10 @@ def render_previews(folder):
     scene.collection.objects.link(cam)
     scene.camera = cam
 
-    groups = {"Rolled": ["Rolled", "RolledBore"], "Quad": ["Quad", "RolledBore", "QuadY"], "Slash": ["Slash", "SlashBore"], "Oval": ["Oval", "OvalBore"]}
-    # The quad shot shows a pair: a copy of the tip and its bore on the right.
-    for base in ("Quad", "RolledBore"):
-        twin = objs[base].copy()
-        twin.name = base + ".R"
-        scene.collection.objects.link(twin)
-        objs[base + ".R"] = twin
-    groups["Quad"] += ["Quad.R", "RolledBore.R"]
-    for shot, members in groups.items():
+    for shot in looks:
         for name, o in objs.items():
-            o.hide_render = name not in members
-        for m in members:
-            x = -QUAD_GAP / 2 if shot == "Quad" and m in ("Quad", "RolledBore") else QUAD_GAP / 2 if m.endswith(".R") else 0
-            objs[m].location = (x, 0, 0.12)
+            o.hide_render = not name.startswith(shot)
+            o.location = (0, 0, 0.12)
         target = Vector((0, 0.08, 0.12))
         cam.location = target + Vector((0.9, -0.3, 0.14))
         cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
@@ -561,6 +577,21 @@ def render_previews(folder):
 # ---------------------------------------------------------------------------
 
 
+def write_obj(path, piece, cols):
+    """The piece in tip space (the mouth at the origin, as generated), with
+    its per-vertex colour on each `v` line (x y z r g b, 0..1), which
+    Studio's importer reads as vertex colour where it supports it."""
+    with open(path, "w") as fh:
+        fh.write(f"# GENERATED by tools/cosmetics/exhaust_tips.py: {piece.name}, metres, tip space\n")
+        fh.write(f"o {piece.name}\n")
+        for v, c in zip(piece.positions + piece.offset, cols):
+            fh.write(f"v {v[0]:.5f} {v[1]:.5f} {v[2]:.5f} {c[0] / 255:.3f} {c[1] / 255:.3f} {c[2] / 255:.3f}\n")
+        for n in piece.normals:
+            fh.write(f"vn {n[0]:.4f} {n[1]:.4f} {n[2]:.4f}\n")
+        for t in piece.tris:
+            fh.write("f " + " ".join(f"{c[0] + 1}//{c[1] + 1}" for c in t) + "\n")
+
+
 def write_main(path):
     import base64
     import struct
@@ -573,6 +604,7 @@ def write_main(path):
     with open(path) as fh:
         dump = json.load(fh)
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(OBJ_OUT, exist_ok=True)
     for old in os.listdir(OUT):
         if old.endswith(".luau"):
             os.remove(os.path.join(OUT, old))
@@ -586,8 +618,11 @@ def write_main(path):
         "-- mouth, +Y up. Each piece is centred on its bounding box; offsetM is that",
         "-- centre in tip space (so a tip goes at its mouth frame * offsetM). inletM",
         "-- is where its pipe goes in (inletRadiusM wide; none on a quad tip, which",
-        "-- sits on QuadY), radiusM its outer half size across (x, y). QuadY is in",
-        "-- pair space: the pair's centre on its mouth plane, tips at x = +-pairGapM/2.",
+        "-- sits on its pair's Y), radiusM a tip's outer half size across (x, y),",
+        "-- tips how many tips the mesh holds. QuadPair is in pair space: the pair's",
+        "-- centre on its mouth plane, tips at x = +-pairGapM/2. bores: each tip's",
+        "-- open bore, closed in the game by a dark disc Part: its centre (xM, zM),",
+        "-- radii and tilt about X (the slash cut).",
         "--",
         "-- Buffers as src/shared/CarMeshes (tools/carbody/meshkit.py): base64",
         "-- little-endian, positions int16 of the half size, normals int8, uvs",
@@ -631,10 +666,16 @@ def write_main(path):
             f"\t\t\tinletM = {{ {i[0]:.4f}, {i[1]:.4f}, {i[2]:.4f} }},",
             f"\t\t\tinletRadiusM = {d['inletR'] if d['inletR'] else 0},",
             f"\t\t\tradiusM = {{ {d['radius'][0]:.4f}, {d['radius'][1]:.4f} }},",
+            f"\t\t\ttips = {d['tips']},",
+            "\t\t\tbores = {",
         ]
+        for b in d["bores"]:
+            lines.append(f"\t\t\t\t{{ xM = {b['x']:.4f}, zM = {b['z']:.4f}, radiusM = {{ {b['rx']:.4f}, {b['ry']:.4f} }}, tiltDeg = {b.get('tilt', 0.0):.3f} }},")
+        lines.append("\t\t\t},")
         for key in ("positions", "normals", "uvs", "triangles", "colors"):
             lines.append(f"\t\t\t{key} = require(script.{name}_{key}) :: string,")
         lines.append("\t\t},")
+        write_obj(os.path.join(OBJ_OUT, name + ".obj"), piece, cols)
         report.append(f"{name}: {piece.triangles} tris, {len(piece.positions)} positions, {len(piece.normals)} normals, size {s.round(4).tolist()}")
     lines += ["\t},", "}"]
     with open(os.path.join(OUT, "init.luau"), "w") as fh:

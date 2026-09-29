@@ -27,6 +27,9 @@
 --   bumperZ: the rear face of the body just above the tips (the bumper's
 --     lower edge, or a diffuser there). Tip mouths sit 2-5 cm past it, so
 --     nothing overhangs them from behind (CarCosmeticMounts.spec).
+--   quadSpreadM (optional): the quad's pair centres at ±quadSpreadM/2
+--     instead of ±spreadM/2, where a car's single own pipe would otherwise sit
+--     in the gap between a pair's tips (the outer tip then covers it).
 --   quadOuterBumperZ (optional): the same face above the quad's two outer
 --     tips, where a bumper curves forward at its corners. Those two tips move
 --     with it, keeping the same clearance past it as the others.
@@ -58,7 +61,7 @@
 export type Windscreen = { posM: { number }, widthM: number, heightM: number, tiltDeg: number }
 export type Outlet = { posM: { number }, dir: { number }?, factory: boolean?, pipeLengthM: number? }
 export type Tips = { posM: { number }, spreadM: number, pipeLengthM: number }
-export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number, quadOuterBumperZ: number? }
+export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number, quadOuterBumperZ: number?, quadSpreadM: number? }
 export type Windows = { side: { string }, screen: { string }, whole: { string }? }
 export type Mounts = { windscreen: Windscreen?, exhaust: Exhaust?, windows: Windows? }
 
@@ -190,7 +193,13 @@ CarCosmeticMounts.cars = {
 				{ posM = { -0.553, 0.325, 2.52 }, dir = { 0, -0.15, 0.99 } },
 				{ posM = { 0.553, 0.325, 2.52 }, dir = { 0, -0.15, 0.99 } },
 			},
-			tips = { posM = { 0, 0.30, 2.62 }, spreadM = 1.106, pipeLengthM = 0.35 },
+			-- Fix round 1 (garage round 3, 2026-09-28): 6 cm lower and 1.5 cm
+			-- further back (was y 0.30, z 2.62). The bumper's underside sweeps
+			-- down from 0.39 m at the mouth to 0.35 m 10 cm in and 0.32 m 15 cm
+			-- in (side view, calibrated at 1,480 px/m), so the modelled tips'
+			-- tops were inside it; now the top (0.33 m) clears it back to the
+			-- band. 4.5 cm past the valance, inside the 2-5 cm standard.
+			tips = { posM = { 0, 0.24, 2.635 }, spreadM = 1.106, pipeLengthM = 0.35 },
 			bumperZ = 2.59,
 		},
 	},
@@ -227,6 +236,9 @@ CarCosmeticMounts.cars = {
 		exhaust = {
 			stock = { { posM = { -0.666, 0.485, 2.395 }, dir = { -0.48, 0, 0.88 } } },
 			tips = { posM = { 0, 0.44, 2.52 }, spreadM = 1.332, pipeLengthM = 0.3 },
+			-- Quad pairs 0.2 m further in, so the outer left tip, not the gap
+			-- between a pair's tips, sits over its own pipe (fix round 1).
+			quadSpreadM = 1.132,
 			bumperZ = 2.49,
 		},
 	},
@@ -244,6 +256,10 @@ CarCosmeticMounts.cars = {
 		exhaust = {
 			stock = { { posM = { 0.60, 0.643, 2.41 }, dir = { 0.19, -0.14, 0.97 } } },
 			tips = { posM = { 0, 0.62, 2.47 }, spreadM = 1.2, pipeLengthM = 0.3 },
+			-- Quad pairs 0.2 m further in, so the outer right tip sits over its
+			-- own pipe: in the gap between a pair's tips the pipe, turned in as it
+			-- runs forward, showed beside the right pair (fix round 1).
+			quadSpreadM = 1.0,
 			bumperZ = 2.44,
 		},
 	},
@@ -268,22 +284,60 @@ function CarCosmeticMounts.tipXs(e: Exhaust, n: number, quadPairGapM: number): {
 		return { c - half, c + half }
 	elseif n >= 4 then
 		local g = quadPairGapM / 2
-		return { c - half - g, c - half + g, c + half - g, c + half + g }
+		local q = (e.quadSpreadM or e.tips.spreadM) / 2
+		return { c - q - g, c - q + g, c + q - g, c + q + g }
 	end
 	return {}
 end
 
--- Each aftermarket tip's mouth centre, metres, for n tips: at tips.posM's
--- height and z, at tipXs; a quad's outer two moved with the bumper there
--- (quadOuterBumperZ), same clearance past it.
+-- A quad's two pairs as frames in car metres (garage round 3 §1: one mesh per
+-- pair on one Y inlet): origin at the pair's centre on its mouth plane, +Z
+-- out of the mouths, tips at x = +-quadPairGapM/2 in the frame. Where the
+-- bumper curves forward over the outer tip (quadOuterBumperZ) the pair turns
+-- about Y so its outer mouth moves forward with it and its inner one stays
+-- put (on the krownvik and fleet, 3.5 cm over a 0.2 m gap: about 10°,
+-- the pair pointing slightly outward, as the bumper there does).
+function CarCosmeticMounts.quadPairFrames(e: Exhaust, quadPairGapM: number): { CFrame }
+	local c, half = e.tips.posM[1], (e.quadSpreadM or e.tips.spreadM) / 2
+	local y, z = e.tips.posM[2], e.tips.posM[3]
+	local shift = if e.quadOuterBumperZ then e.quadOuterBumperZ - e.bumperZ else 0
+	local out: { CFrame } = {}
+	for _, side in { -1, 1 } do
+		-- side * sin(yaw) * gap = -shift puts the outer mouth `shift` along z.
+		local sinYaw = math.clamp(-side * shift / quadPairGapM, -1, 1)
+		local yaw = math.asin(sinYaw)
+		local centre = Vector3.new(c + side * half, y, z + shift / 2)
+		table.insert(out, CFrame.new(centre) * CFrame.Angles(0, yaw, 0))
+	end
+	return out
+end
+
+-- Each aftermarket tip's frame, car metres: at its mouth centre, +Z out of
+-- the mouth (tip space, tools/cosmetics). Straight back at tipXs, tips.posM's
+-- height and z, except a quad's, which come from its pair frames (the outer
+-- two moved with the bumper, quadOuterBumperZ, same clearance past it).
+function CarCosmeticMounts.tipFrames(e: Exhaust, n: number, quadPairGapM: number): { CFrame }
+	local out: { CFrame } = {}
+	if n >= 4 then
+		local g = quadPairGapM / 2
+		for _, pair in CarCosmeticMounts.quadPairFrames(e, quadPairGapM) do
+			table.insert(out, pair * CFrame.new(-g, 0, 0))
+			table.insert(out, pair * CFrame.new(g, 0, 0))
+		end
+		return out
+	end
+	local y, z = e.tips.posM[2], e.tips.posM[3]
+	for _, x in CarCosmeticMounts.tipXs(e, n, quadPairGapM) do
+		table.insert(out, CFrame.new(x, y, z))
+	end
+	return out
+end
+
+-- Each aftermarket tip's mouth centre, metres, for n tips (tipFrames).
 function CarCosmeticMounts.tipMouths(e: Exhaust, n: number, quadPairGapM: number): { Vector3 }
 	local out: { Vector3 } = {}
-	local y, z = e.tips.posM[2], e.tips.posM[3]
-	local xs = CarCosmeticMounts.tipXs(e, n, quadPairGapM)
-	for i, x in xs do
-		local outer = #xs >= 4 and (i == 1 or i == #xs)
-		local shift = if outer and e.quadOuterBumperZ then e.quadOuterBumperZ - e.bumperZ else 0
-		table.insert(out, Vector3.new(x, y, z + shift))
+	for _, f in CarCosmeticMounts.tipFrames(e, n, quadPairGapM) do
+		table.insert(out, f.Position)
 	end
 	return out
 end
@@ -315,14 +369,15 @@ end
 -- aftermarket tips, one per tip mouth and nothing else (the tips replace the
 -- whole exhaust; any own pipe left showing, like the hatch's, is not an
 -- outlet); with none, one per stock outlet. Each sits at the centre of the
--- mouth with its LookVector pointing out of the pipe (straight back for tips;
--- the stock pipe's dir), UpVector as near car-up as that allows.
+-- mouth with its LookVector pointing out of the pipe (out of the tip for tips;
+-- the stock pipe's dir; a turned quad pair's own axis), UpVector as near
+-- car-up as that allows.
 -- CarCosmetics puts an ExhaustOutlet Attachment at each one.
 function CarCosmeticMounts.outletFrames(e: Exhaust, n: number, quadPairGapM: number): { CFrame }
 	local out: { CFrame } = {}
 	if n > 0 then
-		for _, p in CarCosmeticMounts.tipMouths(e, n, quadPairGapM) do
-			table.insert(out, CFrame.lookAt(p, p + Vector3.zAxis))
+		for _, f in CarCosmeticMounts.tipFrames(e, n, quadPairGapM) do
+			table.insert(out, CFrame.lookAt(f.Position, f.Position + f.ZVector))
 		end
 		return out
 	end

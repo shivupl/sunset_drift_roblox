@@ -127,28 +127,38 @@ return function(t: T)
 		local style = if item.tipStyle then R.tipStyles[item.tipStyle] else nil
 		t.ok(style ~= nil, `{item.id} names a tip style that exists ({item.tipStyle})`)
 		if style then
-			t.ok(pieces[style.mesh] ~= nil, `{item.id}: tip mesh {style.mesh} is generated`)
-			t.ok(pieces[style.bore] ~= nil, `{item.id}: bore mesh {style.bore} is generated`)
-			-- A tip and its bore together keep the budget.
-			local tris = (if pieces[style.mesh] then pieces[style.mesh].triangleCount else 0) + (if pieces[style.bore] then pieces[style.bore].triangleCount else 0)
-			t.ok(tris <= 1500, `{item.id}: tip and bore at most 1,500 triangles (has {tris})`)
-			t.eq(style.pair ~= nil, item.tips == 4, `{item.id}: a Y inlet exactly when it is a quad`)
-			if style.pair then
-				t.ok(pieces[style.pair] ~= nil, `{item.id}: pair mesh {style.pair} is generated`)
+			local piece = pieces[style.mesh]
+			t.ok(piece ~= nil, `{item.id}: tip mesh {style.mesh} is generated`)
+			t.eq(style.pair == true, item.tips == 4, `{item.id}: a pair mesh exactly when it is a quad`)
+			if piece then
+				-- One bore disc per tip the mesh holds (a pair holds two).
+				t.eq(#piece.bores, piece.tips, `{item.id}: a bore for every tip in {style.mesh}`)
+				t.eq(piece.tips, if style.pair then 2 else 1, `{item.id}: {style.mesh} holds its tips`)
 			end
 		end
 	end
+	-- One EditableMesh per style, at most 4 (fix round 1: a client holds 8).
+	local meshes: { [string]: boolean } = {}
+	local count = 0
+	for _, style in R.tipStyles do
+		if not meshes[style.mesh] then
+			meshes[style.mesh] = true
+			count += 1
+		end
+	end
+	t.ok(count <= 4, `tip styles use at most 4 meshes (use {count})`)
+	t.ok(R.tipMeshReserve >= 0, "tipMeshReserve is set")
 	for name, piece in pieces do
-		t.ok(piece.triangleCount <= 1500, `tip mesh {name}: at most 1,500 triangles (has {piece.triangleCount})`)
+		t.ok(piece.triangleCount / piece.tips <= 1500, `tip mesh {name}: at most 1,500 triangles a tip (has {piece.triangleCount} for {piece.tips})`)
 		if piece.inletRadiusM > 0 then
 			t.ok(R.pipeRadiusM < piece.inletRadiusM, `tip mesh {name}: the pipe fits inside its inlet`)
 		end
 	end
-	for _, name in { "Rolled", "Quad", "Slash" } do
+	for _, name in { "Rolled", "QuadPair", "Slash" } do
 		local r = pieces[name] and pieces[name].radiusM
 		t.ok(r ~= nil and math.abs(r[1] - R.tipRadiusM) < 0.001, `tip mesh {name}: built at tipRadiusM`)
 	end
-	t.ok(math.abs(ExhaustTips.pairGapM - R.quadPairGapM) < 0.001, "QuadY built for quadPairGapM")
+	t.ok(math.abs(ExhaustTips.pairGapM - R.quadPairGapM) < 0.001, "QuadPair built for quadPairGapM")
 
 	-- Every flame layer: whole, ordered particle counts; lifetimes and
 	-- keyframes that run 0 to 1.
