@@ -158,6 +158,13 @@ unmistakable at a glance:
 | **Previewing** (for sale, on the car now) | As for sale plus the sodium stroke, and a bar across the panel's foot: `PREVIEWING` and the price, with a primary `BUY` button |
 | **Rare** | A small `dusk` diamond before the name; nothing else changes |
 
+A category's action that is not an item (the EXHAUST tab's `REV`, which
+plays the flames on the turntable car) is a `secondary` button in the
+category's sub row above the cards, never a card, and it costs nothing. A
+category with a second set of items (PAINT's window tint) gives it a
+`title` row (`WINDOW TINT` / `تظليل`) and its own card grid below the first,
+in the same scroll.
+
 Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing
 is ever charged from a single tap. The sheet is opaque (not `alpha.panel`):

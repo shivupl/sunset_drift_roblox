@@ -19,7 +19,18 @@ wing, the walk-in customisation view and its panel (buy with confirm, equip). Sp
 docs/superpowers. Open owner calls: finish look (mirror chrome needs Future lighting or
 SurfaceAppearance maps), prices, `lights.key.brightness`, paintable pickup and cruiser shells.
 
-## Parked: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
+Round 2 on `garage` (2026-09-28, commits `dde1061`..`e95b019` plus the docs pass; spec and plan in
+docs/superpowers, `2026-09-28-garage-round2-*`): one exhaust standard on all ten cars (stock
+outlets, attached tips and pipes, `ExhaustOutlet` attachments); layered exhaust flames seen by
+everyone (`ExhaustFlames`, relayed by `CarControls`) and the REV preview; driving into the garage
+and leaving seated in the car (`GarageService`); four paints, two rim finishes, two decals and
+window tint, with Economy codec tests. Final Play pass: drive-in, buy and equip, REV, leave
+seated, flames at speed, walk-in and the phone layout all worked; specs 3058 passed, 14 failed
+(the VehicleRig baseline). Still open for the owner: one drive-out in five left the car on its
+side (task-5 report), upshift and limiter pops (off by default), tint's mixed-version rollout,
+and the pickup's pipe through its bumper. Not merged, not pushed.
+
+## Parked, superseded: exhaust backfire (`car-backfire`, local only, commit `d1f82d6`)
 
 Pops and a flame burst at the exhaust tips, from the Kruzer 80 store model's A-Chassis
 Backfire plugin, rebuilt on our sim (`src/client/Backfire.luau`, relayed by the server
@@ -32,8 +43,8 @@ The store emitter (0.09 s puffs of one texture) is the weak part; the triggers a
 be kept if it is picked up again with a better flame.
 
 Superseded on `garage` (round 2, 2026-09-28): `src/client/ExhaustFlames.luau` is the new
-layered flame on every car's exhaust outlets, hooked to EngineAudio's pops (lift-off burst,
-upshift, limiter) and relayed through server `CarControls` (`ExhaustPops`). Its trigger and
+layered flame on every car's exhaust outlets, hooked to EngineAudio's pops (the lift-off burst;
+upshift and limiter pops exist but are 0, off, by default, per the owner's 2026-09-22 ruling) and relayed through server `CarControls` (`ExhaustPops`). Its trigger and
 relay ideas came from this branch; nothing of its code or look was merged. The branch can be
 deleted once the owner agrees.
 

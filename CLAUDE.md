@@ -30,7 +30,7 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 
 ## Commands
 - **Type check:** `bash scripts/analyze.sh` (strict luau-lsp). `World/init.luau` and `Station.luau` have known baseline errors, so only new errors in touched files matter. The uncommitted car-rig changes add BodyBuilder errors.
-- **Specs:** in Studio, `require(game.ReplicatedStorage.Shared:Clone().Tests)()`. 14 VehicleRig.spec failures come from the uncommitted car-rig changes.
+- **Specs:** in Studio Edit, swap a fresh clone in as `Shared` for the run, because server modules under test (Economy, PlateRegistry) require `ReplicatedStorage.Shared` by path and Edit caches the old one: `local o = game.ReplicatedStorage.Shared; local c = o:Clone(); o.Name = "Shared_orig"; c.Parent = game.ReplicatedStorage; task.wait(1); local ok, p, f = pcall(require(c.Tests)); c:Destroy(); o.Name = "Shared"; return p.." "..f`, all in one `execute_luau`. A plain `require(game.ReplicatedStorage.Shared:Clone().Tests)()` gave 9 false EconomyCodec.spec failures (stale CosmeticsConfig without tint) on 2026-09-28. 14 VehicleRig.spec failures come from the uncommitted car-rig changes.
 - **Rojo:** `rojo serve` (Rojo 7.7 via Rokit).
 
 ## Studio workflow (MCP)

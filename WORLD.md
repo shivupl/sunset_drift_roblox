@@ -490,6 +490,16 @@ the keep-clear hatch (no marker part: the spot is computed from DoorZone and
 of a 5 m car stays clear of ExitSpot (3.15 m out) and the nose short of the
 painted arrow (8.4 m out).
 
+Measured in the final round-2 Play pass (2026-09-28, kamri07, harness at
+8-12 km/h): five drive-ins, each opening the view about 4.4 s after the
+throttle came on from 11 m out. The parked car sat 7.00 m out, centred,
+facing out (dot 1.00), its chassis 1.007 m over the pad against 1.003 m for
+the same car settled after a normal spawn, all four tyre bottoms at the
+pad: on its wheels, not floating or sunk. Leaving seated the player in it
+every time, with the car ready to drive (60 km/h 3 s later). Once in five,
+the car was found on its side a few seconds after the leave (see the
+round-2 task-5 report); the other four settled within 0.5 s, upright.
+
 **Why there.** The pad's left wing (X -84..-36 m, Z -1700..-1300 m) is 48 x
 400 m of flat, collidable, empty asphalt straight across the highway from
 the spawn bay and the station. The garage stands in the middle of it at
@@ -545,7 +555,8 @@ the same under either sky.
 
 **The customisation view** (the client's `Garage/GarageView.luau`):
 - **Entering:** the character's root crosses `DoorZone` into the garage,
-  on foot. The screen fades, control drops away (the root is anchored on
+  on foot, or the chassis of your own car does, slowly, while you drive it
+  (Driving in, above). The screen fades, control drops away (the root is anchored on
   the client), the character hides, and the lamp pool is suspended.
 - **Lights and the cap:** the view makes its four lights on invisible
   anchors in the bay and suspends the lamp pool. Measured on the client
@@ -561,7 +572,15 @@ the same under either sky.
   depending on the car.
 - **The raised car in the lift bay:** built the same way (the kamri07,
   stock, lamps off).
-- **Leaving** puts the character at `ExitSpot`, facing the road.
+- **Leaving** puts the character at `ExitSpot`, facing the road (0.06 m
+  from it, measured), or after a drive-in back in the driver's seat of the
+  parked car.
+- **Exhaust flames make no light.** The flames (`ExhaustFlames`, on the
+  driven car and on the turntable's REV) are particles and a brief colour
+  glow on the tip, never a Light instance, so they add nothing to the live
+  light count. Counted again in the round-2 final pass (every Light in the
+  client's workspace): 5 in the view, REV flames included; 13 outside,
+  with titanium flames firing at 126 km/h; none under the car.
 - **Finishes under ShadowMap** (measured 2026-09-28 on a Lekzas and a kamri07, in red and in navy). The view's lights give no specular highlight, and Metal and Foil ignore Reflectance on these meshes. Before the retune, gloss, metallic and chrome looked like flat plastic. Glass is the material that answers the view's lights, so the finishes are now a Glass ladder (TUNING.md, CosmeticsConfig), and the fill light is a softbox over the car.
   - After, side by side: factory is flat; matte is duller; gloss has a lit sheen on the bonnet, roof and flanks; metallic is sheen over a deeper base (navy turns slate); chrome is pale silver.
   - A mirror chrome is out of reach without Future lighting or SurfaceAppearance maps.
