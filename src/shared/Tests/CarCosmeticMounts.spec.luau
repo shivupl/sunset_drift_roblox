@@ -46,8 +46,10 @@ return function(t: T)
 		local win = if m then m.windows else nil
 		if win then
 			local pieces: { [string]: boolean } = {}
+			local withLook: { [string]: boolean } = {}
 			for _, piece in ConfigLoader.entry(id).body.pieces do
 				pieces[piece.name] = true
+				withLook[piece.name] = piece.look ~= nil
 			end
 			local seen: { [string]: boolean } = {}
 			local n = 0
@@ -55,6 +57,9 @@ return function(t: T)
 				for _, name in list do
 					t.ok(pieces[name] == true, `{id} windows: {name} is a body piece`)
 					t.ok(not seen[name], `{id} windows: {name} listed once`)
+					-- Tint sets Color / Material / Transparency; a piece with a
+					-- SurfaceAppearance (a CarLooks look) would not show it.
+					t.ok(not withLook[name], `{id} windows: {name} has no SurfaceAppearance look`)
 					seen[name] = true
 					n += 1
 				end

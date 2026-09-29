@@ -760,6 +760,7 @@ Likewise a car with no windscreen or exhaust spot in `CarCosmeticMounts` would g
 - Absolute, not relative to factory: a film limited to "never clearer than factory" did nothing at all on the kamri07, whose doors are already 0.2.
 - The strip stays readable under every film (inside strips on the lekzas, krownvik and fleet were checked at Limo; the lekzas's all-round glass was also checked at 0.2).
 - The hatch (opaque black glass mesh), pickup and cruiser (glass painted into the shell) have no `windows`; TINT greys out with "This car's windows can't be tinted yet". `CarCosmeticMounts.spec` fails if any other car ships without windows, or lists a piece its body does not have.
+- **Rollout (owner's call):** `tint` is a new look slot. Economy now carries any stored slot it does not know across a save, so every slot after tint is safe on an older server, but servers already deployed without that carry drop tint on a known car when they save. Ship tint as a single-version rollout (no old servers alongside new ones), or accept that a tint chosen during the overlap can be lost.
 - **The knobs:** each film's `glassTransparency` / `screenTransparency` / `glassColor`. Keep `screenTransparency` at 0.5 or more (the spec checks it and that it is above the side value), so windscreens stay legal-looking.
 
 ## cityscape

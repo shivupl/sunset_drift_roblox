@@ -175,6 +175,11 @@ local function tint(s: State, look: CarLook.Look)
 	local side, screen = item.glassTransparency, item.screenTransparency
 	for _, w in s.windows do
 		local o = w.o
+		if o.sa then
+			-- A SurfaceAppearance piece keeps its own maps; tint would not read
+			-- on it. CarCosmeticMounts.spec keeps such pieces out of windows.
+			continue
+		end
 		if item.glassColor and side and screen then
 			o.part.Color = item.glassColor
 			o.part.Material = Enum.Material.SmoothPlastic

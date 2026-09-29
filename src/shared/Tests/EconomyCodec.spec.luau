@@ -9,7 +9,8 @@
 -- What must hold:
 --   * a write merges the RAW stored cosmetic ids, so a server that does not
 --     know an item another one sold never un-owns it (task 2 review);
---   * a stored look for a car this catalog lacks is written back exactly;
+--   * a stored look for a car this catalog lacks is written back exactly,
+--     and on a known car any slot this version lacks;
 --   * a car's look set back to stock is cleared, and an all-stock look is
 --     dropped rather than stored empty;
 --   * the tint slot (garage round 2 §4) saves and loads like the others.
@@ -110,10 +111,15 @@ return function(t: T)
 		t.eq(lek.tint, "tint_limo", "owned tint kept")
 		t.eq(lek.rims, nil, "unowned rims dropped")
 	end
-	-- An all-stock look cleans to stock ids only; it is still an entry, but
-	-- carries nothing a car would show differently.
+	-- An all-stock look is kept on read, holding its stock ids (clean keeps
+	-- stock ids): it shows as factory and is dropped at the next setLook
+	-- that leaves it empty. What readProfile does today, asserted exactly.
 	local k07 = looks.kamri07
-	t.ok(k07 == nil or (k07.paint == "paint_stock" and k07.tint == "tint_stock"), "an all-stock look reads as stock")
+	t.ok(k07 ~= nil, "an all-stock look is kept on read")
+	if k07 then
+		t.eq(k07.paint, "paint_stock", "an all-stock look keeps its stock paint id")
+		t.eq(k07.tint, "tint_stock", "an all-stock look keeps its stock tint id")
+	end
 	t.eq(looks.kruzer80, nil, "a look with nothing owned is dropped")
 	t.ok(looks[FUTURE_CAR] ~= nil, "a look for a car this catalog lacks is read")
 
@@ -151,6 +157,27 @@ return function(t: T)
 		t.eq(future.tint, "tint_dark", "an unknown car's look keeps its tint")
 	end
 	t.eq(fake.data[KEY].looks.lekzas, nil, "a known car cleared this session is not written back from the stored copy")
+
+	-- A slot this version does not know, on a known car, survives a save
+	-- (so the next new slot is safe on an older server), whether or not the
+	-- session still has a look for that car.
+	fake.data[KEY] = {
+		cosmetics = { "paint_pearl" },
+		looks = {
+			lekzas = { paint = "paint_pearl", spoiler = "spoiler_future_x" },
+			kamri07 = { spoiler = "spoiler_future_y", paint = "paint_pearl" },
+		},
+	}
+	local u = codec.readProfile(FakeDataStore.copy(fake.data[KEY]))
+	t.eq(u.looks.lekzas and (u.looks.lekzas :: any).spoiler, nil, "this server does not read the unknown slot")
+	u.looks.kamri07 = nil -- cleared to factory this session
+	save(fake, u)
+	local lekStored = fake.data[KEY].looks.lekzas
+	t.ok(lekStored ~= nil and lekStored.spoiler == "spoiler_future_x", "an unknown slot on a known car is written back")
+	t.ok(lekStored ~= nil and lekStored.paint == "paint_pearl", "the known slots come from this session")
+	local k07Stored = fake.data[KEY].looks.kamri07
+	t.ok(k07Stored ~= nil and k07Stored.spoiler == "spoiler_future_y", "an unknown slot survives when the session cleared the car")
+	t.ok(k07Stored ~= nil and k07Stored.paint == nil, "a known slot the session cleared stays cleared")
 
 	-- A round trip through the store keeps a tint look.
 	local r = codec.fresh()

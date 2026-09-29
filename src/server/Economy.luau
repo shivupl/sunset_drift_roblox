@@ -192,7 +192,14 @@ end
 -- readProfile's filtered list: during a rolling update an older server does
 -- not know an item a newer one sold, and must still write it back (task 2
 -- review, 2026-09-28). For the same reason a stored look for a car this
--- version's catalog does not have is written back exactly as stored.
+-- version's catalog does not have is written back exactly as stored, and on
+-- a car it does have, any look slot it does not know.
+--
+-- That slot carry is new with the tint slot (garage round 2, task 4 review).
+-- Servers already deployed without it drop an unknown slot on a known car,
+-- so tint itself needs a single-version rollout (no old servers running
+-- beside new ones), or a tint chosen on a new server can be erased by an old
+-- one's save. The owner's call; every slot after tint is safe.
 local function encode(p: Profile, old: any): any
 	local out = copyProfile(p)
 	out.bestScore = math.max(p.bestScore, readProfile(old).bestScore)
@@ -206,8 +213,26 @@ local function encode(p: Profile, old: any): any
 	if type(old) == "table" and type(old.looks) == "table" then
 		local cars = ConfigLoader.catalog().cars
 		for carId, look in old.looks do
-			if type(carId) == "string" and type(look) == "table" and not cars[carId] then
-				(out.looks :: any)[carId] = look
+			if type(carId) == "string" and type(look) == "table" then
+				if not cars[carId] then
+					(out.looks :: any)[carId] = look
+				else
+					-- A known car: a slot this version does not have (a newer
+					-- server's) is carried across as stored, so the next new
+					-- slot survives a save by an older server (task 4 review,
+					-- 2026-09-28). The slots this version knows, and the plate,
+					-- come from this session.
+					for slot, value in look do
+						if type(slot) == "string" and slot ~= "plate" and not table.find(CarLook.SLOTS, slot :: any) then
+							local entry = (out.looks :: any)[carId]
+							if not entry then
+								entry = {}
+								;(out.looks :: any)[carId] = entry
+							end
+							entry[slot] = value
+						end
+					end
+				end
 			end
 		end
 	end
