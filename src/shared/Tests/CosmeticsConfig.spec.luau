@@ -1,6 +1,7 @@
 --!strict
 local CosmeticsConfig = require(script.Parent.Parent.CosmeticsConfig)
 local ConfigLoader = require(script.Parent.Parent.ConfigLoader)
+local ExhaustTips = require(script.Parent.Parent.CosmeticMeshes.ExhaustTips)
 local Tests = require(script.Parent)
 type T = Tests.T
 
@@ -109,6 +110,45 @@ return function(t: T)
 	end
 	t.ok(size("exhaust_stock") < size("exhaust_single"), "factory flame is smaller than a sport tip's")
 	t.ok(size("exhaust_twin") <= size("exhaust_quad") and size("exhaust_quad") <= size("exhaust_titanium"), "titanium flame is the largest")
+	-- The Big Oval (garage round 3 §1): the single's flame, a little bigger.
+	t.ok(size("exhaust_oval") > size("exhaust_single") and size("exhaust_oval") < size("exhaust_titanium"), "oval flame between the single's and the titanium's")
+
+	-- Modelled tips (garage round 3 §1): every tip item names a style that
+	-- exists, whose generated meshes exist and keep the budget; the round
+	-- tips are built at render.tipRadiusM and the quad's Y inlet at
+	-- render.quadPairGapM (the mouth maths use those); the pipe fits inside
+	-- every inlet collar.
+	local R = CosmeticsConfig.render
+	local pieces = ExhaustTips.pieces :: { [string]: any }
+	for _, item in CosmeticsConfig.inCategory("exhaust") do
+		if (item.tips or 0) == 0 then
+			continue
+		end
+		local style = if item.tipStyle then R.tipStyles[item.tipStyle] else nil
+		t.ok(style ~= nil, `{item.id} names a tip style that exists ({item.tipStyle})`)
+		if style then
+			t.ok(pieces[style.mesh] ~= nil, `{item.id}: tip mesh {style.mesh} is generated`)
+			t.ok(pieces[style.bore] ~= nil, `{item.id}: bore mesh {style.bore} is generated`)
+			-- A tip and its bore together keep the budget.
+			local tris = (if pieces[style.mesh] then pieces[style.mesh].triangleCount else 0) + (if pieces[style.bore] then pieces[style.bore].triangleCount else 0)
+			t.ok(tris <= 1500, `{item.id}: tip and bore at most 1,500 triangles (has {tris})`)
+			t.eq(style.pair ~= nil, item.tips == 4, `{item.id}: a Y inlet exactly when it is a quad`)
+			if style.pair then
+				t.ok(pieces[style.pair] ~= nil, `{item.id}: pair mesh {style.pair} is generated`)
+			end
+		end
+	end
+	for name, piece in pieces do
+		t.ok(piece.triangleCount <= 1500, `tip mesh {name}: at most 1,500 triangles (has {piece.triangleCount})`)
+		if piece.inletRadiusM > 0 then
+			t.ok(R.pipeRadiusM < piece.inletRadiusM, `tip mesh {name}: the pipe fits inside its inlet`)
+		end
+	end
+	for _, name in { "Rolled", "Quad", "Slash" } do
+		local r = pieces[name] and pieces[name].radiusM
+		t.ok(r ~= nil and math.abs(r[1] - R.tipRadiusM) < 0.001, `tip mesh {name}: built at tipRadiusM`)
+	end
+	t.ok(math.abs(ExhaustTips.pairGapM - R.quadPairGapM) < 0.001, "QuadY built for quadPairGapM")
 
 	-- Every flame layer: whole, ordered particle counts; lifetimes and
 	-- keyframes that run 0 to 1.

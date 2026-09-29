@@ -31,6 +31,8 @@ local CarLamps = require(Shared:WaitForChild("CarLamps"))
 local CarCosmeticMounts = require(Shared:WaitForChild("CarCosmeticMounts"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
+local MeshData = require(Shared:WaitForChild("MeshData"))
+local ExhaustTips = require(Shared:WaitForChild("CosmeticMeshes"):WaitForChild("ExhaustTips"))
 
 local CarCosmetics = {}
 
@@ -200,8 +202,7 @@ end
 
 -- A part that is only ever seen: welded to the chassis at the body mount
 -- plus this offset, and nothing to the physics.
-local function visualPart(name: string, handles: VehicleRig.Handles, offset: CFrame): Part
-	local part = Instance.new("Part")
+local function dress<P>(part: P & BasePart, name: string, handles: VehicleRig.Handles, offset: CFrame): P
 	part.Name = name
 	part.Anchored = false
 	part.Massless = true
@@ -216,6 +217,10 @@ local function visualPart(name: string, handles: VehicleRig.Handles, offset: CFr
 	weld.Part1 = part
 	weld.Parent = part
 	return part
+end
+
+local function visualPart(name: string, handles: VehicleRig.Handles, offset: CFrame): Part
+	return dress(Instance.new("Part"), name, handles, offset)
 end
 
 local function strip(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
@@ -303,11 +308,68 @@ local function bore(name: string, handles: VehicleRig.Handles, s: number, x: num
 	return part
 end
 
+-- A generated tip mesh (tools/cosmetics/exhaust_tips.py): the MeshData piece
+-- plus where its pipe goes in, in its own tip space (mouth at the origin, +Z
+-- out of the mouth; for QuadY, pair space).
+type TipMesh = MeshData.Piece & { inletM: { number }, inletRadiusM: number, radiusM: { number } }
+
+local function tipMesh(name: string): TipMesh
+	local piece = (ExhaustTips.pieces :: any)[name]
+	assert(piece, `[CarCosmetics] no tip mesh {name}`)
+	return piece :: TipMesh
+end
+
+-- A tip mesh placed with its tip-space origin at `at` (car metres), axes the
+-- car's (tip +Z is the car's back, out of the pipe), scaled by s (studs per
+-- car metre): the template cloned, sized, welded like any visual part.
+local function meshAt(name: string, mesh: TipMesh, handles: VehicleRig.Handles, s: number, at: Vector3): MeshPart
+	local o = mesh.offsetM
+	local part = MeshData.template(mesh):Clone()
+	part.Size = Vector3.new(mesh.sizeM[1], mesh.sizeM[2], mesh.sizeM[3]) * s
+	return dress(part, name, handles, CFrame.new((at + Vector3.new(o[1], o[2], o[3])) * s))
+end
+
+-- Whether a style's meshes can be made on this client: each is an
+-- EditableMesh, and a client may hold only a few (Studio 2026-09-28: 8 free
+-- at boot, counted, whatever their size; see BEHAVIOURS). Once made they are
+-- cached (MeshData.template); a style that cannot be made falls back to
+-- round 2's cylinder tips, so a look never loses its exhaust.
+local tipFailed: { [string]: boolean } = {}
+local function tipTemplates(names: { string }): boolean
+	for _, name in names do
+		if tipFailed[name] then
+			return false
+		end
+		local ok, err = pcall(MeshData.template, tipMesh(name))
+		if not ok then
+			tipFailed[name] = true
+			warn(`[CarCosmetics] tip mesh {name} unavailable, cylinder tips instead: {err}`)
+			return false
+		end
+	end
+	return true
+end
+
+-- The pipe under a tip (or a quad pair): straight, from pipeOverlapM inside
+-- the inlet collar at `inlet` (car metres) forward to `frontZ`. Its own
+-- function so the routed pipe (garage round 3 §2) can replace it.
+local function tipPipe(name: string, handles: VehicleRig.Handles, s: number, inlet: Vector3, frontZ: number): Part
+	local backZ = inlet.Z + R.pipeOverlapM
+	local len = math.max(backZ - frontZ, R.pipeOverlapM)
+	local pipe = cylinder(name, handles, s, Vector3.new(inlet.X, inlet.Y, backZ - len / 2), len, R.pipeRadiusM)
+	pipe.Color = R.pipeColor
+	pipe.Material = Enum.Material.Metal
+	return pipe
+end
+
 -- The exhaust fitted to the car (garage round 2 §1, the exhaust standard):
 -- stock (no tips) builds a plain pipe at each stock outlet whose body has
 -- none (factory = true) and leaves the car's own pipes be; tips build each
--- tip, its bore and the pipe it sits on, running forward under the car (a
--- tip over one of the car's own pipes hides that pipe's mouth inside it).
+-- modelled tip (garage round 3 §1: the item's tipStyle, its mesh's mouth on
+-- CarCosmeticMounts.tipMouths, its dark bore part of the mesh) and the pipe
+-- it sits on, running forward under the car (a tip over one of the car's own
+-- pipes hides that pipe's mouth inside it). A quad is two pairs, each pair
+-- on one Y inlet (QuadY) with one pipe: a quad car has two pipes.
 -- One ExhaustOutlet Attachment goes at each mouth of the exhaust fitted: the
 -- stock outlets, or with tips on only the tips (they replace the whole
 -- exhaust; an own pipe left showing, like the hatch's, gets none)
@@ -332,22 +394,64 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 	local folder = Instance.new("Folder")
 	folder.Name = "LookExhaust"
 	if n > 0 then
-		local tips = spot.tips
-		for i, mouth in CarCosmeticMounts.tipMouths(spot, n, R.quadPairGapM) do
-			local x, y, mouthZ = mouth.X, mouth.Y, mouth.Z
-			local frontZ = mouthZ - R.tipLengthM
-			local tip = cylinder(`Tip{i}`, handles, sc, Vector3.new(x, y, mouthZ - R.tipLengthM / 2), R.tipLengthM, R.tipRadiusM)
-			tip.Color = item.tipColor or Color3.fromRGB(200, 200, 200)
-			tip.Material = item.tipMaterial or Enum.Material.Metal
-			tip.Parent = folder
-			bore(`Bore{i}`, handles, sc, x, y, mouthZ, R.tipLengthM, R.boreRadiusM).Parent = folder
-			-- The pipe: from pipeOverlapM inside the tip's front end forward
-			-- pipeLengthM, into the body or the car's own muffler.
-			local len = tips.pipeLengthM + R.pipeOverlapM
-			local pipe = cylinder(`Pipe{i}`, handles, sc, Vector3.new(x, y, frontZ + R.pipeOverlapM - len / 2), len, R.pipeRadiusM)
-			pipe.Color = R.pipeColor
-			pipe.Material = Enum.Material.Metal
-			pipe.Parent = folder
+		local style = R.tipStyles[item.tipStyle or "rolled"] or R.tipStyles.rolled
+		local mesh = tipMesh(style.mesh)
+		local boreMesh = tipMesh(style.bore)
+		local colour = if style.baked then R.bakedTipColor else item.tipColor or Color3.fromRGB(200, 200, 200)
+		local material = item.tipMaterial or Enum.Material.Metal
+		local mouths = CarCosmeticMounts.tipMouths(spot, n, R.quadPairGapM)
+		local names = { style.mesh, style.bore }
+		if style.pair then
+			table.insert(names, style.pair)
+		end
+		local modelled = tipTemplates(names)
+		for i, mouth in mouths do
+			if modelled then
+				local tip = meshAt(`Tip{i}`, mesh, handles, sc, mouth)
+				tip.Color = colour
+				tip.Material = material
+				tip.Parent = folder
+				local inner = meshAt(`Bore{i}`, boreMesh, handles, sc, mouth)
+				inner.Color = R.tipBoreColor
+				inner.Material = Enum.Material.SmoothPlastic
+				inner.Parent = folder
+			else
+				-- The fallback: a cylinder as long as the mesh (mouth to inlet)
+				-- with round 2's flush dark bore.
+				local len = -mesh.inletM[3]
+				local tip = cylinder(`Tip{i}`, handles, sc, mouth - Vector3.new(0, 0, len / 2), len, R.tipRadiusM)
+				tip.Color = colour
+				tip.Material = material
+				tip.Parent = folder
+				bore(`Bore{i}`, handles, sc, mouth.X, mouth.Y, mouth.Z, len, boreMesh.radiusM[2]).Parent = folder
+			end
+		end
+		-- Where each pipe goes in: under each tip, or under each quad pair's
+		-- Y inlet, which sits on the pair's mouth plane (the rearmost of its
+		-- two mouths: an outer tip moved forward with the bumper,
+		-- quadOuterBumperZ, slides further over its branch).
+		local inlets: { Vector3 } = {}
+		if style.pair and modelled then
+			local pair = tipMesh(style.pair)
+			for p = 1, #mouths - 1, 2 do
+				local a, b = mouths[p], mouths[p + 1]
+				local at = Vector3.new((a.X + b.X) / 2, a.Y, math.max(a.Z, b.Z))
+				local y = meshAt(`QuadY{(p + 1) // 2}`, pair, handles, sc, at)
+				y.Color = colour
+				y.Material = material
+				y.Parent = folder
+				table.insert(inlets, at + Vector3.new(pair.inletM[1], pair.inletM[2], pair.inletM[3]))
+			end
+		else
+			for _, mouth in mouths do
+				-- A quad tip's inletM is its closed front (it sits on QuadY).
+				table.insert(inlets, mouth + Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3]))
+			end
+		end
+		-- Every pipe ends forward where round 2 measured it (pipeRunFromM).
+		local frontZ = spot.tips.posM[3] - R.pipeRunFromM - spot.tips.pipeLengthM
+		for i, inlet in inlets do
+			tipPipe(`Pipe{i}`, handles, sc, inlet, frontZ).Parent = folder
 		end
 	else
 		for i, o in spot.stock do

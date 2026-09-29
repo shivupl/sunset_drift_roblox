@@ -706,8 +706,11 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 |---|---|
 | brakeBrighten | A chosen tail colour's brake lamp is that colour this much brighter in HSV value (0.4): Deep Red tails #8A0508 brake at #C1070B (measured in Play). Smoked brakes dim (#670E11); raise this if braking gets lost. |
 | stripThicknessM / stripPixelsPerM / stripDrawStuds | The windscreen strip card: 4 mm thick, canvas 400 px per metre, not drawn past 250 studs. |
-| tipRadiusM / tipLengthM / boreRadiusM / boreColor / quadPairGapM | Exhaust tips: 0.09 m radius, 0.16 m long, a dark 0.065 m bore at the open end; quad tips are two pairs 0.2 m apart (at least one tip diameter, or they overlap). Before the car's scale (1.2 on every car now). |
-| pipeRadiusM / pipeOverlapM / pipeColor | The pipe each tip sits on (0.04 m radius, dark metal), from 3 cm inside the tip forward for the car's `tips.pipeLengthM`, into the body or the car's own muffler, so no tip floats. Thinner than the bore, so it never shows through the mouth. |
+| tipStyles | Garage round 3 §1: each exhaust item's `tipStyle` names one. `mesh` is the modelled shell (`tools/cosmetics/exhaust_tips.py`, shipped in `src/shared/CosmeticMeshes/ExhaustTips`), `bore` its dark inner wall and floor (a separate SmoothPlastic part: Metal and Foil mirror the world whatever the vertex colour), `pair` the quad's Y inlet (one per pair, so a quad has two pipes), `baked` a shell that carries its own colours (the titanium). rolled: single and twin chrome; quad; slash: titanium; oval: Big Oval. The shapes themselves (lengths, radii, lip, bore depth, slash angle, heat colours) are constants at the top of the generator, each with its why; change them there and run it again. |
+| bakedTipColor / tipBoreColor | The part colour of a baked shell (#EEEDEA, near white so the heat colours show at their own value) and of every bore (#3A3A3E, times the bore's vertex ramp 0.85 at the lip to 0.05 on the floor, so the lip's edge catches light and the floor reads black). |
+| tipRadiusM / quadPairGapM / boreColor | 0.09 m: the round tips' outer radius (the generator builds Rolled, Quad and Slash at it, CosmeticsConfig.spec); quad tips are two pairs 0.2 m apart centre to centre (QuadY is built for it). boreColor is the factory pipe's flush bore, and the cylinder fallback's. Before the car's scale (1.2 on every car now). |
+| pipeRunFromM | 0.16 m: every tip's pipe ends forward `tips.pipeLengthM` ahead of a point this far in from the mouth (round 2's tip length, which each car's pipeLengthM was measured from), so the pipes still end hidden where they did. They now start inside the tip's inlet collar (20.5 cm in on Rolled, 23.5 on Slash, 21.5 on Oval, 33 on QuadY). |
+| pipeRadiusM / pipeOverlapM / pipeColor | The pipe each tip (or quad pair) sits on (0.04 m radius, dark metal), from 3 cm inside the inlet collar (0.046 m radius, spec-checked) forward to the end above, into the body or the car's own muffler, so no tip floats. |
 | factoryPipeRadiusM / factoryBoreRadiusM / factoryPipeColor | The plain pipe built where a body has no pipe of its own (kamri, pickup, cruiser): 0.032 m radius, 0.022 m bore, running forward the stock outlet's own `pipeLengthM` (kamri 0.35, pickup 0.8, cruiser 0.4; defaults to the tips' run). It goes when tips go on. |
 | CarCosmeticMounts windscreen | posM (strip centre), widthM (glass width at its top), heightM (0.12), tiltDeg (top leaned back with the rake). Behind see-through glass the strip sits ~1 cm inside; behind opaque glass it sits just outside (BEHAVIOURS.md). |
 | CarCosmeticMounts exhaust | One shape on every car (garage round 2 §1): `stock` (the car's own pipe mouths: posM at the mouth's centre, optional `dir` the way the pipe points, `factory = true` where we build the pipe), `tips` (posM: between a twin pair at the tips' mouth; spreadM: twin tips at ±spreadM/2, a single on stock[1]'s side, quad as two pairs; pipeLengthM: the pipe run forward) and `bumperZ` (the body's rear face just above the tips), plus optional `quadOuterBumperZ` (that face over a quad's outer two tips where the bumper curves forward; krownvik and fleet). Every tip mouth sits 2-5 cm past the face above it (3 cm on every car), and over the car's own pipes where it can. `CarCosmeticMounts.spec` holds every car to it. |
@@ -728,7 +731,19 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | batrol | single in Trim (-0.666, 0.485, 2.395), 29° out to the left | 0.44 / 2.52 / 1.332 | 2.49 | 1 / 4 / 7 / 13 |
 | kruzer80 | single in Chrome_13 (0.60, 0.643, 2.41), a little out and 8° down | 0.62 / 2.47 / 1.2 | 2.44 | 1 / 4 / 7 / 13 |
 
-Parts per car are the `LookExhaust` folder: 1 invisible outlet holder, plus per tip a tip, bore and pipe (3), or per factory pipe a pipe and bore (2). All massless, non-colliding, unqueryable, welded. Outlets per item: stock 1-2 (one per stock outlet); with tips, exactly the tip count (1, 2 or 4) on every car.
+Parts per car are the `LookExhaust` folder: 1 invisible outlet holder, plus per tip a shell and a bore MeshPart and per pipe a cylinder (a quad: 4 shells, 4 bores, 2 QuadY, 2 pipes), or per factory pipe a pipe and bore (2). All massless, non-colliding, unqueryable, welded. Outlets per item: stock 1-2 (one per stock outlet); with tips, exactly the tip count (1, 2 or 4) on every car.
+
+**Tips per look (garage round 3 §1, measured in Play 2026-09-28 on kamri07, lekzas, batrol, kruzer80, hatch):**
+
+| Item | Style | Visible parts (+ holder) | Mesh triangles (plus pipe cylinders) | EditableMeshes on the client (once, shared by every car) |
+|---|---|---|---|---|
+| Single Chrome Tip | rolled | 3 | 1,408 (shell 1,120, bore 288) | 2 (Rolled, RolledBore) |
+| Twin Chrome Tips | rolled | 6 | 2,816 | 2 |
+| Quad Tips | quad | 12 | 4,352 (4 x (544 + 288) + 2 x 512 QuadY) | 3 (Quad, RolledBore, QuadY) |
+| Burnt Titanium Twin | slash | 6 | 2,912 (2 x (1,204 + 252)) | 2 (Slash, SlashBore) |
+| Big Oval Tip | oval | 3 | 1,496 (1,190 + 306) | 2 (Oval, OvalBore) |
+
+Round 2's cylinder tips were the same part counts. A client can hold only 8 EditableMeshes (BEHAVIOURS); all five items on screen at once take all 8, and a style whose meshes cannot be made falls back to round 2's cylinder tips (same outlets), with a warning.
 
 **Finishes** (the FINISH items; retuned 2026-09-28 in the lit bay). Under ShadowMap the view's lights give no specular highlight, and Metal and Foil ignore Reflectance on these meshes. A red Lekzas at Metal with Reflectance 0.08, and again at 0.35, was the same flat red as SmoothPlastic. EnvironmentSpecularScale and EnvironmentDiffuseScale changed nothing indoors. Glass is the one material that picks up the view's lights, as a sheen. So the ladder is:
 
@@ -892,10 +907,10 @@ The garage's items (docs/superpowers/specs/2026-09-28-garage-design.md), read by
 | `items[].material` / `reflectance` | Finish and rims: the material and reflectance painted pieces or rims take. Nil material keeps the car's own | Glass reflectance is steep: 0.04 already washes a colour (finish table above) |
 | `items[].darken` / `desaturate` | Finish only: the paint colour's value and saturation this much lower (0..1). Matte 0.2 / 0.3, metallic 0.25 | Up for a duller, deeper base |
 | `items[].text` / `textColor` / `stripColor` / `stripColor2` | Decal: the windscreen strip's text and colours; a second strip colour makes it a gradient | |
-| `items[].tips` / `tipColor` / `tipMaterial` | Exhaust: how many tips (0, 1, 2 or 4) and their look | |
+| `items[].tips` / `tipColor` / `tipMaterial` / `tipStyle` | Exhaust: how many tips (0, 1, 2 or 4), their colour and material, and their modelled shape (`render.tipStyles`). Chrome is #D8DADD Foil: under the bay's lights it reads bright, almost white, with the crinkle showing close up; Metal is the smoother alternative if the owner wants it calmer | `tipMaterial` on the chrome items is the feel knob |
 | `items[].glassColor` / `glassTransparency` / `screenTransparency` | Tint: the film's colour, and the transparency it gives side windows and the windscreen (an all-round piece takes halfway). Light 0.5 / 0.7, Dark 0.3 / 0.62, Limo 0.12 / 0.55 | Down for darker. Keep screen at least 0.5 and above side (window tint table above) |
 | `items[].engineVolume` / `crackleChance` | Exhaust: multiplies the engine sound's volume and the chance of pops (1.1 to 1.35, 1.3 to 2.5); crackleChance is also the flame profile's pop multiplier, since every pop is a flame | Down if a tip is too loud; crackle scaling is not yet checked by ear |
-| `items[].flameSize` / `flameCore` / `flameColor` | Exhaust: the flame profile. flameSize scales every flame length and size (factory 0.9, single 1.2, twin 1.25, quad 1.4, titanium 1.5); flameCore is the hot core's colour at the mouth (factory #6C8CFF pale blue, sport #3A6BFF, quad #2E62FF, titanium #6A3CFF blue-violet); flameColor the tongue's body (#FF6A1A to #FF8A24) | Keep cores saturated: pale blues read white under bloom |
+| `items[].flameSize` / `flameCore` / `flameColor` | Exhaust: the flame profile. flameSize scales every flame length and size (factory 0.9, single 1.2, twin 1.25, big oval 1.3, quad 1.4, titanium 1.5); flameCore is the hot core's colour at the mouth (factory #6C8CFF pale blue, sport #3A6BFF, quad #2E62FF, titanium #6A3CFF blue-violet); flameColor the tongue's body (#FF6A1A to #FF8A24) | Keep cores saturated: pale blues read white under bloom |
 
 ### `flames` (exhaust flames, `ExhaustFlames`)
 

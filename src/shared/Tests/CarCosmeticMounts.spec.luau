@@ -22,7 +22,6 @@ local PAST_MIN, PAST_MAX = 0.019, 0.051
 
 return function(t: T)
 	t.ok(R.quadPairGapM >= 2 * R.tipRadiusM, "quad tips of a pair do not overlap")
-	t.ok(R.pipeRadiusM < R.boreRadiusM, "a tip's pipe hides inside its bore")
 	t.ok(R.quadPairGapM / 2 <= 2 * R.tipRadiusM, "a quad pair sits over the pipe between its tips")
 
 	-- The cars whose glass is opaque or part of a textured shell have no
@@ -100,7 +99,7 @@ return function(t: T)
 		t.ok(tips.posM[3] >= axleZ, `{id} tips: behind the rear axle`)
 		t.ok(tips.posM[2] < lowY, `{id} tips: below the boot line`)
 		t.ok(tips.posM[2] - R.tipRadiusM > 0.08, `{id} tips: clear of the ground`)
-		t.ok(tips.posM[3] - R.tipLengthM - tips.pipeLengthM > axleZ, `{id} tips: the pipe stops short of the rear axle`)
+		t.ok(tips.posM[3] - R.pipeRunFromM - tips.pipeLengthM > axleZ, `{id} tips: the pipe stops short of the rear axle`)
 
 		-- The outlets: with tips on, one per tip and nothing else (the tips
 		-- replace the whole exhaust); stock, one per stock outlet. All point

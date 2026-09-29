@@ -22,6 +22,12 @@ export type Piece = {
 	normals: string,
 	uvs: string,
 	triangles: string,
+	-- Optional: uint8 RGB per position (sRGB), multiplied into the part's
+	-- colour where drawn (measured in Studio 2026-09-28: vertex colours on an
+	-- EditableMesh render on its MeshPart, on Metal and Foil too, and survive
+	-- Clone and resizing). The garage's exhaust tips carry their dark bores
+	-- and the titanium heat colours this way (tools/cosmetics).
+	colors: string?,
 }
 
 local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -69,6 +75,7 @@ function MeshData.editable(piece: Piece): EditableMesh
 	local nrm = MeshData.base64(piece.normals)
 	local uv = MeshData.base64(piece.uvs)
 	local tri = MeshData.base64(piece.triangles)
+	local colors = if piece.colors then MeshData.base64(piece.colors) else nil
 
 	local vids = table.create(nPos)
 	for i = 0, nPos - 1 do
@@ -81,6 +88,15 @@ function MeshData.editable(piece: Piece): EditableMesh
 	for i = 0, nNrm - 1 do
 		local n = Vector3.new(buffer.readi8(nrm, i * 3), buffer.readi8(nrm, i * 3 + 1), buffer.readi8(nrm, i * 3 + 2))
 		nids[i + 1] = em:AddNormal(if n.Magnitude > 0 then n.Unit else Vector3.yAxis)
+	end
+	local cids: { number }? = nil
+	if colors then
+		local c = table.create(nPos)
+		for i = 0, nPos - 1 do
+			local col = Color3.fromRGB(buffer.readu8(colors, i * 3), buffer.readu8(colors, i * 3 + 1), buffer.readu8(colors, i * 3 + 2))
+			c[i + 1] = em:AddColor(col, 1)
+		end
+		cids = c
 	end
 	local uids = table.create(nUv)
 	for i = 0, nUv - 1 do
@@ -98,6 +114,9 @@ function MeshData.editable(piece: Piece): EditableMesh
 		local f = em:AddTriangle(vids[p0 + 1], vids[p1 + 1], vids[p2 + 1])
 		em:SetFaceNormals(f, { nids[n0 + 1], nids[n1 + 1], nids[n2 + 1] })
 		em:SetFaceUVs(f, { uids[u0 + 1], uids[u1 + 1], uids[u2 + 1] })
+		if cids then
+			em:SetFaceColors(f, { cids[p0 + 1], cids[p1 + 1], cids[p2 + 1] })
+		end
 	end
 	return em
 end
