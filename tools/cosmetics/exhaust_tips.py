@@ -629,10 +629,20 @@ def write_main(path):
         "-- uint16, triangles uint16 (position, normal, uv) per corner; plus colors,",
         "-- uint8 RGB per position (sRGB), which MeshData multiplies into the part",
         "-- colour.",
-        "return {",
-        f"\tpairGapM = {QUAD_GAP},",
-        "\tpieces = {",
+        "local MeshData = require(script.Parent.Parent.MeshData)",
+        "",
+        "export type Bore = { xM: number, zM: number, radiusM: { number }, tiltDeg: number }",
+        "export type TipPiece = MeshData.Piece & {",
+        "\tinletM: { number },",
+        "\tinletRadiusM: number,",
+        "\tradiusM: { number },",
+        "\ttips: number,",
+        "\tbores: { Bore },",
+        "}",
+        "",
+        "local pieces: { [string]: TipPiece } = {",
     ]
+    head = len(lines)
     report = []
     for name, d in dump.items():
         P = np.array(d["positions"], dtype=float)
@@ -677,7 +687,9 @@ def write_main(path):
         lines.append("\t\t},")
         write_obj(os.path.join(OBJ_OUT, name + ".obj"), piece, cols)
         report.append(f"{name}: {piece.triangles} tris, {len(piece.positions)} positions, {len(piece.normals)} normals, size {s.round(4).tolist()}")
-    lines += ["\t},", "}"]
+    # The entries were written two tabs in; the table is one deep.
+    lines = lines[:head] + [l[1:] if l.startswith("\t\t") else l for l in lines[head:]]
+    lines += ["}", "", "return {", f"\tpairGapM = {QUAD_GAP},", "\tpieces = pieces,", "}"]
     with open(os.path.join(OUT, "init.luau"), "w") as fh:
         fh.write("\n".join(lines) + "\n")
     print("\n".join(report))

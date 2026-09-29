@@ -49,7 +49,9 @@ tip, that every exhaust item names a style whose piece exists, and that the
 styles use at most 4 meshes).
 
 **Budget.** `CarCosmetics` counts the cars wearing each style, frees a
-style's EditableMesh when none does, and takes one only if
+style's EditableMesh when none does (a build is single-flight: cars asking
+for a style while it is being made wait for the same one), and takes one
+only if
 `CosmeticsConfig.render.tipMeshReserve` (4) slots stay free for car bodies;
 otherwise that car gets cylinder tips.
 
@@ -66,9 +68,14 @@ each `v` line). To ship a style as an asset:
 3. Put the number in `CosmeticsConfig.render.tipStyles.<style>.meshAssetId`.
    The game then builds that style with `AssetService:CreateMeshPartAsync(Content.fromUri(...))`,
    cached once per client.
-4. Check the Slash in the garage: its heat colours are vertex colours. If
-   the importer dropped them, leave the Slash on its generated mesh (it
-   costs one slot) or bake them into a texture.
+4. Check each uploaded style in the garage against the generated one before
+   shipping it: the mouth must face out of the car (+Z) with its flame
+   leaving the mouth (REV), the bore disc must sit inside the mouth, and the
+   Slash's cut must be shorter at the bottom with its disc tilted the same
+   way. A mirrored or axis-swapped import puts the cut and the disc on the
+   wrong side. The Slash's heat colours are vertex colours: if the importer
+   dropped them, leave the Slash on its generated mesh (it costs one slot) or
+   bake them into a texture.
 
 Re-upload whenever the generator changes a shape; `offsetM` and the bores in
 the generated module must match the uploaded mesh.

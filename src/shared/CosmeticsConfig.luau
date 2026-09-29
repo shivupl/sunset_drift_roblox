@@ -59,6 +59,9 @@ export type Item = {
 -- 2026-09-28; same idea as PlateConfig.actionsPerSecond).
 CosmeticsConfig.actionsPerSecond = 4
 
+-- An exhaust tip style (render.tipStyles; CarCosmetics builds from it).
+export type TipStyle = { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, tileAspect: number? }
+
 -- How a look is drawn on the car (CarCosmetics, CarLamps; garage plan,
 -- task 3, 2026-09-28). The spots themselves are per car, CarCosmeticMounts.
 CosmeticsConfig.render = {
@@ -91,7 +94,7 @@ CosmeticsConfig.render = {
 		-- tileAspect: the garage panel draws its tip this many times wider than
 		-- tall (the barrel is 25 x 16 cm).
 		oval = { mesh = "Oval", tileAspect = 1.56 },
-	} :: { [string]: { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, tileAspect: number? } },
+	} :: { [string]: TipStyle },
 	-- Near white so the baked heat colours show at their own value; pure
 	-- white on Metal read a touch hot under the garage lights.
 	bakedTipColor = Color3.fromHex("#EEEDEA"),
@@ -451,12 +454,12 @@ CosmeticsConfig.items = {
 
 	-- EXHAUST: tip count, tip colour/material, and the sound tweaks they buy
 	-- (engineVolume multiplies the engine sound, crackleChance the pops), and
-	-- Chrome tips (single, twin, oval) are light Metal (garage round 3 fix 1:
-	-- #D8DADD Foil crinkled close up and bloomed near white under the garage
-	-- lights). tipMaterial is the knob.
 	-- the flame profile (garage round 2 §2): factory small and orange, the
 	-- sport tips larger and yellower with a bluer core, the burnt titanium
 	-- largest with a blue-violet core, like the heat tint on its tips.
+	-- Chrome tips (single, twin, oval) are light Metal (garage round 3 fix 1:
+	-- #D8DADD Foil crinkled close up and bloomed near white under the garage
+	-- lights). tipMaterial is the knob.
 	{ id = "exhaust_stock", category = "exhaust", name = "Factory", price = 0, tips = 0, engineVolume = 1, crackleChance = 1, flameSize = 0.9, flameCore = Color3.fromHex("#6C8CFF"), flameColor = Color3.fromHex("#FF6A1A") },
 	{ id = "exhaust_single", category = "exhaust", name = "Single Chrome Tip", price = 15000, tips = 1, tipStyle = "rolled", tipColor = Color3.fromHex("#C2C6CC"), tipMaterial = Enum.Material.Metal, engineVolume = 1.1, crackleChance = 1.3, flameSize = 1.2, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },
 	{ id = "exhaust_twin", category = "exhaust", name = "Twin Chrome Tips", price = 30000, tips = 2, tipStyle = "rolled", tipColor = Color3.fromHex("#C2C6CC"), tipMaterial = Enum.Material.Metal, engineVolume = 1.2, crackleChance = 1.6, flameSize = 1.25, flameCore = Color3.fromHex("#3A6BFF"), flameColor = Color3.fromHex("#FF7A1E") },

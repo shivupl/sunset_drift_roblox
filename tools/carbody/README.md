@@ -182,11 +182,13 @@ put the new mesh id on the piece (`meshId` wins over `mesh`), and no setting
 is needed.
 
 A client can hold only 8 EditableMeshes at once, whatever their size
-(BEHAVIOURS.md, measured 2026-09-28), and a template keeps its slot for good.
-Generated pieces share that with the garage's modelled exhaust tips
-(`tools/cosmetics`, which use the same buffers plus an optional per-position
-`colors` buffer that `MeshData` reads). Uploading a car's pieces frees its
-slots.
+(BEHAVIOURS.md, measured 2026-09-28), and a MeshPart made from one goes blank
+when it is destroyed, so every generated body piece's template keeps its slot
+for as long as the client holds it. The garage's modelled exhaust tips
+(`tools/cosmetics`, the same buffers plus an optional per-position `colors`
+buffer that `MeshData` reads) share the 8, but count their users and free a
+style's slot when no car wears it, and back off below a reserve so bodies
+come first. Uploading a car's pieces frees its slots.
 
 ## Cars
 

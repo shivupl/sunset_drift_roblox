@@ -37,6 +37,13 @@ Builds on `2026-09-28-garage-round2-design.md` (the exhaust standard, the
   contract: outlets stay exactly at the mouths (flames unchanged).
 - The dark bore reads from any angle (inner wall faces dark), so no
   separate bore cylinder.
+  - **As built (controller ruling, fix round 2):** each tip does have a
+    separate bore part, a flat dark SmoothPlastic disc 1.6 cm in (not a
+    cylinder), because Metal and Foil mirror the world through dark vertex
+    colours (measured in Studio: a Foil bore showed the bumper and the car's
+    pipes), and a bore mesh would cost an EditableMesh (a client holds 8).
+    The mesh keeps the first centimetre of dark inner wall. Parts per look are
+    no more than round 2's.
 - Budget: each tip ≤ 1,500 triangles; report counts.
 
 ## 2. Pipes routed into the car

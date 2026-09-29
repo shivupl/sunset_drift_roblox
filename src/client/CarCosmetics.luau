@@ -57,6 +57,10 @@ type State = {
 	strip: { part: Part, frame: Frame, gradient: UIGradient, label: TextLabel }?,
 	exhaust: Folder?,
 	tipStyle: string?, -- the tip style whose template this car holds (acquireTip)
+	-- Bumped whenever the car's tips are taken off (a new look, a new body,
+	-- the model going): an exhaust build that yielded for a template checks it
+	-- afterwards and drops a stale result (garage round 3 fix 2).
+	exhaustGen: number,
 }
 
 local states: { [Model]: State } = {}
@@ -86,7 +90,7 @@ local function collect(body: Instance, carId: string): State
 			wheelNames[`{piece.name}_{w.name}`] = true
 		end
 	end
-	local s: State = { body = body, carId = carId, paint = {}, rims = {}, windows = {} }
+	local s: State = { body = body, carId = carId, paint = {}, rims = {}, windows = {}, exhaustGen = 0 }
 	local mounts = CarCosmeticMounts.cars[carId]
 	local windows = mounts and mounts.windows
 	local function addWindows(names: { string }?, role: WindowRole)
@@ -313,14 +317,14 @@ end
 -- A generated tip mesh (tools/cosmetics/exhaust_tips.py): the MeshData piece
 -- plus where its pipe goes in and its bores, in its own tip space (mouth at
 -- the origin, +Z out of the mouth; the quad's pair mesh in pair space).
-type TipBore = { xM: number, zM: number, radiusM: { number }, tiltDeg: number }
-type TipMesh = MeshData.Piece & { inletM: { number }, inletRadiusM: number, radiusM: { number }, tips: number, bores: { TipBore } }
-type TipStyle = { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, tileAspect: number? }
+type TipBore = ExhaustTips.Bore
+type TipMesh = ExhaustTips.TipPiece
+type TipStyle = CosmeticsConfig.TipStyle
 
 local function tipMesh(name: string): TipMesh
-	local piece = (ExhaustTips.pieces :: any)[name]
+	local piece = ExhaustTips.pieces[name]
 	assert(piece, `[CarCosmetics] no tip mesh {name}`)
-	return piece :: TipMesh
+	return piece
 end
 
 -- Tip templates, one per style, shared by every car on this client. A style
@@ -331,7 +335,20 @@ end
 -- only while render.tipMeshReserve slots stay free for car bodies after it.
 -- A style with a meshAssetId is built from the uploaded asset instead: no
 -- EditableMesh, kept for the session.
-type TipTemplate = { part: MeshPart, em: EditableMesh?, users: number }
+--
+-- Making one yields (CreateMeshPartAsync), and several cars can ask for the
+-- same style at once (each car's watch runs in its own thread), so a build is
+-- single-flight (garage round 3 fix 2): the first asker puts a pending entry
+-- in before it yields, later askers count themselves on it and wait for the
+-- same result. users counts every holder, pending or not; a release while
+-- the build is under way is settled when it lands.
+type TipTemplate = {
+	part: MeshPart?,
+	em: EditableMesh?,
+	users: number,
+	pending: boolean,
+	done: BindableEvent,
+}
 local tipTemplates: { [string]: TipTemplate } = {}
 local warned: { [string]: boolean } = {}
 
@@ -354,41 +371,88 @@ local function freeMeshSlots(upTo: number): number
 	return #made
 end
 
+local PART_OPTIONS = {
+	CollisionFidelity = Enum.CollisionFidelity.Box,
+	RenderFidelity = Enum.RenderFidelity.Precise,
+}
+
+-- Builds a style's template: (part, em) or (nil, nil, why). Never leaves an
+-- EditableMesh behind on failure.
+local function buildTip(style: TipStyle): (MeshPart?, EditableMesh?, string?)
+	if style.meshAssetId then
+		local ok, part = pcall(function(): MeshPart
+			return AssetService:CreateMeshPartAsync(Content.fromUri(`rbxassetid://{style.meshAssetId}`), PART_OPTIONS)
+		end)
+		if ok then
+			return part, nil, nil
+		end
+		return nil, nil, tostring(part)
+	end
+	if freeMeshSlots(R.tipMeshReserve + 1) < R.tipMeshReserve + 1 then
+		return nil, nil, `fewer than {R.tipMeshReserve} EditableMesh slots would stay free`
+	end
+	local okEm, em = pcall(MeshData.editable, tipMesh(style.mesh))
+	if not okEm then
+		return nil, nil, tostring(em)
+	end
+	local ok, part = pcall(function(): MeshPart
+		return AssetService:CreateMeshPartAsync(Content.fromObject(em), PART_OPTIONS)
+	end)
+	if not ok then
+		em:Destroy() -- a failed part must not keep its slot
+		return nil, nil, tostring(part)
+	end
+	return part, em, nil
+end
+
+local function destroyTemplate(name: string, t: TipTemplate)
+	if tipTemplates[name] == t then
+		tipTemplates[name] = nil
+	end
+	if t.part then
+		t.part:Destroy()
+	end
+	if t.em then
+		t.em:Destroy()
+	end
+end
+
+-- Holds a style's template for one car: its part, or nil (cylinder tips; the
+-- hold is then not kept). May yield.
 local function acquireTip(name: string, style: TipStyle): MeshPart?
 	local t = tipTemplates[name]
 	if t then
 		t.users += 1
-		return t.part
-	end
-	local mesh = tipMesh(style.mesh)
-	local ok, result = pcall(function(): TipTemplate?
-		if style.meshAssetId then
-			local part = AssetService:CreateMeshPartAsync(Content.fromUri(`rbxassetid://{style.meshAssetId}`), {
-				CollisionFidelity = Enum.CollisionFidelity.Box,
-				RenderFidelity = Enum.RenderFidelity.Precise,
-			})
-			return { part = part, em = nil, users = 1 }
+		if t.pending then
+			t.done.Event:Wait()
 		end
-		if freeMeshSlots(R.tipMeshReserve + 1) < R.tipMeshReserve + 1 then
-			return nil
+		if t.part then
+			return t.part
 		end
-		local em = MeshData.editable(mesh)
-		local part = AssetService:CreateMeshPartAsync(Content.fromObject(em), {
-			CollisionFidelity = Enum.CollisionFidelity.Box,
-			RenderFidelity = Enum.RenderFidelity.Precise,
-		})
-		return { part = part, em = em, users = 1 }
-	end)
-	if ok and result then
-		tipTemplates[name] = result
-		return result.part
+		t.users -= 1 -- the build this caller waited on failed
+		return nil
 	end
-	if not warned[name] then
-		warned[name] = true
-		local why = if ok then `fewer than {R.tipMeshReserve} EditableMesh slots would stay free` else tostring(result)
-		warn(`[CarCosmetics] tip style {name}: cylinder tips instead ({why})`)
+	local entry: TipTemplate = { part = nil, em = nil, users = 1, pending = true, done = Instance.new("BindableEvent") }
+	tipTemplates[name] = entry
+	local part, em, why = buildTip(style)
+	entry.pending = false
+	entry.part, entry.em = part, em
+	if not part then
+		tipTemplates[name] = nil
+		entry.users = 0
+		if not warned[name] then
+			warned[name] = true
+			warn(`[CarCosmetics] tip style {name}: cylinder tips instead ({why})`)
+		end
 	end
-	return nil
+	entry.done:Fire()
+	if part and entry.users <= 0 and em then
+		-- Everyone who asked let go while it was being made (their cars were
+		-- restyled or destroyed during the yield).
+		destroyTemplate(name, entry)
+		return nil
+	end
+	return part
 end
 
 local function releaseTip(name: string)
@@ -397,15 +461,15 @@ local function releaseTip(name: string)
 		return
 	end
 	t.users -= 1
-	if t.users <= 0 and t.em then
-		tipTemplates[name] = nil
-		t.part:Destroy()
-		t.em:Destroy()
+	if t.users <= 0 and not t.pending and t.em then
+		destroyTemplate(name, t)
 	end
 end
 
--- Takes a car's tips off: its folder and its hold on a tip template.
+-- Takes a car's tips off: its folder and its hold on a tip template. Any
+-- exhaust build still waiting on a template for this car is now stale.
 local function clearExhaust(s: State)
+	s.exhaustGen += 1
 	if s.exhaust then
 		s.exhaust:Destroy()
 		s.exhaust = nil
@@ -414,6 +478,15 @@ local function clearExhaust(s: State)
 		releaseTip(s.tipStyle)
 		s.tipStyle = nil
 	end
+end
+
+-- A cylinder along a frame's Z (car metres), centred on it, `length` long,
+-- scaled by s: the fallback tip and its bore, turned like the tip would be.
+local function cylinderAt(name: string, handles: VehicleRig.Handles, s: number, frame: CFrame, length: number, radius: number): Part
+	local part = visualPart(name, handles, CFrame.new(frame.Position * s) * frame.Rotation * ALONG_Z)
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(length, radius * 2, radius * 2) * s
+	return part
 end
 
 -- A clone of a tip template at `frame` (car metres, tip space: +Z out of the
@@ -475,6 +548,7 @@ end
 -- mount: flames and any other exhaust effect use only those (outlets()).
 local function exhaust(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
 	clearExhaust(s)
+	local gen = s.exhaustGen
 	local item = CarLook.item(look, "exhaust")
 	local mounts = CarCosmeticMounts.cars[carId]
 	local spot = mounts and mounts.exhaust
@@ -495,6 +569,16 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 		local colour = if style.baked then R.bakedTipColor else item.tipColor or Color3.fromRGB(200, 200, 200)
 		local material = item.tipMaterial or Enum.Material.Metal
 		local template = acquireTip(styleName, style)
+		-- acquireTip may have yielded: if the car was restyled, re-bodied or
+		-- destroyed meanwhile, this build is stale. Let go of what it took and
+		-- leave the newer build (or nothing) in place.
+		if s.exhaustGen ~= gen or states[model] ~= s or not body.Parent then
+			if template then
+				releaseTip(styleName)
+			end
+			folder:Destroy()
+			return
+		end
 		if template then
 			s.tipStyle = styleName
 		end
@@ -520,15 +604,20 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 			end
 		else
 			-- The fallback: round 2's cylinder tips, one per mouth, as long as
-			-- a rolled tip (mouth to collar), each on its own pipe.
+			-- a rolled tip (mouth to collar), each on its own pipe, turned with
+			-- the tip frame (a quad pair's yaw included, so flames leave along
+			-- the cylinder).
 			local len = -tipMesh("Rolled").inletM[3]
-			for i, mouth in CarCosmeticMounts.tipMouths(spot, n, R.quadPairGapM) do
-				local tip = cylinder(`Tip{i}`, handles, sc, mouth - Vector3.new(0, 0, len / 2), len, R.tipRadiusM)
+			for i, f in CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM) do
+				local tip = cylinderAt(`Tip{i}`, handles, sc, f * CFrame.new(0, 0, -len / 2), len, R.tipRadiusM)
 				tip.Color = colour
 				tip.Material = material
 				tip.Parent = folder
-				bore(`Bore{i}`, handles, sc, mouth.X, mouth.Y, mouth.Z, len, R.tipRadiusM - 0.012).Parent = folder
-				table.insert(inlets, mouth - Vector3.new(0, 0, len))
+				local core = cylinderAt(`Bore{i}`, handles, sc, f * CFrame.new(0, 0, 0.002 - len / 2), len, R.tipRadiusM - 0.012)
+				core.Color = R.boreColor
+				core.Material = Enum.Material.SmoothPlastic
+				core.Parent = folder
+				table.insert(inlets, f * Vector3.new(0, 0, -len))
 			end
 		end
 		-- Every pipe ends forward where round 2 measured it (pipeRunFromM).
