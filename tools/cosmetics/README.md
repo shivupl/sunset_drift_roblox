@@ -56,26 +56,35 @@ only if
 otherwise that car gets cylinder tips.
 
 **Uploading (no EditableMesh at all).** The generator also writes
-`tools/cosmetics/out/<Style>.obj` (tip space, metres, per-vertex colour on
-each `v` line). To ship a style as an asset:
+`tools/cosmetics/out/<Style>.obj` (tip space, metres). To ship a style as an
+asset:
 
-1. In Studio, Avatar or Home tab, Import 3D, pick `tools/cosmetics/out/<Style>.obj`.
-   Keep the scale (the file is in metres; the game sets the part's size
-   itself), turn off anchoring and rig options, and import. Studio centres the
-   mesh on its bounding box, as the generated one is.
-2. Publish the MeshPart's mesh (right-click, Save to Roblox or the Asset
-   Manager's upload) and copy its asset id (`rbxassetid://<id>`).
-3. Put the number in `CosmeticsConfig.render.tipStyles.<style>.meshAssetId`.
-   The game then builds that style with `AssetService:CreateMeshPartAsync(Content.fromUri(...))`,
-   cached once per client.
-4. Check each uploaded style in the garage against the generated one before
-   shipping it: the mouth must face out of the car (+Z) with its flame
-   leaving the mouth (REV), the bore disc must sit inside the mouth, and the
-   Slash's cut must be shorter at the bottom with its disc tilted the same
-   way. A mirrored or axis-swapped import puts the cut and the disc on the
-   wrong side. The Slash's heat colours are vertex colours: if the importer
-   dropped them, leave the Slash on its generated mesh (it costs one slot) or
-   bake them into a texture.
+1. In Studio, File → Import (⌘M), pick `tools/cosmetics/out/<Style>.obj`,
+   keep Studio Default and import. The importer uploads the mesh itself.
+2. Read the imported MeshPart's `MeshId` and put the number in
+   `CosmeticsConfig.render.tipStyles.<style>.meshAssetId`. Check its
+   `MeshSize` matches the generated piece's `sizeM`.
+3. Check it in the garage against the generated one: mouth out of the car,
+   flame leaving the mouth (REV), bore disc inside the mouth, the Slash's cut
+   shorter at the bottom.
+
+What the importer does to these files (Studio, 2026-09-29):
+- **It turns the mesh half round about Y** (the mouth came in facing -Z).
+  Every tip is symmetric across X, so a half turn matches exactly; the game
+  turns uploaded tips back (`render.uploadedTipTurnDeg`).
+- **It drops OBJ vertex colours.** Chrome, black and oval tips only lose
+  the dark first centimetre of inner wall, which the bore disc covers. The
+  Slash's heat colours need them, so its OBJ carries texture coordinates
+  into a colour strip, `Slash_ramp.png` (one texel run per colour in
+  chain order, linear between colours, so the texture filters exactly like
+  the vertex colours). Upload the PNG as an image (the Studio MCP
+  `upload_image` tool takes an http://localhost URL) and set
+  `textureAssetId`; the game puts it on the uploaded mesh as `TextureID`.
+
+Uploaded 2026-09-29: Rolled 120516588176242, QuadPair 104062955067546,
+Oval 103926423140060; Slash_ramp.png 81508963160342. The first Slash upload
+(102623740780891) has no texture coordinates and is unused: the Slash stays
+on its generated mesh until the textured `Slash.obj` is imported.
 
 Re-upload whenever the generator changes a shape; `offsetM` and the bores in
 the generated module must match the uploaded mesh.

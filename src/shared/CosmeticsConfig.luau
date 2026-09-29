@@ -61,7 +61,7 @@ export type Item = {
 CosmeticsConfig.actionsPerSecond = 4
 
 -- An exhaust tip style (render.tipStyles; CarCosmetics builds from it).
-export type TipStyle = { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, tileAspect: number? }
+export type TipStyle = { mesh: string, pair: boolean?, baked: boolean?, meshAssetId: number?, textureAssetId: number?, tileAspect: number? }
 
 -- How a look is drawn on the car (CarCosmetics, CarLamps; garage plan,
 -- task 3, 2026-09-28). The spots themselves are per car, CarCosmeticMounts.
@@ -102,14 +102,32 @@ CosmeticsConfig.render = {
 	-- the part colour). meshAssetId (optional): the same mesh uploaded from
 	-- tools/cosmetics/out (README there); when set the tip is built from the
 	-- asset and costs no EditableMesh at all.
+	-- The four asset ids: uploaded 2026-09-29 by the owner through Studio's
+	-- 3D importer from tools/cosmetics/out (the "Upload them" decision after
+	-- round 3: a client's 8 EditableMeshes are shared with generated car
+	-- bodies, so busy clients showed cylinder tips). Each imported MeshSize
+	-- matched the generated piece's sizeM to the millimetre. Re-upload and
+	-- change the id whenever exhaust_tips.py changes that shape.
 	tipStyles = {
-		rolled = { mesh = "Rolled" },
-		quad = { mesh = "QuadPair", pair = true },
-		slash = { mesh = "Slash", baked = true },
+		rolled = { mesh = "Rolled", meshAssetId = 120516588176242 },
+		quad = { mesh = "QuadPair", pair = true, meshAssetId = 104062955067546 },
+		-- The slash's heat colours: Studio's importer drops OBJ vertex colours
+		-- (its first upload, 102623740780891, came in plain), so its OBJ carries
+		-- texture coordinates into a colour strip (tools/cosmetics/out
+		-- Slash_ramp.png, uploaded as textureAssetId). Until the textured OBJ is
+		-- uploaded (meshAssetId), it stays on its generated mesh.
+		slash = { mesh = "Slash", baked = true, textureAssetId = 81508963160342 },
 		-- tileAspect: the garage panel draws its tip this many times wider than
 		-- tall (the barrel is 25 x 16 cm).
-		oval = { mesh = "Oval", tileAspect = 1.56 },
+		oval = { mesh = "Oval", tileAspect = 1.56, meshAssetId = 103926423140060 },
 	} :: { [string]: TipStyle },
+	-- Studio's 3D importer turns an OBJ half round about Y: the uploaded tips
+	-- came in with their mouth facing -Z (the closed inlet where the mouth
+	-- should be; side by side with the generated pieces, Studio 2026-09-29).
+	-- Every tip is symmetric across X, so a half turn about Y matches the
+	-- generated mesh exactly, slash cut included. Applied to tips built from a
+	-- meshAssetId only.
+	uploadedTipTurnDeg = 180,
 	-- Near white so the baked heat colours show at their own value; pure
 	-- white on Metal read a touch hot under the garage lights.
 	bakedTipColor = Color3.fromHex("#EEEDEA"),

@@ -468,9 +468,20 @@ local PART_OPTIONS = {
 local function buildTip(style: TipStyle): (MeshPart?, EditableMesh?, string?)
 	if style.meshAssetId then
 		local ok, part = pcall(function(): MeshPart
-			return AssetService:CreateMeshPartAsync(Content.fromUri(`rbxassetid://{style.meshAssetId}`), PART_OPTIONS)
+			-- Automatic: an uploaded mesh gets the engine's distance LODs,
+			-- which a tip a few centimetres across can take.
+			return AssetService:CreateMeshPartAsync(Content.fromUri(`rbxassetid://{style.meshAssetId}`), {
+				CollisionFidelity = Enum.CollisionFidelity.Box,
+				RenderFidelity = Enum.RenderFidelity.Automatic,
+			})
 		end)
 		if ok then
+			-- The importer's half turn (render.uploadedTipTurnDeg); meshAt
+			-- turns every clone back.
+			part:SetAttribute("TipTurnDeg", R.uploadedTipTurnDeg)
+			if style.textureAssetId then
+				part.TextureID = `rbxassetid://{style.textureAssetId}`
+			end
 			return part, nil, nil
 		end
 		return nil, nil, tostring(part)
@@ -587,7 +598,8 @@ local function meshAt(name: string, template: MeshPart, mesh: TipMesh, handles: 
 	local o = mesh.offsetM
 	local part = template:Clone()
 	part.Size = Vector3.new(mesh.sizeM[1], mesh.sizeM[2], mesh.sizeM[3]) * s
-	local at = frame * CFrame.new(o[1], o[2], o[3])
+	local turn = template:GetAttribute("TipTurnDeg")
+	local at = frame * CFrame.new(o[1], o[2], o[3]) * CFrame.Angles(0, math.rad(if type(turn) == "number" then turn else 0), 0)
 	return dress(part, name, handles, CFrame.new(at.Position * s) * at.Rotation)
 end
 
