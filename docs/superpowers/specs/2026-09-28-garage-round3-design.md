@@ -57,6 +57,18 @@ Builds on `2026-09-28-garage-round2-design.md` (the exhaust standard, the
   captures, as the round-2 spots were). `pipeLengthM` stays the straight run.
 - Spec: every car has `riseM` > 0; the pipe's end is at or above the
   pipe's start plus `riseM`.
+- **As built (controller ruling, task 2):** the pipe is plain Parts, not an
+  EditableMesh, because a client holds 8 EditableMeshes and the generated
+  car bodies and the tips already share them. A cylinder for the straight,
+  one per chord of the bend (`pipeBendSegments`, 3 per 90°), a Ball part the
+  pipe's size at every joint so the bend reads smooth, and a riser where
+  the bend's 90° is not enough (kruzer80). The route is a pure function,
+  `CarCosmeticMounts.pipeRoute`, which the spec walks for every car, style
+  and factory pipe. A turned quad pair's pipe leaves along the tip's axis
+  (`pipeAxisRunM`) before it turns forward. Factory pipes and the cylinder
+  fallback route the same way. Where the run already ends inside the body
+  or the car's own muffler, `riseM` is a nominal 0.04; each car's entry
+  says which. 8 Parts per pipe (10 with a riser, 12 on a turned pair).
 
 ## 3. Sun strips moulded to the windscreen
 

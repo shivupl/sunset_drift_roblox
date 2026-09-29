@@ -144,6 +144,36 @@ CosmeticsConfig.render = {
 	factoryPipeRadiusM = 0.032,
 	factoryBoreRadiusM = 0.022,
 	factoryPipeColor = Color3.fromRGB(70, 68, 66),
+	-- The pipes' route (garage round 3 §2, 2026-09-28: pipes routed up into
+	-- the car, not stopping in mid-air): straight forward the car's run, then
+	-- a bend up into the underbody, its end riseM above the pipe
+	-- (CarCosmeticMounts, per car) and pipeEndBuryM more, so the end's whole
+	-- rim is inside the body. Plain Parts, not an EditableMesh (controller
+	-- ruling: a client holds 8, shared with car bodies and tips): the bend is
+	-- pipeBendSegments cylinders per pipeBendMaxDeg with a ball at each joint,
+	-- so it reads as one smooth bend. A smaller rise bends less (fewer
+	-- segments); a larger one bends the full pipeBendMaxDeg, then runs
+	-- straight up. 0.1 m centreline radius: 2.5 pipe radii, a mandrel bend,
+	-- and short enough to end in front of every car's tips well behind the
+	-- tyres (spec). 3 segments over 90° (30° each): round at driving distance
+	-- from rear 3/4 and the side; raise it if the bend looks faceted up close
+	-- in the garage, at 2 parts per segment per pipe.
+	pipeBendRadiusM = 0.1,
+	pipeBendMaxDeg = 90,
+	pipeBendSegments = 3,
+	pipeEndBuryM = 0.02,
+	-- A tip turned on the car (the krownvik and fleet quad pairs, about 10°)
+	-- has its pipe leave along the tip's own axis for this far past the inlet
+	-- before it turns to run straight forward, at a ball joint.
+	pipeAxisRunM = 0.05,
+	-- A small dark rubber hanger on each pipe's straight run, this far behind
+	-- the bend, from the pipe up into the underbody (riseM and the bury above),
+	-- so the pipe reads as hung from the car. Thin and dark on purpose: it is
+	-- a detail seen from low down, not a feature.
+	hangerBackM = 0.08,
+	hangerWidthM = 0.03,
+	hangerThickM = 0.014,
+	hangerColor = Color3.fromHex("#161617"),
 }
 
 -- Exhaust flames (ExhaustFlames; garage round 2 §2, 2026-09-28: the owner

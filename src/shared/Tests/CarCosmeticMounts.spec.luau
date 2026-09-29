@@ -9,9 +9,15 @@
 -- outlet, tips 2-5 cm past the bumper face on a pipe that runs forward, every
 -- outlet behind the rear axle, low and pointing back, and one outlet frame per
 -- pipe mouth for every exhaust item.
+--
+-- And every pipe (each tip's, each factory one) is routed up into the body
+-- (garage round 3 §2): riseM > 0 on every car and factory outlet, the
+-- pipe's end at least riseM above its start with its whole rim, never
+-- above the boot line, and clear of the rear tyre (behind it, or inboard).
 local CarCosmeticMounts = require(script.Parent.Parent.CarCosmeticMounts)
 local ConfigLoader = require(script.Parent.Parent.ConfigLoader)
 local CosmeticsConfig = require(script.Parent.Parent.CosmeticsConfig)
+local ExhaustTips = require(script.Parent.Parent.CosmeticMeshes.ExhaustTips)
 local Tests = require(script.Parent)
 type T = Tests.T
 
@@ -19,6 +25,18 @@ local R = CosmeticsConfig.render
 
 -- Tip mouth past the bumper face: 2-5 cm (the spec), with 1 mm for rounding.
 local PAST_MIN, PAST_MAX = 0.019, 0.051
+-- Half a tyre's tread width, for "inboard of the rear tyre" (the catalog has
+-- no tyre width; the cars' tyres are 0.2-0.28 m wide).
+local TYRE_HALF_M = 0.14
+
+local BEND: CarCosmeticMounts.PipeBend = {
+	radiusM = R.pipeBendRadiusM,
+	maxDeg = R.pipeBendMaxDeg,
+	segments = R.pipeBendSegments,
+	buryM = R.pipeEndBuryM,
+	axisRunM = R.pipeAxisRunM,
+	hangerBackM = R.hangerBackM,
+}
 
 return function(t: T)
 	t.ok(R.quadPairGapM >= 2 * R.tipRadiusM, "quad tips of a pair do not overlap")
@@ -136,6 +154,56 @@ return function(t: T)
 			end
 			t.ok(best <= R.tipRadiusM / 2, `{id}: a quad tip, not a gap, over its own pipe (off by {math.round(best * 1000)} mm)`)
 		end
+		-- Routed pipes (garage round 3 §2).
+		t.ok(e.riseM > 0, `{id}: riseM > 0 (the pipe bends up into the body)`)
+		local function checkRoute(what: string, route: CarCosmeticMounts.PipeRoute, startY: number, rise: number, radius: number)
+			local d = route.finishDir
+			local rim = route.finish.Y - radius * math.sqrt(math.max(0, 1 - d.Y * d.Y))
+			t.ok(route.finish.Y >= startY + rise, `{what}: the end is riseM above the start`)
+			t.ok(rim >= startY + rise + BEND.buryM - 1e-4, `{what}: the end's whole rim is buried (rim {math.round((rim - startY) * 1000)} mm up)`)
+			t.ok(d.Y > 0, `{what}: the end points up into the body`)
+			for k, seg in route.segments do
+				for _, p in { seg.a, seg.b } do
+					-- The centre, not the top: the kruzer80's floor (0.925 m) sits just
+					-- under its boot line (2 x 0.474 m), and its pipe ends 2 cm into it.
+					t.ok(p.Y < lowY, `{what} segment {k}: below the boot line`)
+					local behind = p.Z - radius > axleZ + rig.wheelRadiusM
+					local inboard = math.abs(p.X) + radius < rig.trackWidthM / 2 - TYRE_HALF_M
+					t.ok(behind or inboard, `{what} segment {k}: clear of the rear tyre`)
+				end
+				t.ok((seg.b - seg.a).Magnitude > 0.001, `{what} segment {k}: has a length`)
+			end
+			t.eq(#route.joints, #route.segments - 1, `{what}: a ball at every joint`)
+			if route.hanger then
+				t.ok(route.hanger.b.Y >= startY + rise, `{what}: the hanger reaches the body`)
+			end
+		end
+		local frontZ = tips.posM[3] - R.pipeRunFromM - tips.pipeLengthM
+		for styleName, style in R.tipStyles do
+			local mesh = ExhaustTips.pieces[style.mesh]
+			local inletM = Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3])
+			local frames: { CFrame } = if style.pair
+				then CarCosmeticMounts.quadPairFrames(e, R.quadPairGapM)
+				else CarCosmeticMounts.tipFrames(e, 2, R.quadPairGapM)
+			for i, f in frames do
+				local inlet = f * CFrame.new(inletM)
+				local route = CarCosmeticMounts.pipeRoute(inlet.Position, inlet.ZVector, R.pipeOverlapM, frontZ, e.riseM, R.pipeRadiusM, BEND)
+				checkRoute(`{id} {styleName} pipe {i}`, route, inlet.Y, e.riseM, R.pipeRadiusM)
+				t.ok(route.segments[1].a.Z >= inlet.Z, `{id} {styleName} pipe {i}: starts inside the tip's collar`)
+			end
+		end
+		for i, o in e.stock do
+			if o.factory then
+				t.ok(o.riseM ~= nil and o.riseM > 0, `{id} factory {i}: its own riseM > 0`)
+				local rise = o.riseM or e.riseM
+				local mouth = Vector3.new(o.posM[1], o.posM[2], o.posM[3])
+				local len = o.pipeLengthM or tips.pipeLengthM
+				local route = CarCosmeticMounts.pipeRoute(mouth, Vector3.zAxis, 0, mouth.Z - len, rise, R.factoryPipeRadiusM, BEND)
+				checkRoute(`{id} factory {i}`, route, mouth.Y, rise, R.factoryPipeRadiusM)
+				t.ok(math.abs(route.segments[1].a.Z - mouth.Z) < 1e-6, `{id} factory {i}: starts at its mouth`)
+			end
+		end
+
 		-- A single tip goes on stock[1]'s side (over a one-pipe car's own pipe).
 		local single = CarCosmeticMounts.tipXs(e, 1, R.quadPairGapM)[1]
 		local side = if e.stock[1].posM[1] > 0 then 1 else -1

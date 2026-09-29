@@ -520,16 +520,58 @@ local function boreDisc(name: string, handles: VehicleRig.Handles, s: number, fr
 	return part
 end
 
--- The pipe under a tip (or a quad pair): straight, from pipeOverlapM inside
--- the inlet collar at `inlet` (car metres) forward to `frontZ`. Its own
--- function so the routed pipe (garage round 3 §2) can replace it.
-local function tipPipe(name: string, handles: VehicleRig.Handles, s: number, inlet: Vector3, frontZ: number): Part
-	local backZ = inlet.Z + R.pipeOverlapM
-	local len = math.max(backZ - frontZ, R.pipeOverlapM)
-	local pipe = cylinder(name, handles, s, Vector3.new(inlet.X, inlet.Y, backZ - len / 2), len, R.pipeRadiusM)
-	pipe.Color = R.pipeColor
-	pipe.Material = Enum.Material.Metal
-	return pipe
+-- The pipes' bend knobs, as CarCosmeticMounts.pipeRoute takes them.
+local BEND: CarCosmeticMounts.PipeBend = {
+	radiusM = R.pipeBendRadiusM,
+	maxDeg = R.pipeBendMaxDeg,
+	segments = R.pipeBendSegments,
+	buryM = R.pipeEndBuryM,
+	axisRunM = R.pipeAxisRunM,
+	hangerBackM = R.hangerBackM,
+}
+
+-- A cylinder from a to b (car metres), scaled by s.
+local function between(name: string, handles: VehicleRig.Handles, s: number, a: Vector3, b: Vector3, radius: number): Part
+	-- Up is X: a pipe never runs across the car, and a cylinder's roll does
+	-- not show.
+	local look = CFrame.lookAt((a + b) / 2, b, Vector3.xAxis)
+	local part = visualPart(name, handles, CFrame.new(look.Position * s) * look.Rotation * ALONG_Z)
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new((b - a).Magnitude, radius * 2, radius * 2) * s
+	return part
+end
+
+-- A routed pipe (garage round 3 §2, CarCosmeticMounts.pipeRoute): straight
+-- forward from the tip's inlet (or a factory pipe's mouth), then bent up into
+-- the body, its end hidden there, with a small rubber hanger on the straight.
+-- Plain Parts (controller ruling: EditableMeshes are too few): a cylinder per
+-- straight or bend chord, a ball the pipe's size at every joint so the bend
+-- reads smooth. The first cylinder, the one at the tip or mouth, is named
+-- `first` (the factory pipe's is the one flames glow on); the rest `rest`_k.
+local function routedPipe(folder: Folder, first: string, rest: string, handles: VehicleRig.Handles, s: number, route: CarCosmeticMounts.PipeRoute, radius: number, color: Color3)
+	local function paint(part: Part)
+		part.Color = color
+		part.Material = Enum.Material.Metal
+		part.Parent = folder
+	end
+	for k, seg in route.segments do
+		paint(between(if k == 1 then first else `{rest}_{k}`, handles, s, seg.a, seg.b, radius))
+	end
+	for k, p in route.joints do
+		local ball = visualPart(`{rest}Joint{k}`, handles, CFrame.new(p * s))
+		ball.Shape = Enum.PartType.Ball
+		ball.Size = Vector3.one * radius * 2 * s
+		paint(ball)
+	end
+	local h = route.hanger
+	if h then
+		local height = (h.b - h.a).Magnitude
+		local hanger = visualPart(`{rest}Hanger`, handles, CFrame.new((h.a + h.b) / 2 * s))
+		hanger.Size = Vector3.new(R.hangerWidthM, height, R.hangerThickM) * s
+		hanger.Color = R.hangerColor
+		hanger.Material = Enum.Material.Rubber
+		hanger.Parent = folder
+	end
 end
 
 -- The exhaust fitted to the car (garage round 2 §1, the exhaust standard):
@@ -537,10 +579,12 @@ end
 -- none (factory = true) and leaves the car's own pipes be; tips build each
 -- modelled tip (garage round 3 §1: the item's tipStyle, its mesh's mouth on
 -- CarCosmeticMounts.tipFrames, a dark disc closing its bore) and the pipe
--- it sits on, running forward under the car (a tip over one of the car's own
--- pipes hides that pipe's mouth inside it). A quad is two pair meshes, each
--- on its own Y inlet with one pipe: a quad car has two pipes. Without a tip
--- mesh (acquireTip) the tips are round 2's cylinders.
+-- it sits on, running forward under the car and bending up into the body
+-- (garage round 3 §2, routedPipe; a tip over one of the car's own pipes
+-- hides that pipe's mouth inside it). Factory pipes are routed the same
+-- way. A quad is two pair meshes, each on its own Y inlet with one pipe: a
+-- quad car has two pipes. Without a tip mesh (acquireTip) the tips are round
+-- 2's cylinders, their pipes routed the same way.
 -- One ExhaustOutlet Attachment goes at each mouth of the exhaust fitted: the
 -- stock outlets, or with tips on only the tips (they replace the whole
 -- exhaust; an own pipe left showing, like the hatch's, gets none)
@@ -589,7 +633,8 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 		else
 			frames = CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM)
 		end
-		local inlets: { Vector3 } = {}
+		-- Each pipe's inlet frame: at the inlet, +Z out of the tip.
+		local inlets: { CFrame } = {}
 		if template then
 			for i, frame in frames do
 				local tip = meshAt(if style.pair then `TipPair{i}` else `Tip{i}`, template, mesh, handles, sc, frame)
@@ -600,7 +645,7 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 					local id = if style.pair then (i - 1) * 2 + j else i
 					boreDisc(`Bore{id}`, handles, sc, frame, b).Parent = folder
 				end
-				table.insert(inlets, frame * Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3]))
+				table.insert(inlets, frame * CFrame.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3]))
 			end
 		else
 			-- The fallback: round 2's cylinder tips, one per mouth, as long as
@@ -617,13 +662,15 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 				core.Color = R.boreColor
 				core.Material = Enum.Material.SmoothPlastic
 				core.Parent = folder
-				table.insert(inlets, f * Vector3.new(0, 0, -len))
+				table.insert(inlets, f * CFrame.new(0, 0, -len))
 			end
 		end
-		-- Every pipe ends forward where round 2 measured it (pipeRunFromM).
+		-- Every pipe runs forward to where round 2 measured it (pipeRunFromM),
+		-- then bends up riseM into the body (garage round 3 §2).
 		local frontZ = spot.tips.posM[3] - R.pipeRunFromM - spot.tips.pipeLengthM
 		for i, inlet in inlets do
-			tipPipe(`Pipe{i}`, handles, sc, inlet, frontZ).Parent = folder
+			local route = CarCosmeticMounts.pipeRoute(inlet.Position, inlet.ZVector, R.pipeOverlapM, frontZ, spot.riseM, R.pipeRadiusM, BEND)
+			routedPipe(folder, `Pipe{i}`, `Pipe{i}`, handles, sc, route, R.pipeRadiusM, R.pipeColor)
 		end
 	else
 		for i, o in spot.stock do
@@ -632,10 +679,10 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 			end
 			local x, y, z = o.posM[1], o.posM[2], o.posM[3]
 			local len = o.pipeLengthM or spot.tips.pipeLengthM
-			local pipe = cylinder(`FactoryPipe{i}`, handles, sc, Vector3.new(x, y, z - len / 2), len, R.factoryPipeRadiusM)
-			pipe.Color = R.factoryPipeColor
-			pipe.Material = Enum.Material.Metal
-			pipe.Parent = folder
+			-- Routed like the tips' pipes, from its mouth: FactoryPipe{i} is the
+			-- straight at the mouth (the part flames glow), Factory{i}_k the rest.
+			local route = CarCosmeticMounts.pipeRoute(Vector3.new(x, y, z), Vector3.zAxis, 0, z - len, o.riseM or spot.riseM, R.factoryPipeRadiusM, BEND)
+			routedPipe(folder, `FactoryPipe{i}`, `Factory{i}`, handles, sc, route, R.factoryPipeRadiusM, R.factoryPipeColor)
 			bore(`FactoryBore{i}`, handles, sc, x, y, z, len, R.factoryBoreRadiusM).Parent = folder
 		end
 	end
