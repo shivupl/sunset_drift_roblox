@@ -69,11 +69,25 @@ CosmeticsConfig.render = {
 	-- value), so braking still reads over the tail lamps. Smoked (#4A0A0C)
 	-- brakes at #670E11, which is dim: raise this if braking gets lost.
 	brakeBrighten = 0.4,
-	-- The windscreen strip: a thin card, its canvas drawn at this many pixels
+	-- The windscreen strip: thin cards, their canvas drawn at this many pixels
 	-- per metre, not drawn past drawStuds (the text is unreadable by then).
 	stripThicknessM = 0.004,
 	stripPixelsPerM = 400,
 	stripDrawStuds = 250,
+	-- Garage round 3 §3 (2026-09-28): the strip is moulded to each windscreen
+	-- as this many flat slats across it, each on the glass at its spot
+	-- (tools/cosmetics/strip_shapes.py writes CarStripShapes from these three;
+	-- run it again after changing them). 14 keeps a slat under ~10 cm on the
+	-- widest screen, where a flat slat and the glass's curve across part by
+	-- under 2 mm; more slats cost one part and one SurfaceGui each.
+	stripSlats = 14,
+	-- Each slat runs this far past its share at both ends, so neighbours
+	-- overlap by twice it and no seam shows where two meet at an angle.
+	stripOverlapM = 0.004,
+	-- The gap between a slat and the glass: off the outer face on opaque
+	-- glass, behind the inner face on see-through glass (the round-2 cards sat
+	-- about 1 cm off by eye; this is to the nearest point under the slat).
+	stripGlassGapM = 0.006,
 	-- Exhaust tips (garage round 3 §1, 2026-09-28: modelled in Blender,
 	-- tools/cosmetics/exhaust_tips.py, shipped as MeshData modules in
 	-- src/shared/CosmeticMeshes/ExhaustTips; the plain cylinders with a

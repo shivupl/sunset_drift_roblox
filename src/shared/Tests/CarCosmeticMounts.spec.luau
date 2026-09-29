@@ -45,9 +45,23 @@ return function(t: T)
 		t.ok(w ~= nil, `{id}: has a windscreen strip spot`)
 		t.ok(e ~= nil, `{id}: has an exhaust spot`)
 		if w then
-			t.eq(#w.posM, 3, `{id} windscreen: x, y, z`)
-			t.ok(w.posM[3] < 0.5, `{id} windscreen: toward the front`)
-			t.ok(w.widthM > 0 and w.heightM > 0, `{id} windscreen: has a size`)
+			-- The strip generator's inputs (garage round 3 §3): a real body
+			-- piece, a side, a height, and by-eye ends only where the glass is
+			-- painted into a shell.
+			local found = false
+			for _, piece in ConfigLoader.entry(id).body.pieces do
+				found = found or piece.name == w.piece
+			end
+			t.ok(found, `{id} windscreen: {w.piece} is a body piece`)
+			t.ok(w.side == "inside" or w.side == "outside", `{id} windscreen: inside or outside`)
+			t.ok(w.heightM > 0, `{id} windscreen: has a height`)
+			if w.ends == "spot" then
+				local pos, width = w.posM, w.widthM
+				t.ok(pos ~= nil and #pos == 3 and pos[3] < 0.5, `{id} windscreen: a spot toward the front`)
+				t.ok(width ~= nil and width > 0, `{id} windscreen: a width`)
+			else
+				t.eq(w.ends, "mesh", `{id} windscreen: ends from the mesh or a spot`)
+			end
 		end
 		-- Window tint (garage round 2 §4): every named window is a real body
 		-- piece, named once, and something is tinted.

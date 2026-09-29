@@ -155,7 +155,9 @@ def find(size, cache=CACHE):
         if r is None:
             continue
         ext = r[0].max(0) - r[0].min(0)
-        if (ext <= 1e-6).any():
+        # Some cached meshes decode with NaN bounds; one NaN error scrambles
+        # the whole sort (a mesh that matched exactly ranked below misses).
+        if not np.isfinite(ext).all() or (ext <= 1e-6).any():
             continue
         k = size / ext
         ranked.append((float(np.ptp(k) / k.mean()), path, len(r[1]), float(k.mean())))

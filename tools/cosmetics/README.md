@@ -87,3 +87,55 @@ is that number. `TIP_R` and `QUAD_GAP` must match `CosmeticsConfig.render`
 from outside (Roblox's front face); the script builds each tip closed and
 asserts its signed volume is positive before cutting the bore open, because
 Blender's previews draw both sides.
+
+## Sun strips (`strip_shapes.py`)
+
+Garage round 3 §3. The windscreen strip is `CosmeticsConfig.render.stripSlats`
+(14) flat slats, each placed and angled on the glass at its spot, so the
+strip follows the screen's curve across and its top edge and stops at the
+pillars. No EditableMesh: each slat is a Part with a SurfaceGui showing its
+own slice of the one strip canvas (a clipping frame holding the whole canvas
+shifted to the slat's `fromM`), so text and gradient run on across slats.
+
+Run from the repo root, with numpy and DracoPy (see `tools/carbody/rbxcache.py`):
+
+    python3 tools/cosmetics/strip_shapes.py
+
+It needs every car's windscreen mesh in Studio's local cache: render the
+cars in Studio first (Edit; a MeshPart with the piece's mesh id in view is
+enough). Store meshes are found by their proportions against the piece's
+`sizeM` (a MeshPart scales its bounds to its Size); the Kamri's generated
+glass is read from its MeshData module. Each piece is placed in car space as
+BodyBuilder places it (bounds scaled to `sizeM`, `rotationDeg` YXZ,
+`offsetM`), from the working copy of `CarCatalog.luau`.
+
+Per car (the inputs are `CarCosmeticMounts` `windscreen`, TUNING.md):
+
+1. The screen: the piece's faces whose outward normal looks forward and up
+   (normals turned outward geometrically: store meshes mix windings, and the
+   Krown Vik's glass is double-sided), the largest connected patch, or on a
+   shell the patch at the spot.
+2. Profiles: the screen cut at constant x, top edge first (the longest chain
+   in the slice, which skips a shell's roof lip).
+3. The header: the top edge across the middle half, a quadratic in x carried
+   to the pillars. The band (topGapM, then heightM, down the glass from the
+   header) must lie on the glass; the ends are where it stops fitting (the
+   glass turning down the pillar), or the spot's width on a shell.
+4. The centre line, sampled 8 times per slat and smoothed (a degree-6
+   polynomial in x; the fit's error is printed, a few mm), split into slats
+   whose ends are shared, so the chain stays joined. Each slat's normal comes
+   from the surface.
+5. Clearance: each slat is stood off the glass by `stripGlassGapM` from the
+   highest (outside) or lowest (inside) point of the piece's whole mesh under
+   it, sampled every 4 mm; the shared ends move by the larger of their two
+   slats' needs.
+
+The output, `src/shared/CarStripShapes.luau`, says per car which mesh and
+cache entry it came from. `CarStripShapes.spec` checks every catalog car has
+14 slats, left to right, overlapping their neighbour a little with no gap,
+unit normals facing forward and up, and canvas slices that tile the strip.
+
+Rerun it when a car's glass, its catalog placement, its windscreen spot, or
+the three strip knobs change (the Kamri's glass is still the committed
+MeshData stretched to the owner's working-copy catalog `sizeM`; rerun it once
+the Kamri's new pieces land).

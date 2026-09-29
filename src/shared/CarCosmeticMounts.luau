@@ -4,10 +4,23 @@
 -- metres before the car's scale, +X right, +Y up, forward is -Z, the origin
 -- on the ground under the wheelbase centre, measured from the body mount.
 --
--- windscreen: the sun strip across the top of the windscreen. posM is the
--- strip's centre, just inside the glass; widthM the glass's width there;
--- heightM the strip's height; tiltDeg leans its top back toward +Z with the
--- screen's rake.
+-- windscreen: the sun strip across the top of the windscreen, moulded to
+-- the glass as slats (garage round 3 §3). These are the inputs of
+-- tools/cosmetics/strip_shapes.py, which reads the glass mesh and writes the
+-- slats to CarStripShapes (run it again after changing any of them):
+--   piece: the body piece whose mesh is the windscreen (CarCatalog), a
+--     glass piece or, on a shell car, the shell.
+--   side: "inside" sits behind see-through glass; "outside" sits on opaque
+--     glass (a black glass mesh, or glass painted into a textured shell),
+--     where nothing behind it shows, like a vinyl sticker.
+--   heightM: the strip's height, down the glass.
+--   topGapM (optional, default 0): how far under the glass's top edge the
+--     strip's top sits, down the glass.
+--   ends: "mesh" runs the strip to where the glass ends at the pillars (the
+--     mesh's outline), less endInsetM (optional) at each end. "spot" is for a
+--     shell whose glass is painted into its texture, so the mesh has no
+--     outline there: posM is a point on the screen (it picks the shell's
+--     screen faces) and widthM the strip's width, both by eye.
 -- exhaust: one shape on every car (garage round 2, §1, 2026-09-28: the
 -- owner asked for exhausts "formatted uniformly throughout cars ... attached
 -- in some sense to the car - not floating", so flames work on any of them).
@@ -69,9 +82,18 @@
 -- 3, camera 30 m out, calibrated with marker balls at known car-space points:
 -- about 700 px per metre) from straight behind, the side and below, with
 -- every body piece but the pipe's hidden where the pipe is inside the body.
--- The windscreen strip was lined up with CarCosmetics.apply and front 3/4
--- captures instead. Each entry says what it was lined up against.
-export type Windscreen = { posM: { number }, widthM: number, heightM: number, tiltDeg: number }
+-- The windscreen strip comes from the glass mesh instead (above), checked
+-- with CarCosmetics.apply and front 3/4, head-on and close captures.
+export type Windscreen = {
+	piece: string,
+	side: "inside" | "outside",
+	heightM: number,
+	topGapM: number?,
+	ends: "mesh" | "spot",
+	endInsetM: number?,
+	posM: { number }?,
+	widthM: number?,
+}
 export type Outlet = { posM: { number }, dir: { number }?, factory: boolean?, pipeLengthM: number?, riseM: number? }
 export type Tips = { posM: { number }, spreadM: number, pipeLengthM: number }
 export type Exhaust = { stock: { Outlet }, tips: Tips, bumperZ: number, riseM: number, quadOuterBumperZ: number?, quadSpreadM: number? }
@@ -80,18 +102,18 @@ export type Mounts = { windscreen: Windscreen?, exhaust: Exhaust?, windows: Wind
 
 local CarCosmeticMounts = {}
 
--- All by eye in Studio Edit, 2026-09-28 (garage plan, task 3). "Inside"
--- strips sit about 1 cm behind see-through glass; where the glass is opaque
--- (a black glass mesh, or glass painted into a textured shell) nothing shows
--- behind it, so the strip sits just outside it like a vinyl sticker.
+-- Exhausts and windows by eye in Studio Edit, 2026-09-28 (garage plan, task
+-- 3). Strips (garage round 3 §3): "inside" behind see-through glass;
+-- where the glass is opaque (a black glass mesh, or glass painted into a
+-- textured shell) nothing shows behind it, so the strip sits outside it like
+-- a vinyl sticker. Each was checked front 3/4, head-on and close.
 CarCosmeticMounts.cars = {
-	-- Strip: outside the generated glass (it renders near-black), 6 cm under
-	-- the screen's top at the roof, which is far back (z 0.17, the screen rakes
-	-- about 27°); crowned glass, so 2 cm proud of the edge line.
+	-- Strip: outside the generated glass (it renders near-black), from its top
+	-- edge at the roof down.
 	kamri = {
 		-- Windows: one generated glass piece all round.
 		windows = { side = {}, screen = {}, whole = { "Glass" } },
-		windscreen = { posM = { 0, 1.446, 0.081 }, widthM = 1.2, heightM = 0.12, tiltDeg = 63 },
+		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: the generated body has no pipe, so a factory one on the left
 		-- under the bumper's lower edge (face 2.45 m at 0.38 m up, from the
 		-- side and below), 2 cm past it. Tips 3 cm past that face, their tops
@@ -106,10 +128,9 @@ CarCosmeticMounts.cars = {
 			riseM = 0.04,
 		},
 	},
-	-- Strip: outside the opaque black glass mesh, under the roof's front edge
-	-- (side view: the screen rakes about 17°).
+	-- Strip: outside the opaque black glass mesh, from its top edge down.
 	hatch = {
-		windscreen = { posM = { 0, 1.045, -0.496 }, widthM = 1.0, heightM = 0.12, tiltDeg = 73 },
+		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: the car's own twin pipes (ExhaustL / ExhaustR) come out at the
 		-- centre under the rear panel, pointing about 23° up (side view, the pipe
 		-- pieces alone). Tips either side of them (too close together to sit
@@ -127,10 +148,11 @@ CarCosmeticMounts.cars = {
 			riseM = 0.04,
 		},
 	},
-	-- Strip: outside the textured shell, top edge on the glass's top edge (side
-	-- view: an upright screen, about 54° from level).
+	-- Strip: outside the textured shell, from the painted screen's top edge (the
+	-- shell's glass faces start there, under the roof lip); ends by eye inside
+	-- the painted pillars' rounded corners (1.35 m poked past them).
 	pickup = {
-		windscreen = { posM = { 0, 1.605, -0.71 }, widthM = 1.35, heightM = 0.12, tiltDeg = 36 },
+		windscreen = { piece = "Shell", side = "outside", heightM = 0.12, ends = "spot", posM = { 0, 1.605, -0.71 }, widthM = 1.25 },
 		-- Exhaust: the shell has no pipe and an open underside (the bed floor at
 		-- 0.45 m, the bumper 0.365-0.57 m up, face 2.81 m). A factory pipe on the
 		-- left through the bumper's lower half, its top on the bed floor, 2 cm
@@ -149,10 +171,11 @@ CarCosmeticMounts.cars = {
 			riseM = 0.015,
 		},
 	},
-	-- Strip: outside the textured shell, its top on the glass's top edge (side
-	-- view: the screen rakes about 34°).
+	-- Strip: outside the textured shell. Its forward-facing faces run up onto
+	-- the roof, so the strip starts 21.5 cm under their top, at the painted
+	-- screen's top edge; ends by eye inside the painted pillars.
 	cruiser = {
-		windscreen = { posM = { 0, 1.38, -0.535 }, widthM = 1.3, heightM = 0.12, tiltDeg = 56 },
+		windscreen = { piece = "Shell", side = "outside", heightM = 0.12, ends = "spot", posM = { 0, 1.38, -0.535 }, widthM = 1.26, topGapM = 0.215 },
 		-- Exhaust: the shell has no pipe. A factory one on the left, its top
 		-- under the bumper's lower rear edge (0.41 m up at 2.81 m, face 2.82-2.84
 		-- m from below), 2 cm past it; tips 3 cm past, tops in the bumper's
@@ -166,13 +189,16 @@ CarCosmeticMounts.cars = {
 			riseM = 0.04,
 		},
 	},
-	-- Strip: inside the glass, from the fleet car's windscreen piece (Glass_3:
-	-- top 1.375 m at z -0.235, rake 31°), checked from the front.
+	-- Strip: outside the windscreen, roof line and rear window piece (Glass_7),
+	-- from its top edge down. Its glass is Glass material, and nothing drawn by
+	-- a SurfaceGui behind Glass material shows (BEHAVIOURS.md), so the strip
+	-- is a sticker on it; 1.5 cm in from each end, where the glass runs on
+	-- under the pillar trim.
 	krownvik = {
 		-- Windows: six door and quarter lights; Glass_7 is the windscreen, roof
 		-- line and rear window in one piece.
 		windows = { side = { "Glass", "Glass_2", "Glass_3", "Glass_4", "Glass_5", "Glass_6" }, screen = {}, whole = { "Glass_7" } },
-		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
+		windscreen = { piece = "Glass_7", side = "outside", heightM = 0.12, ends = "mesh", endInsetM = 0.015 },
 		-- Exhaust: its own twin pipes (in Underbody) end under the bumper
 		-- corners, tilted about 8° down (side view, Underbody alone; ends at
 		-- 2.67 m from below). Tips over them, 3 cm past the bumper there (2.75 m
@@ -193,12 +219,12 @@ CarCosmeticMounts.cars = {
 			quadOuterBumperZ = 2.715,
 		},
 	},
-	-- Same body as the krownvik: same spots.
+	-- Same body as the krownvik; its windscreen is its own piece (Glass_3).
 	krownvikfleet = {
 		-- Windows: Glass_3 the windscreen, Glass_4 the rear window, the rest the
 		-- doors (Glass_6 and _7 are the textured grey upper door bands).
 		windows = { side = { "Glass", "Glass_2", "Glass_4", "Glass_5", "Glass_6", "Glass_7", "Glass_8" }, screen = { "Glass_3" } },
-		windscreen = { posM = { 0, 1.336, -0.296 }, widthM = 1.2, heightM = 0.12, tiltDeg = 59 },
+		windscreen = { piece = "Glass_3", side = "inside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: as the krownvik, its pipes (in Underbody_6) and bumper about
 		-- 1 cm further back (from below: 2.76 m at x ±0.715, 2.725 m at ±0.815).
 		exhaust = {
@@ -214,13 +240,13 @@ CarCosmeticMounts.cars = {
 			quadOuterBumperZ = 2.725,
 		},
 	},
-	-- Strip: inside the glass, just under the glass's top edge, checked from
-	-- the front.
+	-- Strip: inside the all-round glass, from its top edge down (under the
+	-- Glass_2 shade band).
 	lekzas = {
 		-- Windows: Glass is every window in one piece; Glass_2, the shade band
 		-- at the windscreen's top, is left as it is.
 		windows = { side = {}, screen = {}, whole = { "Glass" } },
-		windscreen = { posM = { 0, 1.33, -0.40 }, widthM = 1.2, heightM = 0.12, tiltDeg = 62 },
+		windscreen = { piece = "Glass", side = "inside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: its own twin chrome tips (Chrome_2), turned slightly down,
 		-- in cut-outs of the lower valance (side view, Chrome_2 alone; ends at
 		-- 2.53 m from below). Tips over them, 3 cm past the valance above them
@@ -244,13 +270,14 @@ CarCosmeticMounts.cars = {
 			riseM = 0.03,
 		},
 	},
-	-- Strip: inside the windscreen piece (P37: top 1.375 m at z -0.31, rake
-	-- 25.5°), under the black band at its top.
+	-- Strip: inside the windscreen piece (P37), 10 cm under its top edge: the
+	-- glass runs on under the roof, and the strip's top shows just under the
+	-- dark band there (0 hid the whole strip; 8 cm still hid 2 cm).
 	kamri07 = {
 		-- Windows: P37 the windscreen; P72 / P153 the front doors, P34 / P155
 		-- the rear doors, P172 the rear window.
 		windows = { side = { "P34", "P72", "P153", "P155", "P172" }, screen = { "P37" } },
-		windscreen = { posM = { 0, 1.312, -0.413 }, widthM = 1.25, heightM = 0.12, tiltDeg = 64.5 },
+		windscreen = { piece = "P37", side = "inside", heightM = 0.12, topGapM = 0.1, ends = "mesh" },
 		-- Exhaust: its own twin slash-cut tips (P50) off the mufflers (P31), under
 		-- the bumper (side view, those two alone: 2.28-2.34 m; from below).
 		-- Tips over them, 3 cm past the black diffuser strip above them (P60,
@@ -268,12 +295,12 @@ CarCosmeticMounts.cars = {
 			riseM = 0.04,
 		},
 	},
-	-- Strip: inside the dark glass, between the A-pillars (an upright screen,
-	-- about 50° from level).
+	-- Strip: outside the dark all-round glass (Glass material: a SurfaceGui
+	-- behind it does not show, BEHAVIOURS.md), from its windscreen's top edge.
 	batrol = {
 		-- Windows: Glass is every window in one piece.
 		windows = { side = {}, screen = {}, whole = { "Glass" } },
-		windscreen = { posM = { 0, 1.71, -0.47 }, widthM = 1.24, heightM = 0.12, tiltDeg = 40 },
+		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: its own single pipe (in Trim) runs back and out to the left
 		-- rear corner, about 29° outward (from below), ending under the bumper
 		-- (bottom 0.52 m, face 2.49 m, side view). Tips over it and its mirror,
@@ -290,13 +317,12 @@ CarCosmeticMounts.cars = {
 			riseM = 0.09,
 		},
 	},
-	-- Strip: at the top of the windscreen piece (Glass_7: top 1.99 m at
-	-- z -0.295, rake 43°).
+	-- Strip: inside the windscreen piece (Glass_7), from its top edge down.
 	kruzer80 = {
 		-- Windows: Glass_7 the windscreen; Glass to Glass_4 the doors, Glass_6
 		-- the rear quarters, Glass_5 the tailgate.
 		windows = { side = { "Glass", "Glass_2", "Glass_3", "Glass_4", "Glass_5", "Glass_6" }, screen = { "Glass_7" } },
-		windscreen = { posM = { 0, 1.95, -0.34 }, widthM = 1.28, heightM = 0.12, tiltDeg = 47 },
+		windscreen = { piece = "Glass_7", side = "inside", heightM = 0.12, ends = "mesh" },
 		-- Exhaust: its own single pipe (in Chrome_13) on the right under the
 		-- black bumper, turned a little out and about 8° down (side view,
 		-- Chrome_13 alone; from below). Tips over it and its mirror, tops at the
@@ -321,11 +347,6 @@ CarCosmeticMounts.cars = {
 		},
 	},
 } :: { [string]: Mounts }
-
--- The spot's frame relative to the car's body mount, in studs.
-function CarCosmeticMounts.cframe(posM: { number }, tiltDeg: number?, k: number, mps: number): CFrame
-	return CFrame.new(Vector3.new(posM[1], posM[2], posM[3]) * (k / mps)) * CFrame.Angles(math.rad(tiltDeg or 0), 0, 0)
-end
 
 -- The aftermarket tips' centre x, metres, for n tips (0, 1, 2 or 4): a twin
 -- at ±spreadM/2 round tips.posM, a single on stock[1]'s side (over a one-pipe

@@ -30,6 +30,7 @@ local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local CarLook = require(Shared:WaitForChild("CarLook"))
 local CarLamps = require(Shared:WaitForChild("CarLamps"))
 local CarCosmeticMounts = require(Shared:WaitForChild("CarCosmeticMounts"))
+local CarStripShapes = require(Shared:WaitForChild("CarStripShapes"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
 local MeshData = require(Shared:WaitForChild("MeshData"))
@@ -48,13 +49,18 @@ type Original = { part: BasePart, color: Color3, material: Enum.Material, reflec
 type WindowRole = "side" | "screen" | "whole"
 type Window = { o: Original, role: WindowRole }
 
+-- The built sun strip: one slat Part per CarStripShapes entry in a folder,
+-- each with its own canvas (the whole strip, shifted to its slice).
+type Slat = { part: Part, canvas: Frame, gradient: UIGradient, label: TextLabel, along: number }
+type Strip = { folder: Folder, slats: { Slat } }
+
 type State = {
 	body: Instance,
 	carId: string,
 	paint: { Original },
 	rims: { Original },
 	windows: { Window },
-	strip: { part: Part, frame: Frame, gradient: UIGradient, label: TextLabel }?,
+	strip: Strip?,
 	exhaust: Folder?,
 	tipStyle: string?, -- the tip style whose template this car holds (acquireTip)
 	-- Bumped whenever the car's tips are taken off (a new look, a new body,
@@ -229,68 +235,102 @@ local function visualPart(name: string, handles: VehicleRig.Handles, offset: CFr
 	return dress(Instance.new("Part"), name, handles, offset)
 end
 
+-- The sun strip (garage round 3 §3): slats moulded to the windscreen
+-- (CarStripShapes, generated from each car's glass mesh), each a flat card
+-- at its spot on the glass with a SurfaceGui that shows its own slice of the
+-- one strip canvas: a clipping frame holding the whole canvas (gradient and
+-- text) shifted left by where the slat starts, so text and gradient run on
+-- across slats. Neighbours overlap a hair (CosmeticsConfig.render
+-- stripOverlapM), so no seam shows.
+local function slat(shape: CarStripShapes.Shape, sl: CarStripShapes.Slat, i: number, folder: Folder, handles: VehicleRig.Handles, f: number): Slat
+	local c, n, r = sl.centreM, sl.normal, sl.right
+	local right = Vector3.new(r[1], r[2], r[3])
+	local back = -Vector3.new(n[1], n[2], n[3])
+	-- right x up = back, so the Front face (-Z) looks out along the normal.
+	local offset = CFrame.fromMatrix(Vector3.new(c[1], c[2], c[3]) * f, right, back:Cross(right), back)
+	local part = visualPart(`Slat{i}`, handles, offset)
+	part.Size = Vector3.new(sl.widthM, sl.heightM, R.stripThicknessM) * f
+	-- Opaque, in the strip's colour: a SurfaceGui on a fully transparent
+	-- part behind the (transparent) windscreen does not draw at all.
+	part.Material = Enum.Material.SmoothPlastic
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	gui.CanvasSize = Vector2.new(sl.widthM, sl.heightM) * R.stripPixelsPerM
+	gui.LightInfluence = 1 -- lit like the car, not glowing at night
+	gui.MaxDistance = R.stripDrawStuds
+	gui.Parent = part
+	local clip = Instance.new("Frame")
+	clip.Size = UDim2.fromScale(1, 1)
+	clip.BackgroundTransparency = 1
+	clip.ClipsDescendants = true
+	clip.Parent = gui
+	local canvas = Instance.new("Frame")
+	canvas.Size = UDim2.fromOffset(shape.lengthM * R.stripPixelsPerM, shape.heightM * R.stripPixelsPerM)
+	canvas.Position = UDim2.fromOffset(-sl.fromM * R.stripPixelsPerM, 0)
+	canvas.BorderSizePixel = 0
+	canvas.Parent = clip
+	local gradient = Instance.new("UIGradient")
+	gradient.Parent = canvas
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromScale(0.92, 0.8)
+	label.TextScaled = true
+	label.FontFace = UITheme.font("display")
+	label.Parent = canvas
+	part.Parent = folder
+	-- Where the slat's middle sits along the canvas, 0 to 1: its own colour
+	-- (its thin sides) is the gradient's there.
+	local along = math.clamp((sl.fromM + sl.widthM / 2) / shape.lengthM, 0, 1)
+	return { part = part, canvas = canvas, gradient = gradient, label = label, along = along }
+end
+
 local function strip(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
 	local item = CarLook.item(look, "decal")
 	local mounts = CarCosmeticMounts.cars[carId]
-	local spot = mounts and mounts.windscreen
-	local show = spot ~= nil and item.stripColor ~= nil
-	if not show then
-		-- None means none: the card goes, and is built again when a strip is.
+	local shape = if mounts and mounts.windscreen then CarStripShapes[carId] else nil
+	if not shape or item.stripColor == nil then
+		-- None means none: the slats go, and are built again when a strip is.
 		if s.strip then
-			s.strip.part:Destroy()
+			s.strip.folder:Destroy()
 			s.strip = nil
 		end
 		return
 	end
-	assert(spot)
-	if s.strip and s.strip.part.Parent ~= body then
+	if s.strip and s.strip.folder.Parent ~= body then
 		s.strip = nil -- destroyed with its body or by someone else
 	end
 	if not s.strip then
 		local handles = VehicleRig.handles(model)
 		local k = VehicleRig.scaleOf(ConfigLoader.entry(carId))
 		local mps = ConfigLoader.forCar(carId).units.metersPerStud
-		local part = visualPart("LookStrip", handles, CarCosmeticMounts.cframe(spot.posM, spot.tiltDeg, k, mps))
-		part.Size = Vector3.new(spot.widthM, spot.heightM, R.stripThicknessM) * (k / mps)
-		-- Opaque, in the strip's colour: a SurfaceGui on a fully transparent
-		-- part behind the (transparent) windscreen does not draw at all.
-		part.Material = Enum.Material.SmoothPlastic
-		local gui = Instance.new("SurfaceGui")
-		-- The Front face (-Z) looks forward out through the glass: read from
-		-- in front of the car.
-		gui.Face = Enum.NormalId.Front
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
-		gui.CanvasSize = Vector2.new(spot.widthM, spot.heightM) * R.stripPixelsPerM
-		gui.LightInfluence = 1 -- lit like the car, not glowing at night
-		gui.MaxDistance = R.stripDrawStuds
-		gui.Parent = part
-		local frame = Instance.new("Frame")
-		frame.Size = UDim2.fromScale(1, 1)
-		frame.BorderSizePixel = 0
-		frame.Parent = gui
-		local gradient = Instance.new("UIGradient")
-		gradient.Parent = frame
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.AnchorPoint = Vector2.new(0.5, 0.5)
-		label.Position = UDim2.fromScale(0.5, 0.5)
-		label.Size = UDim2.fromScale(0.92, 0.8)
-		label.TextScaled = true
-		label.FontFace = UITheme.font("display")
-		label.Parent = frame
-		part.Parent = body
-		s.strip = { part = part, frame = frame, gradient = gradient, label = label }
+		local folder = Instance.new("Folder")
+		folder.Name = "LookStrip"
+		local slats = {}
+		for i, sl in shape.slats do
+			table.insert(slats, slat(shape, sl, i, folder, handles, k / mps))
+		end
+		folder.Parent = body
+		s.strip = { folder = folder, slats = slats }
 	end
-	local st = s.strip :: any
+	local st = s.strip :: Strip
 	local c1 = item.stripColor :: Color3
-	st.part.Transparency = 0
-	st.part.Color = c1
-	st.frame.Visible = true
-	st.frame.BackgroundColor3 = Color3.new(1, 1, 1)
-	st.gradient.Color = ColorSequence.new(c1, item.stripColor2 or c1)
-	st.label.Text = item.text or ""
-	st.label.TextColor3 = item.textColor or Color3.new(1, 1, 1)
-	st.label.Visible = (item.text or "") ~= ""
+	local c2 = item.stripColor2 or c1
+	local colors = ColorSequence.new(c1, c2)
+	local text = item.text or ""
+	for _, sl in st.slats do
+		sl.part.Transparency = 0
+		-- The slat's sides show its part colour: the gradient's colour there,
+		-- so a gradient strip has no amber rim along its purple end.
+		sl.part.Color = c1:Lerp(c2, sl.along)
+		sl.canvas.BackgroundColor3 = Color3.new(1, 1, 1)
+		sl.gradient.Color = colors
+		sl.label.Text = text
+		sl.label.TextColor3 = item.textColor or Color3.new(1, 1, 1)
+		sl.label.Visible = text ~= ""
+	end
 end
 
 -- A pipe or tip: a cylinder along the car's Z (a Cylinder's axis is its X;
@@ -747,7 +787,7 @@ function CarCosmetics.hasSpot(carId: string, spot: "windscreen" | "exhaust" | "w
 		return false
 	end
 	if spot == "windscreen" then
-		return mounts.windscreen ~= nil
+		return mounts.windscreen ~= nil and CarStripShapes[carId] ~= nil
 	elseif spot == "exhaust" then
 		return mounts.exhaust ~= nil
 	end
@@ -765,7 +805,7 @@ function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 		-- A new body (or car) on the same model: the remembered pieces and the
 		-- built strip and tips belong to the old one.
 		if s.strip then
-			s.strip.part:Destroy()
+			s.strip.folder:Destroy()
 		end
 		clearExhaust(s)
 		s = nil
