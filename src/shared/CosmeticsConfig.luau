@@ -171,6 +171,11 @@ CosmeticsConfig.render = {
 	-- so the pipe reads as hung from the car. Thin and dark on purpose: it is
 	-- a detail seen from low down, not a feature.
 	hangerBackM = 0.08,
+	-- No hanger where it would be taller than this (the rise plus the bury):
+	-- on the kruzer80's open underside it was a 32 cm black strap beside the
+	-- riser (fix round 1), which is a feature, not a detail. 0.12 keeps the
+	-- batrol's 11 cm one.
+	hangerMaxM = 0.12,
 	hangerWidthM = 0.03,
 	hangerThickM = 0.014,
 	hangerColor = Color3.fromHex("#161617"),

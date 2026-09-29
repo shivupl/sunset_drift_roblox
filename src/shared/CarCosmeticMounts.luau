@@ -142,7 +142,10 @@ CarCosmeticMounts.cars = {
 			bumperZ = 2.81,
 			-- riseM: the bed floor's underside is 0.427 m at the run's end (z 1.88,
 			-- x ±0.6), 1.2 cm over the pipe's centre (0.415); the pipe hugs the
-			-- floor and turns up into it. Nothing shows in the bed (from above).
+			-- floor and turns up into it. Its end's top is 0.499 m (factory 0.494),
+			-- under the bed floor's top (0.54 m at z 1.79-1.94, the same raycasts
+			-- from above: a floor about 11 cm thick there); nothing shows in the
+			-- bed from above (checked, fix round 1).
 			riseM = 0.015,
 		},
 	},
@@ -309,8 +312,11 @@ CarCosmeticMounts.cars = {
 			-- riseM: an open underside; the floor (Chrome_13 and Interior_10's
 			-- undersides) is 0.925 m over the run's end (z 1.85-2.26, x ±0.5 and
 			-- ±0.6), 30.5 cm over the pipe's centre (0.62), so the pipe bends a full
-			-- 90° and runs 22 cm straight up, behind the tyre and mud flap. On the
-			-- right it rises beside the car's own pipe and muffler.
+			-- 90° and runs 22 cm straight up, behind the tyre and mud flap; its level
+			-- end (top 0.94 m) stops under Interior_10's underside (0.953 m), so it
+			-- is not in the cabin. No hanger (taller than hangerMaxM). On the right
+			-- it rises beside the car's own pipe and muffler. The spec's boot line
+			-- here is 0.948 m: a centimetre more riseM fails it.
 			riseM = 0.3,
 		},
 	},
@@ -450,7 +456,61 @@ export type PipeBend = {
 	buryM: number, -- the end's rim this far inside the body
 	axisRunM: number, -- a turned tip's pipe runs this far along its axis first
 	hangerBackM: number, -- the hanger this far behind the bend
+	hangerMaxM: number, -- no hanger where the strap would be taller than this
 }
+
+-- The render knobs the pipes read (CosmeticsConfig.render's fields; passed
+-- in so this module stays free of config, and so CarCosmetics and the spec
+-- build the same routes from one place).
+export type PipeKnobs = {
+	pipeBendRadiusM: number,
+	pipeBendMaxDeg: number,
+	pipeBendSegments: number,
+	pipeEndBuryM: number,
+	pipeAxisRunM: number,
+	hangerBackM: number,
+	hangerMaxM: number,
+	pipeRunFromM: number,
+	quadPairGapM: number,
+}
+
+function CarCosmeticMounts.pipeBend(k: PipeKnobs): PipeBend
+	return {
+		radiusM = k.pipeBendRadiusM,
+		maxDeg = k.pipeBendMaxDeg,
+		segments = k.pipeBendSegments,
+		buryM = k.pipeEndBuryM,
+		axisRunM = k.pipeAxisRunM,
+		hangerBackM = k.hangerBackM,
+		hangerMaxM = k.hangerMaxM,
+	}
+end
+
+-- Where every tip pipe's straight run ends: tips.pipeLengthM forward of
+-- round 2's tip length (pipeRunFromM) in from the mouth.
+function CarCosmeticMounts.pipeFrontZ(e: Exhaust, k: PipeKnobs): number
+	return e.tips.posM[3] - k.pipeRunFromM - e.tips.pipeLengthM
+end
+
+-- Each tip pipe's inlet frame, car metres, +Z out of the tip, for n tips:
+-- one per tip at `inletM` in its tip frame, except a quad (n >= 4), which
+-- has one pipe per pair at `pairInletM` in its pair frame (quadPairFrames).
+-- The mesh quad's inlet is its Y; the cylinder fallback's pair pipe starts
+-- between the pair's two cylinders, overlapping both (fix round 1: four
+-- pipes at the tips' own x ran the pickup's outer two through its tyres).
+function CarCosmeticMounts.pipeInlets(e: Exhaust, n: number, k: PipeKnobs, inletM: Vector3, pairInletM: Vector3): { CFrame }
+	local out: { CFrame } = {}
+	if n >= 4 then
+		for _, f in CarCosmeticMounts.quadPairFrames(e, k.quadPairGapM) do
+			table.insert(out, f * CFrame.new(pairInletM))
+		end
+		return out
+	end
+	for _, f in CarCosmeticMounts.tipFrames(e, n, k.quadPairGapM) do
+		table.insert(out, f * CFrame.new(inletM))
+	end
+	return out
+end
 -- A routed pipe in car metres: straight cylinders from a to b, a ball at
 -- each joint (where two cylinders meet at an angle), the hanger's foot (on
 -- the pipe's centre) and top (inside the body), and where the pipe ends:
@@ -492,7 +552,7 @@ function CarCosmeticMounts.pipeRoute(inlet: Vector3, out: Vector3, overlapM: num
 		end
 		table.insert(segments, { a = head, b = bendAt })
 		local hz = bendAt.Z + b.hangerBackM
-		if hz < head.Z - 0.02 then
+		if hz < head.Z - 0.02 and target <= b.hangerMaxM then
 			local foot = Vector3.new(bendAt.X, bendAt.Y, hz)
 			hanger = { a = foot, b = foot + Vector3.yAxis * target }
 		end
@@ -517,7 +577,13 @@ function CarCosmeticMounts.pipeRoute(inlet: Vector3, out: Vector3, overlapM: num
 		end
 		theta = hi
 	else
-		riser = short(maxT) / math.sin(maxT)
+		-- A riser only when it is longer than about a chord; a shorter one is
+		-- folded into the last chord below (fix round 1: the batrol's 1 cm
+		-- riser came and went with float rounding).
+		local need = short(maxT) / math.sin(maxT)
+		if need > rb * maxT / b.segments then
+			riser = need
+		end
 	end
 	local n = math.max(1, math.ceil(theta / maxT * b.segments - 1e-6))
 	local fwd, up = -Vector3.zAxis, Vector3.yAxis
@@ -534,7 +600,7 @@ function CarCosmeticMounts.pipeRoute(inlet: Vector3, out: Vector3, overlapM: num
 		prev = p
 	end
 	local dir = fwd * math.cos(theta) + up * math.sin(theta)
-	if riser > 0.01 then
+	if riser > 0 then
 		table.insert(joints, prev)
 		local e = prev + dir * riser
 		table.insert(segments, { a = prev, b = e })

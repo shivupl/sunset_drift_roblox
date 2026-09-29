@@ -521,14 +521,7 @@ local function boreDisc(name: string, handles: VehicleRig.Handles, s: number, fr
 end
 
 -- The pipes' bend knobs, as CarCosmeticMounts.pipeRoute takes them.
-local BEND: CarCosmeticMounts.PipeBend = {
-	radiusM = R.pipeBendRadiusM,
-	maxDeg = R.pipeBendMaxDeg,
-	segments = R.pipeBendSegments,
-	buryM = R.pipeEndBuryM,
-	axisRunM = R.pipeAxisRunM,
-	hangerBackM = R.hangerBackM,
-}
+local BEND = CarCosmeticMounts.pipeBend(R)
 
 -- A cylinder from a to b (car metres), scaled by s.
 local function between(name: string, handles: VehicleRig.Handles, s: number, a: Vector3, b: Vector3, radius: number): Part
@@ -633,9 +626,12 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 		else
 			frames = CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM)
 		end
-		-- Each pipe's inlet frame: at the inlet, +Z out of the tip.
-		local inlets: { CFrame } = {}
+		-- Each pipe's inlet frame (CarCosmeticMounts.pipeInlets, the same the
+		-- spec walks): one per tip, or one per quad pair.
+		local inlets: { CFrame }
 		if template then
+			local inletM = Vector3.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3])
+			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, inletM, inletM)
 			for i, frame in frames do
 				local tip = meshAt(if style.pair then `TipPair{i}` else `Tip{i}`, template, mesh, handles, sc, frame)
 				tip.Color = colour
@@ -645,14 +641,16 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 					local id = if style.pair then (i - 1) * 2 + j else i
 					boreDisc(`Bore{id}`, handles, sc, frame, b).Parent = folder
 				end
-				table.insert(inlets, frame * CFrame.new(mesh.inletM[1], mesh.inletM[2], mesh.inletM[3]))
 			end
 		else
 			-- The fallback: round 2's cylinder tips, one per mouth, as long as
-			-- a rolled tip (mouth to collar), each on its own pipe, turned with
-			-- the tip frame (a quad pair's yaw included, so flames leave along
-			-- the cylinder).
+			-- a rolled tip (mouth to collar), turned with the tip frame (a quad
+			-- pair's yaw included, so flames leave along the cylinder). Pipes as
+			-- the mesh tips have them: one per tip, one per quad pair (its pipe
+			-- starts between the pair's two cylinders, overlapping both).
 			local len = -tipMesh("Rolled").inletM[3]
+			local back = Vector3.new(0, 0, -len)
+			inlets = CarCosmeticMounts.pipeInlets(spot, n, R, back, back)
 			for i, f in CarCosmeticMounts.tipFrames(spot, n, R.quadPairGapM) do
 				local tip = cylinderAt(`Tip{i}`, handles, sc, f * CFrame.new(0, 0, -len / 2), len, R.tipRadiusM)
 				tip.Color = colour
@@ -662,12 +660,11 @@ local function exhaust(s: State, model: Model, body: Instance, carId: string, lo
 				core.Color = R.boreColor
 				core.Material = Enum.Material.SmoothPlastic
 				core.Parent = folder
-				table.insert(inlets, f * CFrame.new(0, 0, -len))
 			end
 		end
 		-- Every pipe runs forward to where round 2 measured it (pipeRunFromM),
 		-- then bends up riseM into the body (garage round 3 §2).
-		local frontZ = spot.tips.posM[3] - R.pipeRunFromM - spot.tips.pipeLengthM
+		local frontZ = CarCosmeticMounts.pipeFrontZ(spot, R)
 		for i, inlet in inlets do
 			local route = CarCosmeticMounts.pipeRoute(inlet.Position, inlet.ZVector, R.pipeOverlapM, frontZ, spot.riseM, R.pipeRadiusM, BEND)
 			routedPipe(folder, `Pipe{i}`, `Pipe{i}`, handles, sc, route, R.pipeRadiusM, R.pipeColor)

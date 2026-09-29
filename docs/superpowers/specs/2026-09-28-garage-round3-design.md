@@ -68,7 +68,9 @@ Builds on `2026-09-28-garage-round2-design.md` (the exhaust standard, the
   (`pipeAxisRunM`) before it turns forward. Factory pipes and the cylinder
   fallback route the same way. Where the run already ends inside the body
   or the car's own muffler, `riseM` is a nominal 0.04; each car's entry
-  says which. 8 Parts per pipe (10 with a riser, 12 on a turned pair).
+  says which. 8 Parts per pipe (9 on the kruzer80: a riser, no hanger;
+  10 on a turned pair). Fix round 1: the fallback quad has one pipe per pair
+  too, and the spec walks the fallback's pipes.
 
 ## 3. Sun strips moulded to the windscreen
 
