@@ -12,7 +12,7 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
-**`garage` (open, 2026-09-28): ready for owner review, not merged.** The UI design system
+**`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
 wing, the walk-in customisation view and its panel (buy with confirm, equip). Spec and plan in
@@ -29,10 +29,10 @@ seated, flames at speed, walk-in and the phone layout all worked; specs 3058 pas
 (the VehicleRig baseline). One drive-out in five left the car on its side; fixed in `992a021`
 (the car is held anchored through the seat until the driver's sim runs): 16 of 16 clean after,
 dip at most 0.01 m. Still open for the owner: upshift and limiter pops (off by default), tint's mixed-version rollout,
-and the pickup's pipe through its bumper. Not merged, not pushed.
+and the pickup's pipe through its bumper.
 
-**`garage-r3` (open, 2026-09-29): garage round 3, branched from `garage`, ready for owner review, not
-merged, not pushed.** Commits `0ee650f` (spec and plan) through the final pass ("Garage round 3: sun
+**`garage-r3` (merged into `main` 2026-09-29, fast-forward, and deleted): garage round 3, branched
+from `garage`.** Commits `0ee650f` (spec and plan) through the final pass ("Garage round 3: sun
 strips rename, docs, final pass"); spec and plan in docs/superpowers, `2026-09-28-garage-round3-*`.
 Exhaust tips modelled in Blender (rolled, quad pair, slash titanium, the new Big Oval) on EditableMesh
 templates with a cylinder fallback and an optional uploaded-mesh path; pipes routed up into each car
