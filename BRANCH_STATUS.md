@@ -17,7 +17,10 @@ rest rolls back onto its wheels over its own edge (client and shared `AutoFlip`,
 heading kept, lands at rest height, clear of walls. White tyre smoke from a per-wheel tread-heat model
 (shared `TireHeat`, client `TireSmoke`): drifts, lock-ups, handbrake and burnouts smoke, grip doesn't;
 it builds in and tails off; every player sees every car's smoke through a server-stamped `TireSmoke`
-attribute (`CarControls`). Specs in `AutoFlip.spec` and `TireHeat.spec`.
+attribute (`CarControls`). Specs in `AutoFlip.spec` and `TireHeat.spec`. Second smoke pass (owner: "a
+lot better, more accurate and realistic"): Roblox's realistic smoke texture, three layers per tyre
+(spray thrown the way the tread slides, a billowing cloud, a lingering haze on a light breeze), load-weighted
+heat, puffing, and tan dust instead of smoke on sand or dirt.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

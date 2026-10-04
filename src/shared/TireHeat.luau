@@ -14,7 +14,12 @@
 --     in rather than switching on;
 --   - a burnout smokes with the car standing still (the tread is sliding);
 --   - when grip comes back the smoke drops to wisps at once (the rubber is no
---     longer being torn off) and those fade as the tread cools.
+--     longer being torn off) and those fade as the tread cools;
+--   - the heat is friction times slide speed, and friction follows the load
+--     on the tyre, so the loaded outside rear of a drift smokes hardest;
+--   - on sand or dirt there is no smoke: the tread throws the ground up as
+--     dust, at once, with no heat in it (owner, 2026-10-04: smoke "a lot
+--     better, more accurate and realistic").
 -- Pure functions, so the spec can drive it without a car.
 local TireHeat = {}
 
@@ -57,6 +62,37 @@ function TireHeat.slideSpeed(p: Params, contactVel: Vector3, heading: Vector3, s
 	return math.sqrt(lat * lat + long * long)
 end
 
+-- The velocity, m/s in the road plane, of the tread where it leaves the road:
+-- the patch's own velocity less the tread running back under the turning
+-- wheel. Zero for a tyre that rolls; sideways out of a drift, back out of a
+-- burnout, along with the car in a lock-up. Fresh smoke leaves the tyre this
+-- way (it is the vapour of the rubber being torn off) before the air stops it.
+function TireHeat.treadVelocity(contactVel: Vector3, heading: Vector3, surfaceSpeed: number): Vector3
+	local flat = Vector3.new(contactVel.X, 0, contactVel.Z)
+	local h = Vector3.new(heading.X, 0, heading.Z)
+	if h.Magnitude < 1e-6 then
+		return flat
+	end
+	return flat - h.Unit * surfaceSpeed
+end
+
+-- Each wheel's share of the car's weight right now (1 = an even quarter),
+-- from the sim's per-wheel loads. The heat a sliding tread makes is friction
+-- times slide speed, and friction follows load: in a drift the loaded outside
+-- rear smokes hardest and the light inside one less; under braking, the
+-- fronts. Even shares when nothing is on the ground.
+function TireHeat.loadShares(loads: { number }): { number }
+	local total = 0
+	for _, l in loads do
+		total += math.max(0, l)
+	end
+	local out = {}
+	for i, l in loads do
+		out[i] = if total > 1e-6 then math.max(0, l) * #loads / total else 1
+	end
+	return out
+end
+
 -- How hard the tread is heating, 0..1, at this slide speed.
 function TireHeat.drive(p: Params, slideMps: number): number
 	return math.clamp((slideMps - p.slideStartMps) / (p.slideFullMps - p.slideStartMps), 0, 1)
@@ -64,8 +100,9 @@ end
 
 -- The tread's heat after `dt` seconds sliding at `slideMps` (0 when the
 -- wheel is off the ground: nothing to slide on, and the air cools it).
-function TireHeat.step(p: Params, heat: number, slideMps: number, grounded: boolean, dt: number): number
-	local d = if grounded then TireHeat.drive(p, slideMps) else 0
+-- `share` is the wheel's load share (loadShares; 1 if left out).
+function TireHeat.step(p: Params, heat: number, slideMps: number, grounded: boolean, dt: number, share: number?): number
+	local d = if grounded then TireHeat.drive(p, slideMps) * (share or 1) else 0
 	-- Heating toward the drive level, cooling in proportion to the heat: the
 	-- tread settles at a heat set by how hard it slides.
 	local h = heat + (p.heatPerSec * d - p.coolPerSec * heat) * dt
@@ -78,14 +115,36 @@ local function smoothstep(x: number): number
 end
 
 -- How much it smokes now, 0..1: nothing below smokeHeat; above it, full
--- while sliding hard and down to `wisp` of that once it grips.
-function TireHeat.intensity(p: Params, heat: number, slideMps: number, grounded: boolean): number
+-- while sliding hard and down to `wisp` of that once it grips. A lightly
+-- loaded tyre tears off less rubber, so smokes less (`share`, as in step).
+function TireHeat.intensity(p: Params, heat: number, slideMps: number, grounded: boolean, share: number?): number
 	-- A wheel in the air has nothing under it to scrub rubber off onto.
 	local hot = smoothstep((heat - p.smokeHeat) / (1 - p.smokeHeat))
 	if hot <= 0 or not grounded then
 		return 0
 	end
-	return hot * (p.wisp + (1 - p.wisp) * TireHeat.drive(p, slideMps))
+	local tear = math.min(1, TireHeat.drive(p, slideMps) * (share or 1))
+	return hot * (p.wisp + (1 - p.wisp) * tear)
+end
+
+export type DustParams = {
+	slideStartMps: number, -- slide speed where a tyre starts throwing dust
+	slideFullMps: number, -- and where it throws all it can
+	rollStartMps: number, -- driving speed where even a rolling tyre lifts a little
+	rollFullMps: number,
+	rollMax: number, -- the most a rolling tyre lifts (0..1)
+}
+
+-- How much dust a tyre on loose ground throws, 0..1. No heat in it: sand and
+-- dirt are thrown the moment the tread slides over them (and a fast tyre
+-- lifts a thin trail rolling), and stop when it stops.
+function TireHeat.dust(p: DustParams, slideMps: number, speedMps: number, grounded: boolean): number
+	if not grounded then
+		return 0
+	end
+	local slide = math.clamp((slideMps - p.slideStartMps) / (p.slideFullMps - p.slideStartMps), 0, 1)
+	local roll = math.clamp((speedMps - p.rollStartMps) / (p.rollFullMps - p.rollStartMps), 0, 1) * p.rollMax
+	return math.max(slide, roll)
 end
 
 -- Four wheels' smoke (0..1 each) as one number for the relay: 4 bits each,

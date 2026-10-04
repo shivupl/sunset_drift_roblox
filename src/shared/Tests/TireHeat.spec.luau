@@ -117,6 +117,49 @@ return function(t: T)
 	local _, _, flick = run(0, 10, 0.06)
 	t.eq(flick, nil, "a 0.06 s twitch doesn't puff")
 
+	-- Which way fresh smoke leaves the tread ----------------------------------
+	t.near(TireHeat.treadVelocity(Vector3.new(0, 0, -20), fwd, 20).Magnitude, 0, 1e-9, "a rolling tyre throws nothing")
+	local spin = TireHeat.treadVelocity(Vector3.zero, fwd, 15)
+	t.ok(spin.Z > 14.9 and math.abs(spin.X) < 1e-9, `a burnout throws it straight back ({spin})`)
+	local lock = TireHeat.treadVelocity(Vector3.new(0, 0, -20), fwd, 0)
+	t.ok(lock.Z < -19.9, `a locked tyre drags it along with the car ({lock})`)
+	-- The 35 degree drift above: the car's sideways motion at the rear tyre
+	-- (to +X) is what the tread slides; spinning a little faster than it
+	-- rolls throws it back as well.
+	local out = TireHeat.treadVelocity(drift, fwd, v * math.cos(a) + 2)
+	t.ok(out.X > 9 and out.Z > 1.9, `a drift throws it out of the arc and back ({out})`)
+	t.near(TireHeat.treadVelocity(Vector3.new(3, 4, -20), fwd, 20).Y, 0, 1e-9, "it stays in the road plane")
+
+	-- Load: the loaded tyre smokes hardest -------------------------------------
+	local even = TireHeat.loadShares({ 4000, 4000, 4000, 4000 })
+	t.near(even[1], 1, 1e-9, "an even car: every share is 1")
+	local drifting = TireHeat.loadShares({ 6000, 2000, 6000, 2000 })
+	t.near(drifting[1], 1.5, 1e-9, "outside wheels carry 1.5 shares")
+	t.near(drifting[2], 0.5, 1e-9, "inside wheels 0.5")
+	t.near(TireHeat.loadShares({ 0, 0, 0, 0 })[3], 1, 1e-9, "nothing on the ground: even shares")
+	local function firstSmoke(share: number): number?
+		local h = 0
+		for i = 1, 120 do
+			h = TireHeat.step(P, h, 10, true, DT, share)
+			if TireHeat.intensity(P, h, 10, true, share) > 0 then
+				return i * DT
+			end
+		end
+		return nil
+	end
+	local loaded, unloaded = firstSmoke(1.5), firstSmoke(0.5)
+	t.ok(loaded ~= nil and unloaded ~= nil and (loaded :: number) < (unloaded :: number), `the loaded tyre smokes first ({loaded} s against {unloaded} s)`)
+	t.ok(TireHeat.intensity(P, 1, 10, true, 0.5) < TireHeat.intensity(P, 1, 10, true, 1.5), "and thicker")
+	t.ok(TireHeat.intensity(P, 1, 10, true, 0.5) > 0.4, "but a light tyre in a full drift still smokes")
+	t.near(TireHeat.intensity(P, 1, 10, true, 3), 1, 1e-9, "never past full")
+
+	-- Dust off the road ------------------------------------------------------------
+	local D: TireHeat.DustParams = CarConfig.effects.dust.amount
+	t.eq(TireHeat.dust(D, 0, 5, true), 0, "rolling slowly on sand: no dust")
+	t.near(TireHeat.dust(D, 10, 15, true), 1, 1e-9, "sliding on sand: full dust at once")
+	t.near(TireHeat.dust(D, 0, 40, true), D.rollMax, 1e-9, "rolling fast: a thin trail")
+	t.eq(TireHeat.dust(D, 10, 15, false), 0, "in the air: none")
+
 	-- The relay packing ---------------------------------------------------------
 	local packed = TireHeat.pack({ 0, 1, 0.5, 0.2 })
 	local back = TireHeat.unpack(packed)

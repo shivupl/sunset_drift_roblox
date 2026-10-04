@@ -825,38 +825,166 @@ local config = {
 			smokeHeat = 0.3, -- heat (0..1) where smoke starts
 			wisp = 0.18, -- share of smoke a hot tyre keeps giving off once it grips again
 		},
-		-- Two layers from each tyre, so a light slide is wispy and only a
-		-- full one billows: wisps rise with the smoke level, the thick cloud
-		-- with its square (it only really comes in near full).
-		smokeThickRate = 40, -- particles a second per tyre at full smoke
-		smokeWispRate = 18,
-		smokeLifetime = 2.6, -- seconds a thick puff lasts: a cloud hangs behind the slide
-		smokeWispLifetime = 1.4,
-		smokeStartSize = 0.6, -- metres as it leaves the tyre: small, so it doesn't slice into the road
-		smokeSize = 3.6, -- metres at the end of its life
-		smokeWispSize = 1.6,
+		-- How it looks (owner, 2026-10-04, second pass: "not bad but could
+		-- definately be a lot better, more accurate and realistic"). The first
+		-- pass drew Roblox's built-in smoke_main.dds: a 128 px grey blob that
+		-- is never more than a third opaque, so however it was tinted it read
+		-- as a soft grey ball. This is Roblox's own realistic smoke texture
+		-- (from their volcano VFX tutorial): wispy, turbulent, near white. If
+		-- it ever fails to load the built-in one stands in.
+		smokeTexture = "rbxassetid://16830673704",
+		smokeTextureFallback = "rbxasset://textures/particles/smoke_main.dds",
 		smokeColor = Color3.fromRGB(255, 255, 255), -- at the tyre
-		smokeColorEnd = Color3.fromRGB(240, 240, 240), -- as it thins out
-		smokeTransparency = 0.15, -- thick layer at birth (0 opaque); it thins to clear by the end
-		smokeWispTransparency = 0.55,
-		-- The built-in smoke texture is grey, and at golden hour the scene's
-		-- light greys it further (0.3 / 0.55 / no glow read as fog in Studio,
-		-- 2026-10-04). Light barely tints it (0.25) and a little glow of its
-		-- own (0.15) lifts it to white without it shining at night.
+		smokeColorEnd = Color3.fromRGB(232, 234, 238), -- as it thins out, a touch of blue-grey
+		-- How much the scene's light tints it, and how much it glows by itself.
+		-- Golden hour greys smoke that takes the scene's light fully (0.55
+		-- influence with no glow read as fog in Studio, 2026-10-04).
 		smokeLightInfluence = 0.25,
-		smokeLightEmission = 0.15,
-		-- Real tyre smoke has next to no speed of its own: it leaves the
-		-- tyre slowly, hangs, rises as it cools and goes where the wind goes
-		-- (workspace.GlobalWind). m/s and m/s².
-		smokeSpeedMps = { 0.6, 1.8 },
-		smokeRise = 0.7,
-		smokeDrag = 1.6,
+		smokeLightEmission = 0.12,
+		-- The texture is a light warm grey at its brightest, and lit from
+		-- behind at sunset the cloud read grey; 1.5 brings it back to white
+		-- (Studio, 2026-10-04). Smoke only; dust keeps its ground colour.
+		smokeBrightness = 1.5,
+		-- Real tyre smoke, from the tyre outward (drift footage; racing-sim
+		-- smoke threads: it "doesn't have much velocity", "just hangs in the
+		-- air, slowly ascending and dissolving", "stirred up in the wheel
+		-- arches and poured around the sides"):
+		--   spray: the fresh vapour, thrown off the tread the way the tread is
+		--     sliding (out of a drift's arc, back out of a burnout) and stopped
+		--     by the air within a metre or two;
+		--   billow: the cloud it becomes, growing fast, pulled along a little
+		--     in the car's wake, rising slowly;
+		--   haze: the thin bank left hanging over the road for several
+		--     seconds, drifting on the breeze, so a run of drifts fills the
+		--     air.
+		-- Per layer: `rate` particles a second per tyre at full smoke, times
+		-- the smoke level to `power` (2: only a real slide billows); `sizeM`
+		-- at birth, a quarter of the way through and at the end (it spreads
+		-- fastest at first); `transparency` at birth and halfway (clear at the
+		-- end); `throw` the share of the tread's slide velocity it leaves with,
+		-- up to `maxSpeedMps`; `drag` how many times a second it loses half
+		-- its speed (Roblox's Drag); `riseMps` the speed it settles into
+		-- climbing; `inherit` the share of the car's own velocity it keeps;
+		-- `squash` at birth, a third of the way and at the end (Roblox's
+		-- Squash: below 0 is wider than tall). A puff is a flat card facing
+		-- the camera, and a round one low over the road cuts into it in a
+		-- hard line; flattened, the cloud spreads along the road like real
+		-- smoke settling, and the line all but goes (Studio, 2026-10-04).
+		--
+		-- The cost is the screen area the puffs cover, not their number.
+		-- First tried at 30 / 12 / 2.5 a second growing to 1.8 / 5 / 8.5 m:
+		-- four tyres at full round a parked car took the median frame from
+		-- 16.6 to 38.4 ms on the Mac. At these numbers that worst case's
+		-- median is 16.3 ms against 16.5 with no smoke, and it is still a
+		-- thick white cloud (the texture is nearly opaque, where the old one
+		-- never passed a third).
+		smokeLayers = {
+			spray = {
+				rate = 20,
+				power = 1,
+				lifetime = { 0.5, 0.9 },
+				sizeM = { 0.3, 0.9, 1.6 },
+				transparency = { 0.15, 0.45 },
+				throw = 0.5,
+				maxSpeedMps = 6,
+				spreadDeg = 22,
+				drag = 3.5,
+				riseMps = 0.3,
+				inherit = 0,
+				rotSpeedDeg = 40,
+				squash = { 0, 0, 0 },
+			},
+			billow = {
+				rate = 8,
+				power = 2,
+				lifetime = { 2.4, 3.4 },
+				sizeM = { 0.6, 2.2, 4 },
+				transparency = { 0.25, 0.55 },
+				throw = 0.25,
+				maxSpeedMps = 3,
+				spreadDeg = 45,
+				drag = 1.2,
+				riseMps = 0.45,
+				inherit = 0.15,
+				rotSpeedDeg = 12,
+				squash = { 0, -0.4, -0.25 },
+			},
+			haze = {
+				rate = 0.8,
+				power = 2,
+				lifetime = { 5, 7 },
+				sizeM = { 2, 4, 5.5 },
+				transparency = { 0.7, 0.85 },
+				throw = 0.05,
+				maxSpeedMps = 0.6,
+				spreadDeg = 180,
+				drag = 0.6,
+				riseMps = 0.25,
+				inherit = 0.05,
+				rotSpeedDeg = 5,
+				squash = { -0.2, -0.35, -0.5 },
+			},
+		},
+		-- The breeze the smoke drifts on, m/s along world X and Z. North is
+		-- -Z (the sunset is on the left of a car heading down -Z, so west is
+		-- -X); Riyadh's prevailing shamal comes from the north-north-west, so
+		-- this blows it gently south-south-east. Smoke only: the world's
+		-- GlobalWind (sky clouds) is untouched.
+		smokeWindMps = { 0.4, 1.0 },
+		-- Real smoke comes in puffs, not an even stream: each tyre's rates
+		-- swell and dip by up to this share, about this many times a second.
+		smokePulse = 0.6,
+		smokePulseHz = 1.8,
 		-- Each puff is drawn this far toward the camera. A puff is a flat card
 		-- facing the camera, so a big one low over the road cuts into the
 		-- asphalt and lane paint in a hard straight line (Studio,
 		-- 2026-10-04); 0.84 m clears it from the chase camera without the
 		-- smoke drawing over the car's own rear.
 		smokeZOffsetM = 0.84,
+		-- Off the road: a tyre on sand or dirt doesn't smoke (it never grips
+		-- hard enough to cook its tread), it throws the ground up as dust, at
+		-- once, the colour of what it is on (a little paler: fine dust in the
+		-- air). `amount` is when (shared TireHeat.dust): sliding from
+		-- slideStartMps, full at slideFullMps; rolling fast lifts a thin trail
+		-- too (up to rollMax at rollFullMps). It eases in over attackSeconds
+		-- and settles over releaseSeconds. The ground under each tyre is
+		-- checked by a ray, a few times a second.
+		dust = {
+			amount = {
+				slideStartMps = 1,
+				slideFullMps = 6,
+				rollStartMps = 8,
+				rollFullMps = 30,
+				rollMax = 0.3,
+			},
+			attackSeconds = 0.08,
+			releaseSeconds = 0.4,
+			materials = {
+				Enum.Material.Sand,
+				Enum.Material.Ground,
+				Enum.Material.Grass,
+				Enum.Material.LeafyGrass,
+				Enum.Material.Mud,
+				Enum.Material.Snow,
+				Enum.Material.Salt,
+			},
+			lighten = 0.3, -- share of the way from the ground's colour to white
+			layer = {
+				rate = 28,
+				power = 1,
+				lifetime = { 1, 2 },
+				sizeM = { 0.4, 1.6, 3.2 },
+				transparency = { 0.3, 0.6 },
+				throw = 0.55,
+				maxSpeedMps = 7,
+				spreadDeg = 35,
+				drag = 2.2,
+				riseMps = 0.1, -- fine dust barely climbs; it hangs and drifts
+				inherit = 0,
+				rotSpeedDeg = 20,
+				squash = { 0, -0.3, -0.3 },
+			},
+		},
 		-- The driver's client sends its four smoke levels to the server at
 		-- most this often, and only when they change; the server puts them on
 		-- the car for everyone (CarControls, TireSmoke attribute).
