@@ -12,6 +12,13 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`tweaks` (open, 2026-10-04): auto-flip and tyre smoke, not merged, not pushed.** A capsized car at
+rest rolls back onto its wheels over its own edge (client and shared `AutoFlip`, `CarConfig.autoFlip`):
+heading kept, lands at rest height, clear of walls. White tyre smoke from a per-wheel tread-heat model
+(shared `TireHeat`, client `TireSmoke`): drifts, lock-ups, handbrake and burnouts smoke, grip doesn't;
+it builds in and tails off; every player sees every car's smoke through a server-stamped `TireSmoke`
+attribute (`CarControls`). Specs in `AutoFlip.spec` and `TireHeat.spec`.
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left

@@ -302,16 +302,40 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | fallBelowM | A car this far under the road is re-parked in its bay (self-healing). A destroyed chassis respawns the car. |
 | exitGapM / exitLiftM | Leaving a car puts the driver beside the driver's door: this much clear space from the car's side (1.0 m), this far above the chassis centre (0.5 m). Up the gap if players land against the door. |
 
+## autoFlip
+Client-side, for the car you are driving (client `AutoFlip`, maths in shared `AutoFlip`). Owner, 2026-10-04: flip the car back over "seamlessly/naturally" when it capsizes. A car lying past `tiltDeg` that has come to rest rolls back onto its wheels over its own edge, keeping its heading; the R reset (back to the road) is unchanged.
+
+| Field | What it does |
+|---|---|
+| enabled | Master switch. |
+| tiltDeg | Past this lean from upright it counts as capsized (on its side or roof). 75: a natl balances at 35 and lets go at 62, so a natl never trips it. Lower catches a car resting at an angle against a dune; never below 62. |
+| restSpeedMps / restSpinDegPerSec / settleSeconds | It flips only once it has been slower than this, turning slower than this, for this long: the crash has finished. Shorter settle = flips sooner (0.8 s). |
+| flipSecondsPer90 | How long the roll takes per 90 degrees: 0.75 s off its side, 1.5 s off its roof. Longer reads heavier, shorter snappier. |
+| clearanceM | Gap kept under the edge it pivots on mid-roll (0 at the start and the landing), so it lifts over the edge rather than scraping through. It pivots on its real outline (each part's corners, not a box round the car) and lands at its rest height with its tyres where they sit on loaded springs, so it doesn't drop: measured on the Kamri 07, off its side in 0.67 s with 0.26 m of lift, landing within 1 cm of its rest height and settling 1.5-3 cm; off its roof in 1.44 s with 0.69 m. |
+| cooldownSeconds | After a flip, how long before it can flip again (a car that lands on a slope and tips once more). |
+| clearShiftsM | Where it would stand must be clear of walls, pillars and other cars, and so must the way there (checked every half metre, so it never rolls through a wall to a clear spot beyond). These sideways shifts are tried in turn; if none is clear it stays down and R resets it. Measured: against a wall at its roof it stood up 1.25 m clear of it; boxed in by walls 0.95 m each side it stayed down. |
+
 ## effects
-Visual only; the physics never reads any of these. Client-side, for the car you are driving.
+Visual only; the physics never reads any of these. Client-side: skid marks and the screech for the car you are driving (DriftEffects); tyre smoke on every car (TireSmoke, heat model in shared TireHeat).
 
 | Field | What it does |
 |---|---|
 | enabled | Master switch for smoke, marks and wheel spin-up. |
-| smokeSlipStartDeg / smokeSlipFullDeg | Rear slip angle where smoke begins, and where it reaches full rate. Fronts only smoke when locked under braking. |
-| smokeMaxRate | Particles per second per wheel at full rate. Lower on weak phones. |
-| smokeMinSpeedMps | No smoke below this speed, so a parked car does not fume. |
-| smokeLifetime / smokeSize | How long a puff lasts and how big it ends up. |
+| smokeMinSpeedMps | Below this speed there are no skid marks and no screech. Smoke has its own rules (a burnout smokes standing still). |
+| tireHeat.gripSlipDeg / gripSlipRatio | What a gripping tyre takes up without its tread sliding: 8 degrees of slip angle, 12% of spin or lock, both scaled with rolling speed. Only motion beyond it heats the tread. Without it plain cornering at 40 km/h (fronts at 7 degrees, measured) slid 1.35 m/s and fast grippy corners would smoke. Lower = smoke on harder cornering. |
+| tireHeat.slideStartMps / slideFullMps | Contact-patch slide speed (beyond grip) where the tread starts heating, and where it heats flat out: 1.5 / 8 m/s. A committed drift at 60 km/h slides the rears 7-9 m/s. |
+| tireHeat.heatPerSec / coolPerSec | How fast a sliding tread heats and how fast it cools (2.2 / 1.3). A full slide starts smoking after about 0.15 s and is at full smoke after about 0.7 s; once it grips the wisps die over about 1 s. Faster heating = smoke snaps on; slower cooling = longer tails. |
+| tireHeat.smokeHeat / wisp | Heat where smoke starts (0.3), and the share of smoke a hot tyre keeps giving off the moment it grips (0.18), fading as it cools. |
+| smokeThickRate / smokeWispRate | Particles a second per tyre at full smoke. Wisps come in with any smoke (rate times level), the thick layer only near full (rate times level squared). Lower on weak phones. |
+| smokeLifetime / smokeWispLifetime | How long a thick puff and a wisp last (2.6 / 1.4 s): the cloud hangs behind the slide. |
+| smokeStartSize / smokeSize / smokeWispSize | Metres leaving the tyre (0.6, small so it doesn't slice into the road) and at the end (3.6 thick, 1.6 wisp). Before 2026-10-04 sizes were passed to Roblox as studs: the old "1.6 m" was 0.45 m. |
+| smokeColor / smokeColorEnd / smokeTransparency / smokeWispTransparency | White to off-white; 0.15 (thick) and 0.55 (wisp) see-through at birth, clear by the end. Each puff fades in over its first moment, so nothing pops. Owner, 2026-10-04: "white tiresmoke while drifting" (it was a faint grey, 215 to 170, at 0.55). |
+| smokeLightInfluence / smokeLightEmission | How much the scene's light tints it (0.25) and how much it glows by itself (0.15). The built-in texture is grey and golden hour greys it further: 0.3 transparency, 0.55 influence and no glow read as fog. 0.25 / 0.15 reads white at sunset and soft white-grey at night (checked), not glowing. |
+| smokeSpeedMps / smokeRise / smokeDrag | Real tyre smoke has next to no speed: it leaves the tyre at 0.6-1.8 m/s, slowed by drag, and rises at 0.7 m/s² as it cools. It follows workspace.GlobalWind (WindAffectsDrag). |
+| smokeZOffsetM | Each puff is drawn this far toward the camera (0.84 m). A puff is a flat card facing the camera, so a big one low over the road cuts into the asphalt and lane paint in a hard line; this clears it from the chase camera without drawing over the car's rear. |
+| smokeRelayHz | The driver's client sends its four smoke levels at most this often (10), only when they change; the server checks the driver and stamps them on the car as the `TireSmoke` attribute. Other players see the driver's curve about 0.2-0.3 s late, eased. |
+| remoteSmokeMaxM | Other cars smoke within this distance of the camera (150 m). |
+| lowQualityLevel / lowQualitySmokeScale | Below this graphics quality (1-10; Automatic counts as full) smoke rates are scaled by 0.5. Measured on the Mac at 60 fps: four tyres at full smoke left the median frame unchanged (16.6 ms), the 95th percentile 19-23 ms against 18 ms. |
 | skidSlipDeg | Lay rubber above this slip angle, or whenever a wheel is saturated (spinning or locked). |
 | skidLifetime | Seconds a mark stays on the road. |
 | skidTransparency | How dark the marks are. |

@@ -17,6 +17,8 @@ local CameraRig = require(script.Parent.CameraRig)
 local DriftEffects = require(script.Parent.DriftEffects)
 local EngineAudio = require(script.Parent.EngineAudio)
 local CarControls = require(script.Parent.CarControls)
+local AutoFlip = require(script.Parent.AutoFlip)
+local TireSmoke = require(script.Parent.TireSmoke)
 
 type VehicleState = Types.VehicleState
 
@@ -108,7 +110,9 @@ function VehicleController.start(model: Model, remotes: Folder)
 	carId = if type(id) == "string" then id else nil
 	exitRemote = remotes:FindFirstChild("ExitCar") :: RemoteEvent
 	local s = VehicleSim.new(model, ConfigLoader.forCar(carId))
-	local chassis = VehicleRig.handles(model).chassis
+	local rig = VehicleRig.handles(model)
+	local chassis = rig.chassis
+	AutoFlip.reset()
 	s:setCharacter(Players.LocalPlayer.Character)
 	sim = s
 	setJumpEnabled(false)
@@ -119,6 +123,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 	Touch.bind()
 	CameraRig.start(model)
 	DriftEffects.attach(model)
+	TireSmoke.attach(model)
 	EngineAudio.attach(model)
 	CarControls.start(model, remotes)
 	conn = RunService.PreSimulation:Connect(function(dt: number)
@@ -135,7 +140,14 @@ function VehicleController.start(model: Model, remotes: Folder)
 			return
 		end
 		if input.reset then
+			AutoFlip.reset()
 			resetCar(model)
+		end
+		-- A capsized car at rest rolls back onto its wheels (AutoFlip); the
+		-- sim waits while it does, so nothing fights the roll.
+		if AutoFlip.step(model, rig, ConfigLoader.forCar(carId), dt) then
+			TireSmoke.pause() -- nothing slides while it rolls back over
+			return
 		end
 		if input.reload and VehicleController.onReload then
 			VehicleController.onReload()
@@ -145,6 +157,7 @@ function VehicleController.start(model: Model, remotes: Folder)
 		Touch.observe(state.twoWheelMode)
 		Touch.setLeanVisible(input.twoWheel)
 		DriftEffects.update(state)
+		TireSmoke.update(state, dt)
 		EngineAudio.update(state, dt)
 		CarControls.update(state)
 		CameraRig.setState(state)
@@ -182,8 +195,10 @@ function VehicleController.stop()
 	Touch.unbind()
 	CameraRig.stop()
 	DriftEffects.detach()
+	TireSmoke.detach()
 	EngineAudio.detach()
 	CarControls.stop()
+	AutoFlip.reset()
 	setJumpEnabled(true)
 	UserInputService.ModalEnabled = false
 	sim = nil

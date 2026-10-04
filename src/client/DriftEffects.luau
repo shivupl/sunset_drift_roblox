@@ -1,8 +1,8 @@
 --!strict
--- Drift feedback on the driver's client: tire smoke and skid marks driven by
--- the per-wheel state the sim already reports. Everything here is visual.
+-- Drift feedback on the driver's client: skid marks and the screech, driven
+-- by the per-wheel state the sim already reports. Everything here is visual.
 -- The physics never reads it, and it only runs for the car this client is
--- driving (other players' cars are a later phase).
+-- driving. Tyre smoke is TireSmoke's, on every car.
 --
 -- Emitters and trail attachments hang off the chassis at each wheel's rest
 -- contact point rather than off the hubs, because the hubs spin and would
@@ -19,7 +19,6 @@ type WheelState = Types.WheelState
 type WheelFx = {
 	name: string,
 	front: boolean,
-	smoke: ParticleEmitter,
 	trail: Trail,
 }
 
@@ -32,34 +31,6 @@ local screechLevel = 0
 local carId: string? = nil -- the car attached, so a car's tuning overrides apply here too
 
 local WHEEL_DEFS = VehicleRig.WHEELS
-
-local function makeSmoke(parent: Attachment, cfg: typeof(ConfigLoader.current().effects)): ParticleEmitter
-	local e = Instance.new("ParticleEmitter")
-	e.Name = "Smoke"
-	e.Rate = 0
-	e.Lifetime = NumberRange.new(cfg.smokeLifetime * 0.7, cfg.smokeLifetime)
-	e.Speed = NumberRange.new(2, 5)
-	e.SpreadAngle = Vector2.new(35, 35)
-	e.Rotation = NumberRange.new(0, 360)
-	e.RotSpeed = NumberRange.new(-40, 40)
-	e.Acceleration = Vector3.new(0, 1.5, 0)
-	e.Drag = 2
-	e.LightEmission = 0
-	e.Color = ColorSequence.new(Color3.fromRGB(215, 215, 220), Color3.fromRGB(170, 170, 178))
-	e.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.6),
-		NumberSequenceKeypoint.new(0.3, cfg.smokeSize * 0.6),
-		NumberSequenceKeypoint.new(1, cfg.smokeSize),
-	})
-	e.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.55),
-		NumberSequenceKeypoint.new(0.5, 0.75),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	e.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	e.Parent = parent
-	return e
-end
 
 local function makeTrail(a0: Attachment, a1: Attachment, cfg: typeof(ConfigLoader.current().effects)): Trail
 	local t = Instance.new("Trail")
@@ -124,7 +95,7 @@ function DriftEffects.attach(model: Model)
 	folder = f
 
 	-- Rest contact height below the hardpoint: droop minus static sag, plus
-	-- the wheel radius. Close enough to the road for smoke and marks.
+	-- the wheel radius. Close enough to the road for the marks.
 	local staticSag = VehicleRig.staticSagM(cfg)
 	local contactDrop = (cfg.suspension.restLength - staticSag + cfg.body.wheelRadius) / mps
 	local halfWidth = cfg.body.wheelWidth / 2 / mps
@@ -132,11 +103,6 @@ function DriftEffects.attach(model: Model)
 	for _, def in WHEEL_DEFS do
 		local hp = rig.rayOrigins[def.name]
 		local base = hp.Position - Vector3.new(0, contactDrop - 0.05 / mps, 0)
-
-		local smokeAt = Instance.new("Attachment")
-		smokeAt.Name = "Smoke_" .. def.name
-		smokeAt.Position = base
-		smokeAt.Parent = chassis
 
 		local left = Instance.new("Attachment")
 		left.Name = "SkidL_" .. def.name
@@ -149,13 +115,12 @@ function DriftEffects.attach(model: Model)
 
 		-- Attachments have to live on the part to follow it, so they are
 		-- tagged for cleanup instead of parented under the folder.
-		for _, a in { smokeAt, left, right } do
+		for _, a in { left, right } do
 			a:SetAttribute("DriftEffect", true)
 		end
 		table.insert(wheels, {
 			name = def.name,
 			front = def.front,
-			smoke = makeSmoke(smokeAt, cfg.effects),
 			trail = makeTrail(left, right, cfg.effects),
 		})
 	end
@@ -169,7 +134,6 @@ function DriftEffects.update(state: VehicleState)
 	local cfg = carCfg.effects
 	if not cfg.enabled then
 		for _, w in wheels do
-			w.smoke.Rate = 0
 			w.trail.Enabled = false
 		end
 		return
@@ -178,21 +142,7 @@ function DriftEffects.update(state: VehicleState)
 		local ws: WheelState = state.wheels[i]
 		local slip = math.abs(ws.slipAngleDeg)
 		local moving = state.speedMps >= cfg.smokeMinSpeedMps
-		local sliding = ws.grounded and moving and (slip >= cfg.skidSlipDeg or ws.saturated)
-
-		-- Smoke: rear tires by slip angle or wheelspin, fronts only when locked.
-		local rate = 0
-		if ws.grounded and moving then
-			if not w.front then
-				local bySlip = math.clamp((slip - cfg.smokeSlipStartDeg) / (cfg.smokeSlipFullDeg - cfg.smokeSlipStartDeg), 0, 1)
-				local bySpin = if ws.saturated and not ws.locked then 0.8 else 0
-				rate = math.max(bySlip, bySpin) * cfg.smokeMaxRate
-			elseif ws.locked then
-				rate = 0.6 * cfg.smokeMaxRate
-			end
-		end
-		w.smoke.Rate = rate
-		w.trail.Enabled = sliding
+		w.trail.Enabled = ws.grounded and moving and (slip >= cfg.skidSlipDeg or ws.saturated)
 	end
 
 	-- Screech follows the louder of the two rears, smoothed so it swells and
@@ -214,7 +164,6 @@ end
 
 function DriftEffects.detach()
 	for _, w in wheels do
-		w.smoke.Rate = 0
 		w.trail.Enabled = false
 	end
 	table.clear(wheels)

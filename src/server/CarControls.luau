@@ -5,7 +5,8 @@
 -- seat, copies the lamps onto the car Model as attributes (every client
 -- shows them, CarLights), plays the horn on the chassis, so every player
 -- hears it, and relays each exhaust pop to every other player (the driver
--- has already played it; garage round 2 §2).
+-- has already played it; garage round 2 §2), and stamps each driver's tyre
+-- smoke levels on their car (client TireSmoke; 2026-10-04).
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +29,19 @@ local sounding: { [Player]: Sound } = {} -- the horn each player is holding
 -- (CosmeticsConfig.flames.relayPopsPerSecond): each pop is a flame and a
 -- sound on every other player's client.
 local popBudget: { [Player]: { at: number, n: number } } = {}
+-- Tyre smoke: a driver sends its four levels only when they change, at most
+-- effects.smokeRelayHz a second; this allows twice that, so jitter in when
+-- messages arrive never drops a real one, and drops a flood.
+local smokeBudget: { [Player]: { at: number, n: number } } = {}
+
+local function smokeAllowed(player: Player): boolean
+	local now = os.clock()
+	local held = smokeBudget[player]
+	local b: { at: number, n: number } = if held and now - held.at < 1 then held else { at = now, n = 0 }
+	smokeBudget[player] = b
+	b.n += 1
+	return b.n <= 2 * ConfigLoader.current().effects.smokeRelayHz
+end
 
 local function popAllowed(player: Player, pops: number): boolean
 	local now = os.clock()
@@ -149,9 +163,23 @@ function CarControls.start(remotes: Remotes.RemoteTable)
 			end
 		end
 	end)
+	remotes.TireSmoke.OnServerEvent:Connect(function(player: Player, packed: any)
+		-- Four 4-bit levels (TireHeat.pack), from the seated driver.
+		if type(packed) ~= "number" or packed ~= packed or packed < 0 or packed > 65535 or math.floor(packed) ~= packed then
+			return
+		end
+		if not smokeAllowed(player) then
+			return
+		end
+		local model = drivenBy(player)
+		if model then
+			model:SetAttribute("TireSmoke", packed)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		budget[player] = nil
 		popBudget[player] = nil
+		smokeBudget[player] = nil
 		local held = sounding[player]
 		if held then
 			held:Stop()

@@ -748,17 +748,126 @@ local config = {
 		fallBelowM = 30, -- a car this far under the road surface is re-parked
 	},
 
+	-- Auto-flip (client AutoFlip, shared AutoFlip). Asked by the owner on
+	-- 2026-10-04: "flips the car back over if it capsizes", seamlessly and
+	-- naturally. A car you are driving that lies past tiltDeg (on its side or
+	-- roof) and has come to rest for settleSeconds rolls back onto its wheels
+	-- over its own edge, keeping its heading, in flipSeconds per 90 degrees of
+	-- roll. The R reset (back to the road) is unchanged.
+	autoFlip = {
+		enabled = true,
+		-- 75: well past a natl, which balances at 35 and lets go at 62
+		-- (twoWheel.targetRollDeg / tipRollDeg), so a held natl never trips it.
+		tiltDeg = 75,
+		-- At rest means slower than this, turning slower than this, for this
+		-- long: the roll has finished and the car is not about to right itself
+		-- or still sliding on its side. Long enough to read as "it's over",
+		-- short enough not to feel like waiting.
+		restSpeedMps = 2,
+		restSpinDegPerSec = 45,
+		settleSeconds = 0.8,
+		-- 0.75 s for a car on its side, 1.5 s off its roof: quick enough to
+		-- get going again, slow enough to watch it roll.
+		flipSecondsPer90 = 0.75,
+		-- Kept between its lowest corner and the ground while it rolls, so the
+		-- edge it pivots on doesn't scrape through; 0 at the start and the landing.
+		clearanceM = 0.03,
+		-- After a flip it waits this long before it can flip again, so a car
+		-- that lands on a slope and tips once more isn't flipped back and forth.
+		cooldownSeconds = 2,
+		-- Where it would stand up must be clear of walls, pillars and other
+		-- cars. These sideways shifts (metres along its right) are tried in
+		-- turn; if none is clear it stays down and R resets it.
+		clearShiftsM = { 0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2.2, -2.2 },
+	},
+
 	-- Drift feedback on the client: tire smoke, skid marks, and wheel models
 	-- that spin up when driven loose or stop when locked. Purely visual; the
 	-- physics never reads any of this.
 	effects = {
 		enabled = true,
-		smokeSlipStartDeg = 10, -- rear slip angle where smoke begins
-		smokeSlipFullDeg = 35, -- and where it reaches smokeMaxRate
-		smokeMaxRate = 70, -- particles per second per wheel
-		smokeMinSpeedMps = 3, -- no smoke from a stationary tire
-		smokeLifetime = 1.4, -- seconds a puff lasts
-		smokeSize = 1.6, -- metres at the end of its life
+		-- Below this speed there are no skid marks and no screech (smoke has
+		-- its own rules below: a burnout smokes standing still).
+		smokeMinSpeedMps = 3,
+		-- White tyre smoke (client TireSmoke, shared TireHeat; owner,
+		-- 2026-10-04: "create white tiresmoke while drifting", then "a fully
+		-- comprehensive tire smoke system" that fades in and out "at
+		-- appropriate times (i.e. drifting, starting stopping etc.)"). It was a
+		-- faint grey (215 to 170, 0.55 see-through), driven by rear slip
+		-- angle, only on your own car, and its sizes were passed to Roblox as
+		-- studs, so the "1.6 m" puff was 0.45 m.
+		--
+		-- Real smoke is the tread vaporising once sliding has heated it, so
+		-- each wheel has a heat: it rises with how fast the contact patch
+		-- slides over the road (sideways in a drift, spinning in a burnout,
+		-- dragged in a lock-up), cools when it grips, and the smoke follows
+		-- the heat. All four wheels; everyone sees every car's smoke.
+		tireHeat = {
+			-- What a gripping tyre takes up without its tread sliding: a few
+			-- degrees of slip angle, a few percent of spin or lock. Only the
+			-- motion beyond it is sliding. Without it, plain cornering at 40
+			-- km/h (fronts at 7 degrees, measured) slid 1.35 m/s and fast
+			-- grippy corners would have smoked.
+			gripSlipDeg = 8,
+			gripSlipRatio = 0.12,
+			-- Slide speed (m/s, beyond the grip's share) where the tread
+			-- starts heating, and where it heats flat out. 9: a committed
+			-- drift at 60 km/h slides the rears about 7-9 m/s sideways past
+			-- grip; a burnout's tread runs past it.
+			slideStartMps = 1.5,
+			slideFullMps = 8,
+			-- Heating and cooling (per second). With these a full slide
+			-- starts smoking after about 0.15 s and is at full smoke after
+			-- about 0.7 s; once it grips, the wisps die away over about 1 s.
+			-- Faster heating = smoke snaps on; slower cooling = longer tails.
+			heatPerSec = 2.2,
+			coolPerSec = 1.3,
+			smokeHeat = 0.3, -- heat (0..1) where smoke starts
+			wisp = 0.18, -- share of smoke a hot tyre keeps giving off once it grips again
+		},
+		-- Two layers from each tyre, so a light slide is wispy and only a
+		-- full one billows: wisps rise with the smoke level, the thick cloud
+		-- with its square (it only really comes in near full).
+		smokeThickRate = 40, -- particles a second per tyre at full smoke
+		smokeWispRate = 18,
+		smokeLifetime = 2.6, -- seconds a thick puff lasts: a cloud hangs behind the slide
+		smokeWispLifetime = 1.4,
+		smokeStartSize = 0.6, -- metres as it leaves the tyre: small, so it doesn't slice into the road
+		smokeSize = 3.6, -- metres at the end of its life
+		smokeWispSize = 1.6,
+		smokeColor = Color3.fromRGB(255, 255, 255), -- at the tyre
+		smokeColorEnd = Color3.fromRGB(240, 240, 240), -- as it thins out
+		smokeTransparency = 0.15, -- thick layer at birth (0 opaque); it thins to clear by the end
+		smokeWispTransparency = 0.55,
+		-- The built-in smoke texture is grey, and at golden hour the scene's
+		-- light greys it further (0.3 / 0.55 / no glow read as fog in Studio,
+		-- 2026-10-04). Light barely tints it (0.25) and a little glow of its
+		-- own (0.15) lifts it to white without it shining at night.
+		smokeLightInfluence = 0.25,
+		smokeLightEmission = 0.15,
+		-- Real tyre smoke has next to no speed of its own: it leaves the
+		-- tyre slowly, hangs, rises as it cools and goes where the wind goes
+		-- (workspace.GlobalWind). m/s and m/s².
+		smokeSpeedMps = { 0.6, 1.8 },
+		smokeRise = 0.7,
+		smokeDrag = 1.6,
+		-- Each puff is drawn this far toward the camera. A puff is a flat card
+		-- facing the camera, so a big one low over the road cuts into the
+		-- asphalt and lane paint in a hard straight line (Studio,
+		-- 2026-10-04); 0.84 m clears it from the chase camera without the
+		-- smoke drawing over the car's own rear.
+		smokeZOffsetM = 0.84,
+		-- The driver's client sends its four smoke levels to the server at
+		-- most this often, and only when they change; the server puts them on
+		-- the car for everyone (CarControls, TireSmoke attribute).
+		smokeRelayHz = 10,
+		-- Other players' cars smoke within this distance of the camera.
+		remoteSmokeMaxM = 150,
+		-- Smoke is the costliest effect on a phone (overdraw). Below this
+		-- graphics quality level (1-10) the rates are scaled down by
+		-- lowQualitySmokeScale.
+		lowQualityLevel = 4,
+		lowQualitySmokeScale = 0.5,
 		skidSlipDeg = 9, -- lay rubber above this slip angle, or whenever the wheel is saturated
 		skidLifetime = 8, -- seconds a mark stays on the road
 		skidTransparency = 0.45,

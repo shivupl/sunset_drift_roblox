@@ -23,6 +23,7 @@ local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
 local EngineAudio = require(script.EngineAudio)
 local ExhaustFlames = require(script.ExhaustFlames)
+local TireSmoke = require(script.TireSmoke)
 local GarageView = require(script.Garage.GarageView)
 local GaragePanel = require(script.Garage.GaragePanel)
 
@@ -47,6 +48,10 @@ end
 ExhaustFlames.start(remotes)
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
+-- Tyre smoke: the car this client drives sends its levels through this
+-- remote; every other car's smoke comes from the levels its driver sent.
+TireSmoke.setRemotes(remotes)
+TireSmoke.start(VehicleController.currentCar)
 ScoreController.onSpin = function(bonus: number, spins: number)
 	Hud.flashSpin(bonus, spins)
 end

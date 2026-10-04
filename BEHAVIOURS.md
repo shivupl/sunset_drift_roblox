@@ -133,6 +133,11 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 
 ---
 
+- **ParticleEmitter sizes and speeds are studs, not metres.** The old tyre smoke passed its "1.6 m" straight to `Size`, which drew a 0.45 m puff (found 2026-10-04). Divide by metresPerStud.
+- **Big particles slice into the ground.** A particle is a flat card facing the camera; a large one low over the road cuts into the asphalt and lane paint in a hard straight line. `ZOffset` (studs toward the camera) clears it: 0.84 m for tyre smoke seen from the chase camera. Start puffs small and grow them as they rise.
+- **Smoke reads grey at golden hour.** `smoke_main.dds` is a grey texture and the scene's light greys it further; white smoke wants low `LightInfluence` (0.25) and a little `LightEmission` (0.15), checked at sunset and night (2026-10-04).
+- **A capsized car's wheels hang at full droop.** Anything that sets it back upright on those hanging tyres lands it on unloaded springs and it drops (0.18 m at 1.6 m/s, measured). Put the tyres where they sit at rest and land the body at its rest height (client AutoFlip).
+
 ## 5. Assets from the Creator Store
 
 - **Most free models are not what their title says.** "Mesh building", "highway sign" and "camel" often turn out to be hundreds of plain parts, bundled scripts, or the wrong object. Count MeshParts, parts and scripts before using one.
@@ -207,6 +212,10 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 - **Low graphics quality stops drawing parts past a distance.** At Automatic quality in a Studio running at ~14 fps, plain parts past about 80-85 m were not drawn at all (the garage from the spawn bay, 100 m, 2026-09-28), while the mesh lamp posts further out still showed (far palms and scatter vanished too). `settings().Rendering.QualityLevel` can be set from `execute_luau` to check a view at a real quality; set it back to Automatic afterwards. Judge "can you see it from X" at a stated quality level.
 
 ---
+
+- **Start Play right after Stop and Studio can stay in Edit.** `start_stop_play(true)` straight after a stop reported "Game Started" but left Studio in Edit several times (2026-10-04). Check `get_studio_state` and start again.
+- **Studio's camera script wins over yours while you are seated.** The game's `CameraRig` sets the camera in `RenderStepped`, after `BindToRenderStep`. For a fixed shot while driving, override `Camera:GetPropertyChangedSignal("CFrame")` (with a re-entry guard), or get out of the car.
+- **A second player can't be started from the MCP.** To test what other players see of an effect relayed through the server, require a fresh copy of the client module from `execute_luau` (it gets its own module instance) and point it at your own car.
 
 ## 9. Working with the owner
 
