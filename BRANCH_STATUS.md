@@ -20,7 +20,9 @@ it builds in and tails off; every player sees every car's smoke through a server
 attribute (`CarControls`). Specs in `AutoFlip.spec` and `TireHeat.spec`. Second smoke pass (owner: "a
 lot better, more accurate and realistic"): Roblox's realistic smoke texture, three layers per tyre
 (spray thrown the way the tread slides, a billowing cloud, a lingering haze on a light breeze), load-weighted
-heat, puffing, and tan dust instead of smoke on sand or dirt.
+heat, puffing, and tan dust instead of smoke on sand or dirt. Third pass (owner: sand "perfect", keep it
+exactly; road smoke "patchy" and "a bit too much"): road smoke laid by distance from the live contact patch,
+barely thrown and thinner; dust split onto its own attachment and settings, unchanged.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

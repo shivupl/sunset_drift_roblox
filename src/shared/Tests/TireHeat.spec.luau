@@ -160,6 +160,15 @@ return function(t: T)
 	t.near(TireHeat.dust(D, 0, 40, true), D.rollMax, 1e-9, "rolling fast: a thin trail")
 	t.eq(TireHeat.dust(D, 10, 15, false), 0, "in the air: none")
 
+	-- Road smoke laid evenly along the track ---------------------------------------
+	for _, mps in { 5, 15, 30 } do
+		local spacing = mps / TireHeat.puffRate(14, 3, mps, 30)
+		t.ok(spacing <= 1 / 3 + 1e-9, `a puff every third of a metre at {mps} m/s ({spacing} m)`)
+	end
+	t.eq(TireHeat.puffRate(14, 3, 0, 30), 14, "a burnout standing still still puffs")
+	t.eq(TireHeat.puffRate(14, 3, 80, 30), 90, "counted only up to the cap")
+	t.eq(TireHeat.puffRate(14, 3, -20, 30), 60, "backwards counts the same")
+
 	-- The relay packing ---------------------------------------------------------
 	local packed = TireHeat.pack({ 0, 1, 0.5, 0.2 })
 	local back = TireHeat.unpack(packed)

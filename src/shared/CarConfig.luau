@@ -845,21 +845,26 @@ local config = {
 		-- behind at sunset the cloud read grey; 1.5 brings it back to white
 		-- (Studio, 2026-10-04). Smoke only; dust keeps its ground colour.
 		smokeBrightness = 1.5,
-		-- Real tyre smoke, from the tyre outward (drift footage; racing-sim
-		-- smoke threads: it "doesn't have much velocity", "just hangs in the
-		-- air, slowly ascending and dissolving", "stirred up in the wheel
-		-- arches and poured around the sides"):
-		--   spray: the fresh vapour, thrown off the tread the way the tread is
-		--     sliding (out of a drift's arc, back out of a burnout) and stopped
-		--     by the air within a metre or two;
-		--   billow: the cloud it becomes, growing fast, pulled along a little
-		--     in the car's wake, rising slowly;
-		--   haze: the thin bank left hanging over the road for several
-		--     seconds, drifting on the breeze, so a run of drifts fills the
-		--     air.
-		-- Per layer: `rate` particles a second per tyre at full smoke, times
-		-- the smoke level to `power` (2: only a real slide billows); `sizeM`
-		-- at birth, a quarter of the way through and at the end (it spreads
+		-- Road smoke, from the tyre outward (drift footage; racing-sim smoke
+		-- threads: it "doesn't have much velocity", "just hangs in the air,
+		-- slowly ascending and dissolving"):
+		--   trail: the fresh smoke, born where the tyre touches the road and
+		--     left lying along its track;
+		--   billow: the softer cloud it spreads into, rising slowly;
+		--   haze: a faint bank left hanging for a few seconds on the breeze.
+		-- Owner, 2026-10-04 (third pass): on the road it was "patchy", it
+		-- "bursts clouds and doesn't follow the wheels", and "a bit too much
+		-- ... smoke and opacity". It was thrown up to 6 m/s off the tread,
+		-- emitted at a fixed rate a second with the rate swelling and dipping
+		-- by 0.6 (so at 70 km/h puffs landed 1-2 m apart, in bunches), and
+		-- born at the wheel's rest height whatever the springs were doing. Now
+		-- each layer is laid by distance (shared TireHeat.puffRate: one puff
+		-- every 1 / perMetre metres the tyre travels, never fewer than
+		-- perSecond, for a burnout), born at the live contact patch and barely
+		-- thrown, and thinner throughout.
+		-- Per layer: `perMetre` and `perSecond` at full smoke, times the
+		-- smoke level to `power` (2: only a real slide billows); `sizeM` at
+		-- birth, a quarter of the way through and at the end (it spreads
 		-- fastest at first); `transparency` at birth and halfway (clear at the
 		-- end); `throw` the share of the tread's slide velocity it leaves with,
 		-- up to `maxSpeedMps`; `drag` how many times a second it loses half
@@ -871,70 +876,75 @@ local config = {
 		-- hard line; flattened, the cloud spreads along the road like real
 		-- smoke settling, and the line all but goes (Studio, 2026-10-04).
 		--
-		-- The cost is the screen area the puffs cover, not their number.
-		-- First tried at 30 / 12 / 2.5 a second growing to 1.8 / 5 / 8.5 m:
-		-- four tyres at full round a parked car took the median frame from
-		-- 16.6 to 38.4 ms on the Mac. At these numbers that worst case's
-		-- median is 16.3 ms against 16.5 with no smoke, and it is still a
-		-- thick white cloud (the texture is nearly opaque, where the old one
-		-- never passed a third).
+		-- The cost is the screen area the puffs cover, not their number: the
+		-- second pass's first sizes (up to 5 and 8.5 m) took four tyres at full
+		-- round a parked car from a 16.6 to a 38.4 ms median frame on the Mac.
 		smokeLayers = {
-			spray = {
-				rate = 20,
+			trail = {
+				perMetre = 3,
+				perSecond = 14,
 				power = 1,
-				lifetime = { 0.5, 0.9 },
-				sizeM = { 0.3, 0.9, 1.6 },
-				transparency = { 0.15, 0.45 },
-				throw = 0.5,
-				maxSpeedMps = 6,
-				spreadDeg = 22,
-				drag = 3.5,
-				riseMps = 0.3,
+				lifetime = { 0.8, 1.3 },
+				sizeM = { 0.35, 0.9, 1.7 },
+				transparency = { 0.45, 0.72 },
+				throw = 0.12,
+				maxSpeedMps = 1.5,
+				spreadDeg = 20,
+				drag = 3,
+				riseMps = 0.25,
 				inherit = 0,
-				rotSpeedDeg = 40,
-				squash = { 0, 0, 0 },
+				rotSpeedDeg = 30,
+				squash = { 0, -0.2, -0.2 },
 			},
 			billow = {
-				rate = 8,
+				perMetre = 0.6,
+				perSecond = 5,
 				power = 2,
-				lifetime = { 2.4, 3.4 },
-				sizeM = { 0.6, 2.2, 4 },
-				transparency = { 0.25, 0.55 },
-				throw = 0.25,
-				maxSpeedMps = 3,
-				spreadDeg = 45,
-				drag = 1.2,
-				riseMps = 0.45,
-				inherit = 0.15,
+				lifetime = { 2, 3 },
+				sizeM = { 0.6, 1.8, 3.2 },
+				transparency = { 0.55, 0.8 },
+				throw = 0.1,
+				maxSpeedMps = 1,
+				spreadDeg = 40,
+				drag = 1.5,
+				riseMps = 0.4,
+				inherit = 0,
 				rotSpeedDeg = 12,
 				squash = { 0, -0.4, -0.25 },
 			},
 			haze = {
-				rate = 0.8,
+				perMetre = 0.08,
+				perSecond = 0.5,
 				power = 2,
-				lifetime = { 5, 7 },
-				sizeM = { 2, 4, 5.5 },
-				transparency = { 0.7, 0.85 },
-				throw = 0.05,
-				maxSpeedMps = 0.6,
+				lifetime = { 4, 6 },
+				sizeM = { 2, 3.5, 4.5 },
+				transparency = { 0.88, 0.93 },
+				throw = 0.03,
+				maxSpeedMps = 0.4,
 				spreadDeg = 180,
 				drag = 0.6,
 				riseMps = 0.25,
-				inherit = 0.05,
+				inherit = 0,
 				rotSpeedDeg = 5,
 				squash = { -0.2, -0.35, -0.5 },
 			},
 		},
+		-- Travel counted for laying smoke stops here (m/s), so a very fast
+		-- slide doesn't pour out puffs without end.
+		smokeTravelCapMps = 30,
+		-- Fresh smoke rolls up off the road at this angle, not skimming it.
+		smokePitchDeg = 10,
+		-- The level the puffs are laid at eases toward the heat model's over
+		-- these times (up, down), so a tyre whose load or slip flickers over
+		-- a bump doesn't stutter puffs out in bursts.
+		smokeAttackSeconds = 0.1,
+		smokeReleaseSeconds = 0.3,
 		-- The breeze the smoke drifts on, m/s along world X and Z. North is
 		-- -Z (the sunset is on the left of a car heading down -Z, so west is
 		-- -X); Riyadh's prevailing shamal comes from the north-north-west, so
 		-- this blows it gently south-south-east. Smoke only: the world's
 		-- GlobalWind (sky clouds) is untouched.
 		smokeWindMps = { 0.4, 1.0 },
-		-- Real smoke comes in puffs, not an even stream: each tyre's rates
-		-- swell and dip by up to this share, about this many times a second.
-		smokePulse = 0.6,
-		smokePulseHz = 1.8,
 		-- Each puff is drawn this far toward the camera. A puff is a flat card
 		-- facing the camera, so a big one low over the road cuts into the
 		-- asphalt and lane paint in a hard straight line (Studio,
@@ -969,6 +979,22 @@ local config = {
 				Enum.Material.Salt,
 			},
 			lighten = 0.3, -- share of the way from the ground's colour to white
+			-- Its own look, copied from the smoke's when the owner signed it
+			-- off (2026-10-04: on sand "it is perfect so preserve the way it
+			-- works on sand exactly as is"), so tuning the road smoke never
+			-- moves it: texture, light (influence, glow, brightness), how far
+			-- toward the camera it is drawn, the breeze, the angle it is
+			-- thrown up at, and its rate puffing by up to `pulse` about
+			-- `pulseHz` times a second.
+			texture = "rbxassetid://16830673704",
+			lightInfluence = 0.25,
+			lightEmission = 0.12,
+			brightness = 1,
+			zOffsetM = 0.84,
+			windMps = { 0.4, 1.0 },
+			pitchDeg = 15,
+			pulse = 0.6,
+			pulseHz = 1.8,
 			layer = {
 				rate = 28,
 				power = 1,

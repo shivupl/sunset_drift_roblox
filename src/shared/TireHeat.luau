@@ -93,6 +93,16 @@ function TireHeat.loadShares(loads: { number }): { number }
 	return out
 end
 
+-- Puffs a second that lay smoke evenly along the road: one every 1 /
+-- perMetre metres the contact patch travels (counted up to capMps), never
+-- fewer than perSecond, since a burnout's patch stands still. A fixed rate a
+-- second leaves the puffs further apart the faster the car goes, so a fast
+-- drift drew a string of separate clouds (owner, 2026-10-04: "patchy", "it
+-- bursts clouds and doesn't follow the wheels").
+function TireHeat.puffRate(perSecond: number, perMetre: number, groundMps: number, capMps: number): number
+	return math.max(perSecond, math.min(math.abs(groundMps), capMps) * perMetre)
+end
+
 -- How hard the tread is heating, 0..1, at this slide speed.
 function TireHeat.drive(p: Params, slideMps: number): number
 	return math.clamp((slideMps - p.slideStartMps) / (p.slideFullMps - p.slideStartMps), 0, 1)

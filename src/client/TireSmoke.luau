@@ -2,7 +2,8 @@
 -- White tyre smoke on every car (CarConfig.effects; heat model in shared
 -- TireHeat; owner, 2026-10-04: "a fully comprehensive tire smoke system"
 -- that fades in and out "at appropriate times (i.e. drifting, starting
--- stopping etc.)", then "a lot better, more accurate and realistic").
+-- stopping etc.)", then "a lot better, more accurate and realistic", then on
+-- the road less "patchy", following the wheels, and less of it).
 --
 -- The car you drive: each wheel's contact patch slide speed comes from the
 -- chassis's motion and the sim's wheel state, heats that tyre (TireHeat,
@@ -16,13 +17,15 @@
 -- can't be told from how a car moves). Only cars within remoteSmokeMaxM of
 -- the camera with someone in the driver's seat.
 --
--- Each tyre has three smoke layers (smokeLayers: spray, billow, haze) and a
--- dust layer. They share one attachment at the contact patch that turns every
--- step to face the way the tread is sliding, so fresh smoke is thrown out of
--- a drift's arc or back out of a burnout. A ray finds what each tyre is on:
--- on sand or dirt it throws dust instead of smoke. Rates change; smoke
--- already in the air is never touched, so a cloud left behind a slide hangs
--- and dissolves on its own. Visual only.
+-- Each tyre has two attachments. Road smoke (smokeLayers: trail, billow,
+-- haze) is born at the live contact patch, where the wheel really touches
+-- the road, and laid by distance with Emit (TireHeat.puffRate), so it lies
+-- evenly along the tyre's track at any speed. Dust on sand or dirt keeps its
+-- own attachment at the wheel's rest contact patch, its own settings
+-- (CarConfig.effects.dust) and its running rate, exactly as the owner signed
+-- it off. A ray finds what each tyre is on. Smoke already in the air is never
+-- touched, so a cloud left behind a slide hangs and dissolves on its own.
+-- Visual only.
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")
@@ -34,51 +37,82 @@ local TireHeat = require(Shared.TireHeat)
 local Types = require(Shared.Types)
 
 type Effects = typeof(ConfigLoader.current().effects)
-type LayerConfig = typeof(ConfigLoader.current().effects.smokeLayers.spray)
+type SmokeLayer = typeof(ConfigLoader.current().effects.smokeLayers.trail)
 type VehicleState = Types.VehicleState
+
+-- What an emitter is drawn from: a smoke layer or the dust layer.
+type Visual = {
+	lifetime: { number },
+	sizeM: { number },
+	transparency: { number },
+	throw: number,
+	maxSpeedMps: number,
+	spreadDeg: number,
+	drag: number,
+	riseMps: number,
+	inherit: number,
+	rotSpeedDeg: number,
+	squash: { number },
+}
+
+-- How a set of emitters is lit and placed: the smoke's, or the dust's own.
+type Look = {
+	texture: string,
+	windMps: { number },
+	lightInfluence: number,
+	lightEmission: number,
+	brightness: number,
+	zOffsetM: number,
+	color: ColorSequence,
+}
 
 local TireSmoke = {}
 
 TireSmoke.ATTRIBUTE = "TireSmoke" -- on the car Model: TireHeat.pack of its four levels
 
--- Fresh smoke leaves the tread this far above the horizontal: it rolls up off
--- the road rather than skimming along it.
-local THROW_PITCH = math.rad(15)
 -- Below this tread speed (m/s) there is no telling which way it slides (the
 -- wisps of a tyre that has gripped again): it rises off the back of the tyre.
 local STILL_TREAD_MPS = 0.3
 -- Surface checks: one wheel a step, so each wheel every fourth step.
 local PROBE_DOWN_M = 2.5
+-- Smoke is born this far above the road, so a new puff isn't half under it.
+local PATCH_LIFT_M = 0.12
+-- The most puffs one layer lets out in a step (after a hitch, say).
+local MAX_EMIT = 6
+
+local SMOKE_LAYERS = { "trail", "billow", "haze" }
 
 type Wheel = {
-	at: Attachment,
-	base: Vector3, -- the contact patch, chassis space (studs)
-	spray: ParticleEmitter,
-	billow: ParticleEmitter,
-	haze: ParticleEmitter,
+	at: Attachment, -- dust: at the rest contact patch, turned to its throw
+	base: Vector3, -- that patch, chassis space (studs)
 	dust: ParticleEmitter,
+	smokeAt: Attachment, -- smoke: at the live contact patch
+	hub: Weld, -- the wheel's weld; its C0 is where the wheel is now
+	smoke: { [string]: ParticleEmitter },
+	owed: { [string]: number }, -- puffs each smoke layer is owed (fractions carry over)
+	shown: number, -- the smoke level puffs are laid at, eased
 	loose: boolean, -- on sand or dirt: dust, not smoke
 	dustColor: Color3?,
-	seed: number, -- where its puffing sits in the noise
+	seed: number, -- where its dust puffing sits in the noise
 }
 
--- Every emitter made, so a texture that fails to load can be swapped on all.
-local emitters: { [ParticleEmitter]: boolean } = setmetatable({}, { __mode = "k" }) :: any
-local textureFailed = false
+-- Every emitter made, with the texture it asked for, so a texture that fails
+-- to load can be swapped on all that use it.
+local emitters: { [ParticleEmitter]: string } = setmetatable({}, { __mode = "k" }) :: any
+local failed: { [string]: boolean } = {}
 
-local function texture(cfg: Effects): string
-	return if textureFailed then cfg.smokeTextureFallback else cfg.smokeTexture
-end
-
--- Fetch the texture once; if it can't be had (deleted, moderated, offline),
--- every emitter falls back to Roblox's built-in smoke.
+-- Fetch the textures once; if one can't be had (deleted, moderated,
+-- offline), its emitters fall back to Roblox's built-in smoke.
 task.spawn(function()
 	local cfg = ConfigLoader.current().effects
-	ContentProvider:PreloadAsync({ cfg.smokeTexture }, function(_, status: Enum.AssetFetchStatus)
+	local fallback = cfg.smokeTextureFallback
+	ContentProvider:PreloadAsync({ cfg.smokeTexture, cfg.dust.texture }, function(id: string, status: Enum.AssetFetchStatus)
 		if status ~= Enum.AssetFetchStatus.Success then
-			textureFailed = true
-			for e in emitters do
-				e.Texture = cfg.smokeTextureFallback
+			failed[id] = true
+			for e, wanted in emitters do
+				if wanted == id then
+					e.Texture = fallback
+				end
 			end
 		end
 	end)
@@ -96,11 +130,37 @@ local function qualityScale(cfg: Effects): number
 	return 1
 end
 
-local function emitter(name: string, parent: Attachment, layer: LayerConfig, cfg: Effects, mps: number, brightness: number): ParticleEmitter
+local function smokeLook(cfg: Effects): Look
+	return {
+		texture = cfg.smokeTexture,
+		windMps = cfg.smokeWindMps,
+		lightInfluence = cfg.smokeLightInfluence,
+		lightEmission = cfg.smokeLightEmission,
+		brightness = cfg.smokeBrightness,
+		zOffsetM = cfg.smokeZOffsetM,
+		color = ColorSequence.new(cfg.smokeColor, cfg.smokeColorEnd),
+	}
+end
+
+local function dustLook(cfg: Effects): Look
+	local d = cfg.dust
+	return {
+		texture = d.texture,
+		windMps = d.windMps,
+		lightInfluence = d.lightInfluence,
+		lightEmission = d.lightEmission,
+		brightness = d.brightness,
+		zOffsetM = d.zOffsetM,
+		-- Replaced by the ground's colour (probe) before any dust is let out.
+		color = ColorSequence.new(Color3.new(1, 1, 1)),
+	}
+end
+
+local function emitter(name: string, parent: Attachment, layer: Visual, look: Look, cfg: Effects, mps: number): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Name = name
 	e.Rate = 0
-	e.Texture = texture(cfg)
+	e.Texture = if failed[look.texture] then cfg.smokeTextureFallback else look.texture
 	e.Lifetime = NumberRange.new(layer.lifetime[1], layer.lifetime[2])
 	e.Speed = NumberRange.new(0)
 	e.SpreadAngle = Vector2.new(layer.spreadDeg, layer.spreadDeg)
@@ -111,15 +171,15 @@ local function emitter(name: string, parent: Attachment, layer: LayerConfig, cfg
 	-- puff toward still air at rate k = drag ln 2. A steady push of k times a
 	-- velocity settles the puff at that velocity: the climb and the breeze.
 	local k = layer.drag * math.log(2)
-	local wind = cfg.smokeWindMps
+	local wind = look.windMps
 	e.Acceleration = Vector3.new(wind[1] * k, layer.riseMps * k, wind[2] * k) / mps
 	e.VelocityInheritance = layer.inherit -- the air the car drags along in its wake
 	e.Rotation = NumberRange.new(0, 360)
 	e.RotSpeed = NumberRange.new(-layer.rotSpeedDeg, layer.rotSpeedDeg)
-	e.LightEmission = cfg.smokeLightEmission
-	e.LightInfluence = cfg.smokeLightInfluence
-	e.Brightness = brightness
-	e.Color = ColorSequence.new(cfg.smokeColor, cfg.smokeColorEnd)
+	e.LightEmission = look.lightEmission
+	e.LightInfluence = look.lightInfluence
+	e.Brightness = look.brightness
+	e.Color = look.color
 	local s = layer.sizeM
 	-- Small at the tyre so it doesn't slice into the road, spreading fastest
 	-- over its first quarter, then slowly.
@@ -141,18 +201,18 @@ local function emitter(name: string, parent: Attachment, layer: LayerConfig, cfg
 		NumberSequenceKeypoint.new(0.5, a[2]),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	e.ZOffset = cfg.smokeZOffsetM / mps -- toward the camera, so the road doesn't slice it
+	e.ZOffset = look.zOffsetM / mps -- toward the camera, so the road doesn't slice it
 	e.Parent = parent
-	emitters[e] = true
+	emitters[e] = look.texture
 	return e
 end
 
--- One attachment per wheel at its contact patch, just above the road, with
--- its four emitters.
+-- Each wheel's two attachments and their emitters.
 local function wheels(rig: VehicleRig.Handles, cfg: any, prefix: string): { Wheel }
 	local mps = cfg.units.metersPerStud
 	local fx: Effects = cfg.effects
-	local drop = (cfg.suspension.restLength - VehicleRig.staticSagM(cfg) + cfg.body.wheelRadius - 0.12) / mps
+	local drop = (cfg.suspension.restLength - VehicleRig.staticSagM(cfg) + cfg.body.wheelRadius - PATCH_LIFT_M) / mps
+	local smoke, dust = smokeLook(fx), dustLook(fx)
 	local out: { Wheel } = {}
 	for i, def in VehicleRig.WHEELS do
 		local a = Instance.new("Attachment")
@@ -160,14 +220,26 @@ local function wheels(rig: VehicleRig.Handles, cfg: any, prefix: string): { Whee
 		local base = rig.rayOrigins[def.name].Position - Vector3.new(0, drop, 0)
 		a.Position = base
 		a.Parent = rig.chassis
-		local L = fx.smokeLayers
+		local s = Instance.new("Attachment")
+		s.Name = prefix .. "Road" .. def.name
+		s.Position = base
+		s.Parent = rig.chassis
+		local emitted: { [string]: ParticleEmitter } = {}
+		local owed: { [string]: number } = {}
+		for _, name in SMOKE_LAYERS do
+			local layer: SmokeLayer = (fx.smokeLayers :: any)[name]
+			emitted[name] = emitter(name, s, layer, smoke, fx, mps)
+			owed[name] = 0
+		end
 		table.insert(out, {
 			at = a,
 			base = base,
-			spray = emitter("Spray", a, L.spray, fx, mps, fx.smokeBrightness),
-			billow = emitter("Billow", a, L.billow, fx, mps, fx.smokeBrightness),
-			haze = emitter("Haze", a, L.haze, fx, mps, fx.smokeBrightness),
-			dust = emitter("Dust", a, fx.dust.layer, fx, mps, 1),
+			dust = emitter("Dust", a, fx.dust.layer, dust, fx, mps),
+			smokeAt = s,
+			hub = rig.hubs[def.name].weld,
+			smoke = emitted,
+			owed = owed,
+			shown = 0,
 			loose = false,
 			dustColor = nil,
 			seed = i * 1.37 + 0.5, -- off the integer lattice, where math.noise is 0
@@ -178,10 +250,9 @@ end
 
 -- How long the slowest puff lives: what to wait before removing emitters.
 local function longestLife(cfg: Effects): number
-	local L = cfg.smokeLayers
 	local t = cfg.dust.layer.lifetime[2]
-	for _, layer in { L.spray, L.billow, L.haze } do
-		t = math.max(t, layer.lifetime[2])
+	for _, name in SMOKE_LAYERS do
+		t = math.max(t, (cfg.smokeLayers :: any)[name].lifetime[2])
 	end
 	return t
 end
@@ -200,45 +271,70 @@ end
 -- so a cloud never vanishes mid-air.
 local function release(ws: { Wheel }, linger: number)
 	for _, w in ws do
-		w.spray.Rate = 0
-		w.billow.Rate = 0
-		w.haze.Rate = 0
 		w.dust.Rate = 0
-		local at = w.at
+		local at, smokeAt = w.at, w.smokeAt
 		task.delay(linger, function()
 			at:Destroy()
+			smokeAt:Destroy()
 		end)
 	end
 end
 
--- Turns a wheel's attachment to throw along the tread's slide (world m/s, in
--- the road plane), and sets each layer's launch speed from it.
-local function aim(w: Wheel, chassisCf: CFrame, tread: Vector3, cfg: Effects, mps: number)
+-- Which way to throw, chassis space: along the tread's slide (world m/s, in
+-- the road plane), tipped up by `pitch`.
+local function throwDir(chassisCf: CFrame, tread: Vector3, pitch: number): (Vector3, number)
 	local speed = tread.Magnitude
 	local flat = if speed > STILL_TREAD_MPS then tread / speed else -flatAhead(chassisCf)
-	local dir = flat * math.cos(THROW_PITCH) + Vector3.yAxis * math.sin(THROW_PITCH)
-	local localDir = chassisCf:VectorToObjectSpace(dir)
-	w.at.CFrame = CFrame.lookAt(w.base, w.base + localDir)
-	local function launch(e: ParticleEmitter, layer: LayerConfig)
-		local s = math.min(speed * layer.throw, layer.maxSpeedMps) / mps
-		e.Speed = NumberRange.new(s * 0.6, s)
-	end
-	local L = cfg.smokeLayers
-	launch(w.spray, L.spray)
-	launch(w.billow, L.billow)
-	launch(w.haze, L.haze)
-	launch(w.dust, cfg.dust.layer)
+	local dir = flat * math.cos(pitch) + Vector3.yAxis * math.sin(pitch)
+	return chassisCf:VectorToObjectSpace(dir), speed
 end
 
--- Rates from the smoke and dust levels (0..1), puffing with a slow noise.
-local function setLevel(w: Wheel, smoke: number, dust: number, cfg: Effects, scale: number, t: number)
-	local pulse = 1 + cfg.smokePulse * math.noise(t * cfg.smokePulseHz, w.seed)
-	local k = scale * math.max(0, pulse)
-	local L = cfg.smokeLayers
-	w.spray.Rate = L.spray.rate * smoke ^ L.spray.power * k
-	w.billow.Rate = L.billow.rate * smoke ^ L.billow.power * k
-	w.haze.Rate = L.haze.rate * smoke ^ L.haze.power * k
-	w.dust.Rate = cfg.dust.layer.rate * dust ^ cfg.dust.layer.power * k
+-- Dust: turns its attachment to throw along the tread's slide and sets the
+-- launch speed from it.
+local function aimDust(w: Wheel, chassisCf: CFrame, tread: Vector3, cfg: Effects, mps: number)
+	local d = cfg.dust
+	local dir, speed = throwDir(chassisCf, tread, math.rad(d.pitchDeg))
+	w.at.CFrame = CFrame.lookAt(w.base, w.base + dir)
+	local s = math.min(speed * d.layer.throw, d.layer.maxSpeedMps) / mps
+	w.dust.Speed = NumberRange.new(s * 0.6, s)
+end
+
+-- Dust's rate from its level (0..1), puffing with a slow noise.
+local function setDust(w: Wheel, level: number, cfg: Effects, scale: number, t: number)
+	local d = cfg.dust
+	local pulse = 1 + d.pulse * math.noise(t * d.pulseHz, w.seed)
+	w.dust.Rate = d.layer.rate * level ^ d.layer.power * scale * math.max(0, pulse)
+end
+
+-- Smoke: moves its attachment to where the tyre touches the road now (the
+-- wheel's weld, which the sim or WheelVisuals sets with the springs), turned
+-- to the tread's slide, and sets each layer's launch speed.
+local function aimSmoke(w: Wheel, chassisCf: CFrame, tread: Vector3, cfg: any, mps: number)
+	local fx: Effects = cfg.effects
+	local patch = w.hub.C0.Position - Vector3.new(0, (cfg.body.wheelRadius - PATCH_LIFT_M) / mps, 0)
+	local dir, speed = throwDir(chassisCf, tread, math.rad(fx.smokePitchDeg))
+	w.smokeAt.CFrame = CFrame.lookAt(patch, patch + dir)
+	for _, name in SMOKE_LAYERS do
+		local layer: SmokeLayer = (fx.smokeLayers :: any)[name]
+		local s = math.min(speed * layer.throw, layer.maxSpeedMps) / mps
+		w.smoke[name].Speed = NumberRange.new(s * 0.6, s)
+	end
+end
+
+-- Lets out the puffs each smoke layer is owed for `dt` at this level, laid by
+-- the distance the contact patch has covered (groundMps, m/s).
+local function emitSmoke(w: Wheel, level: number, groundMps: number, cfg: Effects, scale: number, dt: number)
+	for _, name in SMOKE_LAYERS do
+		local layer: SmokeLayer = (cfg.smokeLayers :: any)[name]
+		local rate = TireHeat.puffRate(layer.perSecond, layer.perMetre, groundMps, cfg.smokeTravelCapMps)
+		local owed = w.owed[name] + rate * level ^ layer.power * scale * dt
+		local n = math.floor(owed)
+		if n > 0 then
+			w.smoke[name]:Emit(math.min(n, MAX_EMIT))
+			owed -= n
+		end
+		w.owed[name] = owed
+	end
 end
 
 -- Casts down from one wheel's hardpoint and notes whether it is on loose
@@ -282,6 +378,10 @@ end
 local function ease(level: number, target: number, dt: number, attack: number, release: number): number
 	local tau = if target > level then attack else release
 	return level + (target - level) * (1 - math.exp(-dt / math.max(tau, 1e-3)))
+end
+
+local function flatSpeed(v: Vector3): number
+	return Vector3.new(v.X, 0, v.Z).Magnitude
 end
 
 -- The car you drive -------------------------------------------------------
@@ -342,15 +442,16 @@ function TireSmoke.attach(model: Model)
 	}
 end
 
--- Each wheel's contact-patch slide speed (m/s, beyond grip) and the tread's
--- velocity over the road (m/s, world), from the chassis's motion (exact for
--- where each wheel is) and the sim's wheel state (steer, spin).
-function TireSmoke.contacts(rig: VehicleRig.Handles, cfg: any, state: VehicleState): ({ number }, { Vector3 })
+-- Each wheel's contact-patch slide speed (m/s, beyond grip), the tread's
+-- velocity over the road (m/s, world) and the patch's own speed over the
+-- road (m/s), from the chassis's motion (exact for where each wheel is) and
+-- the sim's wheel state (steer, spin).
+function TireSmoke.contacts(rig: VehicleRig.Handles, cfg: any, state: VehicleState): ({ number }, { Vector3 }, { number })
 	local mps = cfg.units.metersPerStud
 	local chassis = rig.chassis
 	local cf = chassis.CFrame
 	local v, w = chassis.AssemblyLinearVelocity, chassis.AssemblyAngularVelocity
-	local slides, treads = {}, {}
+	local slides, treads, grounds = {}, {}, {}
 	for i, def in VehicleRig.WHEELS do
 		local ws = state.wheels[i]
 		local hp = rig.rayOrigins[def.name].WorldPosition
@@ -362,8 +463,9 @@ function TireSmoke.contacts(rig: VehicleRig.Handles, cfg: any, state: VehicleSta
 		local surface = if state.handbrake and not def.front then 0 else ws.visualOmega * cfg.body.wheelRadius
 		slides[i] = TireHeat.slideSpeed(cfg.effects.tireHeat, pv, heading, surface)
 		treads[i] = TireHeat.treadVelocity(pv, heading, surface)
+		grounds[i] = flatSpeed(pv)
 	end
-	return slides, treads
+	return slides, treads, grounds
 end
 
 -- Every sim step, from VehicleController.
@@ -380,7 +482,7 @@ function TireSmoke.update(state: VehicleState, dt: number)
 	o.probeAt = o.probeAt % #o.wheels + 1
 	local probeName = VehicleRig.WHEELS[o.probeAt].name
 	probe(o.wheels[o.probeAt], o.rig.rayOrigins[probeName].WorldPosition, o.params, cfg, mps)
-	local slides, treads = TireSmoke.contacts(o.rig, o.cfg, state)
+	local slides, treads, grounds = TireSmoke.contacts(o.rig, o.cfg, state)
 	local loads = {}
 	for i, ws in state.wheels do
 		loads[i] = if ws.grounded then ws.load else 0
@@ -395,10 +497,15 @@ function TireSmoke.update(state: VehicleState, dt: number)
 		local smoke = if w.loose then 0 else TireHeat.intensity(p, o.heat[i], slide, ws.grounded, shares[i])
 		local dustTarget = if w.loose then TireHeat.dust(cfg.dust.amount, slides[i], state.speedMps, ws.grounded) else 0
 		o.dust[i] = ease(o.dust[i], dustTarget, dt, cfg.dust.attackSeconds, cfg.dust.releaseSeconds)
+		w.shown = ease(w.shown, smoke, dt, cfg.smokeAttackSeconds, cfg.smokeReleaseSeconds)
 		-- One level a wheel for everyone else; their own ray says which it is.
-		o.levels[i] = math.max(smoke, o.dust[i])
-		aim(w, cf, treads[i], cfg, mps)
-		setLevel(w, smoke, o.dust[i], cfg, o.scale, o.t)
+		o.levels[i] = math.max(w.shown, o.dust[i])
+		aimDust(w, cf, treads[i], cfg, mps)
+		setDust(w, o.dust[i], cfg, o.scale, o.t)
+		if w.shown > 0.005 then
+			aimSmoke(w, cf, treads[i], o.cfg, mps)
+			emitSmoke(w, w.shown, grounds[i], cfg, o.scale, dt)
+		end
 	end
 	-- Tell everyone else, only when it changed, at most smokeRelayHz.
 	o.sinceSend += dt
@@ -422,7 +529,8 @@ function TireSmoke.pause()
 		o.heat[i] = 0
 		o.levels[i] = 0
 		o.dust[i] = 0
-		setLevel(w, 0, 0, o.cfg.effects, o.scale, o.t)
+		w.shown = 0
+		setDust(w, 0, o.cfg.effects, o.scale, o.t)
 	end
 	if o.sentPacked ~= 0 then
 		o.sentPacked = 0
@@ -513,19 +621,25 @@ local function updateRemote(r: Remote, dt: number)
 	for i, wheel in r.wheels do
 		r.shown[i] += (target[i] - r.shown[i]) * k
 		local level = r.shown[i]
+		local hp = r.rig.rayOrigins[VehicleRig.WHEELS[i].name].WorldPosition
+		local pv = (v + w:Cross(hp - chassis.Position)) * mps
 		if level > 0.01 then
-			local hp = r.rig.rayOrigins[VehicleRig.WHEELS[i].name].WorldPosition
-			local pv = (v + w:Cross(hp - chassis.Position)) * mps
 			local tread = TireHeat.treadVelocity(pv, heading, Vector3.new(pv.X, 0, pv.Z):Dot(heading))
 			if tread.Magnitude < 1 then
 				tread = -heading * 4
 			end
-			aim(wheel, cf, tread, cfg, mps)
+			aimDust(wheel, cf, tread, cfg, mps)
+			if not wheel.loose then
+				aimSmoke(wheel, cf, tread, r.cfg, mps)
+			end
 		end
 		if wheel.loose then
-			setLevel(wheel, 0, level, cfg, r.scale, r.t)
+			setDust(wheel, level, cfg, r.scale, r.t)
 		else
-			setLevel(wheel, level, 0, cfg, r.scale, r.t)
+			setDust(wheel, 0, cfg, r.scale, r.t)
+			if level > 0.01 then
+				emitSmoke(wheel, level, flatSpeed(pv), cfg, r.scale, dt)
+			end
 		end
 	end
 end
