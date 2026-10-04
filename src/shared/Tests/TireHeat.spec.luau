@@ -169,6 +169,18 @@ return function(t: T)
 	t.eq(TireHeat.puffRate(14, 3, 80, 30), 90, "counted only up to the cap")
 	t.eq(TireHeat.puffRate(14, 3, -20, 30), 60, "backwards counts the same")
 
+	-- Full puffs and wisps share the stream ------------------------------------
+	for _, l in { 0.15, 0.3, 0.6, 1 } do
+		local fs, ws = TireHeat.streamShares(l, 0.15)
+		t.near(fs + ws, 1, 1e-9, `at level {l} every puff slot is used`)
+	end
+	local f0, w0 = TireHeat.streamShares(0, 0.15)
+	t.eq(f0 + w0, 0, "no smoke, no puffs")
+	local f1, w1 = TireHeat.streamShares(0.05, 0.15)
+	t.ok(f1 + w1 < 0.5 and w1 > f1, `a dying stream thins to wisps ({f1} full, {w1} wisp)`)
+	local fFull, wFull = TireHeat.streamShares(1, 0.15)
+	t.ok(fFull == 1 and wFull == 0, "full smoke is all full puffs")
+
 	-- The relay packing ---------------------------------------------------------
 	local packed = TireHeat.pack({ 0, 1, 0.5, 0.2 })
 	local back = TireHeat.unpack(packed)

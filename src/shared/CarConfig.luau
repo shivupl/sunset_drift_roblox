@@ -850,6 +850,8 @@ local config = {
 		-- slowly ascending and dissolving"):
 		--   trail: the fresh smoke, born where the tyre touches the road and
 		--     left lying along its track;
+		--   wisp: the trail's light twin, filling the stretches the trail
+		--     leaves when the level is low;
 		--   billow: the softer cloud it spreads into, rising slowly;
 		--   haze: a faint bank left hanging for a few seconds on the breeze.
 		-- Owner, 2026-10-04 (third pass): on the road it was "patchy", it
@@ -866,7 +868,7 @@ local config = {
 		-- smoke level to `power` (2: only a real slide billows); `sizeM` at
 		-- birth, a quarter of the way through and at the end (it spreads
 		-- fastest at first); `transparency` at birth and halfway (clear at the
-		-- end); `throw` the share of the tread's slide velocity it leaves with,
+		-- end), reached `fadeIn` of the way through its life; `throw` the share of the tread's slide velocity it leaves with,
 		-- up to `maxSpeedMps`; `drag` how many times a second it loses half
 		-- its speed (Roblox's Drag); `riseMps` the speed it settles into
 		-- climbing; `inherit` the share of the car's own velocity it keeps;
@@ -887,6 +889,29 @@ local config = {
 				lifetime = { 0.8, 1.3 },
 				sizeM = { 0.35, 0.9, 1.7 },
 				transparency = { 0.45, 0.72 },
+				fadeIn = 0.06,
+				throw = 0.12,
+				maxSpeedMps = 1.5,
+				spreadDeg = 20,
+				drag = 3,
+				riseMps = 0.25,
+				inherit = 0,
+				rotSpeedDeg = 30,
+				squash = { 0, -0.2, -0.2 },
+			},
+			-- The trail's light twin: let out at its own rate times (1 - level),
+			-- so with the trail's (times level) every stretch of road gets a
+			-- puff, full or light, whatever the level. A fading slide thins
+			-- to wisps instead of breaking into dots (owner, 2026-10-04: "make
+			-- sure it is continuous also").
+			wisp = {
+				perMetre = 3,
+				perSecond = 14,
+				power = 1,
+				lifetime = { 0.6, 1 },
+				sizeM = { 0.25, 0.6, 1.1 },
+				transparency = { 0.75, 0.88 },
+				fadeIn = 0.06,
 				throw = 0.12,
 				maxSpeedMps = 1.5,
 				spreadDeg = 20,
@@ -897,12 +922,15 @@ local config = {
 				squash = { 0, -0.2, -0.2 },
 			},
 			billow = {
-				perMetre = 0.6,
+				perMetre = 1,
 				perSecond = 5,
 				power = 2,
 				lifetime = { 2, 3 },
 				sizeM = { 0.6, 1.8, 3.2 },
-				transparency = { 0.55, 0.8 },
+				transparency = { 0.6, 0.82 },
+				-- Seen only once it has grown into the trail, so the cloud
+				-- never shows as separate small balls.
+				fadeIn = 0.18,
 				throw = 0.1,
 				maxSpeedMps = 1,
 				spreadDeg = 40,
@@ -919,6 +947,7 @@ local config = {
 				lifetime = { 4, 6 },
 				sizeM = { 2, 3.5, 4.5 },
 				transparency = { 0.88, 0.93 },
+				fadeIn = 0.2,
 				throw = 0.03,
 				maxSpeedMps = 0.4,
 				spreadDeg = 180,
@@ -929,6 +958,9 @@ local config = {
 				squash = { -0.2, -0.35, -0.5 },
 			},
 		},
+		-- Below this level the wisps thin out as well (TireHeat.streamShares),
+		-- so a stream that is dying ends gently instead of stopping dead.
+		smokeWispTaper = 0.15,
 		-- Travel counted for laying smoke stops here (m/s), so a very fast
 		-- slide doesn't pour out puffs without end.
 		smokeTravelCapMps = 30,
@@ -945,12 +977,16 @@ local config = {
 		-- this blows it gently south-south-east. Smoke only: the world's
 		-- GlobalWind (sky clouds) is untouched.
 		smokeWindMps = { 0.4, 1.0 },
-		-- Each puff is drawn this far toward the camera. A puff is a flat card
-		-- facing the camera, so a big one low over the road cuts into the
-		-- asphalt and lane paint in a hard straight line (Studio,
-		-- 2026-10-04); 0.84 m clears it from the chase camera without the
-		-- smoke drawing over the car's own rear.
-		smokeZOffsetM = 0.84,
+		-- Each puff is drawn this far toward the camera. It was 0.84 m, to keep
+		-- big low puffs from cutting into the road in a hard line, but that
+		-- also drew smoke up to 0.84 m behind the car's body in front of it:
+		-- a far front wheel's smoke showed through the bonnet and wing while
+		-- turning (owner, 2026-10-04: smoke "should only come from the wheels
+		-- that are visable to me", the far one's "should not be visable
+		-- through the car"). At 0.15 the body hides what is behind it, and
+		-- the flattened, slowly rising puffs no longer cut the road (Studio,
+		-- four tyres at full, chase view). Dust keeps its own 0.84.
+		smokeZOffsetM = 0.15,
 		-- Off the road: a tyre on sand or dirt doesn't smoke (it never grips
 		-- hard enough to cook its tread), it throws the ground up as dust, at
 		-- once, the colour of what it is on (a little paler: fine dust in the

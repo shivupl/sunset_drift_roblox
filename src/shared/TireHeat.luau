@@ -103,6 +103,15 @@ function TireHeat.puffRate(perSecond: number, perMetre: number, groundMps: numbe
 	return math.max(perSecond, math.min(math.abs(groundMps), capMps) * perMetre)
 end
 
+-- How a smoke stream's puffs split between full trail puffs and light wisps
+-- at this level (0..1): full ones in proportion to the level, wisps filling
+-- the rest, so above `taper` every puff slot is used and the stream never
+-- breaks; below it the wisps thin out too, so the stream ends gently.
+function TireHeat.streamShares(level: number, taper: number): (number, number)
+	local l = math.clamp(level, 0, 1)
+	return l, (1 - l) * math.clamp(l / taper, 0, 1)
+end
+
 -- How hard the tread is heating, 0..1, at this slide speed.
 function TireHeat.drive(p: Params, slideMps: number): number
 	return math.clamp((slideMps - p.slideStartMps) / (p.slideFullMps - p.slideStartMps), 0, 1)

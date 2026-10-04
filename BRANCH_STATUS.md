@@ -22,7 +22,9 @@ lot better, more accurate and realistic"): Roblox's realistic smoke texture, thr
 (spray thrown the way the tread slides, a billowing cloud, a lingering haze on a light breeze), load-weighted
 heat, puffing, and tan dust instead of smoke on sand or dirt. Third pass (owner: sand "perfect", keep it
 exactly; road smoke "patchy" and "a bit too much"): road smoke laid by distance from the live contact patch,
-barely thrown and thinner; dust split onto its own attachment and settings, unchanged.
+barely thrown and thinner; dust split onto its own attachment and settings, unchanged. Fourth pass (owner:
+smoke from wheels hidden behind the car showed "through the car"; keep it continuous): road smoke's ZOffset
+0.84 to 0.15 m so the body hides it, wisps fill the trail's gaps, the cloud fades in once grown.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

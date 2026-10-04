@@ -17,8 +17,8 @@
 -- can't be told from how a car moves). Only cars within remoteSmokeMaxM of
 -- the camera with someone in the driver's seat.
 --
--- Each tyre has two attachments. Road smoke (smokeLayers: trail, billow,
--- haze) is born at the live contact patch, where the wheel really touches
+-- Each tyre has two attachments. Road smoke (smokeLayers: trail and its
+-- wisps, billow, haze) is born at the live contact patch, where the wheel really touches
 -- the road, and laid by distance with Emit (TireHeat.puffRate), so it lies
 -- evenly along the tyre's track at any speed. Dust on sand or dirt keeps its
 -- own attachment at the wheel's rest contact patch, its own settings
@@ -79,8 +79,10 @@ local PROBE_DOWN_M = 2.5
 local PATCH_LIFT_M = 0.12
 -- The most puffs one layer lets out in a step (after a hitch, say).
 local MAX_EMIT = 6
+-- Dust fades in over this share of its life, as when the owner signed it off.
+local DUST_FADE_IN = 0.06
 
-local SMOKE_LAYERS = { "trail", "billow", "haze" }
+local SMOKE_LAYERS = { "trail", "wisp", "billow", "haze" }
 
 type Wheel = {
 	at: Attachment, -- dust: at the rest contact patch, turned to its throw
@@ -156,7 +158,8 @@ local function dustLook(cfg: Effects): Look
 	}
 end
 
-local function emitter(name: string, parent: Attachment, layer: Visual, look: Look, cfg: Effects, mps: number): ParticleEmitter
+-- `fadeIn` is the share of a puff's life it takes to fade in.
+local function emitter(name: string, parent: Attachment, layer: Visual, look: Look, cfg: Effects, mps: number, fadeIn: number): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Name = name
 	e.Rate = 0
@@ -197,7 +200,7 @@ local function emitter(name: string, parent: Attachment, layer: Visual, look: Lo
 	local a = layer.transparency
 	e.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1), -- fades in over its first moment, so puffs never pop
-		NumberSequenceKeypoint.new(0.06, a[1]),
+		NumberSequenceKeypoint.new(fadeIn, a[1]),
 		NumberSequenceKeypoint.new(0.5, a[2]),
 		NumberSequenceKeypoint.new(1, 1),
 	})
@@ -228,13 +231,13 @@ local function wheels(rig: VehicleRig.Handles, cfg: any, prefix: string): { Whee
 		local owed: { [string]: number } = {}
 		for _, name in SMOKE_LAYERS do
 			local layer: SmokeLayer = (fx.smokeLayers :: any)[name]
-			emitted[name] = emitter(name, s, layer, smoke, fx, mps)
+			emitted[name] = emitter(name, s, layer, smoke, fx, mps, layer.fadeIn)
 			owed[name] = 0
 		end
 		table.insert(out, {
 			at = a,
 			base = base,
-			dust = emitter("Dust", a, fx.dust.layer, dust, fx, mps),
+			dust = emitter("Dust", a, fx.dust.layer, dust, fx, mps, DUST_FADE_IN),
 			smokeAt = s,
 			hub = rig.hubs[def.name].weld,
 			smoke = emitted,
@@ -322,12 +325,16 @@ local function aimSmoke(w: Wheel, chassisCf: CFrame, tread: Vector3, cfg: any, m
 end
 
 -- Lets out the puffs each smoke layer is owed for `dt` at this level, laid by
--- the distance the contact patch has covered (groundMps, m/s).
+-- the distance the contact patch has covered (groundMps, m/s). The trail and
+-- its wisps split one stream (TireHeat.streamShares); billow and haze go by
+-- the level to their `power`.
 local function emitSmoke(w: Wheel, level: number, groundMps: number, cfg: Effects, scale: number, dt: number)
+	local full, wisp = TireHeat.streamShares(level, cfg.smokeWispTaper)
 	for _, name in SMOKE_LAYERS do
 		local layer: SmokeLayer = (cfg.smokeLayers :: any)[name]
+		local share = if name == "trail" then full elseif name == "wisp" then wisp else level ^ layer.power
 		local rate = TireHeat.puffRate(layer.perSecond, layer.perMetre, groundMps, cfg.smokeTravelCapMps)
-		local owed = w.owed[name] + rate * level ^ layer.power * scale * dt
+		local owed = w.owed[name] + rate * share * scale * dt
 		local n = math.floor(owed)
 		if n > 0 then
 			w.smoke[name]:Emit(math.min(n, MAX_EMIT))
