@@ -46,6 +46,11 @@ export type Input = {
 	yawRateDeg: number,
 	pathRateDeg: number, -- rate the velocity direction is turning, same sign
 	speedKmh: number,
+	-- Moves the held angle (DriftControl: the feather, the kick, a style's
+	-- decay and band), deg/s, + toward straight on either side. With the
+	-- wheel turned it adds to the rate target instead. Optional; nil is 0.
+	angleRateDeg: number?,
+	dt: number?, -- the step, for moving the held angle
 }
 
 function Throw.new(): State
@@ -85,7 +90,7 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 		driftRate = s * cfg.throwYawRateDegPerSec * cfg.throwFinishAuthority
 		state.holdLatched = false
 	elseif math.abs(inp.steer) > 0.05 then
-		driftRate = inp.steer * cfg.throwYawRateDegPerSec
+		driftRate = inp.steer * cfg.throwYawRateDegPerSec + math.sign(inp.driftAngleDeg) * (inp.angleRateDeg or 0)
 		state.holdLatched = false
 	else
 		-- Wheel centred: hold the angle. The hold tracks the drift until
@@ -101,6 +106,14 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 				state.holdLatched = true
 			end
 		else
+			-- The pedals move the held angle (DriftControl), never through
+			-- straight and never past 179.
+			local rate = inp.angleRateDeg or 0
+			local h = state.holdAngleDeg
+			if rate ~= 0 and h ~= 0 then
+				local mag = math.max(0, math.abs(h) - rate * (inp.dt or 0))
+				state.holdAngleDeg = math.sign(h) * math.min(mag, 179)
+			end
 			local err = state.holdAngleDeg - inp.driftAngleDeg
 			if err > 180 then
 				err -= 360

@@ -466,6 +466,49 @@ local config = {
 		releaseSeconds = 0.15,
 	},
 
+	-- How the pedals work a slide (VehicleSim/DriftControl.luau). These are
+	-- the Classic style's numbers; DriftStyles sets them per style (the
+	-- owner, 2026-10-05: drift styles by drivetrain, and "the ability to
+	-- kick off the exhaust during a drift"). None of it acts while the lever
+	-- is in, so the lever's 360s, holds and catches are the same everywhere.
+	drift = {
+		-- The feather: a lift this short keeps a gas-held slide (it used to
+		-- drop at once: a 0.25 s lift took 30 degrees to 1 a second later,
+		-- measured 2026-10-05), with the angle moving this fast toward
+		-- straight meanwhile (- grows it: front drive's lift-off oversteer).
+		-- The gas back on inside it kicks kickDeg more angle over kickSeconds
+		-- (- pulls it in: the fronts pull straight). Lifting longer than this
+		-- is the catch, as before.
+		featherSeconds = 0.3,
+		featherDegPerSec = 25,
+		kickDeg = 5,
+		kickSeconds = 0.2,
+		-- A gas-held slide's angle eases toward straight this fast (front
+		-- drive's slides fade), and is kept between holdMinDeg and
+		-- holdMaxDeg at holdEaseDegPerSec.
+		holdDecayDegPerSec = 0,
+		holdMinDeg = 0,
+		holdMaxDeg = 180,
+		holdEaseDegPerSec = 30,
+		-- The lift throw (0 off): lifting fast with the wheel past
+		-- liftThrowSteer at liftThrowMinKmh or more, before the car is
+		-- sideways, throws it with this permission and the rear's grip times
+		-- liftThrowRearGrip, for liftThrowSeconds. Lift-off oversteer.
+		liftThrow = 0,
+		liftThrowSeconds = 0.5,
+		liftThrowMinKmh = 60,
+		liftThrowSteer = 0.5,
+		liftThrowRearGrip = 1,
+		-- Power-over: past this much steer launch and traction control step
+		-- aside (above 1: never), and the gas hold arms from
+		-- steering.throwThrottleHoldFromDeg times gasHoldFromScale.
+		powerOverSteer = 2,
+		gasHoldFromScale = 1,
+		-- Times the car's slide momentum relief (slipModel.slideRelief); the
+		-- lever's (leverRelief) is left alone.
+		slideReliefScale = 1,
+	},
+
 	twoWheel = {
 		-- 20,000 from 12,000: the owner called the lift slow and heavy. With
 		-- the roll damping it reached 30 degrees in about a second; this is

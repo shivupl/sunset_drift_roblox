@@ -122,4 +122,28 @@ return function(t: T)
 	-- The flick window is a permission on its own
 	st = Throw.new()
 	t.near(Throw.step(st, cfg, inp({ steer = 1, flick = true })), 16000, 1e-9, "flick with no lever still throws")
+	-- angleRateDeg moves the latched hold: + toward straight
+	st = Throw.new()
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = 30, yawRateDeg = 0 }))
+	t.eq(st.holdLatched, true, "settled: latched at 30")
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = 30, angleRateDeg = 60, dt = 0.5 }))
+	t.near(st.holdAngleDeg, 0 + 30 - 30, 1e-9, "60 deg/s toward straight for 0.5 s takes 30 off the hold")
+	st = Throw.new()
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = -30 }))
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = -30, angleRateDeg = -20, dt = 0.5 }))
+	t.near(st.holdAngleDeg, -40, 1e-9, "a negative rate grows the hold, on the left side too")
+	st = Throw.new()
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = 10 }))
+	Throw.step(st, cfg, inp({ permission = 1, driftAngleDeg = 10, angleRateDeg = 100, dt = 0.5 }))
+	t.eq(st.holdAngleDeg, 0, "toward straight never crosses through it")
+	-- with the wheel turned it rides on the rate target
+	st = Throw.new()
+	local plain = Throw.step(st, cfg, inp({ permission = 1, steer = 0.5, driftAngleDeg = 30, yawRateDeg = 75 }))
+	local pushed = Throw.step(st, cfg, inp({ permission = 1, steer = 0.5, driftAngleDeg = 30, yawRateDeg = 75, angleRateDeg = 10 }))
+	t.near(pushed - plain, 600 * 10, 1e-6, "with the wheel turned, the rate adds to the target (drift + side)")
+	local pushedL = Throw.step(st, cfg, inp({ permission = 1, steer = -0.5, driftAngleDeg = -30, yawRateDeg = -75, angleRateDeg = 10 }))
+	t.near(pushedL, -6000, 1e-6, "mirrored on the left")
+	-- absent fields are today's controller
+	st = Throw.new()
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1 })), 16000, 1e-9, "no angleRateDeg: unchanged")
 end

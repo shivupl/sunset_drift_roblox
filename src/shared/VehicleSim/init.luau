@@ -23,6 +23,7 @@ local Wheel = require(script.Wheel)
 local Drivetrain = require(script.Drivetrain)
 local TwoWheel = require(script.TwoWheel)
 local Throw = require(script.Throw)
+local DriftControl = require(script.DriftControl)
 
 type Config = CarConfig.Config
 type InputState = Types.InputState
@@ -82,8 +83,7 @@ export type Sim = typeof(setmetatable(
 		lastPosition: Vector3?, -- chassis position last step, studs, to spot a reset
 		pathRateDeg: number, -- filtered rate the velocity direction is turning, deg/s, + = right
 		throw: Throw.State,
-		throttleHoldStraight: number, -- seconds the drift has been under the throttle-hold gate
-		throttleHoldOn: boolean, -- throttle is currently a throw permission
+		driftControl: DriftControl.State, -- the pedals in a slide: the gas hold, the feather, the kick
 		spinAccumDeg: number, -- signed, unwrapped drift-angle travel of the current spin
 		spinCount: number,
 		lastDriftDeg: number,
@@ -192,8 +192,7 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		lastPosition = nil,
 		pathRateDeg = 0,
 		throw = Throw.new(),
-		throttleHoldStraight = 0,
-		throttleHoldOn = false,
+		driftControl = DriftControl.new(),
 		spinAccumDeg = 0,
 		spinCount = 0,
 		lastDriftDeg = 0,
@@ -239,6 +238,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			for _, w in self.wheels do
 				w.omega = 0
 			end
+			-- ...and nothing of a feather or a kick carries into the next run.
+			DriftControl.reset(self.driftControl)
 		end
 	end
 
@@ -285,22 +286,18 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- never falls through the angle gate: a tap that settled at 19
 	-- degrees straightened the moment the lever came out. Once on it
 	-- keeps down to throwThrottleHoldKeepDeg, a lower bar than starting.
-	local gasOn = not twoWheelActive and input.throttle >= cfg.steering.throwThrottleHold
-	local sidewaysNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldFromDeg
-	local keepNow = math.abs(driftAngleDeg) >= cfg.steering.throwThrottleHoldKeepDeg
-	if keepNow or math.abs(input.steer) > 0.05 then
-		self.throttleHoldStraight = 0
-	else
-		self.throttleHoldStraight += dt
-	end
-	if not gasOn then
-		self.throttleHoldOn = false
-	elseif sidewaysNow or self.handbrakeLevel > 0 then
-		self.throttleHoldOn = true
-	elseif self.throttleHoldStraight >= cfg.steering.throwThrottleHoldGraceSeconds then
-		self.throttleHoldOn = false
-	end
-	local throttleHold = self.throttleHoldOn
+	-- That logic is DriftControl's now, with what the drift styles add: a
+	-- short lift (a feather) keeps the hold and the gas back kicks, a
+	-- style's decay and angle band, the lift throw and power-over.
+	local dc = DriftControl.step(self.driftControl, cfg.drift, cfg.steering, {
+		throttle = input.throttle,
+		steer = input.steer,
+		driftAngleDeg = driftAngleDeg,
+		speedKmh = Units.mpsToKmh(speed),
+		lever = self.handbrakeLevel,
+		twoWheel = twoWheelActive,
+	}, dt)
+	local throttleHold = dc.gasHold
 	-- Hands off the wheel, whatever the lever and the gas are doing, and
 	-- the assist aligns the fronts with the velocity. Under a hold that is
 	-- not a request to straighten (the controller holds the angle); it is
@@ -328,7 +325,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- trips it, however fast the key was pressed, so the taper that keeps the
 	-- car planted on a steady bend stays in force; only the reversal is read
 	-- as "I want the tail out".
-	local throwNow = math.max(self.handbrakeLevel, if throttleHold then 1 else 0)
+	local throwNow = math.max(self.handbrakeLevel, if throttleHold then 1 else 0, dc.liftThrow)
 	local fl = cfg.steering
 	self.flickAge += dt
 	local steerMag = math.abs(input.steer)
@@ -479,9 +476,12 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- Traction control only while the car is pointing where it is going,
 	-- and never on two wheels: the airborne rear reads as spinning, and
 	-- cutting the throttle there takes away the yaw that holds a natl up.
+	-- Power-over styles (drift.powerOverSteer) also take it away with the
+	-- wheel turned hard, so the throttle can break the driven wheels loose.
 	local tractionAllowed = math.abs(driftAngleDeg) < cfg.drivetrain.tractionControlMaxDriftDeg
 		and self.handbrakeLevel <= 0
 		and not twoWheelActive
+		and not dc.tractionAside
 	-- Launch control, slip model only. The wheels are real now, so rather
 	-- than wait for a spin and cut the throttle back (the loop never goes
 	-- under its 0.7 floor, and full launch torque is about twice what the
@@ -589,7 +589,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			+ brakeDir * (brakeN + drive.engineBrakePerRearWheel * share) * brakeFade
 		local gripMult = rimGrip
 		if not w.front then
-			gripMult *= flickCut
+			gripMult *= flickCut * dc.liftRearGrip
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
@@ -623,6 +623,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				if self.flickTimer > 0 then
 					wheelGrip *= sc.flickRearGripMultiplier
 				end
+				-- A lift throw lightens the rear like a flick (DriftControl).
+				wheelGrip *= dc.liftRearGrip
 				if hbLevel > 0 then
 					wheelGrip *= 1 + (sc.handbrakeGripCut - 1) * hbLevel
 				end
@@ -702,13 +704,15 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- never push the car along faster: a slide can hold its speed on the
 	-- gas, it cannot gain it. See Tire.scrubRelief.
 	if speed > 1 and scrubAlong < 0 and not twoWheelActive then
-		local momentum = cfg.tires.slideMomentum
+		-- A style may carry more or less speed sideways
+		-- (drift.slideReliefScale); the lever's relief is its own.
+		local momentum = table.clone(cfg.tires.slideMomentum)
 		if slipModel then
 			local sc = slipCfg :: Wheel.SlipConfig
-			momentum = table.clone(momentum)
 			momentum.slideRelief = sc.slideRelief
 			momentum.leverRelief = sc.leverRelief
 		end
+		momentum.slideRelief *= cfg.drift.slideReliefScale
 		local relief = Tire.scrubRelief(momentum, driftAngleDeg, Units.mpsToKmh(speed), hbLevel)
 		local give = math.min(-scrubAlong * relief, math.max(0, -tireAlong))
 		if give > 0 then
@@ -783,6 +787,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			yawRateDeg = yawRateDeg,
 			pathRateDeg = self.pathRateDeg,
 			speedKmh = Units.mpsToKmh(speed),
+			angleRateDeg = dc.angleRateDeg,
+			dt = dt,
 		})
 	end
 	if twoWheelActive then
