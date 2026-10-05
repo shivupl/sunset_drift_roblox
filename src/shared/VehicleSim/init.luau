@@ -744,6 +744,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				speedKmh = Units.mpsToKmh(speed),
 				tyreLatAccel = totalForce:Dot(side) / mass,
 				gravity = g,
+				grounded = groundCount / 4,
 			})
 			totalForce += side * (a * mass)
 		end

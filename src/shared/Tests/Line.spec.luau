@@ -87,4 +87,9 @@ return function(t: T)
 	t.near(Line.accel(lev, inp({ lever = true, steer = -1 })), 4, 1e-6, "the lever's hold is not released by the wheel")
 	t.near(Line.accel(lev, inp({ lever = true, speedKmh = 75 })), 2, 1e-6, "halfway up the lever's speeds, half")
 	t.eq(Line.accel(lev, inp({ lever = true, speedKmh = 55 })), 0, "a city handbrake turn: nothing")
+
+	-- Only through the tyres on the ground: an airborne car is not steered
+	t.eq(Line.accel(cfgWith({}), inp({ grounded = 0, steer = 1 })), 0, "in the air, nothing")
+	t.near(Line.accel(cfgWith({}), inp({ grounded = 0.5 })), 4, 1e-6, "two wheels down, half")
+	t.near(Line.accel(cfgWith({}), inp({ grounded = nil })), 8, 1e-6, "no grounded given: all four")
 end

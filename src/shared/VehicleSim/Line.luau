@@ -60,6 +60,7 @@ export type Input = {
 	speedKmh: number,
 	tyreLatAccel: number, -- m/s^2 the tyres put square to the velocity, + right of it
 	gravity: number, -- m/s^2
+	grounded: number?, -- 0..1 share of the wheels on the ground; nil is all
 }
 
 local function ramp(x: number, from: number, full: number): number
@@ -86,6 +87,9 @@ function Line.accel(cfg: Config, inp: Input): number
 		hold = cfg.hold * (1 - cfg.intoRelease * math.min(into, 1))
 		share = 1
 	end
+	-- It works through the tyres: a car in the air (a jump mid-slide) is
+	-- not steered, two wheels down get half.
+	fade *= math.clamp(inp.grounded or 1, 0, 1)
 	if fade <= 0 then
 		return 0
 	end
