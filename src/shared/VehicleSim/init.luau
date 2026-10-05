@@ -298,6 +298,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		lever = self.handbrakeLevel,
 		leverNow = input.handbrake,
 		twoWheel = twoWheelActive,
+		brake = input.brake,
 	}, dt)
 	local throttleHold = dc.gasHold
 	-- Hands off the wheel, whatever the lever and the gas are doing, and
@@ -587,7 +588,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local ratio = if c.susp.force > 1e-3 then math.clamp(other.susp.force / c.susp.force, 0, 1) else 1
 			diffShare = axleLock + (1 - axleLock) * ratio
 		end
-		local fxDemand = drive.drivePerRearWheel * share * diffShare
+		-- The kick's surge (DriftControl) on whichever wheels drive.
+		local fxDemand = drive.drivePerRearWheel * share * diffShare * dc.driveScale
 			+ brakeDir * (brakeN + drive.engineBrakePerRearWheel * share) * brakeFade
 		local gripMult = rimGrip
 		if not w.front then
@@ -613,7 +615,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local inertia = sc.wheelInertia
 			local wheelGrip = rimGrip
 			if share > 0 then
-				driveTorque = drive.drivePerRearWheel * share * diffShare * r
+				driveTorque = drive.drivePerRearWheel * share * diffShare * dc.driveScale * r
 				local gearRatio = if drive.gear == -1 then cfg.drivetrain.reverseRatio else cfg.drivetrain.gearRatios[drive.gear]
 				local overall = gearRatio * cfg.drivetrain.finalDrive
 				-- The crank's inertia, reflected through the gearing, shared
@@ -802,6 +804,9 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- The throw controller: see Throw.luau. Everything sideways that the
 	-- tyres cannot do on their own (the 360, the held slide, the catch) is in
 	-- there, and it is pure so it has its own spec.
+	-- The wheel's dial on a slide held without the lever or a flick: the
+	-- gas hold's ceiling and its slower "into" (DriftControl's knobs).
+	local gasDial = hbLevel <= 0 and self.flickTimer <= 0
 	if not twoWheelActive then
 		totalTorque -= up * Throw.step(self.throw, cfg.steering, {
 			steer = input.steer,
@@ -814,7 +819,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			angleRateDeg = dc.angleRateDeg,
 			dt = dt,
 			-- The gas hold's ceiling, never under the lever or in a flick.
-			intoMaxDeg = if hbLevel <= 0 and self.flickTimer <= 0 and cfg.drift.dialMaxDeg < 180 then cfg.drift.dialMaxDeg else nil,
+			intoMaxDeg = if gasDial and cfg.drift.dialMaxDeg < 180 then cfg.drift.dialMaxDeg else nil,
+			intoScale = if gasDial then cfg.drift.dialIntoScale else nil,
 		})
 	end
 	if twoWheelActive then

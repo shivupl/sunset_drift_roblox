@@ -157,4 +157,11 @@ return function(t: T)
 	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 30, yawRateDeg = -145, intoMaxDeg = 45 })), -3000, 1e-6, "well under it: the full rate")
 	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1, driftAngleDeg = 50, yawRateDeg = 145, intoMaxDeg = 45 })), 3000, 1e-6, "counter-steer is never capped")
 	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 50, yawRateDeg = 25, angleRateDeg = 30, intoMaxDeg = 45 })), 3000, 1e-6, "the pedals' rate still acts past it")
+
+	-- intoScale: steering into a slide turns it at that share of the rate;
+	-- counter-steer keeps the whole rate (countersteer faster than steer-in)
+	st = Throw.new()
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 30, yawRateDeg = -55, intoScale = 0.4 })), -3000, 1e-6, "into at 0.4 of the rate")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1, driftAngleDeg = 30, yawRateDeg = 145, intoScale = 0.4 })), 3000, 1e-6, "counter at the whole rate")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1, driftAngleDeg = -30, yawRateDeg = 55, intoScale = 0.4 })), 3000, 1e-6, "mirrored")
 end

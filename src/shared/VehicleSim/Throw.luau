@@ -58,6 +58,11 @@ export type Input = {
 	-- it used to spin (the owner, 2026-10-05: drifting kept "within the
 	-- highway boundries"). nil: no ceiling, as under the lever.
 	intoMaxDeg: number?,
+	-- Steering into the slide turns the angle at this share of the rate;
+	-- counter-steer keeps the whole of it, so a transition swings through at
+	-- full speed (countersteer faster than steer-in, art of rally; research
+	-- 2026-10-05). nil is 1.
+	intoScale: number?,
 }
 
 function Throw.new(): State
@@ -98,8 +103,11 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 		state.holdLatched = false
 	elseif math.abs(inp.steer) > 0.05 then
 		local dial = inp.steer * cfg.throwYawRateDegPerSec
-		if inp.intoMaxDeg and inp.steer * inp.driftAngleDeg < 0 then
-			dial *= math.clamp((inp.intoMaxDeg - math.abs(inp.driftAngleDeg)) / 10, 0, 1)
+		if inp.steer * inp.driftAngleDeg < 0 then
+			dial *= inp.intoScale or 1
+			if inp.intoMaxDeg then
+				dial *= math.clamp((inp.intoMaxDeg - math.abs(inp.driftAngleDeg)) / 10, 0, 1)
+			end
 		end
 		driftRate = dial + math.sign(inp.driftAngleDeg) * (inp.angleRateDeg or 0)
 		state.holdLatched = false

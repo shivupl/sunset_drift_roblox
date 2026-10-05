@@ -34,6 +34,21 @@ return function(t: T)
 			powerOverRearGrip = 1,
 			gasHoldFromScale = 1,
 			slideReliefScale = 1,
+			keepThrottle = 1,
+			partialDegPerSec = 0,
+			kickDriveScale = 1,
+			kickThrow = 0,
+			kickThrowSeconds = 0.4,
+			kickThrowMinKmh = 40,
+			kickThrowSteer = 0.6,
+			kickThrowRearGrip = 1,
+			brakeThrow = 0,
+			brakeThrowSeconds = 0.4,
+			brakeThrowMinKmh = 50,
+			brakeThrowSteer = 0.5,
+			brakeThrowRearGrip = 1,
+			brakeThrowFrom = 0.5,
+			brakeGrowDegPerSec = 0,
 		}
 		for k, v in over do
 			(c :: any)[k] = v
@@ -238,6 +253,130 @@ return function(t: T)
 	o = run(s, c, inp({ driftAngleDeg = 5 }), dt)
 	t.eq(o.gasHold, false, "a reset drops the hold")
 	t.eq(o.angleRateDeg, 0, "and no kick comes after it")
+
+	-- Part throttle (a trigger): over keepThrottle an armed hold stays, and
+	-- the angle tightens toward straight by partialDegPerSec at the floor,
+	-- nothing at full gas. Arming still takes the gate.
+	local pad = cfgWith({ keepThrottle = 0.3, partialDegPerSec = 21 })
+	s = DriftControl.new()
+	run(s, pad, inp({}), 0.1)
+	o = run(s, pad, inp({ throttle = 0.5 }), 0.4)
+	t.eq(o.gasHold, true, "part throttle over keepThrottle keeps the hold")
+	t.eq(o.feathering, false, "and is not a feather")
+	t.near(o.angleRateDeg, 21 * 0.5 / 0.7, 1e-9, "it tightens in proportion to how far off full gas")
+	o = run(s, pad, inp({ throttle = 1 }), dt)
+	t.eq(o.angleRateDeg, 0, "full gas: nothing")
+	o = run(s, pad, inp({ throttle = 0.2 }), dt)
+	t.eq(o.feathering, true, "under keepThrottle it is a lift")
+	s = DriftControl.new()
+	o = run(s, pad, inp({ throttle = 0.5 }), 0.2)
+	t.eq(o.gasHold, false, "part throttle never arms a hold")
+
+	-- The kick's drive: the stab after a feather pushes the driven wheels
+	-- kickDriveScale times as hard for kickSeconds (the clutch dumped)
+	local surge = cfgWith({ kickDriveScale = 1.8 })
+	s = DriftControl.new()
+	o = run(s, surge, inp({}), 0.1)
+	t.eq(o.driveScale, 1, "no kick, no surge")
+	run(s, surge, inp({ throttle = 0 }), 0.15)
+	o = run(s, surge, inp({}), dt)
+	t.near(o.driveScale, 1.8, 1e-9, "the stab surges the drive")
+	o = run(s, surge, inp({}), 0.25)
+	t.eq(o.driveScale, 1, "for kickSeconds")
+
+	-- The clutch-kick entry: on the gas with the wheel turned, before the
+	-- car is sideways, a lift and the gas back inside featherSeconds throws
+	-- it (kickThrow) with the drive surging
+	local ck = cfgWith({ kickThrow = 0.7, kickThrowRearGrip = 0.6, kickDriveScale = 1.5 })
+	local function stab(cfg: DriftControl.Config, over: { [string]: any }, liftFor: number): DriftControl.Output
+		local st = DriftControl.new()
+		local function i(x: { [string]: any }): DriftControl.Input
+			local base: { [string]: any } = { steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }
+			for k, v in over do
+				base[k] = v
+			end
+			for k, v in x do
+				base[k] = v
+			end
+			return inp(base)
+		end
+		run(st, cfg, i({ throttle = 1 }), 0.3)
+		run(st, cfg, i({ throttle = 0 }), liftFor)
+		return run(st, cfg, i({ throttle = 1 }), dt)
+	end
+	o = stab(ck, {}, 0.15)
+	t.near(o.throw, 0.7, 1e-9, "a lift and stab with the wheel turned throws the car")
+	t.near(o.rearGrip, 0.6, 1e-9, "lightening the rear")
+	t.near(o.driveScale, 1.5, 1e-9, "with the drive surging")
+	t.eq(stab(ck, {}, 0.4).throw, 0, "a lift longer than featherSeconds is not a kick")
+	t.eq(stab(ck, { steer = 0.3 }, 0.15).throw, 0, "not with the wheel short of kickThrowSteer")
+	t.eq(stab(ck, { speedKmh = 30 }, 0.15).throw, 0, "not under kickThrowMinKmh")
+	t.eq(stab(ck, { lever = 1 }, 0.15).throw, 0, "not under the lever")
+	t.eq(stab(cfgWith({}), {}, 0.15).throw, 0, "kickThrow 0 is off")
+	s = DriftControl.new()
+	run(s, ck, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.1)
+	o = run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), dt)
+	t.eq(o.throw, 0, "the first press of the gas is not a kick")
+	s = DriftControl.new()
+	run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.3)
+	run(s, ck, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.15)
+	run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), dt)
+	o = run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.45)
+	t.eq(o.throw, 0, "the kick throw lasts kickThrowSeconds")
+
+	-- The brake entry: the brake pressed with the wheel turned at speed,
+	-- before the car is sideways, throws it (brakeThrow), once per press
+	local bk = cfgWith({ brakeThrow = 0.6, brakeThrowRearGrip = 0.5 })
+	local function press(cfg: DriftControl.Config, over: { [string]: any }): DriftControl.Output
+		local st = DriftControl.new()
+		local base: { [string]: any } = { throttle = 0, steer = 0.8, driftAngleDeg = 2, speedKmh = 100, brake = 0 }
+		for k, v in over do
+			base[k] = v
+		end
+		run(st, cfg, inp(base), 0.1)
+		base.brake = 1
+		return run(st, cfg, inp(base), dt)
+	end
+	o = press(bk, {})
+	t.near(o.throw, 0.6, 1e-9, "the brake with the wheel turned throws the car")
+	t.near(o.rearGrip, 0.5, 1e-9, "lightening the rear")
+	t.eq(press(bk, { steer = 0.2 }).throw, 0, "not with the wheel short of brakeThrowSteer")
+	t.eq(press(bk, { speedKmh = 40 }).throw, 0, "not under brakeThrowMinKmh")
+	t.eq(press(bk, { lever = 1 }).throw, 0, "not under the lever")
+	t.eq(press(bk, { driftAngleDeg = 30 }).throw, 0, "not once sideways")
+	t.eq(press(cfgWith({}), {}).throw, 0, "brakeThrow 0 is off")
+	s = DriftControl.new()
+	run(s, bk, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, brake = 1 }), 0.6)
+	o = run(s, bk, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, brake = 1 }), dt)
+	t.eq(o.throw, 0, "a held brake throws once, for brakeThrowSeconds")
+	t.eq(DriftControl.step(DriftControl.new(), bk, gates, inp({ brake = nil }), dt).throw, 0, "no brake input is no brake")
+
+	-- The pivot: brake and gas together in a held slide grow the angle
+	local pv = cfgWith({ brakeGrowDegPerSec = 20 })
+	s = DriftControl.new()
+	o = run(s, pv, inp({}), 0.1)
+	t.eq(o.angleRateDeg, 0, "held, no brake: nothing")
+	o = run(s, pv, inp({ brake = 1 }), dt)
+	t.near(o.angleRateDeg, -20, 1e-9, "brake and gas together grow it at brakeGrowDegPerSec")
+	t.eq(o.gasHold, true, "and keep the hold")
+	o = run(s, pv, inp({ brake = 1, lever = 1 }), dt)
+	t.eq(o.angleRateDeg, 0, "not under the lever")
+	s = DriftControl.new()
+	o = run(s, pv, inp({ brake = 1, driftAngleDeg = 5 }), 0.1)
+	t.eq(o.angleRateDeg, 0, "not without a held slide")
+	s = DriftControl.new()
+	run(s, cfgWith({}), inp({}), 0.1)
+	t.eq(run(s, cfgWith({}), inp({ brake = 1 }), dt).angleRateDeg, 0, "brakeGrowDegPerSec 0 is off")
+
+	-- Reset clears the throws and the surge
+	s = DriftControl.new()
+	run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.3)
+	run(s, ck, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), 0.15)
+	run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), dt)
+	DriftControl.reset(s)
+	o = run(s, ck, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), dt)
+	t.eq(o.throw, 0, "a reset ends a kick throw")
+	t.eq(o.driveScale, 1, "and its surge")
 
 	-- The grace: the hold survives the straight moment of a transition
 	s = DriftControl.new()

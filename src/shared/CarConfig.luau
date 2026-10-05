@@ -527,12 +527,50 @@ local config = {
 		-- Times the car's slide momentum relief (slipModel.slideRelief); the
 		-- lever's (leverRelief) is left alone.
 		slideReliefScale = 1,
+		-- Part throttle (a trigger): an armed hold stays on over keepThrottle
+		-- (1: the gate, steering.throwThrottleHold, as before), tightening
+		-- toward straight by up to partialDegPerSec the further it is off
+		-- full gas. More gas, more angle.
+		keepThrottle = 1,
+		partialDegPerSec = 0,
+		-- The kick's drive: the stab after a feather pushes the driven
+		-- wheels this many times as hard for kickSeconds, the clutch dumped
+		-- (a burst of wheelspin, revs and smoke). 1 is none.
+		kickDriveScale = 1,
+		-- The clutch-kick entry (0 off): on the gas with the wheel past
+		-- kickThrowSteer at kickThrowMinKmh or more, before the car is
+		-- sideways, a lift and the gas back inside featherSeconds throws it
+		-- with this permission, the rear's grip times kickThrowRearGrip,
+		-- for kickThrowSeconds.
+		kickThrow = 0,
+		kickThrowSeconds = 0.4,
+		kickThrowMinKmh = 40,
+		kickThrowSteer = 0.6,
+		kickThrowRearGrip = 1,
+		-- The brake entry (0 off): the brake pressed past brakeThrowFrom with
+		-- the wheel past brakeThrowSteer at brakeThrowMinKmh or more, before
+		-- the car is sideways, throws it once per press: the braking drift's
+		-- weight transfer (front drive's left-foot brake).
+		brakeThrow = 0,
+		brakeThrowSeconds = 0.4,
+		brakeThrowMinKmh = 50,
+		brakeThrowSteer = 0.5,
+		brakeThrowRearGrip = 1,
+		brakeThrowFrom = 0.5,
+		-- The pivot: brake and gas together in a held slide grow the angle
+		-- this fast (left-foot braking). 0 is off.
+		brakeGrowDegPerSec = 0,
 		-- The gas hold's ceiling: steering into a slide held on the gas
 		-- (lever out) adds no angle past this, so the wheel held into a
 		-- slide takes it wider and the line (CarConfig.line) carries it
 		-- that way, where it used to come round. 180 is none: full lock on
 		-- the gas spins the car, the gas 360. The lever is never capped.
 		dialMaxDeg = 180,
+		-- Steering into a gas-held slide turns the angle at this share of
+		-- steering.throwYawRateDegPerSec; counter-steer keeps the whole rate,
+		-- so a transition swings through at full speed ("countersteer faster
+		-- than steer-in", research 2026-10-05). 1 is the old dial.
+		dialIntoScale = 1,
 	},
 
 	-- The line (VehicleSim/Line.luau): where a held slide goes. Off here,

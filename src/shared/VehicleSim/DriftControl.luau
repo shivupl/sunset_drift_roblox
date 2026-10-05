@@ -32,6 +32,25 @@
 --     launch, and with traction control aside full lock and gas at 50 km/h
 --     still peaked at 1.5 degrees (Play, 2026-10-05).
 --
+--   * Part throttle (the drift overhaul, 2026-10-05). A trigger held over
+--     keepThrottle keeps an armed hold, tightening it toward straight by up
+--     to partialDegPerSec the further it is off full gas: more gas, more
+--     angle, the way a real slide is balanced on the throttle (Hindiyeh and
+--     Gerdes). A key is 0 or 1, so this is the gamepad's; the keyboard's
+--     throttle is the feather and the kick. Arming still takes the gate.
+--   * The kick's drive. The stab after a feather pushes the driven wheels
+--     kickDriveScale times as hard for kickSeconds: the clutch dumped, a
+--     burst of wheelspin, revs and smoke under the kick's angle.
+--   * The clutch-kick entry (kickThrow): on the gas with the wheel turned,
+--     before the car is sideways, a lift and the gas back inside
+--     featherSeconds throws it, with the drive surging.
+--   * The brake entry (brakeThrow): the brake pressed with the wheel turned
+--     at speed, before the car is sideways, throws it once per press: the
+--     braking drift's weight transfer, and front drive's left-foot brake.
+--   * The pivot (brakeGrowDegPerSec): brake and gas together in a held
+--     slide grow the angle, the rears dragging while the fronts pull
+--     (left-foot braking).
+--
 -- None of it acts while the lever is in: the lever's 360, hold and catch
 -- are the same on every style. A lift with the lever in drops the gas hold at
 -- once, as before the feather, and the lever stops a lift throw it meets
@@ -70,6 +89,21 @@ export type Config = {
 	powerOverRearGrip: number,
 	gasHoldFromScale: number,
 	slideReliefScale: number,
+	keepThrottle: number,
+	partialDegPerSec: number,
+	kickDriveScale: number,
+	kickThrow: number,
+	kickThrowSeconds: number,
+	kickThrowMinKmh: number,
+	kickThrowSteer: number,
+	kickThrowRearGrip: number,
+	brakeThrow: number,
+	brakeThrowSeconds: number,
+	brakeThrowMinKmh: number,
+	brakeThrowSteer: number,
+	brakeThrowRearGrip: number,
+	brakeThrowFrom: number,
+	brakeGrowDegPerSec: number,
 }
 
 -- The steering section's gas-hold gates (Steering.Config has them all).
@@ -92,6 +126,11 @@ export type State = {
 	kick: number, -- seconds of kick left
 	liftTimer: number, -- seconds of lift throw left
 	lift: Lift,
+	gasWasOn: boolean, -- last step's gas, for spotting the stab
+	offAge: number, -- seconds the gas has been off after being on, -1 when it never was
+	kickTimer: number, -- seconds of clutch-kick throw left
+	brakeWas: boolean, -- last step's brake, past brakeThrowFrom
+	brakeTimer: number, -- seconds of brake throw left
 }
 
 export type Input = {
@@ -102,6 +141,7 @@ export type Input = {
 	lever: number, -- the handbrake's level, 0..1 (last step's: it arms the gas hold, as it always has)
 	leverNow: boolean?, -- the handbrake pressed this step (gates the feather and the lift throw)
 	twoWheel: boolean,
+	brake: number?, -- the brake pedal, 0..1; nil is 0
 }
 
 export type Output = {
@@ -111,6 +151,7 @@ export type Output = {
 	throw: number, -- 0..1 permission from a lift or power throw
 	rearGrip: number, -- rear grip multiplier from a lift or power throw, 1 for none
 	tractionAside: boolean,
+	driveScale: number, -- the driven wheels' drive multiplier (the kick's surge), 1 for none
 }
 
 function DriftControl.newLift(): Lift
@@ -135,7 +176,19 @@ function DriftControl.liftStep(l: Lift, throttle: number, from: number, to: numb
 end
 
 function DriftControl.new(): State
-	return { holdOn = false, straight = 0, feather = -1, kick = 0, liftTimer = 0, lift = DriftControl.newLift() }
+	return {
+		holdOn = false,
+		straight = 0,
+		feather = -1,
+		kick = 0,
+		liftTimer = 0,
+		lift = DriftControl.newLift(),
+		gasWasOn = false,
+		offAge = -1,
+		kickTimer = 0,
+		brakeWas = false,
+		brakeTimer = 0,
+	}
 end
 
 function DriftControl.reset(s: State)
@@ -145,11 +198,19 @@ function DriftControl.reset(s: State)
 	s.kick = 0
 	s.liftTimer = 0
 	s.lift = DriftControl.newLift()
+	s.gasWasOn = false
+	s.offAge = -1
+	s.kickTimer = 0
+	s.brakeWas = false
+	s.brakeTimer = 0
 end
 
 function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, dt: number): Output
 	local a = math.abs(inp.driftAngleDeg)
 	local gasOn = not inp.twoWheel and inp.throttle >= g.throwThrottleHold
+	-- An armed hold stays on part throttle over keepThrottle (a trigger).
+	local keep = math.min(cfg.keepThrottle, g.throwThrottleHold)
+	local gasKeeps = not inp.twoWheel and inp.throttle >= keep
 	local sidewaysNow = a >= g.throwThrottleHoldFromDeg * cfg.gasHoldFromScale
 	local keepNow = a >= g.throwThrottleHoldKeepDeg
 	if keepNow or math.abs(inp.steer) > 0.05 then
@@ -174,13 +235,58 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	then
 		s.liftTimer = cfg.liftThrowSeconds
 	end
+	-- The clutch-kick entry: the gas back on inside featherSeconds of a
+	-- lift, with the wheel turned at speed, before the car is sideways.
+	local stabbed = gasOn and not s.gasWasOn and s.offAge >= 0 and s.offAge <= cfg.featherSeconds
+	if
+		cfg.kickThrow > 0
+		and stabbed
+		and not s.holdOn
+		and not leverIn
+		and inp.speedKmh >= cfg.kickThrowMinKmh
+		and math.abs(inp.steer) >= cfg.kickThrowSteer
+		and not sidewaysNow
+	then
+		s.kickTimer = cfg.kickThrowSeconds
+		s.kick = cfg.kickSeconds -- the surge rides with it
+	end
+	if gasOn then
+		s.offAge = -1
+	elseif s.gasWasOn then
+		s.offAge = 0
+	elseif s.offAge >= 0 then
+		s.offAge += dt
+	end
+	s.gasWasOn = gasOn
+
+	-- The brake entry: the brake's press with the wheel turned at speed.
+	local braking = (inp.brake or 0) >= cfg.brakeThrowFrom
+	if
+		cfg.brakeThrow > 0
+		and braking
+		and not s.brakeWas
+		and not inp.twoWheel
+		and not leverIn
+		and inp.speedKmh >= cfg.brakeThrowMinKmh
+		and math.abs(inp.steer) >= cfg.brakeThrowSteer
+		and not sidewaysNow
+	then
+		s.brakeTimer = cfg.brakeThrowSeconds
+	end
+	s.brakeWas = braking
+
 	if leverIn then
 		s.liftTimer = 0
 		s.kick = 0
 		s.feather = -1
+		s.kickTimer = 0
+		s.brakeTimer = 0
 	end
 
-	if not gasOn then
+	if s.holdOn and gasKeeps and not gasOn and not leverIn then
+		-- Part throttle over keepThrottle: still held, no feather.
+		s.feather = -1
+	elseif not gasOn then
 		-- A lift. Inside featherSeconds of a held slide, lever out, it is a
 		-- feather.
 		if s.holdOn and not inp.twoWheel and not leverIn then
@@ -211,11 +317,17 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	if s.holdOn and not leverIn then
 		if feathering then
 			rate += cfg.featherDegPerSec
+		elseif not gasOn and cfg.partialDegPerSec ~= 0 then
+			-- Part throttle: tighter the further off full gas.
+			rate += cfg.partialDegPerSec * math.clamp((1 - inp.throttle) / math.max(1 - keep, 1e-3), 0, 1)
 		end
 		if s.kick > 0 and cfg.kickSeconds > 0 then
 			rate -= cfg.kickDeg / cfg.kickSeconds
 		end
 		rate += cfg.holdDecayDegPerSec
+		if braking and gasOn then
+			rate -= cfg.brakeGrowDegPerSec
+		end
 		-- Under the band it grows, even swinging through straight in a
 		-- transition (a held chain in a high-angle style otherwise dropped
 		-- its hold at the straight moment, 2026-10-05); dead straight has no
@@ -226,10 +338,15 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 			rate = math.max(rate, cfg.holdEaseDegPerSec)
 		end
 	end
+	local surging = s.kick > 0
 	s.kick = math.max(0, s.kick - dt)
 
 	local lifting = s.liftTimer > 0
 	s.liftTimer = math.max(0, s.liftTimer - dt)
+	local kicking = s.kickTimer > 0
+	s.kickTimer = math.max(0, s.kickTimer - dt)
+	local brakeThrowing = s.brakeTimer > 0
+	s.brakeTimer = math.max(0, s.brakeTimer - dt)
 	local powering = cfg.powerOverThrow > 0
 		and gasOn
 		and inp.lever <= 0
@@ -240,9 +357,18 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		gasHold = s.holdOn,
 		feathering = feathering,
 		angleRateDeg = rate,
-		throw = math.max(if lifting then cfg.liftThrow else 0, if powering then cfg.powerOverThrow else 0),
-		rearGrip = (if lifting then cfg.liftThrowRearGrip else 1) * (if powering then cfg.powerOverRearGrip else 1),
+		throw = math.max(
+			if lifting then cfg.liftThrow else 0,
+			if powering then cfg.powerOverThrow else 0,
+			if kicking then cfg.kickThrow else 0,
+			if brakeThrowing then cfg.brakeThrow else 0
+		),
+		rearGrip = (if lifting then cfg.liftThrowRearGrip else 1)
+			* (if powering then cfg.powerOverRearGrip else 1)
+			* (if kicking then cfg.kickThrowRearGrip else 1)
+			* (if brakeThrowing then cfg.brakeThrowRearGrip else 1),
 		tractionAside = math.abs(inp.steer) >= cfg.powerOverSteer,
+		driveScale = if surging then cfg.kickDriveScale else 1,
 	}
 end
 
