@@ -1263,6 +1263,14 @@ local config = {
 			crackleMinKmh = 80,
 			crackleLiftFrom = 0.6,
 			crackleRevFloor = 0.6,
+			-- The drift flutter: a lift with the car at least this far
+			-- sideways and this fast fires the exhaust style's flutter instead
+			-- of its burst (ExhaustStyles), at any revs, so feathering
+			-- mid-drift flutters the flames while the drift carries on
+			-- (drift.featherSeconds). The owner, 2026-10-05: "kick off the
+			-- exhaust during a drift where the flames would also flutter".
+			driftFlutterFromDeg = 12,
+			driftFlutterMinKmh = 40,
 			-- Single pops, each with its exhaust flame: an upshift from above
 			-- crackleShiftRpm pops with crackleShiftChance, and sitting on the
 			-- limiter pops about crackleLimiterPerSecond times a second, both

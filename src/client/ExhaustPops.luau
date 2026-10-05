@@ -10,6 +10,8 @@
 -- Who calls it:
 --   * the driver's client, from EngineAudio's hooks (init.client): lift
 --     starts a burst and sends (burst, style, seed, scale) to the server,
+--     a lift with the car sideways starts the style's flutter instead (the
+--     drift flutter, 2026-10-05) and sends it as a flutter,
 --     cut stops what is left of it (the throttle back on) and sends a cut,
 --     single fires one pop (upshift and limiter; 0, off, by default);
 --   * every other client, as the server relays a driver's messages: the
@@ -219,8 +221,9 @@ local function firePop(model: Model, styleId: string, pop: Pop, item: CosmeticsC
 end
 
 -- A burst on a car: its pops at their times, unless a newer burst or a cut
--- comes first. Returns the pops.
-local function burst(model: Model, styleId: string, seed: number, scale: number, item: CosmeticsConfig.Item?): { Pop }
+-- comes first. flutter: the style's drift flutter instead of its burst.
+-- Returns the pops.
+local function burst(model: Model, styleId: string, seed: number, scale: number, item: CosmeticsConfig.Item?, flutter: boolean?): { Pop }
 	local style = ExhaustStyles.styles[styleId]
 	if not style then
 		return {}
@@ -228,7 +231,7 @@ local function burst(model: Model, styleId: string, seed: number, scale: number,
 	watch(model)
 	local token = (tokens[model] or 0) + 1
 	tokens[model] = token
-	local pops = ExhaustSputter.generate(style.pattern, seed, scale)
+	local pops = ExhaustSputter.generate(if flutter then style.flutter else style.pattern, seed, scale)
 	playingUntil[model] = os.clock() + pops[#pops].t + 0.05
 	for _, pop in pops do
 		local function fire()
@@ -276,6 +279,18 @@ function ExhaustPops.lift(model: Model, rev: number)
 	local seed = rng:NextInteger(1, 2 ^ 31 - 1)
 	burst(model, styleId, seed, scale, nil)
 	send(KIND.burst, ExhaustStyles.index(styleId) or 1, seed, scale)
+end
+
+-- The driver lifted while sideways: the style's flutter instead of its
+-- burst, at full revs (a drift sits high), sent on as a flutter so every
+-- client rebuilds the same one. The throttle back on cuts it like a burst.
+function ExhaustPops.flutter(model: Model)
+	local styleId = ExhaustPops.styleId()
+	local style = ExhaustStyles.styles[styleId]
+	local scale = ExhaustStyles.scaleFor(style, exhaustItem(model).crackleChance or 1, 1)
+	local seed = rng:NextInteger(1, 2 ^ 31 - 1)
+	burst(model, styleId, seed, scale, nil, true)
+	send(KIND.flutter, ExhaustStyles.index(styleId) or 1, seed, scale)
 end
 
 -- The driver is back on the throttle: what is left of the burst stops,
@@ -414,7 +429,7 @@ function ExhaustPops.start(remotes: Folder)
 		if kind == KIND.single then
 			firePop(model, styleId, { t = 0, class = "mid", level = 1 }, nil)
 		else
-			burst(model, styleId, seed, scale, nil)
+			burst(model, styleId, seed, scale, nil, kind == KIND.flutter)
 		end
 	end)
 	if RunService:IsStudio() then

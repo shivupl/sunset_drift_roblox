@@ -64,7 +64,7 @@ return function(t: T)
 	t.ok(ExhaustStyles.validRelay(K.single, #ExhaustStyles.order, 1, 1), "a single pop in the last style is valid")
 	t.ok(ExhaustStyles.validRelay(K.cut, 0, 0, 0), "a cut is valid")
 	t.ok(not ExhaustStyles.validRelay(1, nil, nil, nil), "the old one-number message is rejected")
-	t.ok(not ExhaustStyles.validRelay(4, 1, 1, 1), "an unknown kind is rejected")
+	t.ok(not ExhaustStyles.validRelay(99, 1, 1, 1), "an unknown kind is rejected (4 is the flutter now)")
 	t.ok(not ExhaustStyles.validRelay(K.burst, 0, 1, 1), "style 0 is rejected")
 	t.ok(not ExhaustStyles.validRelay(K.burst, 1.5, 1, 1), "a fractional style is rejected")
 	t.ok(not ExhaustStyles.validRelay(K.burst, #ExhaustStyles.order + 1, 1, 1), "a style past the list is rejected")
@@ -154,4 +154,28 @@ return function(t: T)
 		end
 	end
 	t.ok(worst <= 0.17, `2-Step's beat stays even (worst spread {worst})`)
+	-- The drift flutter: every style has one, dense at the start, ending in its window
+	for _, id in ExhaustStyles.order do
+		local style = ExhaustStyles.styles[id]
+		local p = style.flutter
+		t.ok(p ~= nil, `{id} has a flutter`)
+		if p then
+			local worstFirstGap = 0
+			for seed = 1, 40 do
+				local pops = ExhaustSputter.generate(p, seed, 1)
+				t.ok(pops[#pops].t <= p.maxSeconds + 1e-9, `{id} flutter ends inside maxSeconds (seed {seed})`)
+				if #pops >= 3 then
+					worstFirstGap = math.max(worstFirstGap, (pops[3].t - pops[1].t) / 2)
+				end
+				t.ok(#pops >= 3, `{id} flutter has at least three pops (seed {seed})`)
+			end
+			t.ok(worstFirstGap <= 0.09, `{id} flutter's first pops come 90 ms apart or closer (worst {worstFirstGap})`)
+		end
+	end
+	t.eq(ExhaustStyles.KIND.flutter, 4, "the flutter is relay kind 4")
+	t.ok(ExhaustStyles.validRelay(4, 1, 123, 1), "a flutter relays like a burst")
+	t.ok(not ExhaustStyles.validRelay(4, 0, 123, 1), "a flutter names a style")
+	t.ok(not ExhaustStyles.validRelay(5, 1, 123, 1), "kind 5 does not exist")
+	-- Feathering four times a second sends a flutter and a cut each time
+	t.ok(ExhaustStyles.relayPerSecond >= 4 * 2 + 2, "the budget covers four feathers a second with room")
 end

@@ -77,6 +77,15 @@ export type Layer = {
 export type Style = {
 	name: string,
 	pattern: Pattern,
+	-- The drift flutter (the owner, 2026-10-05: "kick off the exhaust during
+	-- a drift where the flames would also flutter like in drifting videos"):
+	-- what a lift fires when the car is sideways, instead of the burst.
+	-- Dense, mostly small pops, so their flames overlap into a flickering
+	-- tongue and their sound into a rattle; the gas back on cuts it, so
+	-- feathering mid-drift flutters the flames in time with the driver's
+	-- foot (research: each lift in a feathered drift is its own overrun
+	-- burst).
+	flutter: Pattern,
 	-- How the exhaust item's crackleChance (1 factory to 2.5 titanium)
 	-- scales the pop count: 1 + (crackleChance - 1) x chanceGain. At 1 a
 	-- titanium 14-pop crackle would be 35.
@@ -284,6 +293,16 @@ ExhaustStyles.styles = {
 			gapStart = { 0.03, 0.07 }, gapEnd = { 0.12, 0.3 }, jitter = 0.5,
 			doubleChance = 0.2, doubleGap = { 0.015, 0.035 },
 		},
+		-- The crackle, quickened: 30-50 ms apart easing to 80-140 ms.
+		flutter = {
+			kind = "burble", count = { 8, 12 }, maxPops = 18, minGap = 0.012, maxSeconds = 1.0,
+			first = "mid",
+			weightsStart = { small = 0.55, mid = 0.4, big = 0.05 },
+			weightsEnd = { small = 0.85, mid = 0.15, big = 0 },
+			fade = 0.5, levelJitter = 0.45,
+			gapStart = { 0.03, 0.05 }, gapEnd = { 0.08, 0.14 }, jitter = 0.4,
+			doubleChance = 0.25, doubleGap = { 0.015, 0.03 },
+		},
 		chanceGain = 0.35,
 		trailGain = 0.4,
 		sounds = {
@@ -324,6 +343,15 @@ ExhaustStyles.styles = {
 			fade = 0.6, levelJitter = 0.25,
 			gapStart = { 0.07, 0.09 }, gapEnd = { 0.09, 0.11 }, jitter = 0.15,
 			doubleChance = 0.05, doubleGap = { 0.025, 0.04 },
+		},
+		-- An even flicker of blue jets, 40-50 ms apart easing to 60-80.
+		flutter = {
+			kind = "burble", count = { 6, 10 }, maxPops = 14, minGap = 0.02, maxSeconds = 0.8,
+			first = "mid",
+			weightsStart = { small = 0.35, mid = 0.6, big = 0.05 },
+			weightsEnd = { small = 0.6, mid = 0.4, big = 0 },
+			fade = 0.6, levelJitter = 0.3,
+			gapStart = { 0.04, 0.05 }, gapEnd = { 0.06, 0.08 }, jitter = 0.2,
 		},
 		chanceGain = 0.3,
 		trailGain = 0.4,
@@ -391,6 +419,16 @@ ExhaustStyles.styles = {
 			fade = 0.85, levelJitter = 0.1,
 			gapStart = { 0.09, 0.09 }, gapEnd = { 0.09, 0.09 }, jitter = 0.06,
 		},
+		-- The machine gun at 60 ms, about the limiter's bounce (research:
+		-- 5-15 Hz).
+		flutter = {
+			kind = "burble", count = { 6, 10 }, maxPops = 14, minGap = 0.04, maxSeconds = 0.9,
+			first = "mid",
+			weightsStart = { small = 0.2, mid = 0.8, big = 0 },
+			weightsEnd = { small = 0.2, mid = 0.8, big = 0 },
+			fade = 0.8, levelJitter = 0.1,
+			gapStart = { 0.06, 0.06 }, gapEnd = { 0.06, 0.06 }, jitter = 0.06,
+		},
 		chanceGain = 0.3,
 		trailGain = 0.4,
 		sounds = {
@@ -443,6 +481,14 @@ ExhaustStyles.styles = {
 			weightsEnd = { small = 0, mid = 1, big = 0 },
 			fade = 1, levelJitter = 0.45,
 		},
+		-- Its one pop, three to five times, 40-70 ms apart.
+		flutter = {
+			kind = "burble", count = { 3, 5 }, maxPops = 8, minGap = 0.04, maxSeconds = 0.6,
+			weightsStart = { small = 0, mid = 1, big = 0 },
+			weightsEnd = { small = 0, mid = 1, big = 0 },
+			fade = 0.8, levelJitter = 0.45,
+			gapStart = { 0.04, 0.05 }, gapEnd = { 0.05, 0.07 }, jitter = 0.2,
+		},
 		-- The full crackleChance, as before (titanium: up to 8 pops), and the
 		-- revs of the lift change nothing, as before.
 		chanceGain = 1,
@@ -470,10 +516,13 @@ ExhaustStyles.default = "crackle"
 -- Relay (client ExhaustPops, server CarControls). A driver sends one
 -- message a burst, (kind, style index, seed, scale); every client rebuilds
 -- the burst from the seed. A cut stops what is left of the car's burst.
-ExhaustStyles.KIND = { burst = 1, single = 2, cut = 3 }
--- Messages a driver may send a second: a lift-off burst, its cut and a
--- single pop at most in a second, so 8 never clips play and drops a flood.
-ExhaustStyles.relayPerSecond = 8
+-- A flutter is a burst from the style's flutter pattern (a lift mid-drift).
+ExhaustStyles.KIND = { burst = 1, single = 2, cut = 3, flutter = 4 }
+-- Messages a driver may send a second. Feathering mid-drift sends a flutter
+-- and a cut each time: four feathers a second is 8, and 12 leaves room for
+-- a burst or a single pop beside them, while a flood is still dropped. (8
+-- clipped a fast keyboard feather's cuts.)
+ExhaustStyles.relayPerSecond = 12
 -- The largest scale a burst may carry (the titanium's at full revs is
 -- under 1.6 for every style but Classic's 2.5).
 ExhaustStyles.maxScale = 4
@@ -487,7 +536,7 @@ local function wholeIn(x: any, lo: number, hi: number): boolean
 	return type(x) == "number" and x == x and x >= lo and x <= hi and math.floor(x) == x
 end
 
--- Whether a relay message is well formed: a burst or single names a style,
+-- Whether a relay message is well formed: a burst, flutter or single names a style,
 -- a whole positive seed and a scale in 0..maxScale; a cut is (cut, 0, 0, 0).
 -- The garage round 2 message (one pop count) fails, so an old client's pops
 -- are dropped, not misread.
@@ -496,7 +545,7 @@ function ExhaustStyles.validRelay(kind: any, style: any, seed: any, scale: any):
 	if kind == K.cut then
 		return style == 0 and seed == 0 and scale == 0
 	end
-	if kind ~= K.burst and kind ~= K.single then
+	if kind ~= K.burst and kind ~= K.single and kind ~= K.flutter then
 		return false
 	end
 	if not wholeIn(style, 1, #ExhaustStyles.order) or not wholeIn(seed, 1, 2 ^ 31 - 1) then

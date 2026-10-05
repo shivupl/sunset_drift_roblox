@@ -14,13 +14,14 @@
 --
 -- On top of the layers, four events read off the same state: an upshift
 -- dips the engine (the torque cut), an off-throttle downshift blips the
--- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
+-- pitch, lifting fast fires a crackle of exhaust pops (in a slide, the
+-- style's quicker flutter, so feathering flutters the flames), and sitting on the
 -- redline cuts the engine in and out like a limiter. Pops also come singly
 -- on an upshift from high rpm and now and then on the limiter (garage round
 -- 2 §2; off by default, CarConfig). This module only decides when: the
 -- pops themselves, their sound, flames and relay are ExhaustPops' (the
--- exhaust styles, 2026-10-04), wired through onLift, onCut and onSingle in
--- init.client. The note also kicks
+-- exhaust styles, 2026-10-04), wired through onLift, onCut, onSingle and
+-- onFlutter in init.client. The note also kicks
 -- up when the throttle goes back on: an rpm offset for the audio only,
 -- since the sim's rpm follows the wheels. Lifting off has no offset; the
 -- note falls as the sim's rpm does.
@@ -62,6 +63,9 @@ local EngineAudio = {}
 EngineAudio.onLift = nil :: ((model: Model, rev: number) -> ())?
 EngineAudio.onCut = nil :: ((model: Model) -> ())?
 EngineAudio.onSingle = nil :: ((model: Model) -> ())?
+-- A lift with the car sideways: the exhaust style's drift flutter, in place
+-- of onLift's burst (cut by onCut the same way).
+EngineAudio.onFlutter = nil :: ((model: Model) -> ())?
 
 local LAYER_NAMES = { "idle", "lowLoad", "highLoad", "overrun" }
 local HALF_PI = math.pi / 2
@@ -247,7 +251,13 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	local model = attached
 	if model then
 		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
-		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 and EngineAudio.onLift then
+		local lifted = lastLoad >= audio.crackleLiftFrom and throttle < 0.1
+		-- In a slide the lift flutters instead (feathering mid-drift).
+		local sideways = math.abs(state.driftAngleDeg) >= audio.driftFlutterFromDeg
+			and math.abs(state.speedKmh) >= audio.driftFlutterMinKmh
+		if lifted and sideways and EngineAudio.onFlutter then
+			EngineAudio.onFlutter(model)
+		elseif lifted and fast and EngineAudio.onLift then
 			EngineAudio.onLift(model, ExhaustStyles.revFactor(simRpm, audio.crackleMinRpm, drive.redlineRpm, audio.crackleRevFloor))
 		end
 		-- Back on the throttle cancels what is left of a burst.

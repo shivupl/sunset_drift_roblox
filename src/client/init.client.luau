@@ -52,6 +52,10 @@ end
 EngineAudio.onSingle = function(model: Model)
 	ExhaustPops.single(model)
 end
+-- A lift mid-drift: the style's flutter (feathering flutters the flames).
+EngineAudio.onFlutter = function(model: Model)
+	ExhaustPops.flutter(model)
+end
 ExhaustPops.start(remotes)
 -- Drift styles: the Settings tab picks one per drivetrain; in Studio O and
 -- Shift+O cycle them.
