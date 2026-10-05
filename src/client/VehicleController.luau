@@ -19,6 +19,7 @@ local EngineAudio = require(script.Parent.EngineAudio)
 local CarControls = require(script.Parent.CarControls)
 local AutoFlip = require(script.Parent.AutoFlip)
 local TireSmoke = require(script.Parent.TireSmoke)
+local DriftStyle = require(script.Parent.DriftStyle)
 
 type VehicleState = Types.VehicleState
 
@@ -109,7 +110,15 @@ function VehicleController.start(model: Model, remotes: Folder)
 	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
 	carId = if type(id) == "string" then id else nil
 	exitRemote = remotes:FindFirstChild("ExitCar") :: RemoteEvent
-	local s = VehicleSim.new(model, ConfigLoader.forCar(carId))
+	-- The sim drives on the car's config with this player's drift style on
+	-- it (DriftStyle), and takes a new one the moment the style changes.
+	DriftStyle.setCar(carId)
+	local s = VehicleSim.new(model, DriftStyle.configFor(carId))
+	DriftStyle.changed = function()
+		if sim == s then
+			s:setConfig(DriftStyle.configFor(carId))
+		end
+	end
 	local rig = VehicleRig.handles(model)
 	local chassis = rig.chassis
 	AutoFlip.reset()
@@ -179,11 +188,13 @@ function VehicleController.start(model: Model, remotes: Folder)
 	end)
 end
 
--- Called after a reload. The sim drives on this car's merged config, not
--- the shared one, so it is rebuilt here from the reloaded modules.
+-- Called after a reload. The sim drives on this car's merged config with
+-- its drift style on, not the shared one, so it is rebuilt here from the
+-- reloaded modules.
 function VehicleController.setConfig(_config: ConfigLoader.Config)
+	DriftStyle.clearCache()
 	if sim then
-		sim:setConfig(ConfigLoader.forCar(carId))
+		sim:setConfig(DriftStyle.configFor(carId))
 	end
 	Touch.relayout()
 end

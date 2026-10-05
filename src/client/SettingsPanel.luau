@@ -3,14 +3,20 @@
 -- in place of the car list.
 --   * Time of day: one button per SkyConfig option (Sunset, Night). The
 --     world changes at once, on this player's screen only (Sky).
+--   * Drift style: one chip per style of the current car's drivetrain
+--     (DriftStyles), and the chosen one's line under them; the car takes
+--     it at once (DriftStyle). The owner, 2026-10-05: styles "that i can
+--     test and try out in game".
 --
 -- Its chrome reads UITheme (UI_SYSTEM.md); re-skinned onto the tokens on
 -- 2026-09-28, replacing the Theme table SpawnMenu used to pass in.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SkyConfig = require(Shared:WaitForChild("SkyConfig"))
+local DriftStyles = require(Shared:WaitForChild("DriftStyles"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local Sky = require(script.Parent.Sky)
+local DriftStyle = require(script.Parent.DriftStyle)
 local UIKit = require(script.Parent.UIKit)
 
 local SettingsPanel = {}
@@ -21,12 +27,60 @@ local heading: TextLabel? = nil
 local row: Frame? = nil
 local note: TextLabel? = nil
 local skyButtons: { [string]: TextButton } = {}
+local driftHeading: TextLabel? = nil
+local driftRow: Frame? = nil
+local driftNote: TextLabel? = nil
+local driftButtons: { [string]: TextButton } = {}
+local driftLayout: string? = nil -- the drivetrain the chips were built for
+local touchNow = false
 
--- The chosen sky takes the selected state (sodiumDim, sodium stroke).
+-- The chosen sky and drift style take the selected state (sodiumDim,
+-- sodium stroke); the drift style's line goes under its chips.
 local function paint()
 	local current = Sky.current()
 	for id, b in skyButtons do
 		UIKit.setSelected(b, id == current)
+	end
+	local layout = DriftStyle.carLayout()
+	local chosen = DriftStyle.current(layout)
+	for id, b in driftButtons do
+		UIKit.setSelected(b, id == chosen)
+	end
+	local n = driftNote
+	if n then
+		n.Text = DriftStyles.styles[chosen].blurb
+	end
+end
+
+-- One chip per style of the car's drivetrain, rebuilt when it changes.
+local function buildDriftChips()
+	local r, h = driftRow, driftHeading
+	if not r or not h then
+		return
+	end
+	local layout = DriftStyle.carLayout()
+	h.Text = "DRIFT STYLE · " .. string.upper(DriftStyles.layoutName[layout])
+	if driftLayout == layout then
+		return
+	end
+	driftLayout = layout
+	for _, b in driftButtons do
+		b:Destroy()
+	end
+	table.clear(driftButtons)
+	local ids = DriftStyles.forLayout(layout)
+	local count = #ids
+	for i, id in ids do
+		local b = UIKit.chip(r, DriftStyles.styles[id].name, touchNow)
+		b.Name = "Drift_" .. id
+		b.AutomaticSize = Enum.AutomaticSize.None
+		b.LayoutOrder = i
+		b.Size = UDim2.new(1 / count, -8 * (count - 1) / count, 1, 0)
+		b.TextSize = UITheme.textSize("label", touchNow)
+		b.Activated:Connect(function()
+			DriftStyle.set(id)
+		end)
+		driftButtons[id] = b
 	end
 end
 
@@ -90,7 +144,36 @@ function SettingsPanel.build(parent: Instance, layoutOrder: number): Frame
 	n.TextColor3 = C.sandDim
 	note = n
 
+	-- Drift style: a section title like the sky's, a row of chips, the
+	-- chosen style's line (wrapping, two lines).
+	local dh = text(f, "DRIFT STYLE", 4)
+	dh.FontFace = UITheme.font("title")
+	dh.TextColor3 = C.paint
+	driftHeading = dh
+	local dr = Instance.new("Frame")
+	dr.Name = "Drift"
+	dr.BackgroundTransparency = 1
+	dr.LayoutOrder = 5
+	local drLayout = Instance.new("UIListLayout")
+	drLayout.FillDirection = Enum.FillDirection.Horizontal
+	drLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	drLayout.Padding = UDim.new(0, 8)
+	drLayout.Parent = dr
+	dr.Parent = f
+	driftRow = dr
+	local dn = text(f, "", 6)
+	dn.FontFace = UITheme.font("caption")
+	dn.TextColor3 = C.sandDim
+	dn.TextWrapped = true
+	dn.TextYAlignment = Enum.TextYAlignment.Top
+	driftNote = dn
+	buildDriftChips()
+
 	Sky.changed = function()
+		paint()
+	end
+	DriftStyle.panelChanged = function()
+		buildDriftChips()
 		paint()
 	end
 	paint()
@@ -104,7 +187,9 @@ function SettingsPanel.height(isTouch: boolean): number
 	local headH = if isTouch then 26 else 22
 	local rowH = if isTouch then 56 else 44
 	local noteH = if isTouch then 22 else 18
-	return headH + rowH + noteH + 8 * 2
+	-- Time of day (title, row, note) and drift style (title, row, a
+	-- two-line note), 8 between each.
+	return headH + rowH + noteH + headH + rowH + 2 * noteH + 8 * 5
 end
 
 -- Sizes the tab to the height the menu gives it.
@@ -122,6 +207,18 @@ function SettingsPanel.fit(height: number, isTouch: boolean)
 	end
 	n.Size = UDim2.new(1, 0, 0, if isTouch then 22 else 18)
 	n.TextSize = UITheme.textSize("caption", isTouch)
+	touchNow = isTouch
+	local dh, dr, dn = driftHeading, driftRow, driftNote
+	if dh and dr and dn then
+		dh.Size = h.Size
+		dh.TextSize = h.TextSize
+		dr.Size = r.Size
+		for _, b in driftButtons do
+			b.TextSize = UITheme.textSize("label", isTouch)
+		end
+		dn.Size = UDim2.new(1, 0, 0, 2 * (if isTouch then 22 else 18))
+		dn.TextSize = n.TextSize
+	end
 end
 
 function SettingsPanel.setVisible(visible: boolean)

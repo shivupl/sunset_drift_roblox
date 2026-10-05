@@ -595,7 +595,9 @@ local function show(which: Tab)
 	if status then
 		(status :: TextLabel).Text = if which == "plates"
 			then "Plates are yours alone: nobody else can own the same one"
-			elseif which == "settings" then "Your settings are saved with your progress"
+			-- The drift style is for the session only until the owner picks
+			-- the styles to keep (DriftStyle), so only the sky is promised.
+			elseif which == "settings" then "Time of day is saved with your progress"
 			elseif isTouch() then "Tap a car to spawn it   ·   CARS reopens this"
 			else "Click a car to spawn it   ·   M reopens this"
 	end
