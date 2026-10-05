@@ -12,22 +12,19 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
-**`tweaks` (open, 2026-10-04): auto-flip and tyre smoke, not merged, not pushed.** A capsized car at
-rest rolls back onto its wheels over its own edge (client and shared `AutoFlip`, `CarConfig.autoFlip`):
-heading kept, lands at rest height, clear of walls. White tyre smoke from a per-wheel tread-heat model
-(shared `TireHeat`, client `TireSmoke`): drifts, lock-ups, handbrake and burnouts smoke, grip doesn't;
-it builds in and tails off; every player sees every car's smoke through a server-stamped `TireSmoke`
-attribute (`CarControls`). Specs in `AutoFlip.spec` and `TireHeat.spec`. Second smoke pass (owner: "a
-lot better, more accurate and realistic"): Roblox's realistic smoke texture, three layers per tyre
-(spray thrown the way the tread slides, a billowing cloud, a lingering haze on a light breeze), load-weighted
-heat, puffing, and tan dust instead of smoke on sand or dirt. Third pass (owner: sand "perfect", keep it
-exactly; road smoke "patchy" and "a bit too much"): road smoke laid by distance from the live contact patch,
-barely thrown and thinner; dust split onto its own attachment and settings, unchanged. Fourth pass (owner:
-smoke from wheels hidden behind the car showed "through the car"; keep it continuous): road smoke's ZOffset
-0.84 to 0.15 m so the body hides it, wisps fill the trail's gaps, the cloud fades in once grown. Front
-tyres' sideways slide counts 0.4 (less front smoke in a drift). Flip rework (owner: "to robotic", steer to
-roll it back): a capsized car is rolled by a real torque while you steer, or rolls itself after 0.8 s at
-rest; the scripted roll is only the last resort.
+**`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
+auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
+axis (client and shared `AutoFlip`, `CarConfig.autoFlip`): steer and it heaves up off its edge and drops
+onto its springs, even while it still slides; untouched, it rolls itself after 0.8 s at rest; the old
+scripted roll is only the last resort for a car wedged where it can't roll. White tyre smoke from a
+per-wheel tread-heat model (shared `TireHeat`, client `TireSmoke`): drifts, lock-ups, handbrake and
+burnouts smoke, grip doesn't; it builds in and tails off; heat follows each tyre's load; every player
+sees every car's smoke through a server-stamped `TireSmoke` attribute (`CarControls`). Roblox's
+realistic smoke texture; road smoke laid by distance from the live contact patch as a continuous trail
+(trail and wisps, a billow, a faint haze on a light breeze), hidden by the car's body (ZOffset 0.15 m);
+the fronts' load shares swapped at the owner's request (`frontLoadSwap`); tan dust instead of smoke on
+sand or dirt, its settings kept exactly as the owner signed them off. Specs in `AutoFlip.spec` and
+`TireHeat.spec`; tuning history in TUNING.md (autoFlip, effects).
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
