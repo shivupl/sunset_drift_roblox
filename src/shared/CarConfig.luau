@@ -480,8 +480,13 @@ local config = {
 		-- (- pulls it in: the fronts pull straight). Lifting longer than this
 		-- is the catch, as before.
 		featherSeconds = 0.3,
-		featherDegPerSec = 25,
-		kickDeg = 5,
+		-- 50 and 8 from 25 and 5: a hands-off catch (lift and centre) waits out
+		-- the feather first, and at 25 it took 0.82 s against 0.53 before
+		-- the feather; at 50 it takes 0.63-0.68, and a 0.2 s feather dips the
+		-- slide 3 degrees and the kick puts back all but 1-2 (Play,
+		-- 2026-10-05).
+		featherDegPerSec = 50,
+		kickDeg = 8,
 		kickSeconds = 0.2,
 		-- A gas-held slide's angle eases toward straight this fast (front
 		-- drive's slides fade), and is kept between holdMinDeg and
@@ -501,8 +506,14 @@ local config = {
 		liftThrowRearGrip = 1,
 		-- Power-over: past this much steer launch and traction control step
 		-- aside (above 1: never), and the gas hold arms from
-		-- steering.throwThrottleHoldFromDeg times gasHoldFromScale.
+		-- steering.throwThrottleHoldFromDeg times gasHoldFromScale. With
+		-- powerOverThrow above 0 the gas and that much wheel at
+		-- powerOverMinKmh or more throw the car (that permission, the rear's
+		-- grip times powerOverRearGrip) until the gas hold takes it.
 		powerOverSteer = 2,
+		powerOverMinKmh = 30,
+		powerOverThrow = 0,
+		powerOverRearGrip = 1,
 		gasHoldFromScale = 1,
 		-- Times the car's slide momentum relief (slipModel.slideRelief); the
 		-- lever's (leverRelief) is left alone.

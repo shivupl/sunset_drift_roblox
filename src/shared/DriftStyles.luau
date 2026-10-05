@@ -29,9 +29,14 @@ DriftStyles.layoutName = {
 	AWD = "All-wheel drive",
 }
 
--- Front-drive and all-wheel styles give the front tyres the rear's drive
--- grip (tires.rear.longitudinalGrip, 1.9): without it the fronts spin on
--- the launch the rear puts down cleanly.
+-- Front-drive and all-wheel styles give the driven fronts the rear's drive
+-- grip (tires.front.longitudinalGrip, the rear's 1.9). All-wheel drive's
+-- launch then measured the same as rear drive's on the Batrol (0-100 5.19
+-- against 5.25 s). Front drive launches slower (weight leaves the fronts):
+-- the Kamri's 0-100 is 4.16 s against 3.69. 2.3 brought it to 3.9, but the
+-- fronts then scrubbed so hard in a spin that the lever 360 took 3.42 s
+-- against 2.52 and a hands-off catch 1.25 s (Play, 2026-10-05): the tricks
+-- win, front drive keeps its slower launch.
 local FRONT_DRIVE_GRIP = 1.9
 
 DriftStyles.styles = {
@@ -48,27 +53,49 @@ DriftStyles.styles = {
 		blurb = "Gas and full lock break the rear loose. Every stab of the gas kicks it wider.",
 		tuning = {
 			drivetrain = { layout = "RWD" },
-			drift = { powerOverSteer = 0.7, gasHoldFromScale = 0.5, featherDegPerSec = 35, kickDeg = 14, kickSeconds = 0.25 },
+			-- Full lock and gas from 30 km/h throw the car at half the lever's
+			-- authority with the rear's grip at 0.8, until the gas hold takes
+			-- it from 10 degrees (traction control alone left the tyres
+			-- gripping: 1.5 degrees at 50 km/h). A feather tightens it fast and
+			-- the stab kicks 14 back: the clutch kick.
+			drift = {
+				powerOverSteer = 0.7, powerOverThrow = 0.5, powerOverRearGrip = 0.8, gasHoldFromScale = 0.5,
+				featherDegPerSec = 60, kickDeg = 14, kickSeconds = 0.25,
+			},
 		},
 	},
 	angle = {
 		name = "High Angle",
 		layout = "RWD",
-		blurb = "Slides settle deep, 40 to 60 degrees, and carry their speed. All smoke.",
+		blurb = "Slides settle deep, 40 to 60 degrees, and carry their speed. Swing it with long taps; lift to straighten.",
 		tuning = {
 			drivetrain = { layout = "RWD" },
-			drift = { holdMinDeg = 40, holdMaxDeg = 60, holdEaseDegPerSec = 35, kickDeg = 8, slideReliefScale = 1.3 },
+			-- Held 44-46 degrees for 4 s from 100, losing 7 km/h (Play,
+			-- 2026-10-05). Lift past the feather to straighten: the band grows
+			-- any held angle back to 40.
+			drift = { holdMinDeg = 40, holdMaxDeg = 60, holdEaseDegPerSec = 35, kickDeg = 10, slideReliefScale = 1.3 },
 		},
 	},
 	-- FRONT DRIVE.
 	handbrake = {
 		name = "Handbrake",
 		layout = "FWD",
-		blurb = "The tafheet saloon. Throw it on the lever; the gas pulls it straighter, a lift swings the tail.",
+		blurb = "The tafheet saloon. Throw it on the lever and carry it; slides fade, and a stab of gas pulls it straighter.",
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
-			drift = { featherDegPerSec = -15, kickDeg = -6, holdDecayDegPerSec = 3 },
+			-- The gas back after a lift pulls 6 degrees in, and a held slide
+			-- fades 2 degrees a second. The lift itself holds the angle, for a
+			-- shorter 0.25 s: with the lift swinging the tail (-15 deg/s) a
+			-- hands-off catch from 22 degrees swung to 25 first and took 1.1 s.
+			drift = { featherSeconds = 0.25, featherDegPerSec = 0, kickDeg = -6, holdDecayDegPerSec = 2 },
+			-- Front drive comes out of a gas-held slide still yawing outward
+			-- (the driven fronts were bending the path): let go at 23 degrees
+			-- it carried the angle half a second before the tyres turned it,
+			-- 1.1-1.2 s to straight. The hands-off catch's authority from 15
+			-- degrees instead of 25 brings that to 0.58 (rear drive: 0.63).
+			-- Play, 2026-10-05.
+			steering = { throwFinishFromDeg = 15 },
 		},
 	},
 	liftoff = {
@@ -78,10 +105,18 @@ DriftStyles.styles = {
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
+			-- Lift at 60 km/h or more with the wheel past half and the tail
+			-- comes round: a half-second lift at 100 with the wheel at 0.8 is
+			-- past 20 degrees in 0.31 s and settles at 35-37 on the gas. At
+			-- 0.6 for 0.6 s it swung to 55-58 and held 50; at 0.45 for 0.45 s,
+			-- 50 and 45 (Play, 2026-10-05). Its lifts swing the tail, so a
+			-- hands-off catch from 18 degrees takes 0.9 s.
 			drift = {
-				liftThrow = 0.6, liftThrowSeconds = 0.6, liftThrowRearGrip = 0.6,
-				featherDegPerSec = -25, kickDeg = -8, holdDecayDegPerSec = 2,
+				liftThrow = 0.3, liftThrowSeconds = 0.4, liftThrowRearGrip = 0.6,
+				featherDegPerSec = -10, kickDeg = -8, holdDecayDegPerSec = 2,
 			},
+			-- As Handbrake: the catch's authority from 15 degrees.
+			steering = { throwFinishFromDeg = 15 },
 		},
 	},
 	-- ALL-WHEEL DRIVE.

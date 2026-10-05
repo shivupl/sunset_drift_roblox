@@ -26,6 +26,9 @@ return function(t: T)
 			liftThrowSteer = 0.5,
 			liftThrowRearGrip = 1,
 			powerOverSteer = 2,
+			powerOverMinKmh = 30,
+			powerOverThrow = 0,
+			powerOverRearGrip = 1,
 			gasHoldFromScale = 1,
 			slideReliefScale = 1,
 		}
@@ -113,43 +116,63 @@ return function(t: T)
 	t.eq(o.angleRateDeg, 0, "inside the band it is left alone")
 	o = run(s, band, inp({ driftAngleDeg = -30 }), dt)
 	t.near(o.angleRateDeg, -35, 1e-9, "the band works the same way on either side (rate is toward straight)")
+	-- A held slide swinging through straight (a transition) is grown back to the band
+	o = run(s, band, inp({ driftAngleDeg = 4 }), dt)
+	t.near(o.angleRateDeg, -35, 1e-9, "a held slide passing straight is grown back up to holdMinDeg")
+	o = run(s, band, inp({ driftAngleDeg = 0.5 }), dt)
+	t.eq(o.angleRateDeg, 0, "but not dead straight, with no side to grow it on")
 
 	-- The lift throw: a fast lift with the wheel turned at speed, before the slide
 	local lift = cfgWith({ liftThrow = 0.6, liftThrowRearGrip = 0.7, liftThrowSeconds = 0.5 })
 	s = DriftControl.new()
 	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
 	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
-	t.near(o.liftThrow, 0.6, 1e-9, "a lift with the wheel turned throws the car")
-	t.near(o.liftRearGrip, 0.7, 1e-9, "and cuts the rear's grip")
+	t.near(o.throw, 0.6, 1e-9, "a lift with the wheel turned throws the car")
+	t.near(o.rearGrip, 0.7, 1e-9, "and cuts the rear's grip")
 	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), 0.55)
-	t.eq(o.liftThrow, 0, "the throw lasts liftThrowSeconds")
-	t.eq(o.liftRearGrip, 1, "and so does the grip cut")
+	t.eq(o.throw, 0, "the throw lasts liftThrowSeconds")
+	t.eq(o.rearGrip, 1, "and so does the grip cut")
 	s = DriftControl.new()
 	run(s, lift, inp({ throttle = 1, steer = 0.2, driftAngleDeg = 2 }), 0.1)
 	o = run(s, lift, inp({ throttle = 0, steer = 0.2, driftAngleDeg = 2 }), dt)
-	t.eq(o.liftThrow, 0, "a lift with the wheel straight is not a throw")
+	t.eq(o.throw, 0, "a lift with the wheel straight is not a throw")
 	s = DriftControl.new()
 	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, speedKmh = 40 }), 0.1)
 	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, speedKmh = 40 }), dt)
-	t.eq(o.liftThrow, 0, "under liftThrowMinKmh a lift is not a throw")
+	t.eq(o.throw, 0, "under liftThrowMinKmh a lift is not a throw")
 	s = DriftControl.new()
 	run(s, lift, inp({ throttle = 0.5, steer = 0.8, driftAngleDeg = 2 }), 0.1)
 	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
-	t.eq(o.liftThrow, 0, "a lift from part throttle is not a throw")
+	t.eq(o.throw, 0, "a lift from part throttle is not a throw")
 	s = DriftControl.new()
 	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2, lever = 1 }), 0.1)
 	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, lever = 1 }), dt)
-	t.eq(o.liftThrow, 0, "under the lever a lift is not a throw")
+	t.eq(o.throw, 0, "under the lever a lift is not a throw")
 	s = DriftControl.new()
 	run(s, cfgWith({}), inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
 	o = run(s, cfgWith({}), inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
-	t.eq(o.liftThrow, 0, "liftThrow 0 is off")
+	t.eq(o.throw, 0, "liftThrow 0 is off")
 
 	-- Power-over: traction control steps aside with the wheel turned past powerOverSteer
 	o = DriftControl.step(DriftControl.new(), cfgWith({ powerOverSteer = 0.7 }), gates, inp({ steer = 0.8, driftAngleDeg = 0 }), dt)
 	t.eq(o.tractionAside, true, "past powerOverSteer the launch and traction control step aside")
 	o = DriftControl.step(DriftControl.new(), cfgWith({}), gates, inp({ steer = 1, driftAngleDeg = 0 }), dt)
 	t.eq(o.tractionAside, false, "powerOverSteer above 1 never steps aside")
+	-- ...and with powerOverThrow, gas and the wheel turned throw the car until the hold takes it
+	local pw = cfgWith({ powerOverSteer = 0.7, powerOverThrow = 0.5, powerOverRearGrip = 0.8, powerOverMinKmh = 30 })
+	s = DriftControl.new()
+	o = DriftControl.step(s, pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, speedKmh = 50 }), dt)
+	t.near(o.throw, 0.5, 1e-9, "gas and the wheel past powerOverSteer throw the car")
+	t.near(o.rearGrip, 0.8, 1e-9, "and lighten the rear")
+	o = DriftControl.step(s, pw, gates, inp({ steer = 0.8, driftAngleDeg = 25, speedKmh = 50 }), dt)
+	t.eq(o.gasHold, true, "once sideways the gas hold takes over")
+	t.eq(o.throw, 0, "and the power throw stops")
+	t.eq(o.rearGrip, 1, "with the rear's grip back")
+	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, speedKmh = 20 }), dt).throw, 0, "not under powerOverMinKmh")
+	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, throttle = 0.5 }), dt).throw, 0, "not on part throttle")
+	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.5, driftAngleDeg = 2 }), dt).throw, 0, "not with the wheel short of powerOverSteer")
+	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, lever = 1 }), dt).throw, 0, "not under the lever")
+	t.eq(DriftControl.step(DriftControl.new(), cfgWith({ powerOverSteer = 0.7 }), gates, inp({ steer = 0.8, driftAngleDeg = 2 }), dt).throw, 0, "powerOverThrow 0 is off")
 	-- ...and the gas hold arms lower
 	s = DriftControl.new()
 	o = run(s, cfgWith({ gasHoldFromScale = 0.5 }), inp({ driftAngleDeg = 12 }), dt)

@@ -325,7 +325,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- trips it, however fast the key was pressed, so the taper that keeps the
 	-- car planted on a steady bend stays in force; only the reversal is read
 	-- as "I want the tail out".
-	local throwNow = math.max(self.handbrakeLevel, if throttleHold then 1 else 0, dc.liftThrow)
+	local throwNow = math.max(self.handbrakeLevel, if throttleHold then 1 else 0, dc.throw)
 	local fl = cfg.steering
 	self.flickAge += dt
 	local steerMag = math.abs(input.steer)
@@ -589,7 +589,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			+ brakeDir * (brakeN + drive.engineBrakePerRearWheel * share) * brakeFade
 		local gripMult = rimGrip
 		if not w.front then
-			gripMult *= flickCut * dc.liftRearGrip
+			gripMult *= flickCut * dc.rearGrip
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
 				gripMult *= 1 + (cfg.handbrake.rearGripMultiplier - 1) * hbLevel
@@ -623,8 +623,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 				if self.flickTimer > 0 then
 					wheelGrip *= sc.flickRearGripMultiplier
 				end
-				-- A lift throw lightens the rear like a flick (DriftControl).
-				wheelGrip *= dc.liftRearGrip
+				-- A lift or power throw lightens the rear like a flick (DriftControl).
+				wheelGrip *= dc.rearGrip
 				if hbLevel > 0 then
 					wheelGrip *= 1 + (sc.handbrakeGripCut - 1) * hbLevel
 				end

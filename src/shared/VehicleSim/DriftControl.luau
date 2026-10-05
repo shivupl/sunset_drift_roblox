@@ -24,7 +24,13 @@
 --     permission, liftThrowRearGrip the rear's grip meanwhile).
 --   * Power-over: with the wheel past powerOverSteer, launch and traction
 --     control step aside, and the gas hold arms from
---     throwThrottleHoldFromDeg x gasHoldFromScale.
+--     throwThrottleHoldFromDeg x gasHoldFromScale. With powerOverThrow above
+--     0, the gas and the wheel past powerOverSteer at powerOverMinKmh or more
+--     throw the car (permission powerOverThrow, the rear's grip times
+--     powerOverRearGrip) until it is sideways enough for the gas hold. The
+--     tyres alone never spin up: the rear's drive grip (1.9) is set for the
+--     launch, and with traction control aside full lock and gas at 50 km/h
+--     still peaked at 1.5 degrees (Play, 2026-10-05).
 --
 -- None of it acts while the lever is in: the lever's 360, hold and catch
 -- are the same on every style.
@@ -48,6 +54,9 @@ export type Config = {
 	liftThrowSteer: number,
 	liftThrowRearGrip: number,
 	powerOverSteer: number,
+	powerOverMinKmh: number,
+	powerOverThrow: number,
+	powerOverRearGrip: number,
 	gasHoldFromScale: number,
 	slideReliefScale: number,
 }
@@ -82,8 +91,8 @@ export type Output = {
 	gasHold: boolean,
 	feathering: boolean,
 	angleRateDeg: number, -- + toward straight; 0 under the lever
-	liftThrow: number, -- 0..1 permission from a lift throw
-	liftRearGrip: number, -- rear grip multiplier from a lift throw, 1 for none
+	throw: number, -- 0..1 permission from a lift or power throw
+	rearGrip: number, -- rear grip multiplier from a lift or power throw, 1 for none
 	tractionAside: boolean,
 }
 
@@ -164,7 +173,11 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 			rate -= cfg.kickDeg / cfg.kickSeconds
 		end
 		rate += cfg.holdDecayDegPerSec
-		if keepNow and a < cfg.holdMinDeg then
+		-- Under the band it grows, even swinging through straight in a
+		-- transition (a held chain in a high-angle style otherwise dropped
+		-- its hold at the straight moment, 2026-10-05); dead straight has no
+		-- side to grow on.
+		if a >= 1 and a < cfg.holdMinDeg then
 			rate = math.min(rate, -cfg.holdEaseDegPerSec)
 		elseif a > cfg.holdMaxDeg then
 			rate = math.max(rate, cfg.holdEaseDegPerSec)
@@ -172,15 +185,21 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	end
 	s.kick = math.max(0, s.kick - dt)
 
-	local throwing = s.liftTimer > 0
+	local lifting = s.liftTimer > 0
 	s.liftTimer = math.max(0, s.liftTimer - dt)
+	local powering = cfg.powerOverThrow > 0
+		and gasOn
+		and inp.lever <= 0
+		and not s.holdOn
+		and math.abs(inp.steer) >= cfg.powerOverSteer
+		and inp.speedKmh >= cfg.powerOverMinKmh
 	s.lastThrottle = inp.throttle
 	return {
 		gasHold = s.holdOn,
 		feathering = feathering,
 		angleRateDeg = rate,
-		liftThrow = if throwing then cfg.liftThrow else 0,
-		liftRearGrip = if throwing then cfg.liftThrowRearGrip else 1,
+		throw = math.max(if lifting then cfg.liftThrow else 0, if powering then cfg.powerOverThrow else 0),
+		rearGrip = (if lifting then cfg.liftThrowRearGrip else 1) * (if powering then cfg.powerOverRearGrip else 1),
 		tractionAside = math.abs(inp.steer) >= cfg.powerOverSteer,
 	}
 end

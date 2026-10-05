@@ -18,10 +18,14 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
-local DriftStyles = require(Shared:WaitForChild("DriftStyles"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 
 local DriftStyle = {}
+
+-- The live drift styles: a config reload (L) re-reads them too.
+local function S(): ConfigLoader.Styles
+	return ConfigLoader.driftStyles()
+end
 
 -- The sim swaps its config when the choice changes (VehicleController); the
 -- Settings tab repaints, and rebuilds its chips when the car's drivetrain
@@ -47,22 +51,22 @@ end
 -- The drivetrain of the car this client drives, or drove last (the default
 -- car's before any).
 function DriftStyle.carLayout(): string
-	return DriftStyles.layoutOf(ConfigLoader.forCar(car))
+	return S().layoutOf(ConfigLoader.forCar(car))
 end
 
 -- This player's style for a drivetrain.
 function DriftStyle.current(layout: string): string
-	return DriftStyles.resolve(layout, Players.LocalPlayer:GetAttribute(attr(layout)))
+	return S().resolve(layout, Players.LocalPlayer:GetAttribute(attr(layout)))
 end
 
 -- The style a car drives on: Studio's any-drivetrain pick if one is set,
 -- else this player's style for the car's drivetrain.
 function DriftStyle.forCar(carId: string?): string
 	local any = Players.LocalPlayer:GetAttribute(ANY_ATTRIBUTE)
-	if RunService:IsStudio() and type(any) == "string" and DriftStyles.styles[any] then
+	if RunService:IsStudio() and type(any) == "string" and S().styles[any] then
 		return any
 	end
-	return DriftStyle.current(DriftStyles.layoutOf(ConfigLoader.forCar(carId)))
+	return DriftStyle.current(S().layoutOf(ConfigLoader.forCar(carId)))
 end
 
 -- The config a car's sim drives on: the car's own with its style on.
@@ -72,7 +76,7 @@ function DriftStyle.configFor(carId: string?): ConfigLoader.Config
 	local key = id .. "|" .. styleId
 	local cfg = cache[key]
 	if not cfg then
-		cfg = DriftStyles.apply(ConfigLoader.forCar(id), styleId) :: ConfigLoader.Config
+		cfg = S().apply(ConfigLoader.forCar(id), styleId) :: ConfigLoader.Config
 		cache[key] = cfg
 	end
 	return cfg
@@ -107,7 +111,7 @@ end
 -- pick. The attributes' change signals tell the sim and the panel (start),
 -- so a harness setting them directly works the same.
 function DriftStyle.set(id: string)
-	local style = DriftStyles.styles[id]
+	local style = S().styles[id]
 	if not style then
 		return
 	end
@@ -151,7 +155,7 @@ local function showLabel(id: string)
 		s.Parent = gui
 		screen = s
 	end
-	local style = DriftStyles.styles[id]
+	local style = S().styles[id]
 	local label = (screen :: ScreenGui):FindFirstChild("Text") :: TextLabel
 	label.Text = `DRIFT: {string.upper(style.name)} ({style.layout})`
 	;(screen :: ScreenGui).Enabled = true
@@ -167,7 +171,7 @@ end
 -- O: the next style of the car's drivetrain. Shift+O: the next of all.
 local function cycle(all: boolean)
 	local current = DriftStyle.forCar(car)
-	local list = if all then DriftStyles.order else DriftStyles.forLayout(DriftStyle.carLayout())
+	local list = if all then S().order else S().forLayout(DriftStyle.carLayout())
 	local i = table.find(list, current) or 0
 	local nextId = list[i % #list + 1]
 	if all then
@@ -180,7 +184,7 @@ end
 
 function DriftStyle.start()
 	local player = Players.LocalPlayer
-	for _, layout in DriftStyles.layouts do
+	for _, layout in S().layouts do
 		player:GetAttributeChangedSignal(attr(layout)):Connect(notify)
 	end
 	player:GetAttributeChangedSignal(ANY_ATTRIBUTE):Connect(notify)

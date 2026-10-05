@@ -13,7 +13,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SkyConfig = require(Shared:WaitForChild("SkyConfig"))
-local DriftStyles = require(Shared:WaitForChild("DriftStyles"))
+local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local Sky = require(script.Parent.Sky)
 local DriftStyle = require(script.Parent.DriftStyle)
@@ -48,7 +48,7 @@ local function paint()
 	end
 	local n = driftNote
 	if n then
-		n.Text = DriftStyles.styles[chosen].blurb
+		n.Text = ConfigLoader.driftStyles().styles[chosen].blurb
 	end
 end
 
@@ -59,7 +59,7 @@ local function buildDriftChips()
 		return
 	end
 	local layout = DriftStyle.carLayout()
-	h.Text = "DRIFT STYLE · " .. string.upper(DriftStyles.layoutName[layout])
+	h.Text = "DRIFT STYLE · " .. string.upper(ConfigLoader.driftStyles().layoutName[layout])
 	if driftLayout == layout then
 		return
 	end
@@ -68,10 +68,10 @@ local function buildDriftChips()
 		b:Destroy()
 	end
 	table.clear(driftButtons)
-	local ids = DriftStyles.forLayout(layout)
+	local ids = ConfigLoader.driftStyles().forLayout(layout)
 	local count = #ids
 	for i, id in ids do
-		local b = UIKit.chip(r, DriftStyles.styles[id].name, touchNow)
+		local b = UIKit.chip(r, ConfigLoader.driftStyles().styles[id].name, touchNow)
 		b.Name = "Drift_" .. id
 		b.AutomaticSize = Enum.AutomaticSize.None
 		b.LayoutOrder = i
