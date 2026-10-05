@@ -459,13 +459,23 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	end
 	local hbLevel = self.handbrakeLevel
 
-	-- 4. Drivetrain from rear wheel speed and last step's spin state. With
-	-- the slip model the engine turns with the rear wheels' own spin.
+	-- 4. Drivetrain from the driven wheels' speed and last step's spin
+	-- state. With the slip model the engine turns with their own spin.
 	local slipCfg = cfg.tires.slipModel
 	local slipModel = slipCfg ~= nil and slipCfg.enabled
-	local rearWheelSpeed = (contacts[3].vLong + contacts[4].vLong) / 2
-	local rearSpinning = self.wheels[3].state.saturated or self.wheels[4].state.saturated
-	local rearSpinSpeed: number? = if slipModel then (self.wheels[3].omega + self.wheels[4].omega) / 2 * cfg.body.wheelRadius else nil
+	-- Which axles drive and how much (drivetrain.layout): rear drive is
+	-- (0, 1), the same path every car took before layouts.
+	local frontShare, rearShare = Drivetrain.axleShares(cfg.drivetrain)
+	-- Road speed and spin of the driven wheels, weighted by share: the
+	-- gearbox goes by the first, the engine turns with the second.
+	local drivenWheelSpeed = frontShare * (contacts[1].vLong + contacts[2].vLong) / 2
+		+ rearShare * (contacts[3].vLong + contacts[4].vLong) / 2
+	local drivenSpinning = (frontShare > 0 and (self.wheels[1].state.saturated or self.wheels[2].state.saturated))
+		or (rearShare > 0 and (self.wheels[3].state.saturated or self.wheels[4].state.saturated))
+	local drivenSpinSpeed: number? = if slipModel
+		then (frontShare * (self.wheels[1].omega + self.wheels[2].omega) / 2 + rearShare * (self.wheels[3].omega + self.wheels[4].omega) / 2)
+			* cfg.body.wheelRadius
+		else nil
 	-- Traction control only while the car is pointing where it is going,
 	-- and never on two wheels: the airborne rear reads as spinning, and
 	-- cutting the throttle there takes away the yaw that holds a natl up.
@@ -475,31 +485,43 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- Launch control, slip model only. The wheels are real now, so rather
 	-- than wait for a spin and cut the throttle back (the loop never goes
 	-- under its 0.7 floor, and full launch torque is about twice what the
-	-- rears can take), the throttle is capped at the torque the rear tyres
-	-- can put down right now: their load, grip, load sensitivity and drive
-	-- grip at the peak slip, through this gear. The wheels sit just under
-	-- the peak instead of spinning past it onto the sliding floor.
+	-- rears can take), the throttle is capped at the torque the driven
+	-- tyres can put down right now: their load, grip, load sensitivity and
+	-- drive grip at the peak slip, through this gear. The wheels sit just
+	-- under the peak instead of spinning past it onto the sliding floor.
+	-- The drive also has to spin the wheels and the engine up with the car
+	-- (Drivetrain.launchCap): in first gear the crank's inertia through the
+	-- gearing is ten times a wheel's, and leaving it out capped the launch
+	-- 18% short.
 	local throttle = input.throttle
 	if slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
 		local sc = slipCfg :: Wheel.SlipConfig
-		local rearAxle = cfg.tires.rear
 		local staticLoad = mass * g / 4
-		local wheelCap = math.huge
-		for i = 3, 4 do
-			local load = contacts[i].susp.force
-			wheelCap = math.min(wheelCap, load * rearAxle.grip * Wheel.loadFactor(sc, load, staticLoad) * (rearAxle.longitudinalGrip or 1))
+		-- What one wheel of the axle (contacts first and first + 1) can put
+		-- down: the lesser of the two.
+		local function axleCap(first: number, tyre: Tire.AxleConfig): number
+			local cap = math.huge
+			for i = first, first + 1 do
+				local load = contacts[i].susp.force
+				cap = math.min(cap, load * tyre.grip * Wheel.loadFactor(sc, load, staticLoad) * (tyre.longitudinalGrip or 1))
+			end
+			return cap
 		end
+		local axles: { Drivetrain.LaunchAxle } = {
+			{ cap = axleCap(1, cfg.tires.front), share = frontShare },
+			{ cap = axleCap(3, cfg.tires.rear), share = rearShare },
+		}
 		local overall = cfg.drivetrain.gearRatios[self.drivetrain.gear] * cfg.drivetrain.finalDrive
-		local r = cfg.body.wheelRadius
-		-- The drive also has to spin the wheels and the engine up with the
-		-- car. In first gear the crank's inertia through the gearing is ten
-		-- times a wheel's, and leaving it out capped the launch 18% short:
-		-- no wheelspin, and 0-100 slower than the spin-and-cut loop.
-		local tyreForce = wheelCap * sc.launchGripUse
-		local wheelInertia = sc.wheelInertia + 0.5 * sc.engineInertia * overall * overall
-		local carAccel = 2 * tyreForce / mass
-		local wheelTorque = tyreForce * r + wheelInertia * carAccel / r
-		local crankCap = wheelTorque * 2 / (overall * cfg.drivetrain.drivelineEfficiency)
+		local crankCap = Drivetrain.launchCap({
+			axles = axles,
+			use = sc.launchGripUse,
+			mass = mass,
+			wheelInertia = sc.wheelInertia,
+			engineInertia = sc.engineInertia,
+			overall = overall,
+			efficiency = cfg.drivetrain.drivelineEfficiency,
+			radius = cfg.body.wheelRadius,
+		})
 		local curveTorque = Curve.lookup(cfg.drivetrain.torqueCurve, self.drivetrain.rpm)
 		if curveTorque > 0 then
 			throttle = math.min(throttle, crankCap / curveTorque)
@@ -520,10 +542,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		dt,
 		throttle,
 		input.brake,
-		rearWheelSpeed,
-		rearSpinning,
+		drivenWheelSpeed,
+		drivenSpinning,
 		tractionAllowed,
-		rearSpinSpeed,
+		drivenSpinSpeed,
 		self.slideHold > 0
 	)
 
@@ -548,19 +570,25 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		local w = c.wheel
 		local brakeFade = math.clamp(math.abs(c.vLong) / cfg.drivetrain.brakeFadeMps, 0, 1)
 		local brakeDir = -math.sign(c.vLong)
-		local fxDemand = 0
-		local gripMult = rimGrip
-		if w.front then
-			fxDemand = brakeDir * drive.brakePerFrontWheel * brakeFade
-		else
+		-- This wheel's share of the drive and of the engine braking (its
+		-- axle's, drivetrain.layout), and its diff's split of that.
+		local share = if w.front then frontShare else rearShare
+		local brakeN = if w.front then drive.brakePerFrontWheel else drive.brakePerRearWheel
+		local diffShare = 1
+		if share > 0 then
 			-- Differential: an open diff can only push this wheel as hard as
-			-- the other rear can react, so drive here scales with the other
-			-- wheel's load. diffLock blends toward a welded split.
-			local other = if w.left then contacts[4] else contacts[3]
+			-- the other wheel on its axle can react, so drive here scales
+			-- with that wheel's load. The axle's lock blends toward a welded
+			-- split.
+			local axleLock = if w.front then cfg.drivetrain.frontDiffLock else cfg.drivetrain.diffLock
+			local other = contacts[if w.front then (if w.left then 2 else 1) else (if w.left then 4 else 3)]
 			local ratio = if c.susp.force > 1e-3 then math.clamp(other.susp.force / c.susp.force, 0, 1) else 1
-			local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
-			fxDemand = drive.drivePerRearWheel * diffShare
-				+ brakeDir * (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * brakeFade
+			diffShare = axleLock + (1 - axleLock) * ratio
+		end
+		local fxDemand = drive.drivePerRearWheel * share * diffShare
+			+ brakeDir * (brakeN + drive.engineBrakePerRearWheel * share) * brakeFade
+		local gripMult = rimGrip
+		if not w.front then
 			gripMult *= flickCut
 			if hbLevel > 0 then
 				-- Handbrake cuts rear grip and drags the rear wheels; it must not stop the car.
@@ -578,20 +606,20 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			-- that is left is handbrakeGripCut.
 			local sc = slipCfg :: Wheel.SlipConfig
 			local r = cfg.body.wheelRadius
-			local driveTorque, brakeTorque = 0, 0
+			local driveTorque = 0
+			local brakeTorque = (brakeN + drive.engineBrakePerRearWheel * share) * r
 			local inertia = sc.wheelInertia
 			local wheelGrip = rimGrip
-			if w.front then
-				brakeTorque = drive.brakePerFrontWheel * r
-			else
-				local other = if w.left then contacts[4] else contacts[3]
-				local ratio = if c.susp.force > 1e-3 then math.clamp(other.susp.force / c.susp.force, 0, 1) else 1
-				local diffShare = cfg.drivetrain.diffLock + (1 - cfg.drivetrain.diffLock) * ratio
-				driveTorque = drive.drivePerRearWheel * diffShare * r
-				brakeTorque = (drive.brakePerRearWheel + drive.engineBrakePerRearWheel) * r + sc.handbrakeTorque * hbLevel
+			if share > 0 then
+				driveTorque = drive.drivePerRearWheel * share * diffShare * r
 				local gearRatio = if drive.gear == -1 then cfg.drivetrain.reverseRatio else cfg.drivetrain.gearRatios[drive.gear]
 				local overall = gearRatio * cfg.drivetrain.finalDrive
-				inertia += 0.5 * sc.engineInertia * overall * overall
+				-- The crank's inertia, reflected through the gearing, shared
+				-- between the driven axles as the torque is.
+				inertia += 0.5 * sc.engineInertia * overall * overall * share
+			end
+			if not w.front then
+				brakeTorque += sc.handbrakeTorque * hbLevel
 				if self.flickTimer > 0 then
 					wheelGrip *= sc.flickRearGripMultiplier
 				end
@@ -646,7 +674,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		local targetOmega = groundOmega
 		if ws.locked then
 			targetOmega = 0
-		elseif out.saturated and not w.front then
+		elseif out.saturated and share > 0 then
 			local ratio = if drive.gear == -1 then -cfg.drivetrain.reverseRatio else cfg.drivetrain.gearRatios[drive.gear]
 			local engineOmega = drive.rpm / (60 / (2 * math.pi)) / (ratio * cfg.drivetrain.finalDrive)
 			targetOmega = if math.abs(engineOmega) > math.abs(groundOmega) then engineOmega else groundOmega

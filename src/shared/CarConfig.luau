@@ -214,6 +214,18 @@ local config = {
 		-- alone and yaws the car. Partial lock keeps the welded feel in a
 		-- four-wheel drift (loads stay close) and opens up when one lifts.
 		diffLock = 0.25,
+		-- Which wheels drive (DESIGN.md, Drivetrains). "RWD" is every car
+		-- until the catalog says otherwise (the owner, 2026-10-05: "the drift
+		-- style to differ slightly depending on the drivestyle of the vehicle
+		-- (awd,rwd,fwd,etc)"). FWD drives the fronts; AWD splits by
+		-- frontShare through a fixed centre diff. Drift styles set the split
+		-- (DriftStyles).
+		layout = "RWD",
+		frontShare = 0.5,
+		-- The front axle's diff under FWD and AWD, like diffLock for the
+		-- rear: open enough that a lifted wheel on two wheels does not yaw
+		-- the car.
+		frontDiffLock = 0.25,
 		idleRpm = 900,
 		redlineRpm = 6800,
 		upshiftRpm = 6400,
