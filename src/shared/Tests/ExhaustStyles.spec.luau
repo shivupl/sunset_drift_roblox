@@ -79,4 +79,12 @@ return function(t: T)
 	t.near(ExhaustStyles.scaleFor(crackle, 1, 1), 1, 1e-9, "factory at full revs: scale 1")
 	t.ok(ExhaustStyles.scaleFor(crackle, 2.5, 1) < 2, "titanium does not double a crackle")
 	t.ok(ExhaustStyles.scaleFor(crackle, 2.5, 0.6) < ExhaustStyles.scaleFor(crackle, 2.5, 1), "lower revs, fewer pops")
+	-- Which layers a pop emits: every layer whose from is at or below its
+	-- size, in name order.
+	local S = ExhaustStyles.styles
+	t.eq(table.concat(ExhaustStyles.layersFor(S.antilag, "small"), ","), "ball,core,flash", "a small anti-lag pop: fireball, core and flash only")
+	t.eq(table.concat(ExhaustStyles.layersFor(S.antilag, "big"), ","), "ball,core,flash,soot,sparks,tongue", "a big anti-lag pop: every layer")
+	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "small"), ","), "lick,root", "a small crackle: licks over the root")
+	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "mid"), ","), "flash,lick,root,wisp", "a mid crackle adds the flash and a wisp")
+	t.eq(#ExhaustStyles.layersFor(S.classic, "mid"), 0, "Classic has no layers of its own (CosmeticsConfig's)")
 end

@@ -19,6 +19,14 @@
 --
 -- The emitters live under the outlet's own holder part, so they go when
 -- the look changes and CarCosmetics rebuilds the outlets.
+--
+-- Styles (2026-10-04, ExhaustStyles): every style but Classic has its own
+-- layers, built at each outlet the first time they are used, one emitter
+-- per layer and pop size, named "style:layer:size". A pop's size picks the
+-- emitters, so a small crack and a big bang are drawn at their own sizes
+-- without touching a live emitter's Size (Size, Colour and Transparency
+-- reach particles already out, so changing them per pop made earlier flames
+-- jump). Classic is the garage round 2 flame above, unchanged.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -30,6 +38,8 @@ local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local CarLook = require(Shared:WaitForChild("CarLook"))
 local CarCosmeticMounts = require(Shared:WaitForChild("CarCosmeticMounts"))
 local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
+local ExhaustStyles = require(Shared:WaitForChild("ExhaustStyles"))
+local ExhaustSputter = require(Shared:WaitForChild("ExhaustSputter"))
 local CarCosmetics = require(script.Parent:WaitForChild("CarCosmetics"))
 
 local ExhaustFlames = {}
@@ -351,25 +361,146 @@ end
 
 -- One pop: a flame at every outlet of the car. item overrides the car's
 -- own exhaust (the garage preview's draft look).
-function ExhaustFlames.pop(model: Model, item: CosmeticsConfig.Item?)
+function ExhaustFlames.pop(model: Model, item: CosmeticsConfig.Item?): Attachment?
 	local outlets = CarCosmetics.outlets(model)
 	if #outlets == 0 then
-		return
+		return nil
 	end
 	local sc, spot = scaleOf(model)
 	local it = exhaustItem(model, item)
 	local trail = trailOf(model)
+	local first: Attachment? = nil
 	for _, outlet in outlets do
 		local mouth = mouthOf(outlet) or buildMouth(outlet, sc, spot)
 		if not mouth then
 			continue
 		end
+		first = first or mouth
 		dress(mouth, it, sc, trail)
 		for _, name in LAYERS do
 			emit(mouth, name)
 		end
 		glow(outlet)
 	end
+	return first
+end
+
+-- A style layer's emitter at one mouth for one pop size, built on first
+-- use and rebuilt only if the car's scale changes (sizeKey: the layer's
+-- size multiplier in studs).
+local function styleEmitter(mouth: Attachment, styleId: string, name: string, class: string, L: ExhaustStyles.Layer, sizeKey: number, sc: number): ParticleEmitter
+	local id = `{styleId}:{name}:{class}`
+	local found = mouth:FindFirstChild(id)
+	if found and found:IsA("ParticleEmitter") and found:GetAttribute("SizeKey") == sizeKey then
+		return found
+	end
+	if found then
+		found:Destroy()
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Name = id
+	e.Enabled = false
+	e.Rate = 0
+	e.Texture = L.texture
+	if L.flipbook then
+		e.FlipbookLayout = (Enum.ParticleFlipbookLayout :: any)[L.flipbook.layout]
+		e.FlipbookMode = (Enum.ParticleFlipbookMode :: any)[L.flipbook.mode]
+	end
+	e.EmissionDirection = Enum.NormalId.Front
+	e.Orientation = if L.alongMotion then Enum.ParticleOrientation.VelocityParallel else Enum.ParticleOrientation.FacingCamera
+	e.LightInfluence = if L.lightEmission > 0 then 0 else 1
+	e.LightEmission = L.lightEmission
+	e.Brightness = L.brightness
+	e.LockedToPart = L.locked
+	e.VelocityInheritance = if L.locked then 0 else F.inheritVelocity
+	e.Drag = L.drag
+	e.SpreadAngle = Vector2.new(L.spreadDeg, L.spreadDeg)
+	e.Lifetime = NumberRange.new(L.lifetime[1], L.lifetime[2])
+	e.Size = numbers(L.size, sizeKey)
+	e.Transparency = numbers(L.transparency, 1)
+	e.Squash = numbers(L.squash, 1)
+	e.Acceleration = Vector3.new(0, L.riseMps2 * sc, 0)
+	-- Only camera-facing layers turn (BEHAVIOURS: a turned particle drawn
+	-- along its motion splays into a starburst).
+	if L.turn and not L.alongMotion then
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-40, 40)
+	end
+	e.ZOffset = L.zOffsetM * sc
+	if L.colors then
+		local keys: { ColorSequenceKeypoint } = {}
+		for _, k in L.colors do
+			table.insert(keys, ColorSequenceKeypoint.new(k[1] :: number, k[2] :: Color3))
+		end
+		e.Color = ColorSequence.new(keys)
+	end
+	e:SetAttribute("SizeKey", sizeKey)
+	e.Parent = mouth
+	return e
+end
+
+-- n particles from one emitter, as the layer says: after a delay, let out
+-- as a jet, or all at once.
+local function emitLayer(e: ParticleEmitter, L: ExhaustStyles.Layer, n: number)
+	if n <= 0 then
+		return
+	end
+	if L.delaySeconds then
+		task.delay(L.delaySeconds / F.timeScale, function()
+			if e.Parent then
+				e:Emit(n)
+			end
+		end)
+	elseif L.jetSeconds then
+		jet(e, n, L.jetSeconds)
+	else
+		e:Emit(n)
+	end
+end
+
+-- One pop of a style at every outlet of the car, drawn at the pop's size:
+-- the layers its size reaches (ExhaustStyles.layersFor), each emitter's
+-- particles scaled by the size's count, and its speed (so its length) by
+-- the size and the pop's level. Classic draws as pop does. item overrides
+-- the car's own exhaust (the garage preview). Returns the first outlet's
+-- mouth, where ExhaustPops hangs the flash light.
+function ExhaustFlames.flame(model: Model, styleId: string, pop: ExhaustSputter.Pop, item: CosmeticsConfig.Item?): Attachment?
+	local style = ExhaustStyles.styles[styleId]
+	if not style or not style.layers then
+		return ExhaustFlames.pop(model, item)
+	end
+	local layers = style.layers :: { [string]: ExhaustStyles.Layer }
+	local outlets = CarCosmetics.outlets(model)
+	if #outlets == 0 then
+		return nil
+	end
+	local sc, spot = scaleOf(model)
+	local it = exhaustItem(model, item)
+	local k = (it.flameSize or 1) * sc
+	local trail = trailOf(model)
+	local look = style.classes[pop.class]
+	local names = ExhaustStyles.layersFor(style, pop.class)
+	local first: Attachment? = nil
+	for _, outlet in outlets do
+		local mouth = mouthOf(outlet) or buildMouth(outlet, sc, spot)
+		if not mouth then
+			continue
+		end
+		first = first or mouth
+		for _, name in names do
+			local L = layers[name]
+			local e = styleEmitter(mouth, styleId, name, pop.class, L, k * look.size, sc)
+			e.TimeScale = F.timeScale
+			local reach = if L.locked then 1 + F.trailGain * trail else 1
+			local v = k * look.speed * (0.75 + 0.25 * pop.level) * reach
+			e.Speed = NumberRange.new(L.speed[1] * v, L.speed[2] * v)
+			emitLayer(e, L, math.round(rng:NextInteger(L.count[1], L.count[2]) * look.count))
+		end
+		if pop.class ~= "small" then
+			glow(outlet)
+		end
+	end
+	return first
 end
 
 -- A pop sound on the car, from a small pool so pops overlap: the crackle

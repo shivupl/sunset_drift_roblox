@@ -200,7 +200,7 @@ end
 local function root(count: { number }, size: { { number } }): Layer
 	return layer({
 		texture = HOT, from = "small", locked = true, alongMotion = true,
-		count = count, jetSeconds = 0.05, lifetime = { 0.04, 0.07 }, speed = { 1, 2 },
+		count = count, jetSeconds = 0.07, lifetime = { 0.05, 0.08 }, speed = { 1, 2 },
 		size = size,
 		transparency = { { 0, 0 }, { 0.6, 0.25 }, { 1, 1 } },
 		squash = { { 0, -1.2 }, { 1, -0.8 } },
@@ -209,17 +209,21 @@ local function root(count: { number }, size: { { number } }): Layer
 	})
 end
 
--- Ragged animated flame licks, stretched out of the pipe.
+-- Ragged animated flame licks out of the pipe: let out over 0.1 s so the
+-- flame stays joined to the mouth while it lasts (particles of every age
+-- along it), and full rather than stretched thin (Play, 2026-10-05: at
+-- 0.18-0.32 m and squash -1 a big pop was a 0.5 m streak from the side;
+-- at these sizes it is a ~1 m plume, about 60-120 px from the chase cam).
 local function licks(from: Class, count: { number }, speed: { number }): Layer
 	return layer({
 		texture = FIRE, flipbook = GRID4, from = from, locked = true, alongMotion = true,
-		count = count, jetSeconds = 0.05, lifetime = { 0.08, 0.16 }, speed = speed,
-		drag = 6, riseMps2 = 6,
-		size = { { 0, 0.18 }, { 0.25, 0.32 }, { 1, 0.12 } },
+		count = count, jetSeconds = 0.1, lifetime = { 0.07, 0.12 }, speed = speed,
+		drag = 3, riseMps2 = 6,
+		size = { { 0, 0.32 }, { 0.3, 0.62 }, { 1, 0.3 } },
 		transparency = { { 0, 0.1 }, { 0.6, 0.3 }, { 1, 1 } },
-		squash = { { 0, -1 }, { 1, -0.6 } },
+		squash = { { 0, -0.5 }, { 1, -0.2 } },
 		colors = { ck(0, hex("#FFE6A0")), ck(0.35, hex("#FF8A2A")), ck(1, hex("#C83A0A")) },
-		lightEmission = 1, brightness = 1.6, zOffsetM = 0.04,
+		lightEmission = 1, brightness = 2, zOffsetM = 0.04,
 	})
 end
 
@@ -228,7 +232,7 @@ end
 local function flash(from: Class, size: { { number } }, colors: { { any } }, brightness: number): Layer
 	return layer({
 		texture = STAR, flipbook = GRID4, from = from, locked = true, alongMotion = false,
-		count = { 1, 1 }, lifetime = { 0.06, 0.09 }, speed = { 0, 0 }, spreadDeg = 0,
+		count = { 1, 1 }, lifetime = { 0.07, 0.11 }, speed = { 0, 0 }, spreadDeg = 0,
 		size = size,
 		transparency = { { 0, 0.2 }, { 1, 1 } },
 		colors = colors,
@@ -282,9 +286,9 @@ ExhaustStyles.styles = {
 		},
 		light = { color = hex("#FF8A3A"), brightness = 3, rangeM = 8, seconds = 0.08 },
 		layers = {
-			root = root({ 3, 4 }, { { 0, 0.06 }, { 0.3, 0.09 }, { 1, 0.03 } }),
-			lick = licks("small", { 2, 3 }, { 4, 9 }),
-			flash = flash("mid", { { 0, 0.5 }, { 1, 0.25 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
+			root = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
+			lick = licks("small", { 6, 8 }, { 5, 10 }),
+			flash = flash("mid", { { 0, 0.9 }, { 1, 0.5 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
 			wisp = layer({
 				texture = PUFF, flipbook = GRID4, from = "mid", locked = false, alongMotion = false, turn = true,
 				delaySeconds = 0.05, count = { 1, 1 }, lifetime = { 0.5, 0.8 }, speed = { 0.5, 1 }, spreadDeg = 15,
@@ -321,17 +325,19 @@ ExhaustStyles.styles = {
 		},
 		light = { color = hex("#FF7A2A"), brightness = 6, rangeM = 12, seconds = 0.14 },
 		layers = {
-			core = root({ 4, 5 }, { { 0, 0.08 }, { 0.3, 0.12 }, { 1, 0.04 } }),
+			core = root({ 4, 5 }, { { 0, 0.1 }, { 0.3, 0.15 }, { 1, 0.06 } }),
 			ball = layer({
 				texture = FIREBALL, flipbook = GRID8, from = "small", locked = false, alongMotion = false, turn = true,
 				count = { 2, 3 }, lifetime = { 0.22, 0.32 }, speed = { 2, 5 }, spreadDeg = 15,
 				drag = 5, riseMps2 = 3,
-				size = { { 0, 0.35 }, { 0.3, 0.75 }, { 1, 0.9 } },
+				-- The fireball sheet starts as a point, so it is sized for its
+				-- middle frames: about 1.2 m across at 0.12 s (Play, 2026-10-05).
+				size = { { 0, 0.5 }, { 0.3, 1.05 }, { 1, 1.25 } },
 				transparency = { { 0, 0 }, { 0.7, 0.2 }, { 1, 1 } },
 				lightEmission = 0.6, brightness = 1.6, zOffsetM = 0.05,
 			}),
-			tongue = licks("mid", { 3, 4 }, { 6, 11 }),
-			flash = flash("small", { { 0, 0.9 }, { 1, 0.4 } }, { ck(0, hex("#FFF2D0")), ck(1, hex("#FFB060")) }, 2.2),
+			tongue = licks("mid", { 5, 7 }, { 6, 12 }),
+			flash = flash("small", { { 0, 1.3 }, { 1, 0.6 } }, { ck(0, hex("#FFF2D0")), ck(1, hex("#FFB060")) }, 2.2),
 			sparks = sparks("mid", { 6, 12 }, { 6, 12 }, SPARK_COLORS),
 			soot = layer({
 				texture = PUFF, flipbook = GRID4, from = "big", locked = false, alongMotion = false, turn = true,
@@ -374,7 +380,7 @@ ExhaustStyles.styles = {
 			core = layer({
 				texture = HOT, from = "small", locked = true, alongMotion = true,
 				count = { 4, 5 }, jetSeconds = 0.06, lifetime = { 0.05, 0.09 }, speed = { 1.5, 3 },
-				size = { { 0, 0.07 }, { 0.3, 0.11 }, { 1, 0.04 } },
+				size = { { 0, 0.1 }, { 0.3, 0.15 }, { 1, 0.06 } },
 				transparency = { { 0, 0 }, { 0.6, 0.2 }, { 1, 1 } },
 				squash = { { 0, -1.6 }, { 1, -1 } },
 				colors = { ck(0, hex("#FFFFFF")), ck(0.3, hex("#9FC0FF")), ck(1, hex("#5A86FF")) },
@@ -384,25 +390,27 @@ ExhaustStyles.styles = {
 			-- emission, and the blue clips to white under bloom (BEHAVIOURS).
 			jet = layer({
 				texture = WHITEFIRE, flipbook = GRID4, from = "small", locked = true, alongMotion = true,
-				count = { 4, 6 }, jetSeconds = 0.07, lifetime = { 0.1, 0.18 }, speed = { 6, 12 },
-				drag = 5, riseMps2 = 2,
-				size = { { 0, 0.14 }, { 0.3, 0.26 }, { 1, 0.08 } },
-				transparency = { { 0, 0.15 }, { 0.6, 0.35 }, { 1, 1 } },
-				squash = { { 0, -1.4 }, { 1, -0.8 } },
-				colors = { ck(0, hex("#9FC4FF")), ck(0.4, hex("#3A6BFF")), ck(1, hex("#7A3CFF")) },
-				lightEmission = 1, brightness = 1.3, zOffsetM = 0.04,
+				count = { 4, 6 }, jetSeconds = 0.1, lifetime = { 0.08, 0.14 }, speed = { 8, 14 },
+				drag = 3, riseMps2 = 2,
+				-- A ~1 m torch from the side (Play, 2026-10-05; at 0.26 m wide it
+				-- was a pale 0.6 m streak).
+				size = { { 0, 0.2 }, { 0.3, 0.38 }, { 1, 0.14 } },
+				transparency = { { 0, 0.05 }, { 0.6, 0.25 }, { 1, 1 } },
+				squash = { { 0, -1 }, { 1, -0.6 } },
+				colors = { ck(0, hex("#7FA8FF")), ck(0.4, hex("#2E5BFF")), ck(1, hex("#6A2CFF")) },
+				lightEmission = 1, brightness = 1.1, zOffsetM = 0.04,
 			}),
 			fringe = layer({
 				texture = WHITEFIRE, flipbook = GRID4, from = "mid", locked = true, alongMotion = true,
-				count = { 2, 3 }, jetSeconds = 0.07, lifetime = { 0.12, 0.2 }, speed = { 5, 10 }, spreadDeg = 12,
+				count = { 2, 3 }, jetSeconds = 0.1, lifetime = { 0.12, 0.2 }, speed = { 7, 12 }, spreadDeg = 12,
 				drag = 5, riseMps2 = 4,
-				size = { { 0, 0.18 }, { 0.3, 0.3 }, { 1, 0.1 } },
-				transparency = { { 0, 0.5 }, { 0.5, 0.55 }, { 1, 1 } },
+				size = { { 0, 0.26 }, { 0.3, 0.42 }, { 1, 0.16 } },
+				transparency = { { 0, 0.35 }, { 0.5, 0.45 }, { 1, 1 } },
 				squash = { { 0, -1.2 }, { 1, -0.7 } },
-				colors = { ck(0, hex("#6A3CFF")), ck(1, hex("#C04CFF")) },
+				colors = { ck(0, hex("#5A2CFF")), ck(1, hex("#B040FF")) },
 				lightEmission = 1, brightness = 1.1,
 			}),
-			flash = flash("mid", { { 0, 0.45 }, { 1, 0.2 } }, { ck(0, hex("#BFD2FF")), ck(1, hex("#6A8CFF")) }, 1.8),
+			flash = flash("mid", { { 0, 0.7 }, { 1, 0.35 } }, { ck(0, hex("#BFD2FF")), ck(1, hex("#6A8CFF")) }, 1.8),
 			sparks = sparks("big", { 0, 2 }, { 6, 12 }, { ck(0, hex("#E8F0FF")), ck(1, hex("#6A8CFF")) }),
 		},
 	},
@@ -431,7 +439,7 @@ ExhaustStyles.styles = {
 		},
 		light = { color = hex("#FF8A3A"), brightness = 4, rangeM = 10, seconds = 0.09 },
 		layers = {
-			core = root({ 3, 4 }, { { 0, 0.06 }, { 0.3, 0.09 }, { 1, 0.03 } }),
+			core = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
 			ball = layer({
 				texture = FIREBALL, flipbook = GRID8, from = "small", locked = false, alongMotion = false, turn = true,
 				count = { 1, 2 }, lifetime = { 0.12, 0.18 }, speed = { 2, 4 }, spreadDeg = 12,
@@ -440,8 +448,8 @@ ExhaustStyles.styles = {
 				transparency = { { 0, 0 }, { 0.7, 0.25 }, { 1, 1 } },
 				lightEmission = 0.7, brightness = 1.5, zOffsetM = 0.05,
 			}),
-			lick = licks("small", { 2, 3 }, { 4, 9 }),
-			flash = flash("small", { { 0, 0.6 }, { 1, 0.3 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
+			lick = licks("small", { 4, 6 }, { 5, 10 }),
+			flash = flash("small", { { 0, 0.9 }, { 1, 0.45 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
 			sparks = sparks("mid", { 3, 6 }, { 6, 12 }, SPARK_COLORS),
 			puff = layer({
 				texture = PUFF, flipbook = GRID4, from = "mid", locked = false, alongMotion = false, turn = true,
@@ -523,6 +531,23 @@ function ExhaustStyles.validRelay(kind: any, style: any, seed: any, scale: any):
 		return false
 	end
 	return type(scale) == "number" and scale == scale and scale >= 0 and scale <= ExhaustStyles.maxScale
+end
+
+local RANK = { small = 1, mid = 2, big = 3 }
+
+-- The layers a pop of this size emits: every layer whose from is at or
+-- below it, in name order (ZOffset, not this order, decides what draws on
+-- top). Classic has none of its own; ExhaustFlames draws its six.
+function ExhaustStyles.layersFor(style: Style, class: Class): { string }
+	local out: { string } = {}
+	local layers: { [string]: Layer } = style.layers or {}
+	for name, L in layers do
+		if RANK[L.from] <= RANK[class] then
+			table.insert(out, name)
+		end
+	end
+	table.sort(out)
+	return out
 end
 
 -- How much a burst is scaled: the exhaust's crackleChance through the
