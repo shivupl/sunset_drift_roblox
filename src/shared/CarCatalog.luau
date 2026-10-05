@@ -131,6 +131,9 @@ local cars: { [string]: CarEntry } = {
 			wheelPieces = wheelPieces(0.32),
 		},
 		tuning = {
+			-- Front-wheel drive, as the real car: its drift styles are the
+			-- front-drive ones (DriftStyles).
+			drivetrain = { layout = "FWD" },
 			-- Lighter car, same springs: soften them in proportion so it
 			-- sits and rolls like the sedan instead of riding on stilts.
 			suspension = { stiffness = 27000, damping = 2100 },
@@ -851,6 +854,9 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 		tuning = {
+			-- Front-wheel drive, as the real car: its drift styles are the
+			-- front-drive ones (DriftStyles).
+			drivetrain = { layout = "FWD" },
 			effects = {
 				-- The store Camry's own engine: its A-Chassis "AdvancedEngineSound"
 				-- set, low and high rpm each on and off throttle (low on and off
@@ -937,6 +943,9 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 		tuning = {
+			-- Four-wheel drive, as the real truck: its drift styles are the
+			-- all-wheel-drive ones, which set the split (DriftStyles).
+			drivetrain = { layout = "AWD" },
 			-- The pickup's, measured at the same 2.2 t: it sits at the sedan's sag.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
@@ -1074,6 +1083,9 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 		tuning = {
+			-- Four-wheel drive, as the real truck: its drift styles are the
+			-- all-wheel-drive ones, which set the split (DriftStyles).
+			drivetrain = { layout = "AWD" },
 			-- The pickup's, measured at the same 2.2 t.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
