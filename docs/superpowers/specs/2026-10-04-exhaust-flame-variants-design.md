@@ -26,8 +26,9 @@ are rulings of mine, recorded here; the owner can redirect at any point.
 
 ## 2. Research
 
-Sources and numbers are in the research notes summarised here (web research,
-2026-10-04) and in the measurements below.
+Web research (2026-10-04) with its sources is in
+`2026-10-04-exhaust-flame-research.md` beside this spec; the measurements
+below are this place's own.
 
 - **What a pop is.** Unburnt fuel reaching the hot exhaust and lighting
   there. A "pops and bangs" (crackle) map retards the ignition and keeps
@@ -105,13 +106,15 @@ exhaust item still scales the flame (flameSize) and how many pops
 (crackleChance, gently, see section 5).
 
 1. **Crackle** (the "pops and bangs" tune; the sputter the owner asked for).
-   7-14 pops over about 0.6-1.4 s; gaps start at 30-70 ms and widen to
-   90-170 ms as it dies away, each jittered by half; a pop now and then gets a
+   7-14 pops over about 0.8-2 s; gaps start at 30-70 ms and widen to
+   120-300 ms as it dies away (the research: a dense cluster at the lift
+   thinning to the odd pop), each jittered by half; a pop now and then gets a
    quick double 15-35 ms after; mostly small cracks, some mid, the odd big
    one, the first mid or big; loudness falls to about half by the end. Look:
    ragged animated flame licks (9968039364) 0.3-0.9 m by size over a
    velocity-stretched blue root at the mouth, a glow flash on the bigger
-   pops, a few sparks on the big ones, a thin dark wisp after.
+   pops, a thin dark wisp after. No sparks: they belong to the sooty, rich
+   styles (Anti-Lag, 2-Step).
 2. **Anti-Lag** (rally ALS). 2-4 big bangs 120-280 ms apart. Look: a
    mushrooming fireball (9636673935) 0.9-1.4 m, a white-hot starburst
    (12156297119), a shower of sparks, a dark soot puff (13346862770), the
@@ -119,7 +122,8 @@ exhaust item still scales the flame (flameSize) and how many pops
    pitched down for weight.
 3. **Blue Flame** (lean race overrun). 3-6 sharp cracks evenly 70-110 ms
    apart. Look: long blue-violet jets (17703378809 tinted) 0.7-1.2 m with a
-   white-hot core and violet tips, a blue flash, almost no smoke. Sound: the
+   white-hot core and violet tips, a blue flash, almost no smoke. No "shock
+   diamonds": they need a supersonic jet, which a tailpipe never is. Sound: the
    small and mid pops pitched up, crisp.
 4. **2-Step** (launch control's machine gun). 6-10 bangs on an even beat,
    80-100 ms apart (8% jitter), all one size. Look: orange fireball licks
