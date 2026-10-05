@@ -46,13 +46,16 @@ return function(t: T)
 	local pull = 100 / 3.6
 	t.near(TireHeat.slideSpeed(P, Vector3.new(0, 0, -pull), fwd, pull * 1.08), 0, 1e-9, "hard acceleration on grip isn't sliding")
 
-	-- Front tyres: their sideways scrub counts for frontSideShare of itself,
-	-- a lock-up in full.
-	local frontScrub = TireHeat.slideSpeed(P, drift, fwd, v * math.cos(a), P.frontSideShare)
+	-- A side share (frontSideShare, for the front tyres) scales only the
+	-- sideways scrub: at 0.4 a front sliding sideways counts far less and one
+	-- 25 degrees off its heading at 60 km/h doesn't smoke; a lock-up counts in
+	-- full whatever it is.
+	local frontScrub = TireHeat.slideSpeed(P, drift, fwd, v * math.cos(a), 0.4)
 	t.ok(frontScrub < driftSlide * 0.5, `a front sliding sideways counts far less ({frontScrub} against {driftSlide})`)
-	t.near(TireHeat.slideSpeed(P, Vector3.new(0, 0, -20), fwd, 0, P.frontSideShare), locked, 1e-9, "a locked front slides in full")
-	local _, frontLevel = run(0, TireHeat.slideSpeed(P, Vector3.new(16.7 * math.sin(math.rad(25)), 0, -16.7 * math.cos(math.rad(25))), fwd, 16.7 * math.cos(math.rad(25)), P.frontSideShare), 3)
-	t.eq(frontLevel, 0, "a front 25 degrees off its heading at 60 km/h doesn't smoke")
+	t.near(TireHeat.slideSpeed(P, Vector3.new(0, 0, -20), fwd, 0, 0.4), locked, 1e-9, "a locked front slides in full")
+	local _, frontLevel = run(0, TireHeat.slideSpeed(P, Vector3.new(16.7 * math.sin(math.rad(25)), 0, -16.7 * math.cos(math.rad(25))), fwd, 16.7 * math.cos(math.rad(25)), 0.4), 3)
+	t.eq(frontLevel, 0, "at 0.4, a front 25 degrees off its heading at 60 km/h doesn't smoke")
+	t.near(TireHeat.slideSpeed(P, drift, fwd, v * math.cos(a), 1), driftSlide, 1e-9, "a share of 1 is the plain slide")
 
 	-- Grip never smokes ------------------------------------------------
 	local _, level, first = run(0, 1.0, 5)
