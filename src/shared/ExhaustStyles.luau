@@ -12,8 +12,6 @@
 --   Crackle    a "pops and bangs" map: on a lift from high revs, a dense
 --              string of small cracks that thins out as the revs fall,
 --              mostly small, the odd big one; orange licks over a blue root
---   Anti-Lag   rally ALS: a few big bangs, mushrooming orange fireballs,
---              sparks and soot (rich, so sooty)
 --   Blue Flame a lean race overrun: sharp, even cracks, long blue-violet
 --              jets, clean (a clean burn's core is blue: CH and C2 radicals)
 --   2-Step     launch control's skip-fire: bangs on an even beat
@@ -42,7 +40,7 @@ export type Bank = { grains: { Grain }, pitch: { number }, volume: number }
 export type ClassLook = { size: number, count: number, speed: number, light: number }
 -- The flash on the bumper and the road (one pooled PointLight per client):
 -- brightness at a full big pop, its range, and how long it takes to fade.
--- Kept to the bumper and the road just behind: Anti-Lag's first 6 at 12 m
+-- Kept to the bumper and the road just behind: a first try at 6 at 12 m
 -- washed the whole car and the road orange-white (Play, 2026-10-05).
 export type Light = { color: Color3, brightness: number, rangeM: number, seconds: number }
 
@@ -89,6 +87,9 @@ export type Style = {
 	-- already fast, and at 1.2 Blue Flame's jets flew 2-4 m behind the car at
 	-- 110 km/h, cut off from the pipe (Play, 2026-10-05).
 	trailGain: number?,
+	-- false: the count ignores the revs of the lift (Classic, which keeps the
+	-- garage round 2 count). nil or true: ExhaustStyles.revFactor scales it.
+	revScaled: boolean?,
 	sounds: { small: Bank, mid: Bank, big: Bank },
 	classes: { small: ClassLook, mid: ClassLook, big: ClassLook },
 	light: Light?,
@@ -111,7 +112,6 @@ local DENSE_ID = "rbxassetid://17651974920" -- "exhaust crackles": dense, loud, 
 local CLEAN_ID = "rbxassetid://17651322643" -- "exhaust crackle 3": six clean, quiet pops
 local CRACK_ID = "rbxassetid://17865169434" -- "Backfire Pop": one small sharp crack
 local BIGPOP_ID = "rbxassetid://86084579153761" -- "zx6r backfire pop": one medium-big pop
-local BANG_ID = "rbxassetid://1001293842" -- "Anti-Lag": one huge saturated bang
 local CLASSIC_ID = "rbxassetid://112720519011313" -- "Car Backfire Exhaust": the garage round 2 pop
 
 ExhaustStyles.clipSeconds = {
@@ -120,7 +120,6 @@ ExhaustStyles.clipSeconds = {
 	[CLEAN_ID] = 0.549,
 	[CRACK_ID] = 0.158,
 	[BIGPOP_ID] = 0.232,
-	[BANG_ID] = 0.302,
 	[CLASSIC_ID] = 0.444,
 } :: { [string]: number }
 
@@ -175,7 +174,6 @@ local DENSE = cut(DENSE_ID, 0.8, {
 })
 local CRACK = { whole(CRACK_ID, 1.6) }
 local BIGPOP = { whole(BIGPOP_ID, 1.1) }
-local BANG = { whole(BANG_ID, 0.7) }
 local CLASSIC = { whole(CLASSIC_ID, 1) }
 
 -- Textures. Flipbooks from the Creator Store, each checked in Studio to play
@@ -241,7 +239,7 @@ end
 -- straight behind (where a flame along the pipe foreshortens to a dot).
 -- Small and coloured: from behind two outlets' flashes overlap, and at
 -- 1.3 m and Brightness 2.2 they burnt to a white blob over the whole rear
--- (Play, 2026-10-05, Anti-Lag at 110 km/h).
+-- (Play, 2026-10-05, a fireball style at 110 km/h).
 local function flash(from: Class, size: { { number } }, colors: { { any } }, brightness: number): Layer
 	return layer({
 		texture = STAR, flipbook = GRID4, from = from, locked = true, alongMotion = false,
@@ -314,61 +312,6 @@ ExhaustStyles.styles = {
 			}),
 		},
 	},
-	antilag = {
-		name = "Anti-Lag",
-		-- A few big bangs, 120-280 ms apart, every one a fireball.
-		pattern = {
-			kind = "burble", count = { 2, 4 }, maxPops = 6, minGap = 0.1, maxSeconds = 1.6,
-			first = "big",
-			weightsStart = { small = 0, mid = 0.1, big = 0.9 },
-			weightsEnd = { small = 0, mid = 0.3, big = 0.7 },
-			fade = 0.8, levelJitter = 0.2,
-			gapStart = { 0.12, 0.2 }, gapEnd = { 0.18, 0.28 }, jitter = 0.25,
-		},
-		chanceGain = 0.25,
-		trailGain = 0.4,
-		sounds = {
-			small = { grains = POPS_MID, pitch = { 0.8, 0.95 }, volume = 0.4 },
-			-- Pitched down for weight: the research's bassy "whump".
-			mid = { grains = join(POPS_BIG, BIGPOP), pitch = { 0.75, 0.9 }, volume = 0.5 },
-			big = { grains = join(BANG, BIGPOP), pitch = { 0.8, 0.95 }, volume = 0.55 },
-		},
-		classes = {
-			small = { size = 0.7, count = 0.7, speed = 0.8, light = 0.5 },
-			mid = { size = 0.85, count = 0.85, speed = 0.9, light = 0.75 },
-			big = { size = 1, count = 1, speed = 1, light = 1 },
-		},
-		light = { color = hex("#FF7A2A"), brightness = 2.5, rangeM = 7, seconds = 0.14 },
-		layers = {
-			core = root({ 4, 5 }, { { 0, 0.1 }, { 0.3, 0.15 }, { 1, 0.06 } }),
-			-- Locked to the car: in the world, its drag shed the car's speed in
-			-- a tenth of a second and the fireball fell ~3.5 m behind at
-			-- 110 km/h (Play, 2026-10-05). Locked layers reach further back at
-			-- speed instead (CosmeticsConfig.flames trailGain).
-			ball = layer({
-				texture = FIREBALL, flipbook = GRID8, from = "small", locked = true, alongMotion = false, turn = true,
-				count = { 2, 3 }, lifetime = { 0.22, 0.32 }, speed = { 2, 5 }, spreadDeg = 15,
-				drag = 5, riseMps2 = 3,
-				-- The fireball sheet starts as a point, so it is sized for its
-				-- middle frames: about 1.2 m across at 0.12 s (Play, 2026-10-05).
-				size = { { 0, 0.5 }, { 0.3, 1.05 }, { 1, 1.25 } },
-				transparency = { { 0, 0 }, { 0.7, 0.2 }, { 1, 1 } },
-				lightEmission = 0.6, brightness = 1.6, zOffsetM = 0.05,
-			}),
-			tongue = licks("mid", { 5, 7 }, { 6, 12 }),
-			flash = flash("small", { { 0, 0.7 }, { 1, 0.35 } }, { ck(0, hex("#FFD27A")), ck(1, hex("#FF8A2A")) }, 1.2),
-			sparks = sparks("mid", { 6, 12 }, { 6, 12 }, SPARK_COLORS),
-			soot = layer({
-				texture = PUFF, flipbook = GRID4, from = "big", locked = false, alongMotion = false, turn = true,
-				delaySeconds = 0.08, count = { 1, 2 }, lifetime = { 0.8, 1.2 }, speed = { 0.6, 1.2 }, spreadDeg = 20,
-				drag = 1, riseMps2 = 0.6,
-				size = { { 0, 0.3 }, { 1, 1.1 } },
-				transparency = { { 0, 0.7 }, { 1, 1 } },
-				colors = { ck(0, hex("#1E1B18")), ck(1, hex("#3A3632")) },
-				lightEmission = 0, brightness = 1, zOffsetM = -0.03,
-			}),
-		},
-	},
 	blue = {
 		name = "Blue Flame",
 		-- Sharp cracks on a near-even 70-110 ms, each a long blue jet. No
@@ -436,15 +379,17 @@ ExhaustStyles.styles = {
 	},
 	twostep = {
 		name = "2-Step",
-		-- Launch control's machine gun: an even beat, 80-100 ms (8% jitter),
-		-- all one size bar the first.
+		-- Launch control's machine gun: an even 90 ms beat (6% jitter), all
+		-- one size bar the first. Gaps drawn from 80-100 ms each varied up to
+		-- 18% within a burst: less a machine gun than a stutter (final
+		-- review, 2026-10-05).
 		pattern = {
 			kind = "burble", count = { 6, 10 }, maxPops = 14, minGap = 0.06, maxSeconds = 1.6,
 			first = "big",
 			weightsStart = { small = 0, mid = 0.85, big = 0.15 },
 			weightsEnd = { small = 0, mid = 0.85, big = 0.15 },
 			fade = 0.85, levelJitter = 0.1,
-			gapStart = { 0.08, 0.1 }, gapEnd = { 0.085, 0.1 }, jitter = 0.08,
+			gapStart = { 0.09, 0.09 }, gapEnd = { 0.09, 0.09 }, jitter = 0.06,
 		},
 		chanceGain = 0.3,
 		trailGain = 0.4,
@@ -461,7 +406,10 @@ ExhaustStyles.styles = {
 		light = { color = hex("#FF8A3A"), brightness = 2, rangeM = 6, seconds = 0.09 },
 		layers = {
 			core = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
-			-- Locked to the car, as Anti-Lag's.
+			-- Locked to the car: in the world, its drag shed the car's speed in
+			-- a tenth of a second and the fireball fell ~3.5 m behind at
+			-- 110 km/h (Play, 2026-10-05). Locked layers reach further back at
+			-- speed instead (trailGain).
 			ball = layer({
 				texture = FIREBALL, flipbook = GRID8, from = "small", locked = true, alongMotion = false, turn = true,
 				count = { 1, 2 }, lifetime = { 0.12, 0.18 }, speed = { 2, 4 }, spreadDeg = 12,
@@ -495,8 +443,10 @@ ExhaustStyles.styles = {
 			weightsEnd = { small = 0, mid = 1, big = 0 },
 			fade = 1, levelJitter = 0.45,
 		},
-		-- The full crackleChance, as before (titanium: up to 8 pops).
+		-- The full crackleChance, as before (titanium: up to 8 pops), and the
+		-- revs of the lift change nothing, as before.
 		chanceGain = 1,
+		revScaled = false,
 		sounds = {
 			small = { grains = CLASSIC, pitch = { 0.85, 1.2 }, volume = 0.35 },
 			mid = { grains = CLASSIC, pitch = { 0.85, 1.2 }, volume = 0.35 },
@@ -512,7 +462,7 @@ ExhaustStyles.styles = {
 
 -- The styles in the order the Studio switch (P) cycles them; the index is
 -- what the relay sends.
-ExhaustStyles.order = { "crackle", "antilag", "blue", "twostep", "classic" }
+ExhaustStyles.order = { "crackle", "blue", "twostep", "classic" }
 -- The style every car uses until the owner picks (the Studio switch only
 -- changes it on that client).
 ExhaustStyles.default = "crackle"
@@ -583,7 +533,40 @@ end
 -- style's chanceGain, times the rev factor (EngineAudio: fewer pops lifting
 -- from lower revs).
 function ExhaustStyles.scaleFor(style: Style, crackleChance: number, rev: number): number
-	return math.clamp((1 + (crackleChance - 1) * style.chanceGain) * rev, 0, ExhaustStyles.maxScale)
+	local r = if style.revScaled == false then 1 else rev
+	return math.clamp((1 + (crackleChance - 1) * style.chanceGain) * r, 0, ExhaustStyles.maxScale)
+end
+
+-- Built-in stand-ins for the Creator Store textures, for when one fails to
+-- load (moderated or private): a still image, drawn without its flipbook.
+-- ExhaustPops preloads the textures and tells ExhaustFlames which failed
+-- (final review, 2026-10-05: without this the default style would lose its
+-- flame body silently).
+ExhaustStyles.textureFallback = {
+	[FIRE] = HOT,
+	[WHITEFIRE] = HOT,
+	[FIREBALL] = HOT,
+	[STAR] = HOT,
+	[PUFF] = "rbxasset://textures/particles/smoke_main.dds",
+} :: { [string]: string }
+
+-- The texture (and flipbook) a layer draws with, given the textures that
+-- failed to load here.
+function ExhaustStyles.textureFor(L: Layer, failed: { [string]: boolean }): (string, { layout: string, mode: string }?)
+	if failed[L.texture] and ExhaustStyles.textureFallback[L.texture] then
+		return ExhaustStyles.textureFallback[L.texture], nil
+	end
+	return L.texture, L.flipbook
+end
+
+-- The one flash light answers only pops this close to the camera, so a car
+-- across the map does not take it from the one in front of you (final
+-- review, 2026-10-05). Further than this a light that lasts a tenth of a
+-- second is lost anyway.
+ExhaustStyles.lightMaxDistanceM = 60
+
+function ExhaustStyles.lightInRange(distanceM: number): boolean
+	return distanceM <= ExhaustStyles.lightMaxDistanceM
 end
 
 return ExhaustStyles

@@ -28,9 +28,11 @@ sand or dirt, its settings kept exactly as the owner signed them off. Specs in `
 
 **`exhaust-flames` (local, from `main` at `0110774`, 2026-10-04/05; not merged): exhaust pop styles to
 try.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
-sputter". Four new styles plus today's look as Classic (`ExhaustStyles`): Crackle (the default; a
-thinning, irregular string of cracks), Anti-Lag (a few big bangs and fireballs), Blue Flame (even
-cracks, blue-violet torches) and 2-Step (an even machine-gun beat). A seeded rhythm (`ExhaustSputter`)
+sputter". Three new styles plus today's look as Classic (`ExhaustStyles`): Crackle (the default; a
+thinning, irregular string of cracks), Blue Flame (even cracks, blue-violet torches) and 2-Step (an
+even machine-gun beat). A fourth, Anti-Lag (a few big bangs and fireballs), was taken out completely
+at the owner's word on 2026-10-05 ("get rid of the anti-lag one completely for now"); its last
+version is commit `ca776e7`. A seeded rhythm (`ExhaustSputter`)
 makes each burst; every pop is a real pop cut from a measured Creator Store recording
 (`Sound.PlaybackRegion`) with its animated flipbook flame and a pooled flash light on the same frame
 (`ExhaustPops`, `ExhaustFlames.flame`); the relay is one message a burst, rebuilt from its seed on every

@@ -5,7 +5,8 @@
 -- hangs a small set of ParticleEmitters beside each one, never enabled, and
 -- Emits a burst per pop: a blue-white core at the mouth, a stretched flame
 -- tongue that tapers into thinner licks, a few sparks and a smoke wisp,
--- plus a brief glow on the tip itself. No Light (the live-light cap). The
+-- plus a brief glow on the tip itself. No Light of its own (the one pooled
+-- flash light is ExhaustPops'). The
 -- look is CosmeticsConfig.flames, scaled per exhaust item (flameSize,
 -- flameCore, flameColor).
 --
@@ -76,6 +77,15 @@ local GLOWS = { "Tip", "FactoryPipe" }
 
 local F = CosmeticsConfig.flames
 local rng = Random.new()
+-- Style textures that failed to load here (ExhaustPops preloads them):
+-- their layers draw ExhaustStyles' built-in stand-in instead.
+local failedTextures: { [string]: boolean } = {}
+
+-- A style texture did not load: layers built after this use its stand-in,
+-- and any already built with it are rebuilt on their next pop.
+function ExhaustFlames.textureFailed(id: string)
+	failedTextures[id] = true
+end
 
 local function layer(name: string): Layer
 	return ((F.layers :: any)[name]) :: Layer
@@ -385,8 +395,9 @@ end
 -- size multiplier in studs).
 local function styleEmitter(mouth: Attachment, styleId: string, name: string, class: string, L: ExhaustStyles.Layer, sizeKey: number, sc: number): ParticleEmitter
 	local id = `{styleId}:{name}:{class}`
+	local texture, flipbook = ExhaustStyles.textureFor(L, failedTextures)
 	local found = mouth:FindFirstChild(id)
-	if found and found:IsA("ParticleEmitter") and found:GetAttribute("SizeKey") == sizeKey then
+	if found and found:IsA("ParticleEmitter") and found:GetAttribute("SizeKey") == sizeKey and found.Texture == texture then
 		return found
 	end
 	if found then
@@ -396,10 +407,10 @@ local function styleEmitter(mouth: Attachment, styleId: string, name: string, cl
 	e.Name = id
 	e.Enabled = false
 	e.Rate = 0
-	e.Texture = L.texture
-	if L.flipbook then
-		e.FlipbookLayout = (Enum.ParticleFlipbookLayout :: any)[L.flipbook.layout]
-		e.FlipbookMode = (Enum.ParticleFlipbookMode :: any)[L.flipbook.mode]
+	e.Texture = texture
+	if flipbook then
+		e.FlipbookLayout = (Enum.ParticleFlipbookLayout :: any)[flipbook.layout]
+		e.FlipbookMode = (Enum.ParticleFlipbookMode :: any)[flipbook.mode]
 	end
 	e.EmissionDirection = Enum.NormalId.Front
 	e.Orientation = if L.alongMotion then Enum.ParticleOrientation.VelocityParallel else Enum.ParticleOrientation.FacingCamera

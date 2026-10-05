@@ -1,7 +1,7 @@
 --!strict
--- The server half of the horn, the lamps and the exhaust flames (client
--- CarControls and ExhaustFlames). A driver sends their lamp state, horn and
--- exhaust pops; the server checks they are sitting in that car's driver
+-- The server half of the horn, the lamps and the exhaust pops (client
+-- CarControls and ExhaustPops). A driver sends their lamp state, horn and
+-- exhaust bursts; the server checks they are sitting in that car's driver
 -- seat, copies the lamps onto the car Model as attributes (every client
 -- shows them, CarLights), plays the horn on the chassis, so every player
 -- hears it, relays each exhaust burst to every other player as one message

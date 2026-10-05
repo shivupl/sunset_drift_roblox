@@ -172,6 +172,13 @@ local function flash(mouth: Attachment, style: Style, pop: Pop)
 	if peak <= 0 then
 		return
 	end
+	-- Only pops near the camera take the one light (a car across the map
+	-- would take it from the one in front of you).
+	local camera = Workspace.CurrentCamera
+	local mps = ConfigLoader.current().units.metersPerStud
+	if camera and not ExhaustStyles.lightInRange((camera.CFrame.Position - mouth.WorldPosition).Magnitude * mps) then
+		return
+	end
 	-- The last mouth it hung on may have gone with an exhaust change, and
 	-- the light with it: a destroyed instance's Parent is locked.
 	local l = light
@@ -187,7 +194,7 @@ local function flash(mouth: Attachment, style: Style, pop: Pop)
 	end
 	local p = l :: PointLight
 	p.Color = L.color
-	p.Range = math.min(L.rangeM / ConfigLoader.current().units.metersPerStud, 60)
+	p.Range = math.min(L.rangeM / mps, 60)
 	p.Brightness = peak
 	p.Enabled = true
 	lightPeak, lightAt, lightSeconds = peak, os.clock(), L.seconds
@@ -379,6 +386,18 @@ function ExhaustPops.start(remotes: Folder)
 			end
 		end)
 		folder:Destroy()
+		-- The flame textures (image ids preload as strings), so the first
+		-- pops draw them, and any that fail draw a built-in stand-in.
+		local textures: { string } = {}
+		for id in ExhaustStyles.textureFallback do
+			table.insert(textures, id)
+		end
+		ContentProvider:PreloadAsync(textures, function(id: string, status: Enum.AssetFetchStatus)
+			if status ~= Enum.AssetFetchStatus.Success then
+				ExhaustFlames.textureFailed(id)
+				warn(`[ExhaustPops] flame texture {id} did not load ({status.Name}); its layers use a built-in one`)
+			end
+		end)
 	end)
 	r.OnClientEvent:Connect(function(model: any, kind: any, style: any, seed: any, scale: any)
 		if typeof(model) ~= "Instance" or not model:IsA("Model") or not model:IsDescendantOf(Workspace) then

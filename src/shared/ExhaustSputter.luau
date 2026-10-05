@@ -7,8 +7,8 @@
 -- retarded, so a lift from high revs sets off a string of small explosions
 -- in the pipe: fast and irregular at first, thinning out as the revs fall,
 -- mostly small cracks with the odd big bang, now and then two almost on top
--- of each other. Anti-lag fires a few big bangs; launch control's 2-step
--- bangs on an even beat. One pattern shape covers all of those (burble);
+-- of each other; launch control's 2-step bangs on an even beat. One
+-- pattern shape covers both (burble);
 -- the old look's pops at random times in a window is the other (uniform).
 --
 -- Pure and seeded: every client rebuilds the same burst from the seed the

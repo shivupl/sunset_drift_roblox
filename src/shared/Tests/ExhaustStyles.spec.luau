@@ -14,7 +14,7 @@ end
 
 return function(t: T)
 	t.ok(ExhaustStyles.styles[ExhaustStyles.default] ~= nil, "the default style exists")
-	t.eq(#ExhaustStyles.order, 5, "five styles in the cycle")
+	t.eq(#ExhaustStyles.order, 4, "four styles in the cycle")
 	for i, id in ExhaustStyles.order do
 		local s = ExhaustStyles.styles[id]
 		t.ok(s ~= nil, `{id} is defined`)
@@ -61,7 +61,7 @@ return function(t: T)
 	-- The relay message.
 	local K = ExhaustStyles.KIND
 	t.ok(ExhaustStyles.validRelay(K.burst, 1, 12345, 1.2), "a burst is valid")
-	t.ok(ExhaustStyles.validRelay(K.single, 5, 1, 1), "a single pop is valid")
+	t.ok(ExhaustStyles.validRelay(K.single, #ExhaustStyles.order, 1, 1), "a single pop in the last style is valid")
 	t.ok(ExhaustStyles.validRelay(K.cut, 0, 0, 0), "a cut is valid")
 	t.ok(not ExhaustStyles.validRelay(1, nil, nil, nil), "the old one-number message is rejected")
 	t.ok(not ExhaustStyles.validRelay(4, 1, 1, 1), "an unknown kind is rejected")
@@ -82,8 +82,8 @@ return function(t: T)
 	-- Which layers a pop emits: every layer whose from is at or below its
 	-- size, in name order.
 	local S = ExhaustStyles.styles
-	t.eq(table.concat(ExhaustStyles.layersFor(S.antilag, "small"), ","), "ball,core,flash", "a small anti-lag pop: fireball, core and flash only")
-	t.eq(table.concat(ExhaustStyles.layersFor(S.antilag, "big"), ","), "ball,core,flash,soot,sparks,tongue", "a big anti-lag pop: every layer")
+	t.eq(table.concat(ExhaustStyles.layersFor(S.twostep, "small"), ","), "ball,core,flash,lick", "a small 2-Step pop: no sparks or smoke")
+	t.eq(table.concat(ExhaustStyles.layersFor(S.twostep, "big"), ","), "ball,core,flash,lick,puff,sparks", "a big 2-Step pop: every layer")
 	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "small"), ","), "lick,root", "a small crackle: licks over the root")
 	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "mid"), ","), "flash,lick,root,wisp", "a mid crackle adds the flash and a wisp")
 	t.eq(#ExhaustStyles.layersFor(S.classic, "mid"), 0, "Classic has no layers of its own (CosmeticsConfig's)")
@@ -101,4 +101,57 @@ return function(t: T)
 			t.ok(scale > 0 and scale < ExhaustStyles.maxScale, `{item.id} in {id}: scale {scale} under maxScale`)
 		end
 	end
+	-- Final review fixes (2026-10-05) -------------------------------------
+	-- Every Creator Store texture a layer uses has a built-in fallback, and a
+	-- texture that failed to load falls back to it with no flipbook.
+	for _, id in ExhaustStyles.order do
+		for name, L in (ExhaustStyles.styles[id].layers or {}) :: { [string]: any } do
+			if string.find(L.texture, "^rbxassetid://") then
+				local fb = ExhaustStyles.textureFallback[L.texture]
+				t.ok(fb ~= nil and string.find(fb, "^rbxasset://") ~= nil, `{id}.{name}: {L.texture} has a built-in fallback`)
+			end
+		end
+	end
+	local lick = ((ExhaustStyles.styles.crackle.layers :: any) :: { [string]: any }).lick
+	local tex, book = ExhaustStyles.textureFor(lick, {})
+	t.ok(tex == lick.texture and book == lick.flipbook, "a loaded texture is used as it is")
+	tex, book = ExhaustStyles.textureFor(lick, { [lick.texture] = true })
+	t.ok(tex == ExhaustStyles.textureFallback[lick.texture] and book == nil, "a failed texture falls back, without its flipbook")
+
+	-- The one flash light only answers pops near the camera.
+	t.ok(ExhaustStyles.lightInRange(10), "a pop 10 m away lights up")
+	t.ok(not ExhaustStyles.lightInRange(ExhaustStyles.lightMaxDistanceM + 1), "a pop past lightMaxDistanceM does not take the light")
+
+	-- Classic is the garage round 2 burst: the revs don't change its count.
+	local classic = ExhaustStyles.styles.classic
+	t.near(ExhaustStyles.scaleFor(classic, 2.5, 0.6), ExhaustStyles.scaleFor(classic, 2.5, 1), 1e-9, "Classic's count ignores the revs")
+
+	-- Every shipped style's bursts end inside its maxSeconds, at any scale.
+	for _, id in ExhaustStyles.order do
+		local p = ExhaustStyles.styles[id].pattern
+		local late = 0
+		for seed = 1, 50 do
+			for _, scale in { 0.6, 1, ExhaustStyles.maxScale } do
+				local pops = ExhaustSputter.generate(p, seed, scale)
+				late = math.max(late, pops[#pops].t)
+			end
+		end
+		t.ok(late <= p.maxSeconds, `{id}: the latest pop ({late} s) is inside maxSeconds`)
+	end
+
+	-- The shipped 2-Step keeps an even beat: every gap of a burst within 17%
+	-- of the others.
+	local worst = 0
+	for seed = 1, 100 do
+		local pops = ExhaustSputter.generate(ExhaustStyles.styles.twostep.pattern, seed, 1)
+		local g0, g1, sum = math.huge, 0, 0
+		for i = 2, #pops do
+			local g = pops[i].t - pops[i - 1].t
+			g0, g1, sum = math.min(g0, g), math.max(g1, g), sum + g
+		end
+		if #pops > 2 then
+			worst = math.max(worst, (g1 - g0) / (sum / (#pops - 1)))
+		end
+	end
+	t.ok(worst <= 0.17, `2-Step's beat stays even (worst spread {worst})`)
 end

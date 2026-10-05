@@ -370,7 +370,7 @@ Visual only; the physics never reads any of these. Client-side: skid marks and t
 | engineAudio.shiftSoundId / shiftSoundVolume | Optional mechanical thunk played on each upshift. Empty for now. |
 | engineAudio.blipPitch / blipRiseSeconds / blipFallSeconds | Off-throttle downshift: pitch rises by this fraction, then falls back, about 30% louder while it lasts. Braking from 200 km/h blips at 4-3, 3-2 and 2-1 (pitch peaks 1.58 to 1.72, volume 0.25 to 0.32). |
 | engineAudio.crackleMinRpm / crackleMinKmh / crackleLiftFrom | Lifting from above crackleLiftFrom throttle while over both crackleMinKmh and crackleMinRpm starts an exhaust burst in the car's style (`ExhaustStyles`, below the flames table). Throttle back on cuts the rest. Raise the speed or rpm for rarer bursts. The pop sound, its loudness and the 1-3 pops in 0.5 s moved to the Classic style (2026-10-04). |
-| engineAudio.crackleRevFloor | A lift from crackleMinRpm gets this share of the style's pops, rising to all of them at the redline (`ExhaustStyles.revFactor`). 0.6: a lift at 5,650 rpm measured scale 0.84 on the factory exhaust | Up for more pops from low revs |
+| engineAudio.crackleRevFloor | A lift from crackleMinRpm gets this share of the style's pops, rising to all of them at the redline (`ExhaustStyles.revFactor`; Classic's count ignores it). 0.6: a lift at 5,650 rpm measured scale 0.84 on the factory exhaust. Up for more pops from low revs. |
 | engineAudio.crackleShiftRpm / crackleShiftChance / crackleLimiterPerSecond | Single pops, each with its flame: an upshift from above crackleShiftRpm (6000; the box shifts at 6400) pops with crackleShiftChance, and on the limiter about crackleLimiterPerSecond a second, both times the exhaust's crackleChance. **Both 0 (off) by default**: the owner's 2026-09-22 ruling is pops only when going fast and letting off; turning them on is the owner's call. Tried in Play at 0.35 / 1.2 (twin tips: two upshift pops in 9 s of full throttle; each sound and flame on the same frame). |
 | engineAudio.punchRpm / punchDecaySeconds / punchFullKmh / punchFadeKmh / punchMinFactor | Sound only: pressing the throttle kicks the note up by punchRpm times the pedal travel, settling over punchDecaySeconds. Full kick up to punchFullKmh, tapering to punchMinFactor of it by punchFadeKmh. |
 | engineAudio.limiterBandRpm / limiterHz / limiterDipGain / limiterPitchDip | On throttle within the band of redline, the engine eases down to limiterDipGain and back this many times a second, the pitch sagging by limiterPitchDip at the bottom of each cut. 11 Hz to 0.6 with 4%; it was 16 Hz hard cuts to 0.35, a harsh buzz. Lower Hz or a higher dip gain is gentler. |
@@ -1000,12 +1000,13 @@ Asked by the owner on 2026-10-04: "different exhaust flame variants but really c
 | Style | Rhythm (pattern) | Sound | Look |
 |---|---|---|---|
 | `crackle` (Crackle, the default) | 7-14 pops; gaps 30-70 ms easing to 120-300 ms, jittered by half; 1 in 5 a quick double (15-35 ms); mostly small, the odd big; fades to 0.45 | pops-and-bangs grains by size, six clean pops, one crack | ragged animated flame licks (~1 m plume at a big pop) over a blue root, an orange glint, a dark wisp; no sparks |
-| `antilag` (Anti-Lag) | 2-4 big bangs 120-280 ms apart | the big saturated bang and big pops, pitched down | a fireball (~1.2 m at 0.12 s), tongue, sparks, soot, the strongest light |
 | `blue` (Blue Flame) | 3-6 sharp cracks, even 70-110 ms | small and mid pops pitched up 1.1-1.4 | a blue-violet torch (~1 m) with a white core and violet fringe, a blue light |
-| `twostep` (2-Step) | 6-10 bangs on an even 80-100 ms beat (8% jitter) | the dense crackle's grains | fireball bursts with licks and sparks |
-| `classic` (Classic) | 1-3 pops in 0.5 s | "Car Backfire Exhaust" whole, 0.35 x 0.55-1, pitch 0.85-1.2 | the `flames` table above |
+| `twostep` (2-Step) | 6-10 bangs on an even 90 ms beat (6% jitter; gaps within 12% of each other, spec'd under 17%) | the dense crackle's grains | fireball bursts with licks and sparks |
+| `classic` (Classic) | 1-3 pops in 0.5 s, whatever the revs (`revScaled` false) | "Car Backfire Exhaust" whole, 0.35 x 0.55-1, pitch 0.85-1.2 | the `flames` table above |
 
-Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackle 8 pops thinning over about 1 s (0.08, 0.14, 0.28 double, 0.34, 0.48, 0.60, 0.82, 0.97 s); Anti-Lag 3 bangs at 0.03, 0.26, 0.47 s; each pop's sound and light on the same frame; a stab of throttle stops the rest; one server message a burst and one a cut. Frame time with a quad exhaust bursting every 1.5 s: median 16.6-16.8 ms per style against 15.3-16.6 ms with none.
+An Anti-Lag style (2-4 big bangs with fireballs, sparks and soot) was tried and taken out at the owner's word on 2026-10-05: "get rid of the anti-lag one completely for now" (its last version: commit `ca776e7`).
+
+Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackle 8 pops thinning over about 1 s (0.08, 0.14, 0.28 double, 0.34, 0.48, 0.60, 0.82, 0.97 s); each pop's sound and light on the same frame; a stab of throttle stops the rest; one server message a burst and one a cut. Frame time with a quad exhaust bursting every 1.5 s: median 16.6-16.8 ms per style against 15.3-16.6 ms with none (Studio caps at 60 fps, so this shows no frame lost rather than a cost in ms).
 
 | Field | What it does | Which way |
 |---|---|---|
@@ -1016,7 +1017,10 @@ Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackl
 | `styles[].trailGain` | The style's own reach at speed for car-locked layers (0.4: at Classic's 1.2 Blue Flame's jets flew 2-4 m behind the car at 110 km/h, cut off) | Up for longer flames at speed |
 | `styles[].sounds.{small,mid,big}` | `grains` (clip, from, to, gain), `pitch` range, `volume`: Volume = volume x gain x level | Volumes are first guesses by measured peak, not checked by ear |
 | `styles[].classes.{small,mid,big}` | Multipliers on the layers' size, particle count and speed, and on the light, per pop size | |
-| `styles[].light` | Colour, brightness at a full big pop, range (m), fade (s). Crackle 1.5 at 5 m, Anti-Lag 2.5 at 7 m, Blue 1.8 at 5 m, 2-Step 2 at 6 m: Anti-Lag's first 6 at 12 m washed the whole car and road orange-white | Down if it lights too much |
+| `styles[].light` | Colour, brightness at a full big pop, range (m), fade (s). Crackle 1.5 at 5 m, Blue 1.8 at 5 m, 2-Step 2 at 6 m: a first try at 6 at 12 m washed the whole car and road orange-white | Down if it lights too much |
+| `lightMaxDistanceM` | The one flash light only answers pops this close to the camera (60 m), so a car across the map doesn't take it from the one in front of you | |
+| `textureFallback` | A built-in stand-in for each Creator Store texture; ExhaustPops preloads the textures and a layer whose texture failed draws its stand-in, without the flipbook | |
+| `styles[].revScaled` | false: the revs of the lift don't change the count (Classic) | |
 | `styles[].layers` | As the `flames` layers plus `flipbook` (grid, OneShot), `from` (the smallest pop size that emits it), `colors` keyframes, `turn` | At most 40 particles a big pop per outlet (spec); flash glints 0.45-0.7 m at Brightness 1.2 (at 1.3 m and 2.2 two outlets' flashes burnt to a white blob) |
 | `clipSeconds` | Measured clip lengths; the spec keeps every grain inside its clip | |
 | `relayPerSecond` / `maxScale` | Server relay: 8 messages a second per player; a burst's scale at most 4 | |

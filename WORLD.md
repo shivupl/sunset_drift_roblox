@@ -867,7 +867,7 @@ CityConfig turns palms or buildings off per type.
 
 ## Performance
 
-**The twelve lights.** No lamp carries a Light instance. The server tags each
+**The twelve lights.** (Plus one: the exhaust pops' flash, a single PointLight per client that ExhaustPops moves to the newest pop within 60 m and fades in about 0.1 s; `ExhaustStyles`, 2026-10-05.) No lamp carries a Light instance. The server tags each
 Neon head and the client keeps a pool of exactly `maxLiveLights` PointLights,
 moving them to the nearest tagged heads every `lightUpdateInterval` (0.25 s).
 The pool is a fixed size, so the cap is structural rather than a policy
