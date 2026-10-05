@@ -26,6 +26,19 @@ the fronts' load shares swapped at the owner's request (`frontLoadSwap`); tan du
 sand or dirt, its settings kept exactly as the owner signed them off. Specs in `AutoFlip.spec` and
 `TireHeat.spec`; tuning history in TUNING.md (autoFlip, effects).
 
+**`exhaust-flames` (local, from `main` at `0110774`, 2026-10-04/05; not merged): exhaust pop styles to
+try.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
+sputter". Four new styles plus today's look as Classic (`ExhaustStyles`): Crackle (the default; a
+thinning, irregular string of cracks), Anti-Lag (a few big bangs and fireballs), Blue Flame (even
+cracks, blue-violet torches) and 2-Step (an even machine-gun beat). A seeded rhythm (`ExhaustSputter`)
+makes each burst; every pop is a real pop cut from a measured Creator Store recording
+(`Sound.PlaybackRegion`) with its animated flipbook flame and a pooled flash light on the same frame
+(`ExhaustPops`, `ExhaustFlames.flame`); the relay is one message a burst, rebuilt from its seed on every
+client. In Studio, P cycles the style. Spec, research and plan in docs/superpowers
+(`2026-10-04-exhaust-flame-*`); measurements in TUNING.md (`ExhaustStyles`). Open for the owner: which
+style(s) to keep, whether styles become garage items or ride on the exhaust tips, and the pop volumes
+(set by measured peaks, not by ear).
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
