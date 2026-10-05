@@ -486,7 +486,7 @@ function ExhaustFlames.flame(model: Model, styleId: string, pop: ExhaustSputter.
 			local L = layers[name]
 			local e = styleEmitter(mouth, styleId, name, pop.class, L, k * look.size, sc)
 			e.TimeScale = F.timeScale
-			local reach = if L.locked then 1 + F.trailGain * trail else 1
+			local reach = if L.locked then 1 + (style.trailGain or F.trailGain) * trail else 1
 			local v = k * look.speed * (0.75 + 0.25 * pop.level) * reach
 			e.Speed = NumberRange.new(L.speed[1] * v, L.speed[2] * v)
 			emitLayer(e, L, math.round(rng:NextInteger(L.count[1], L.count[2]) * look.count))

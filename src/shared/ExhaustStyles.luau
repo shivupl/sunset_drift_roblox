@@ -42,6 +42,8 @@ export type Bank = { grains: { Grain }, pitch: { number }, volume: number }
 export type ClassLook = { size: number, count: number, speed: number, light: number }
 -- The flash on the bumper and the road (one pooled PointLight per client):
 -- brightness at a full big pop, its range, and how long it takes to fade.
+-- Kept to the bumper and the road just behind: Anti-Lag's first 6 at 12 m
+-- washed the whole car and the road orange-white (Play, 2026-10-05).
 export type Light = { color: Color3, brightness: number, rangeM: number, seconds: number }
 
 -- A flame layer. As CosmeticsConfig.flames' layers, plus:
@@ -81,6 +83,12 @@ export type Style = {
 	-- scales the pop count: 1 + (crackleChance - 1) x chanceGain. At 1 a
 	-- titanium 14-pop crackle would be 35.
 	chanceGain: number,
+	-- How much further the car-locked layers reach at speed: their speed
+	-- times 1 + trailGain x (km/h / CosmeticsConfig.flames.trailFullKmh,
+	-- capped at 1). nil: Classic's flames.trailGain (1.2). The new layers are
+	-- already fast, and at 1.2 Blue Flame's jets flew 2-4 m behind the car at
+	-- 110 km/h, cut off from the pipe (Play, 2026-10-05).
+	trailGain: number?,
 	sounds: { small: Bank, mid: Bank, big: Bank },
 	classes: { small: ClassLook, mid: ClassLook, big: ClassLook },
 	light: Light?,
@@ -223,12 +231,17 @@ local function licks(from: Class, count: { number }, speed: { number }): Layer
 		transparency = { { 0, 0.1 }, { 0.6, 0.3 }, { 1, 1 } },
 		squash = { { 0, -0.5 }, { 1, -0.2 } },
 		colors = { ck(0, hex("#FFE6A0")), ck(0.35, hex("#FF8A2A")), ck(1, hex("#C83A0A")) },
-		lightEmission = 1, brightness = 2, zOffsetM = 0.04,
+		-- 1.7, not 2: from behind, overlapping licks at 2 burnt to near
+		-- white at 110 km/h (Play, 2026-10-05).
+		lightEmission = 1, brightness = 1.7, zOffsetM = 0.04,
 	})
 end
 
 -- The starburst at the mouth, facing the camera so the pop reads from
 -- straight behind (where a flame along the pipe foreshortens to a dot).
+-- Small and coloured: from behind two outlets' flashes overlap, and at
+-- 1.3 m and Brightness 2.2 they burnt to a white blob over the whole rear
+-- (Play, 2026-10-05, Anti-Lag at 110 km/h).
 local function flash(from: Class, size: { { number } }, colors: { { any } }, brightness: number): Layer
 	return layer({
 		texture = STAR, flipbook = GRID4, from = from, locked = true, alongMotion = false,
@@ -274,6 +287,7 @@ ExhaustStyles.styles = {
 			doubleChance = 0.2, doubleGap = { 0.015, 0.035 },
 		},
 		chanceGain = 0.35,
+		trailGain = 0.4,
 		sounds = {
 			small = { grains = join(POPS_SMALL, CLEAN, CRACK), pitch = { 0.95, 1.2 }, volume = 0.3 },
 			mid = { grains = POPS_MID, pitch = { 0.9, 1.1 }, volume = 0.38 },
@@ -284,11 +298,11 @@ ExhaustStyles.styles = {
 			mid = { size = 0.8, count = 0.8, speed = 0.85, light = 0.65 },
 			big = { size = 1, count = 1, speed = 1, light = 1 },
 		},
-		light = { color = hex("#FF8A3A"), brightness = 3, rangeM = 8, seconds = 0.08 },
+		light = { color = hex("#FF8A3A"), brightness = 1.5, rangeM = 5, seconds = 0.08 },
 		layers = {
 			root = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
 			lick = licks("small", { 6, 8 }, { 5, 10 }),
-			flash = flash("mid", { { 0, 0.9 }, { 1, 0.5 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
+			flash = flash("mid", { { 0, 0.55 }, { 1, 0.3 } }, { ck(0, hex("#FFD27A")), ck(1, hex("#FF8A2A")) }, 1.2),
 			wisp = layer({
 				texture = PUFF, flipbook = GRID4, from = "mid", locked = false, alongMotion = false, turn = true,
 				delaySeconds = 0.05, count = { 1, 1 }, lifetime = { 0.5, 0.8 }, speed = { 0.5, 1 }, spreadDeg = 15,
@@ -312,6 +326,7 @@ ExhaustStyles.styles = {
 			gapStart = { 0.12, 0.2 }, gapEnd = { 0.18, 0.28 }, jitter = 0.25,
 		},
 		chanceGain = 0.25,
+		trailGain = 0.4,
 		sounds = {
 			small = { grains = POPS_MID, pitch = { 0.8, 0.95 }, volume = 0.4 },
 			-- Pitched down for weight: the research's bassy "whump".
@@ -323,7 +338,7 @@ ExhaustStyles.styles = {
 			mid = { size = 0.85, count = 0.85, speed = 0.9, light = 0.75 },
 			big = { size = 1, count = 1, speed = 1, light = 1 },
 		},
-		light = { color = hex("#FF7A2A"), brightness = 6, rangeM = 12, seconds = 0.14 },
+		light = { color = hex("#FF7A2A"), brightness = 2.5, rangeM = 7, seconds = 0.14 },
 		layers = {
 			core = root({ 4, 5 }, { { 0, 0.1 }, { 0.3, 0.15 }, { 1, 0.06 } }),
 			-- Locked to the car: in the world, its drag shed the car's speed in
@@ -341,7 +356,7 @@ ExhaustStyles.styles = {
 				lightEmission = 0.6, brightness = 1.6, zOffsetM = 0.05,
 			}),
 			tongue = licks("mid", { 5, 7 }, { 6, 12 }),
-			flash = flash("small", { { 0, 1.3 }, { 1, 0.6 } }, { ck(0, hex("#FFF2D0")), ck(1, hex("#FFB060")) }, 2.2),
+			flash = flash("small", { { 0, 0.7 }, { 1, 0.35 } }, { ck(0, hex("#FFD27A")), ck(1, hex("#FF8A2A")) }, 1.2),
 			sparks = sparks("mid", { 6, 12 }, { 6, 12 }, SPARK_COLORS),
 			soot = layer({
 				texture = PUFF, flipbook = GRID4, from = "big", locked = false, alongMotion = false, turn = true,
@@ -368,6 +383,7 @@ ExhaustStyles.styles = {
 			doubleChance = 0.05, doubleGap = { 0.025, 0.04 },
 		},
 		chanceGain = 0.3,
+		trailGain = 0.4,
 		sounds = {
 			-- Pitched up: crisp and high, a lean bark.
 			small = { grains = join(POPS_SMALL, CRACK), pitch = { 1.15, 1.4 }, volume = 0.3 },
@@ -379,7 +395,7 @@ ExhaustStyles.styles = {
 			mid = { size = 0.85, count = 0.85, speed = 0.9, light = 0.7 },
 			big = { size = 1, count = 1, speed = 1, light = 1 },
 		},
-		light = { color = hex("#6A8CFF"), brightness = 3.5, rangeM = 9, seconds = 0.08 },
+		light = { color = hex("#6A8CFF"), brightness = 1.8, rangeM = 5, seconds = 0.08 },
 		layers = {
 			core = layer({
 				texture = HOT, from = "small", locked = true, alongMotion = true,
@@ -394,8 +410,8 @@ ExhaustStyles.styles = {
 			-- emission, and the blue clips to white under bloom (BEHAVIOURS).
 			jet = layer({
 				texture = WHITEFIRE, flipbook = GRID4, from = "small", locked = true, alongMotion = true,
-				count = { 4, 6 }, jetSeconds = 0.1, lifetime = { 0.08, 0.14 }, speed = { 8, 14 },
-				drag = 3, riseMps2 = 2,
+				count = { 4, 6 }, jetSeconds = 0.1, lifetime = { 0.08, 0.14 }, speed = { 6, 11 },
+				drag = 4, riseMps2 = 2,
 				-- A ~1 m torch from the side (Play, 2026-10-05; at 0.26 m wide it
 				-- was a pale 0.6 m streak).
 				size = { { 0, 0.2 }, { 0.3, 0.38 }, { 1, 0.14 } },
@@ -406,7 +422,7 @@ ExhaustStyles.styles = {
 			}),
 			fringe = layer({
 				texture = WHITEFIRE, flipbook = GRID4, from = "mid", locked = true, alongMotion = true,
-				count = { 2, 3 }, jetSeconds = 0.1, lifetime = { 0.12, 0.2 }, speed = { 7, 12 }, spreadDeg = 12,
+				count = { 2, 3 }, jetSeconds = 0.1, lifetime = { 0.12, 0.2 }, speed = { 5, 9 }, spreadDeg = 12,
 				drag = 5, riseMps2 = 4,
 				size = { { 0, 0.26 }, { 0.3, 0.42 }, { 1, 0.16 } },
 				transparency = { { 0, 0.35 }, { 0.5, 0.45 }, { 1, 1 } },
@@ -414,7 +430,7 @@ ExhaustStyles.styles = {
 				colors = { ck(0, hex("#5A2CFF")), ck(1, hex("#B040FF")) },
 				lightEmission = 1, brightness = 1.1,
 			}),
-			flash = flash("mid", { { 0, 0.7 }, { 1, 0.35 } }, { ck(0, hex("#BFD2FF")), ck(1, hex("#6A8CFF")) }, 1.8),
+			flash = flash("mid", { { 0, 0.45 }, { 1, 0.25 } }, { ck(0, hex("#9FBCFF")), ck(1, hex("#4A6CFF")) }, 1.2),
 			sparks = sparks("big", { 0, 2 }, { 6, 12 }, { ck(0, hex("#E8F0FF")), ck(1, hex("#6A8CFF")) }),
 		},
 	},
@@ -431,6 +447,7 @@ ExhaustStyles.styles = {
 			gapStart = { 0.08, 0.1 }, gapEnd = { 0.085, 0.1 }, jitter = 0.08,
 		},
 		chanceGain = 0.3,
+		trailGain = 0.4,
 		sounds = {
 			small = { grains = DENSE, pitch = { 0.95, 1.05 }, volume = 0.3 },
 			mid = { grains = DENSE, pitch = { 0.9, 1.0 }, volume = 0.36 },
@@ -441,7 +458,7 @@ ExhaustStyles.styles = {
 			mid = { size = 0.9, count = 0.9, speed = 0.95, light = 0.8 },
 			big = { size = 1, count = 1, speed = 1, light = 1 },
 		},
-		light = { color = hex("#FF8A3A"), brightness = 4, rangeM = 10, seconds = 0.09 },
+		light = { color = hex("#FF8A3A"), brightness = 2, rangeM = 6, seconds = 0.09 },
 		layers = {
 			core = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
 			-- Locked to the car, as Anti-Lag's.
@@ -454,7 +471,7 @@ ExhaustStyles.styles = {
 				lightEmission = 0.7, brightness = 1.5, zOffsetM = 0.05,
 			}),
 			lick = licks("small", { 4, 6 }, { 5, 10 }),
-			flash = flash("small", { { 0, 0.9 }, { 1, 0.45 } }, { ck(0, hex("#FFD9A0")), ck(1, hex("#FFB060")) }, 2),
+			flash = flash("small", { { 0, 0.55 }, { 1, 0.3 } }, { ck(0, hex("#FFD27A")), ck(1, hex("#FF8A2A")) }, 1.2),
 			sparks = sparks("mid", { 3, 6 }, { 6, 12 }, SPARK_COLORS),
 			puff = layer({
 				texture = PUFF, flipbook = GRID4, from = "mid", locked = false, alongMotion = false, turn = true,
