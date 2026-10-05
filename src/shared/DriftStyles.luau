@@ -1,18 +1,24 @@
 --!strict
--- Drift styles (the owner, 2026-10-05: "I want the drift style to differ
--- slightly depending on the drivestyle of the vehicle (awd,rwd,fwd,etc) ...
--- implement a couple different styles (multiple for each) that i can test
--- and try out in game"). Research in docs/superpowers/specs/
--- 2026-10-05-drift-feel-research.md.
+-- Drift modes, per drivetrain. The owner, 2026-10-05: "I want the drift
+-- style to differ slightly depending on the drivestyle of the vehicle
+-- (awd,rwd,fwd,etc) ... implement a couple different styles (multiple for
+-- each) that i can test and try out in game", and then (the drift
+-- overhaul) "a full overhaul and perfection of the drifting system,
+-- different modes I can try different styles for each drivetype. all
+-- research based ... from throlle bursts to stable trifting and the
+-- standdard hajwala 360s". Research and design in docs/superpowers/specs/
+-- 2026-10-05-drift-overhaul-*.md.
 --
 -- A car's catalog entry says which wheels it drives (drivetrain.layout);
--- the styles of that layout are offered in the menu's Settings tab, its
+-- the modes of that layout are offered in the menu's Settings tab, its
 -- first is the default, and in Studio O cycles them (client DriftStyle).
--- A style is a partial CarConfig deep-merged over the car's own config: the
--- torque split and the pedal knobs (CarConfig.drift, DriftControl), never a
+-- Each layout has three modes and Classic, the drift-feel default kept
+-- for comparing. A mode is a partial CarConfig deep-merged over the car's
+-- own config: the line, the pedals, the dial, the torque split, never a
 -- key a catalog car tunes (DriftStyles.spec), so each car keeps its own
--- character. Nothing here acts while the lever is in: the lever's 360s,
--- holds and catches are the same on every style.
+-- character. The lever's 360 is the same move on every mode; a mode only
+-- sets how fast it comes round (steering.throwYawRateDegPerSec) and the
+-- line sends it straight on.
 local DriftStyles = {}
 
 export type Style = {
@@ -39,98 +45,251 @@ DriftStyles.layoutName = {
 -- win, front drive keeps its slower launch.
 local FRONT_DRIVE_GRIP = 1.9
 
+-- The line (CarConfig.line, VehicleSim/Line.luau) every new mode shares:
+-- a held slide runs straight on down the highway with the wheel centred,
+-- the wheel aims it across the lanes, held into the slide it takes a
+-- corner, and a highway 360 goes straight on (the owner, 2026-10-05:
+-- "make sure its easy to control the sideway drifting within the highway
+-- boundries").
+local LINE = { hold = 0.9, steerG = 0.35, intoRelease = 1, leverHold = 1 }
+
+-- Part throttle (a trigger) keeps a hold over 0.35 and tightens it toward
+-- straight the further off full gas: the gamepad's throttle angle.
+local PAD_KEEP = 0.35
+
 DriftStyles.styles = {
-	-- REAR DRIVE.
-	classic = {
-		name = "Classic",
+	-- REAR DRIVE. Research: docs/superpowers/specs/
+	-- 2026-10-05-drift-overhaul-research.md ("the throttle sets the angle,
+	-- the wheel sets the path").
+	hajwala = {
+		name = "Hajwala",
 		layout = "RWD",
-		blurb = "The car as you know it. A quick lift tightens it, the gas back kicks it out.",
-		tuning = { drivetrain = { layout = "RWD" } },
-	},
-	power = {
-		name = "Power Over",
-		layout = "RWD",
-		blurb = "Gas and full lock break the rear loose. Every stab of the gas kicks it wider.",
+		blurb = "Hold the gas and the slide widens to 40; lift to tighten it. Steer to aim it down the road. Space spins.",
 		tuning = {
 			drivetrain = { layout = "RWD" },
-			-- Full lock and gas from 30 km/h throw the car at half the lever's
-			-- authority with the rear's grip at 0.8, until the gas hold takes
-			-- it from 10 degrees (traction control alone left the tyres
-			-- gripping: 1.5 degrees at 50 km/h). A feather tightens it fast and
-			-- the stab kicks 14 back: the clutch kick.
+			line = LINE,
+			-- The research's Power Hold: gas grows the angle at 12 deg/s to the
+			-- band's top (slow build-up fails least, 10-20 deg/s), a lift
+			-- shrinks it at 40, the stab kicks 8 with a surge. Steering into it
+			-- turns at half the rate and stops at 45; counter-steer keeps the
+			-- whole rate, so a transition swings through.
 			drift = {
-				powerOverSteer = 0.7, powerOverThrow = 0.5, powerOverRearGrip = 0.8, gasHoldFromScale = 0.5,
-				featherDegPerSec = 60, kickDeg = 14, kickSeconds = 0.25,
+				holdDecayDegPerSec = -12, holdMinDeg = 20, holdMaxDeg = 40, holdEaseDegPerSec = 30,
+				featherDegPerSec = 40, kickDeg = 8, kickDriveScale = 1.5,
+				dialMaxDeg = 45, dialIntoScale = 0.5,
+				keepThrottle = PAD_KEEP, partialDegPerSec = 30,
+			},
+		},
+	},
+	power = {
+		name = "Kick",
+		layout = "RWD",
+		blurb = "Gas and lock break it loose. Double-tap the gas to kick it out; every stab kicks wider. Full lock on the gas spins it.",
+		tuning = {
+			drivetrain = { layout = "RWD" },
+			-- A looser line than the others: 0.85 lets a held slide drift 13 m
+			-- in 4 s toward its nose (0.75 was 21 m; Hajwala's 0.9 is 9).
+			line = { hold = 0.85, steerG = 0.3, intoRelease = 1, leverHold = 1 },
+			-- Power-over from 30 to 90 km/h (a low-gear move; over it a full-key
+			-- lane change must not throw the car), the clutch-kick entry at any
+			-- speed (a lift and the gas back with the wheel turned: FR Legends'
+			-- double tap, hajwala's neutral drop), and a 14-degree stab with the
+			-- drive doubled for a quarter second (the clutch dumped: +8-15
+			-- degrees, research). Gas grows it at 15 deg/s to 45. No ceiling:
+			-- full lock on the gas comes round (the gas 360).
+			drift = {
+				powerOverSteer = 0.7, powerOverThrow = 0.5, powerOverRearGrip = 0.8, powerOverMaxKmh = 90,
+				gasHoldFromScale = 0.5,
+				kickThrow = 0.5, kickThrowSeconds = 0.3, kickThrowRearGrip = 0.7,
+				holdDecayDegPerSec = -15, holdMinDeg = 25, holdMaxDeg = 45, holdEaseDegPerSec = 30,
+				featherDegPerSec = 45, kickDeg = 14, kickSeconds = 0.25, kickDriveScale = 2,
+				keepThrottle = PAD_KEEP, partialDegPerSec = 35,
 			},
 		},
 	},
 	angle = {
 		name = "High Angle",
 		layout = "RWD",
-		blurb = "Slides settle deep, 40 to 60 degrees, and carry their speed. Swing it with long taps; lift to straighten.",
+		blurb = "Deep slides, 45 to 55 degrees, that carry their speed. Lift to bring it in; steer to aim it.",
 		tuning = {
 			drivetrain = { layout = "RWD" },
-			-- Held 44-46 degrees for 4 s from 100, losing 7-8 km/h (Play,
-			-- 2026-10-05). Lift past the feather to straighten: the band grows
-			-- any held angle back to 40.
-			drift = { holdMinDeg = 40, holdMaxDeg = 60, holdEaseDegPerSec = 35, kickDeg = 10, slideReliefScale = 1.3 },
+			line = LINE,
+			-- The research's Long Angle: 45-55 (MARTY 45, TRI peaks past 55),
+			-- assisted, since 38 degrees of lock cannot hold much past 45 on
+			-- a straight by itself. More slide momentum carries the speed.
+			drift = {
+				holdDecayDegPerSec = -10, holdMinDeg = 45, holdMaxDeg = 55, holdEaseDegPerSec = 35,
+				-- A lift brings it in at 55 deg/s for a quarter second before
+				-- the catch: from 55 degrees, 0.97 s to straight (35 deg/s and
+				-- 0.3 s: 1.01). A 0.6 s press swings it through: a chain of
+				-- 41-53 degrees inside 3 m of the line (Play, 2026-10-05).
+				featherSeconds = 0.25, featherDegPerSec = 55,
+				kickDeg = 10, kickDriveScale = 1.5, slideReliefScale = 1.3,
+				dialMaxDeg = 60, dialIntoScale = 0.6,
+				keepThrottle = PAD_KEEP, partialDegPerSec = 25,
+			},
 		},
 	},
-	-- FRONT DRIVE.
-	handbrake = {
-		name = "Handbrake",
+	classic = {
+		name = "Classic",
+		layout = "RWD",
+		blurb = "The car before the overhaul: the wheel is the angle, the slide follows the tyres.",
+		tuning = { drivetrain = { layout = "RWD" } },
+	},
+
+	-- FRONT DRIVE. A front-drive car holds a slide only with the rear braked
+	-- (the lever), and the gas pulls it straight with no countersteer
+	-- (Velenis; research 2026-10-05).
+	tafheet = {
+		name = "Tafheet",
 		layout = "FWD",
-		blurb = "The tafheet saloon. Throw it on the lever and carry it; slides fade, and a stab of gas pulls it straighter.",
+		blurb = "The Kamri way: throw it and hold the lever to keep it sideways. Let go and the gas pulls it straight; a lift swings the tail.",
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
-			-- The gas back after a lift pulls 6 degrees in, and a held slide
-			-- fades 2 degrees a second. The lift itself holds the angle, for a
-			-- shorter 0.25 s: with the lift swinging the tail (-15 deg/s) a
-			-- hands-off catch from 22 degrees swung to 25 first and took 1.1 s.
-			drift = { featherSeconds = 0.25, featherDegPerSec = 0, kickDeg = -6, holdDecayDegPerSec = 2 },
-			-- Front drive comes out of a gas-held slide still yawing outward
-			-- (the driven fronts were bending the path): let go at 23 degrees
-			-- it carried the angle half a second before the tyres turned it,
-			-- 1.1-1.2 s to straight. The hands-off catch's authority from 15
-			-- degrees instead of 25 brings that to 0.58 (rear drive: 0.63).
-			-- Play, 2026-10-05.
+			line = { hold = 0.95, steerG = 0.35, intoRelease = 1, leverHold = 1 },
+			-- On the gas alone the fronts pull it straight at 15 deg/s (research
+			-- 15-25); a lift swings the tail 10 deg/s (lift-off oversteer); the
+			-- stab pulls 8 in.
+			drift = {
+				holdDecayDegPerSec = 15, holdMaxDeg = 50, holdEaseDegPerSec = 30,
+				featherDegPerSec = -10, kickDeg = -8, kickDriveScale = 1.3,
+				dialMaxDeg = 50, dialIntoScale = 0.5,
+			},
+			-- Front drive comes out of a slide still yawing outward: the
+			-- hands-off catch's authority from 15 degrees (drift-feel, Play).
 			steering = { throwFinishFromDeg = 15 },
 		},
 	},
 	liftoff = {
 		name = "Lift-Off",
 		layout = "FWD",
-		blurb = "No lever needed: lift with the wheel turned and the tail comes round. Gas pulls it out.",
+		blurb = "No lever needed: lift with the wheel turned and the tail comes round. Short slides; gas pulls it out.",
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
-			-- Lift at 60 km/h or more with the wheel past half and the tail
-			-- comes round: a half-second lift at 100 with the wheel at 0.8 is
-			-- past 20 degrees in 0.31 s and settles at 35-37 on the gas. At
-			-- 0.6 for 0.6 s it swung to 55-58 and held 50; at 0.45 for 0.45 s,
-			-- 50 and 45 (Play, 2026-10-05). Its lifts swing the tail, so a
-			-- hands-off catch from 18 degrees takes 0.9 s.
+			line = LINE,
+			-- Lift at 60 km/h or more with the wheel past half: 0.3 for 0.4 s
+			-- with the rear at 0.6 (drift-feel, Play: 20 degrees in 0.31 s).
+			-- Gas pulls it straight at 12 deg/s; slides are short by nature.
 			drift = {
 				liftThrow = 0.3, liftThrowSeconds = 0.4, liftThrowRearGrip = 0.6,
-				featherDegPerSec = -10, kickDeg = -8, holdDecayDegPerSec = 2,
+				holdDecayDegPerSec = 12, holdMaxDeg = 35, holdEaseDegPerSec = 30,
+				featherDegPerSec = -10, kickDeg = -8,
+				dialMaxDeg = 40, dialIntoScale = 0.5,
 			},
-			-- As Handbrake: the catch's authority from 15 degrees.
 			steering = { throwFinishFromDeg = 15 },
 		},
 	},
-	-- ALL-WHEEL DRIVE.
+	pivot = {
+		name = "Pivot",
+		layout = "FWD",
+		blurb = "Left-foot braking: tap the brake turning in to throw it; brake and gas together swing it wider.",
+		tuning = {
+			drivetrain = { layout = "FWD" },
+			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
+			line = LINE,
+			-- The brake tapped with the wheel turned throws the tail (weight
+			-- onto the nose: 46 degrees from 100 with the key held); brake and
+			-- gas together pivot it wider at 35 deg/s on a quarter of the brake
+			-- (25 netted +5 in half a second against the gas's pull, losing 2
+			-- km/h); the gas alone pulls it in (Play, 2026-10-05).
+			drift = {
+				brakeThrow = 0.5, brakeThrowSeconds = 0.35, brakeThrowRearGrip = 0.6,
+				brakeGrowDegPerSec = 35, brakeGrowBrakeScale = 0.25,
+				holdDecayDegPerSec = 10, holdMaxDeg = 45, holdEaseDegPerSec = 30,
+				featherDegPerSec = 0, kickDeg = -6,
+				dialMaxDeg = 50, dialIntoScale = 0.5,
+			},
+			steering = { throwFinishFromDeg = 15 },
+		},
+	},
+	classicFwd = {
+		name = "Classic",
+		layout = "FWD",
+		blurb = "The front-drive car before the overhaul (drift-feel's Handbrake): thrown on the lever, held on the gas.",
+		tuning = {
+			drivetrain = { layout = "FWD" },
+			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
+			drift = { featherSeconds = 0.25, featherDegPerSec = 0, kickDeg = -6, holdDecayDegPerSec = 2 },
+			steering = { throwFinishFromDeg = 15 },
+		},
+	},
+
+	-- ALL-WHEEL DRIVE. The strategy flips at about 25:75 front to rear
+	-- (Eberhart, TU Wien): above it gas widens a slide like rear drive,
+	-- under it gas straightens it and adds speed.
 	rally = {
 		name = "Rally",
 		layout = "AWD",
-		blurb = "A four-wheel power slide: shallow, driving forward. Flick it in.",
+		blurb = "Shallow four-wheel slides that drive forward: gas straightens and pulls you on, a lift rotates it. Flick or brake it in.",
 		tuning = {
 			drivetrain = { layout = "AWD", frontShare = 0.45 },
-			-- The stronger Scandinavian flick (the flick's rear grip 0.55
-			-- against 0.7). It had a lift throw too (0.4), taken off: the
-			-- all-wheel cars' default must drive like the car as it was, and a
-			-- lift with the wheel past half at 60 km/h, an ordinary keyboard
-			-- lane change, threw the tail out (final review, 2026-10-05).
+			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP }, slipModel = { flickRearGripMultiplier = 0.55 } },
+			line = LINE,
+			-- Band 15-30: gas pulls it in at 6 deg/s to 15 and holds it there,
+			-- driving forward (with no floor the slide was gone in 2 s, 97 to
+			-- 122 km/h: a flick, not a slide); a 0.2 s lift rotates it 5 (the
+			-- research's +5); the stab drives forward (-4). The brake entry is
+			-- the rally pendulum's brake. Play, 2026-10-05.
+			drift = {
+				holdDecayDegPerSec = 6, holdMinDeg = 15, holdMaxDeg = 30, holdEaseDegPerSec = 25,
+				featherDegPerSec = -25, kickDeg = -4, kickDriveScale = 1.4, slideReliefScale = 1.4,
+				brakeThrow = 0.45, brakeThrowRearGrip = 0.6,
+				dialMaxDeg = 35, dialIntoScale = 0.5,
+			},
+			-- The 360 a touch slower (2.8 s: the fronts keep pulling), and the
+			-- hands-off catch's authority from 15 degrees, as front drive: from
+			-- a 24-degree slide held at its floor the catch took 1.3 s.
+			steering = { throwYawRateDegPerSec = 140, throwFinishFromDeg = 15 },
+		},
+	},
+	driftmode = {
+		name = "Drift Mode",
+		layout = "AWD",
+		blurb = "The factory drift mode: drive to the rear, so gas widens it like rear drive, and the fronts catch it sooner.",
+		tuning = {
+			drivetrain = { layout = "AWD", frontShare = 0.2 },
+			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
+			line = LINE,
+			-- 20:80 (Focus RS 30:70, GR Yaris 30:70, E63 0:100): band 25-40,
+			-- gas grows it at 10 deg/s, the stab +7; the fronts' pull catches
+			-- it from 20 degrees.
+			drift = {
+				holdDecayDegPerSec = -10, holdMinDeg = 25, holdMaxDeg = 40, holdEaseDegPerSec = 30,
+				featherDegPerSec = 40, kickDeg = 7, kickDriveScale = 1.5,
+				dialMaxDeg = 45, dialIntoScale = 0.5,
+				keepThrottle = PAD_KEEP, partialDegPerSec = 25,
+			},
+			steering = { throwFinishFromDeg = 20 },
+		},
+	},
+	tatweef = {
+		name = "Tatweef",
+		layout = "AWD",
+		blurb = "The heavy 4x4 sideways pass: long shallow slides you steer across the lanes. Slow, heavy 360s.",
+		tuning = {
+			drivetrain = { layout = "AWD", frontShare = 0.41 },
+			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
+			-- The Land Cruiser's 41:59. The wheel mostly steers the slide
+			-- across the lanes (a quarter of the rate into it, 28 at most):
+			-- the research's assist where the player "only steers the path".
+			line = { hold = 1, steerG = 0.5, intoRelease = 0.5, leverHold = 1 },
+			drift = {
+				holdMinDeg = 12, holdMaxDeg = 25, holdEaseDegPerSec = 20,
+				featherDegPerSec = 20, kickDeg = 4, slideReliefScale = 1.3,
+				dialMaxDeg = 28, dialIntoScale = 0.25,
+			},
+			-- Heavy: the 360 comes round slower (2.8-3.2 s, research).
+			steering = { throwYawRateDegPerSec = 125 },
+		},
+	},
+	classicAwd = {
+		name = "Classic",
+		layout = "AWD",
+		blurb = "The all-wheel-drive car before the overhaul (drift-feel's Rally).",
+		tuning = {
+			drivetrain = { layout = "AWD", frontShare = 0.45 },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP }, slipModel = { flickRearGripMultiplier = 0.55 } },
 			drift = {
 				holdMaxDeg = 35, holdEaseDegPerSec = 25, featherDegPerSec = 10, kickDeg = -3,
@@ -138,21 +297,15 @@ DriftStyles.styles = {
 			},
 		},
 	},
-	driftmode = {
-		name = "Drift Mode",
-		layout = "AWD",
-		blurb = "The factory drift mode: most of the drive to the rear. Holds like rear drive, catches sooner.",
-		tuning = {
-			drivetrain = { layout = "AWD", frontShare = 0.15 },
-			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
-			drift = { kickDeg = 8, featherDegPerSec = 20 },
-		},
-	},
 } :: { [string]: Style }
 
 -- The order the menu shows and Studio's Shift+O cycles; within a layout,
 -- the first is its default.
-DriftStyles.order = { "classic", "power", "angle", "handbrake", "liftoff", "rally", "driftmode" }
+DriftStyles.order = {
+	"hajwala", "power", "angle", "classic",
+	"tafheet", "liftoff", "pivot", "classicFwd",
+	"rally", "driftmode", "tatweef", "classicAwd",
+}
 
 -- A config's layout: "RWD" unless it says FWD or AWD.
 function DriftStyles.layoutOf(cfg: any): string

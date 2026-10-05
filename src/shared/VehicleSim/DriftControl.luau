@@ -104,6 +104,8 @@ export type Config = {
 	brakeThrowRearGrip: number,
 	brakeThrowFrom: number,
 	brakeGrowDegPerSec: number,
+	brakeGrowBrakeScale: number,
+	powerOverMaxKmh: number,
 }
 
 -- The steering section's gas-hold gates (Steering.Config has them all).
@@ -152,6 +154,7 @@ export type Output = {
 	rearGrip: number, -- rear grip multiplier from a lift or power throw, 1 for none
 	tractionAside: boolean,
 	driveScale: number, -- the driven wheels' drive multiplier (the kick's surge), 1 for none
+	brakeScale: number, -- the brake pedal's multiplier (a pivot's light foot), 1 for none
 }
 
 function DriftControl.newLift(): Lift
@@ -313,6 +316,9 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	end
 	local feathering = s.feather >= 0
 
+	-- The pivot: brake and gas together on a held slide.
+	local pivoting = cfg.brakeGrowDegPerSec > 0 and braking and gasOn and s.holdOn and not leverIn
+
 	local rate = 0
 	if s.holdOn and not leverIn then
 		if feathering then
@@ -325,7 +331,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 			rate -= cfg.kickDeg / cfg.kickSeconds
 		end
 		rate += cfg.holdDecayDegPerSec
-		if braking and gasOn then
+		if pivoting then
 			rate -= cfg.brakeGrowDegPerSec
 		end
 		-- Under the band it grows, even swinging through straight in a
@@ -353,6 +359,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		and not s.holdOn
 		and math.abs(inp.steer) >= cfg.powerOverSteer
 		and inp.speedKmh >= cfg.powerOverMinKmh
+		and inp.speedKmh <= cfg.powerOverMaxKmh
 	return {
 		gasHold = s.holdOn,
 		feathering = feathering,
@@ -369,6 +376,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 			* (if brakeThrowing then cfg.brakeThrowRearGrip else 1),
 		tractionAside = math.abs(inp.steer) >= cfg.powerOverSteer,
 		driveScale = if surging then cfg.kickDriveScale else 1,
+		brakeScale = if pivoting then cfg.brakeGrowBrakeScale else 1,
 	}
 end
 

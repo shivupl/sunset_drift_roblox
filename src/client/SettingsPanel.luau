@@ -59,7 +59,7 @@ local function buildDriftChips()
 		return
 	end
 	local layout = DriftStyle.carLayout()
-	h.Text = "DRIFT STYLE · " .. string.upper(ConfigLoader.driftStyles().layoutName[layout])
+	h.Text = "DRIFT MODE · " .. string.upper(ConfigLoader.driftStyles().layoutName[layout])
 	if driftLayout == layout then
 		return
 	end
@@ -159,7 +159,7 @@ function SettingsPanel.build(parent: Instance, layoutOrder: number): ScrollingFr
 
 	-- Drift style: a section title like the sky's, a row of chips, the
 	-- chosen style's line (wrapping, two lines).
-	local dh = text(f, "DRIFT STYLE", 4)
+	local dh = text(f, "DRIFT MODE", 4)
 	dh.FontFace = UITheme.font("title")
 	dh.TextColor3 = C.paint
 	driftHeading = dh

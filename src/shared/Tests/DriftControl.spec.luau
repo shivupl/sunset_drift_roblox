@@ -49,6 +49,8 @@ return function(t: T)
 			brakeThrowRearGrip = 1,
 			brakeThrowFrom = 0.5,
 			brakeGrowDegPerSec = 0,
+			brakeGrowBrakeScale = 1,
+			powerOverMaxKmh = 1000,
 		}
 		for k, v in over do
 			(c :: any)[k] = v
@@ -228,6 +230,9 @@ return function(t: T)
 	t.eq(o.throw, 0, "and the power throw stops")
 	t.eq(o.rearGrip, 1, "with the rear's grip back")
 	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, speedKmh = 20 }), dt).throw, 0, "not under powerOverMinKmh")
+	local pwMax = cfgWith({ powerOverSteer = 0.7, powerOverThrow = 0.5, powerOverMinKmh = 30, powerOverMaxKmh = 90 })
+	t.eq(DriftControl.step(DriftControl.new(), pwMax, gates, inp({ steer = 0.8, driftAngleDeg = 2, speedKmh = 100 }), dt).throw, 0, "not over powerOverMaxKmh (a highway lane change)")
+	t.near(DriftControl.step(DriftControl.new(), pwMax, gates, inp({ steer = 0.8, driftAngleDeg = 2, speedKmh = 80 }), dt).throw, 0.5, 1e-9, "under it, a throw")
 	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, throttle = 0.5 }), dt).throw, 0, "not on part throttle")
 	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.5, driftAngleDeg = 2 }), dt).throw, 0, "not with the wheel short of powerOverSteer")
 	t.eq(DriftControl.step(DriftControl.new(), pw, gates, inp({ steer = 0.8, driftAngleDeg = 2, lever = 1 }), dt).throw, 0, "not under the lever")
@@ -367,6 +372,17 @@ return function(t: T)
 	s = DriftControl.new()
 	run(s, cfgWith({}), inp({}), 0.1)
 	t.eq(run(s, cfgWith({}), inp({ brake = 1 }), dt).angleRateDeg, 0, "brakeGrowDegPerSec 0 is off")
+	-- ...with the brake's force scaled down while it pivots (a light left
+	-- foot; a key is a full brake)
+	local pvs = cfgWith({ brakeGrowDegPerSec = 20, brakeGrowBrakeScale = 0.25 })
+	s = DriftControl.new()
+	o = run(s, pvs, inp({}), 0.1)
+	t.eq(o.brakeScale, 1, "no brake: the whole brake")
+	o = run(s, pvs, inp({ brake = 1 }), dt)
+	t.near(o.brakeScale, 0.25, 1e-9, "pivoting: brakeGrowBrakeScale of the brake")
+	s = DriftControl.new()
+	o = run(s, pvs, inp({ brake = 1, throttle = 0, driftAngleDeg = 2 }), dt)
+	t.eq(o.brakeScale, 1, "braking without a held slide is a whole brake")
 
 	-- Reset clears the throws and the surge
 	s = DriftControl.new()

@@ -544,7 +544,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		cfg.body.wheelRadius,
 		dt,
 		throttle,
-		input.brake,
+		input.brake * dc.brakeScale, -- a pivot's light foot (DriftControl)
 		drivenWheelSpeed,
 		drivenSpinning,
 		tractionAllowed,
@@ -728,8 +728,11 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- the centre of mass takes the held slide's own curve out and aims it
 	-- with the wheel, so it slides down the highway instead of round a
 	-- circle. Square to the velocity and at the centre of mass: no work, no
-	-- yaw moment.
-	if speed > 1 and not twoWheelActive and throwNow > 0 then
+	-- yaw moment. It stays on through the throw's tail, so the catch after
+	-- a 360 or a lift runs straight on too: a lever 360's path held at 0
+	-- degrees all the way round and then turned 7 to 15 in the wobble after
+	-- the lever was let go (Play, 2026-10-05).
+	if speed > 1 and not twoWheelActive and throwing > 0 then
 		local flat = Vector3.new(vel.X, 0, vel.Z)
 		if flat.Magnitude > 1 then
 			local side = flat.Unit:Cross(Vector3.yAxis) -- right of the velocity

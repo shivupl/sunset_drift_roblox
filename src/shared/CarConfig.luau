@@ -521,6 +521,9 @@ local config = {
 		-- grip times powerOverRearGrip) until the gas hold takes it.
 		powerOverSteer = 2,
 		powerOverMinKmh = 30,
+		-- ...and no more than this: power-over is a low-gear move, and over it
+		-- a full-key lane change on the highway must not throw the car.
+		powerOverMaxKmh = 1000,
 		powerOverThrow = 0,
 		powerOverRearGrip = 1,
 		gasHoldFromScale = 1,
@@ -560,6 +563,9 @@ local config = {
 		-- The pivot: brake and gas together in a held slide grow the angle
 		-- this fast (left-foot braking). 0 is off.
 		brakeGrowDegPerSec = 0,
+		-- ...with the brake's force times this while it pivots: a light left
+		-- foot (a key is a full brake, 14 kN, which would stop the car).
+		brakeGrowBrakeScale = 1,
 		-- The gas hold's ceiling: steering into a slide held on the gas
 		-- (lever out) adds no angle past this, so the wheel held into a
 		-- slide takes it wider and the line (CarConfig.line) carries it
