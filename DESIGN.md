@@ -200,18 +200,72 @@ seconds hands off and straightens by itself, and a full brake takes 58 to
 
 ## Drivetrain
 Torque curve by rpm, automatic gearbox, a differential that blends between
-open and welded. Wheel spin is not integrated; the tire reports when demand
-exceeded grip and the engine rpm floats up while it does. Engine braking on
+open and welded, on whichever axles the car drives (below). With the slip
+model the driven wheels spin and the engine turns with them; the legacy
+tyre reports when demand exceeded grip and the engine rpm floats up. Engine braking on
 lift shifts weight forward, which is what makes a lift-and-flick transition
 swing the rear across.
 
-There is no manual shift and no clutch kick. The kick was cut because it
-never earned its button: the handbrake initiates a slide faster and is the
+There is no manual shift and no clutch-kick button; the throttle stab
+after a feather does its job mid-drift (below). The button was cut because
+it never earned its place: the handbrake initiates a slide faster and is the
 control a hajwala driver actually uses, and a second initiation method meant
 a second set of grip numbers to keep honest. Reverse is not a selectable
 gear either. Holding the brake for reverseHoldSeconds after the car has
 stopped engages it and any throttle leaves it, so braking hard to a
 standstill cannot drop the car into reverse the moment it settles.
+
+## Drivetrains, drift styles and the feather
+
+The owner asked (2026-10-05) for the drift to "differ slightly depending on
+the drivestyle of the vehicle (awd,rwd,fwd,etc)", with "a couple different
+styles (multiple for each)" to try in game, and for "the ability to kick off
+the exhaust during a drift where the flames would also flutter like in
+drifting videos". Research and spec in docs/superpowers/specs
+(`2026-10-05-drift-feel-*`).
+
+**Real drive layouts.** Every car used to drive its rear wheels. Hajwala is
+mostly done in front-drive saloons (Camry, Accord, Sonata) thrown on the
+lever, beside rear-drive saloons and 4x4s, so the sim now drives whichever
+axles the car's `drivetrain.layout` says: each wheel gets its axle's share
+of the torque through its own diff blend, the engine braking and the
+crank's inertia go to the driven wheels, the gearbox and the engine read
+the driven wheels, and launch control caps the throttle over every driven
+axle (`Drivetrain.axleShares`, `Drivetrain.launchCap`). Rear drive is the
+old code path exactly. So front drive is not a label: its fronts spin on
+the launch and in a slide, the gas pulls along the way they point, and its
+tyre smoke comes off the front (the heat model follows whichever wheels
+slip). Front drive launches slower (0-100 4.2 s against 3.65: weight leaves
+the fronts), and giving the fronts more drive grip to close that made them
+scrub through a 360 (3.42 s against 2.5), so the tricks won.
+
+**Styles are knobs on the pedals, never on the lever.** The throw
+controller is what makes the 360, the chain and the catch repeatable, and
+the owner rated the tricks' ease "pretty good", so the styles leave the
+lever alone and change what the pedals do in a slide (`DriftControl`): how
+a short lift and the stab after it move the angle, whether a gas-held slide
+fades or settles into a band, and whether a lift or a power-over can start
+a slide. The lever 360 measures 2.4-2.6 s on every style and drivetrain.
+Each drivetrain's first style stays close to the car as it was; the others
+go further (Power Over starts slides on the gas, which "throttle alone never
+starts a slide" used to forbid; High Angle settles at 45 degrees).
+
+**The feather.** A lift used to drop the gas hold at once, so a 0.25 s lift
+took a 30-degree slide to 1 degree a second later: setting the exhaust off
+mid-drift cost the drift. A lift under `featherSeconds` now keeps the hold,
+the angle moving meanwhile (rear drive tightens, front drive's lift-off
+oversteer swings it out), and the gas back kicks it (the clutch-kick feel on
+rear drive; the fronts pull it in on front drive). The cost is a hands-off
+catch that waits out the feather first: 0.59-0.68 s against 0.53, after the
+feather's rate went up to 50 deg/s so the wait already straightens.
+
+**The flutter.** That lift, when the car is sideways, fires the exhaust
+style's flutter instead of its lift burst: a dense run of mostly small pops,
+30-60 ms apart, whose flames overlap into a flickering tongue, cut when the
+gas comes back. Feathering mid-drift flutters the flames in time with the
+driver's foot, which is what the drift videos show (each lift is its own
+overrun burst). It respects the 2026-09-22 ruling that pops come only on
+letting off; limiter pops stay off.
 
 ## Tafheet moves
 The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a

@@ -33,7 +33,8 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
 | cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. A piece's `look` (ReplicatedStorage.CarLooks) carries its colour, metalness and roughness maps; with `paint` the look's Color is the paint. |
 | cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg; the pickup and cruiser are almost all tuning (below). |
-| cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). |
+| cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). The card's last item is the car's drivetrain, read from `tuning.drivetrain.layout`. |
+| cars.&lt;id&gt;.tuning.drivetrain.layout | Which wheels drive, as the real car: the Kamri (a Camry) and the Hatch `"FWD"`, the Batrol (a Patrol) and the Kruzer 80 (a Land Cruiser) `"AWD"`, every other car rear drive (no line). It picks which drift styles the car offers (`DriftStyles`); the style sets the split. |
 | spawn.autoSpawnOnJoin (CarConfig) | false: players start on foot with the spawn menu open. true: a car is parked for them at join, the Phase 0 way. |
 | spawn.spawnCooldownSeconds (CarConfig) | Shortest gap the server allows between two spawn requests from one player (1.5 s). |
 | spawn.carId (CarConfig) | Overrides the default for everyone without a `CarId` attribute. |
@@ -167,6 +168,7 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. | ↑ | ↑ | — |
 | reverseRatio | Reverse gearing. | — | — | — |
 | drivelineEfficiency | Scales all drive force. | ↑ | ↑ | — |
+| layout / frontShare / frontDiffLock | Which wheels drive (`"RWD"`, `"FWD"`, `"AWD"`; Drivetrain.axleShares), the front axle's share of the torque under AWD (a fixed-split centre diff), and the front axle's diff blend like diffLock. RWD is the old path exactly (shares 0/1, measured within noise of before). Front drive measured on the Kamri: 0-30/60/100 in 1.22/2.42/4.20 s against 1.06/1.95/3.65 on rear drive (a launch moves weight off the fronts), the lever 360 2.48 s at 78 km/h against 2.45 at 84, the natl unchanged (40 degrees, down at 3.4-3.5 s). All-wheel drive on the Batrol and Kruzer 80: launch, 360 and natl within a few hundredths of rear drive. The drift styles set frontShare (Rally 0.45, Drift Mode 0.15); the catalog sets layout. | — | — | — |
 | diffLock | 0 open to 1 welded. An open diff sends torque to the wheel with least grip, so on two wheels the airborne rear takes it and the grounded one barely drives; that is why a natl can run straight. Welded drives the grounded wheel alone and yaws the car (measured: 11° of heading drift in 4 s at 0.4 throttle; 3° at full throttle with 0.25 and yaw damping). In a four-wheel drift the loads stay close so partial lock still feels welded. | ↑ | ↑ | ↓ |
 | idleRpm / redlineRpm | Rev range. | — | — | — |
 | upshiftRpm / downshiftRpm | Shift points. A later upshift keeps the engine in the fat part of the curve through a slide. | — | ↑ upshift | — |
@@ -213,6 +215,45 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | rearGripMultiplier (0.45) | Rear grip while pulled. Lower = snaps out faster. This is the knob that pays for a softer rear falloff: the gentler the falloff, the deeper this has to cut to initiate in the same time. | ↓ | ↓ | — |
 | brakeForce | Rear drag while pulled. 1,000 now; at 8,000 the lever alone was 0.5 g, 11 km/h for every second of a spin, and the throw controller does not need the drag for rotation. Raise it for a lever that visibly slows the car. | — | — | — |
 | releaseSeconds | How long the grip takes to come back after the lever is let go. 0 snaps it back in one step, which jolts the car straight; longer hands the slide off to the throttle more gently. The throw controller is scaled by this fading level too, so the rotation lets go with the grip. | ↑ | — | — |
+
+## drift (the pedals in a slide; `VehicleSim/DriftControl.luau`)
+
+Asked by the owner on 2026-10-05: drift styles by drivetrain, and "the ability to kick off the exhaust during a drift where the flames would also flutter like in drifting videos". These are the **Classic** style's numbers; every style sets its own (`DriftStyles`, below). None of them acts while the lever is in: the lever's 360s, holds and catches are the same on every style.
+
+| Field | What it does | Which way |
+|---|---|---|
+| featherSeconds | A lift shorter than this keeps a gas-held slide (a feather), so the exhaust can be set off mid-drift. Before it, a 0.25 s lift took a 30-degree slide to 1 degree a second later; now 0.2 s lifts keep it at 27-30. A longer lift is the catch, as before, so a hands-off catch waits this long first. 0 is the old car. | Longer: more forgiving feathers, a later catch |
+| featherDegPerSec | How the angle moves during a feather, + toward straight (rear drive regains grip on a lift), - away from it (front drive's lift-off oversteer). 50: a hands-off catch takes 0.59-0.68 s (0.82 at 25, 0.53 with no feather) and a 0.2 s feather dips the slide 3 degrees. | Higher: a feather tightens more and the catch is quicker |
+| kickDeg / kickSeconds | The gas back inside a feather adds this much angle over this long: the clutch-kick feel on rear drive, - pulls it in on front drive. Classic 8 (the dip comes back to within 1-2 degrees); Power Over 14 (26 to 22 to 30). | Bigger: a bigger kick |
+| holdDecayDegPerSec | A gas-held angle eases toward straight this fast (front drive's slides fade: Handbrake 2, 25 to 18 degrees over 4 s). | Up: shorter slides |
+| holdMinDeg / holdMaxDeg / holdEaseDegPerSec | A gas-held angle is kept between these, moved at this rate (High Angle 40-60: holds 45; Rally under 35). Under the band it grows even through the straight moment of a transition. | — |
+| liftThrow / liftThrowSeconds / liftThrowMinKmh / liftThrowSteer / liftThrowRearGrip | The lift throw (0 off): lifting fast (from 0.6 to under 0.1) at liftThrowMinKmh or more with the wheel past liftThrowSteer, before the car is sideways, throws it with this permission and the rear's grip times liftThrowRearGrip for liftThrowSeconds. Lift-Off 0.3 for 0.4 s at 0.6 grip: 20 degrees in 0.31 s from 100 km/h, settling at 35-37 on the gas (0.6 for 0.6 s swung to 55-58). | Up: a bigger swing |
+| powerOverSteer / powerOverMinKmh / powerOverThrow / powerOverRearGrip / gasHoldFromScale | Power-over: past powerOverSteer launch and traction control step aside (above 1 never), and with powerOverThrow above 0 the gas and that much wheel at powerOverMinKmh or more throw the car (that permission, the rear's grip times powerOverRearGrip) until the gas hold takes it, which it does from throwThrottleHoldFromDeg x gasHoldFromScale. Traction control aside alone never broke the rear (1.5 degrees at 50 km/h: the rear's drive grip is set for the launch). Power Over 0.7 / 30 / 0.5 / 0.8 / 0.5: 20 degrees in 0.48-0.50 s from 50 km/h, held 37-42. | — |
+| slideReliefScale | Times the car's slide momentum relief (slipModel.slideRelief); the lever's is its own. High Angle 1.3: 45 degrees held for 4 s from 100 loses 8 km/h. | Up: more speed carried sideways |
+
+## DriftStyles (the drift styles; `src/shared/DriftStyles.luau`)
+
+A style is a name, a drivetrain, a one-line blurb and a partial CarConfig deep-merged over a copy of the car's own config, only on keys no catalog car tunes (spec'd), so each car keeps its character. The car's drivetrain picks which styles it offers; the first is its default. **Picking one:** the menu's Settings tab (DRIFT STYLE: a chip per style, the chosen one's blurb under them), one choice per drivetrain for the session (LocalPlayer attributes `DriftStyle_RWD` / `_FWD` / `_AWD`; not saved to the profile yet). **In Studio:** O cycles the car's styles, Shift+O every style on any car (`DriftStyleAny`), with a label for 1.5 s. **L** reloads the styles' numbers too, so they can be tuned live.
+
+Measured with the harness at 59 fps (Kamri for rear and front drive, Batrol and Kruzer 80 for all-wheel drive; a slide is a 0.25 s lever tap at 100 km/h handed to the gas):
+
+| Style | Drive | What it does | Measured |
+|---|---|---|---|
+| **Classic** (default) | rear | The car as it was, plus the feather | launch 0-100 3.65 s; handbrake to 20° 0.25 s; held 27-35°; feather dips 3° and kicks back; flick 70°; lever 360 2.45-2.64 s at 84; hands-off catch 0.59-0.68 s; chain 26-29° |
+| **Power Over** | rear | Gas and full lock start a slide; every stab kicks it wider | from 50 km/h 20° in 0.48-0.50 s, held 37-42°; kick 26 → 22 → 30°; launch 3.70; 360 2.45 at 84; catch 0.57 |
+| **High Angle** | rear | Gas-held slides settle at 40-60° and carry speed | held 45° for 4 s, 100 → 92 km/h; long-tap (0.7 s) chain 46-55°; 360 2.45 at 84; catch 0.82 from 45° |
+| **Handbrake** (default) | front | Thrown on the lever and carried; slides fade, a stab pulls it in | launch 0-100 4.20; handbrake 0.23-0.26; held 25 → 18° over 4 s, gaining speed; stab pulls 24 → 17°; flick 69°; 360 2.48 at 78; catch 0.58-0.81; chain 27-44°; natl 40°, down 3.4-3.5 s (as rear drive) |
+| **Lift-Off** | front | Lift with the wheel turned and the tail comes round | 20° in 0.31 s from 100, settles 35-37°; 360 2.43 at 80; catch 0.7-0.9 (its lifts swing the tail) |
+| **Rally** (default) | all, 45:55 | A shallow four-wheel slide that drives forward; a stronger flick | Batrol: launch 5.19 (rear drive 5.25), 360 2.60 at 84, held 12-13° gaining 100 → 108 km/h, catch 0.55, natl 33° down 3.72 (34°, 3.72); Kruzer 80: launch 5.52 (5.62), 360 2.58 at 85 (2.57 at 87), natl 35° down 3.50 (3.45) |
+| **Drift Mode** | all, 15:85 | Most of the drive to the rear: holds like rear drive | Batrol: held 17-18°, kick 16 → 21°, 360 2.58 at 85, natl 33° down 3.75 |
+
+| Field | What it does | Which way |
+|---|---|---|
+| styles[].tuning | The style's numbers: `drivetrain.frontShare`, `tires.front.longitudinalGrip` (front and all-wheel drive take the rear's 1.9: at 2.3 the front-drive launch was 3.9 s but the 360 took 3.42 s and the catch 1.25), `drift.*` (above), and for front drive `steering.throwFinishFromDeg` 15 (the hands-off catch's authority from 15 degrees: front drive comes out of a gas-held slide still yawing outward, and took 1.1-1.2 s to straighten without it) | — |
+| order | The Settings tab's and Shift+O's order; within a drivetrain the first is its default | — |
+| layoutName | The drivetrain's name in the Settings tab and on the spawn menu's cards | — |
+
+**The owner's feel knobs for drifting:** which style is each drivetrain's default (`order`), `featherSeconds` / `featherDegPerSec` / `kickDeg` (how a feather and a stab feel), `holdDecayDegPerSec` (how fast front-drive slides fade), `holdMinDeg` / `holdMaxDeg` (High Angle's and Rally's band), `liftThrow` and `powerOverThrow` (how hard a lift or a power-over throws the car), `FRONT_DRIVE_GRIP` (front drive's launch against its spins), and each car's `layout` in the catalog.
 
 ## twoWheel
 | Field | What it does | OS | INIT | 2W |
@@ -370,6 +411,7 @@ Visual only; the physics never reads any of these. Client-side: skid marks and t
 | engineAudio.shiftSoundId / shiftSoundVolume | Optional mechanical thunk played on each upshift. Empty for now. |
 | engineAudio.blipPitch / blipRiseSeconds / blipFallSeconds | Off-throttle downshift: pitch rises by this fraction, then falls back, about 30% louder while it lasts. Braking from 200 km/h blips at 4-3, 3-2 and 2-1 (pitch peaks 1.58 to 1.72, volume 0.25 to 0.32). |
 | engineAudio.crackleMinRpm / crackleMinKmh / crackleLiftFrom | Lifting from above crackleLiftFrom throttle while over both crackleMinKmh and crackleMinRpm starts an exhaust burst in the car's style (`ExhaustStyles`, below the flames table). Throttle back on cuts the rest. Raise the speed or rpm for rarer bursts. The pop sound, its loudness and the 1-3 pops in 0.5 s moved to the Classic style (2026-10-04). |
+| engineAudio.driftFlutterFromDeg / driftFlutterMinKmh | A lift with the car at least this far sideways (12°) and this fast (40 km/h) fires the exhaust style's drift flutter instead of its burst, at any revs: feathering mid-drift flutters the flames while the drift carries on (`drift.featherSeconds`). Measured on the Kamri: three 0.2 s feathers in a held slide, 5 pops each, one flutter and one cut on the server per feather. Lower the angle for flutters on smaller slides. |
 | engineAudio.crackleRevFloor | A lift from crackleMinRpm gets this share of the style's pops, rising to all of them at the redline (`ExhaustStyles.revFactor`; Classic's count ignores it). 0.6: a lift at 5,650 rpm measured scale 0.84 on the factory exhaust. Up for more pops from low revs. |
 | engineAudio.crackleShiftRpm / crackleShiftChance / crackleLimiterPerSecond | Single pops, each with its flame: an upshift from above crackleShiftRpm (6000; the box shifts at 6400) pops with crackleShiftChance, and on the limiter about crackleLimiterPerSecond a second, both times the exhaust's crackleChance. **Both 0 (off) by default**: the owner's 2026-09-22 ruling is pops only when going fast and letting off; turning them on is the owner's call. Tried in Play at 0.35 / 1.2 (twin tips: two upshift pops in 9 s of full throttle; each sound and flame on the same frame). |
 | engineAudio.punchRpm / punchDecaySeconds / punchFullKmh / punchFadeKmh / punchMinFactor | Sound only: pressing the throttle kicks the note up by punchRpm times the pedal travel, settling over punchDecaySeconds. Full kick up to punchFullKmh, tapering to punchMinFactor of it by punchFadeKmh. |
@@ -995,7 +1037,7 @@ Most per pop per outlet: 26 (spec: at most 30). A titanium lift-off (up to 8 pop
 
 ### `ExhaustStyles` (exhaust pop styles; `ExhaustSputter`, `ExhaustPops`)
 
-Asked by the owner on 2026-10-04: "different exhaust flame variants but really cool ones ... the audio has to be like the sputter". Design, research and plan: `docs/superpowers/specs/2026-10-04-exhaust-flame-variants-design.md`, `...-research.md`, `docs/superpowers/plans/2026-10-04-exhaust-flame-variants.md`. A lift-off is a **burst**: `ExhaustSputter.generate(pattern, seed, scale)` makes its pops (time, size class small/mid/big, level 0..1); each pop plays a real pop cut from a recording (`Sound.PlaybackRegion`) and fires its flame on the same frame, and the newest pop of any car moves the one pooled flash light. The driver sends one relay message a burst (kind, style, seed, scale); every client rebuilds the same burst.
+Asked by the owner on 2026-10-04: "different exhaust flame variants but really cool ones ... the audio has to be like the sputter". Design, research and plan: `docs/superpowers/specs/2026-10-04-exhaust-flame-variants-design.md`, `...-research.md`, `docs/superpowers/plans/2026-10-04-exhaust-flame-variants.md`. A lift-off is a **burst**: `ExhaustSputter.generate(pattern, seed, scale)` makes its pops (time, size class small/mid/big, level 0..1); each pop plays a real pop cut from a recording (`Sound.PlaybackRegion`) and fires its flame on the same frame, and the newest pop of any car moves the one pooled flash light. The driver sends one relay message a burst (kind, style, seed, scale); every client rebuilds the same burst. A lift mid-drift is a **flutter** instead (`styles[].flutter`, below; 2026-10-05).
 
 | Style | Rhythm (pattern) | Sound | Look |
 |---|---|---|---|
@@ -1013,6 +1055,7 @@ Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackl
 | `default` | The style every car uses | The owner's pick |
 | `order` | The Studio switch's cycle; the index is what the relay sends | Append only (relayed numbers) |
 | `styles[].pattern` | `kind` (burble or uniform), `count` (pops at scale 1), `maxPops`, `minGap`, `maxSeconds`, `first` (the first pop's size), `weightsStart`/`weightsEnd` (how likely small/mid/big are, eased over the burst), `fade` (the last pop's level), `levelJitter`; burble: `gapStart`/`gapEnd` (s), `jitter`, `doubleChance`/`doubleGap`; uniform: `spanSeconds` | Wider jitter reads as a burble, near zero as a 2-step; longer gapEnd = a longer tail |
+| `styles[].flutter` | The drift flutter: what a lift with the car sideways fires instead of the burst (EngineAudio, `driftFlutterFromDeg`). A pattern like `pattern`, dense and mostly small so the flames overlap into a flickering tongue: Crackle 8-12 pops 30-50 ms apart easing to 80-140; Blue Flame 6-10 at 40-50 easing to 60-80; 2-Step 6-10 on an even 60 ms; Classic 3-5 at 40-70 ms. The gas back on cuts it. Relayed as its own kind (4). | Shorter gaps: a faster flicker |
 | `styles[].chanceGain` | How much the exhaust's crackleChance adds pops | |
 | `styles[].trailGain` | The style's own reach at speed for car-locked layers (0.4: at Classic's 1.2 Blue Flame's jets flew 2-4 m behind the car at 110 km/h, cut off) | Up for longer flames at speed |
 | `styles[].sounds.{small,mid,big}` | `grains` (clip, from, to, gain), `pitch` range, `volume`: Volume = volume x gain x level | Volumes are first guesses by measured peak, not checked by ear |
@@ -1023,7 +1066,7 @@ Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackl
 | `styles[].revScaled` | false: the revs of the lift don't change the count (Classic) | |
 | `styles[].layers` | As the `flames` layers plus `flipbook` (grid, OneShot), `from` (the smallest pop size that emits it), `colors` keyframes, `turn` | At most 40 particles a big pop per outlet (spec); flash glints 0.45-0.7 m at Brightness 1.2 (at 1.3 m and 2.2 two outlets' flashes burnt to a white blob) |
 | `clipSeconds` | Measured clip lengths; the spec keeps every grain inside its clip | |
-| `relayPerSecond` / `maxScale` | Server relay: 8 messages a second per player; a burst's scale at most 4 | |
+| `relayPerSecond` / `maxScale` | Server relay: 12 messages a second per player (feathering four times a second sends a flutter and a cut each time, 8; at 8 a fast keyboard feather's cuts could be dropped); a burst's scale at most 4 | |
 
 **Trying the styles (Studio only):** P cycles this client's style through `order`; a label shows its name for 1.5 s and the LocalPlayer attribute `FlameStyle` holds it (set it by hand to pick one). Other clients see the driver's style, since each burst carries it.
 

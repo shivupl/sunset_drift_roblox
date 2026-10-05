@@ -235,6 +235,8 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 
 ---
 
+- **Try numbers in Play without restarting it:** set a shared module's `Source` from the **Server** datamodel; the change replicates to the client, and a config reload (`OvReload`, which re-requires clones) picks it up. Check the client sees the new text before measuring (drift styles tuned this way, 2026-10-05).
+- **After `git stash` and `pop`, Studio can keep the stashed copy of a file.** Rojo missed the pop of the owner's CarCatalog, so for a whole session the specs read 0 VehicleRig failures instead of the known 14, until the file was next written (2026-10-05). Before trusting a spec count, compare a synced module's `Source` with the file.
 - **Start Play right after Stop and Studio can stay in Edit.** `start_stop_play(true)` straight after a stop reported "Game Started" but left Studio in Edit several times (2026-10-04). Check `get_studio_state` and start again.
 - **Studio's camera script wins over yours while you are seated.** The game's `CameraRig` sets the camera in `RenderStepped`, after `BindToRenderStep`. For a fixed shot while driving, override `Camera:GetPropertyChangedSignal("CFrame")` (with a re-entry guard), or get out of the car.
 - **A second player can't be started from the MCP.** To test what other players see of an effect relayed through the server, require a fresh copy of the client module from `execute_luau` (it gets its own module instance) and point it at your own car.
