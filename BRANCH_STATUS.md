@@ -24,7 +24,10 @@ heat, puffing, and tan dust instead of smoke on sand or dirt. Third pass (owner:
 exactly; road smoke "patchy" and "a bit too much"): road smoke laid by distance from the live contact patch,
 barely thrown and thinner; dust split onto its own attachment and settings, unchanged. Fourth pass (owner:
 smoke from wheels hidden behind the car showed "through the car"; keep it continuous): road smoke's ZOffset
-0.84 to 0.15 m so the body hides it, wisps fill the trail's gaps, the cloud fades in once grown.
+0.84 to 0.15 m so the body hides it, wisps fill the trail's gaps, the cloud fades in once grown. Front
+tyres' sideways slide counts 0.4 (less front smoke in a drift). Flip rework (owner: "to robotic", steer to
+roll it back): a capsized car is rolled by a real torque while you steer, or rolls itself after 0.8 s at
+rest; the scripted roll is only the last resort.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

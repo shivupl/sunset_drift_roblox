@@ -34,6 +34,41 @@ return function(t: T)
 	local noseTarget = AutoFlip.upright(nose, Vector3.zero)
 	t.near(noseTarget.UpVector.Y, 1, 1e-6, "a car on its nose still gets an upright frame")
 
+	-- Roll about the long axis, as seen from behind (CFrames are single
+	-- precision: angles to 1e-4 degrees) --------------------------------------
+	t.near(AutoFlip.rollDeg(up), 0, 1e-4, "upright: no roll")
+	-- CFrame.Angles(0, 0, +90) turns the roof to the car's left (-X): lying
+	-- on its left side.
+	local leftSide = CFrame.new(0, 1, 0) * CFrame.Angles(0, 0, math.rad(90))
+	local rightSide = CFrame.new(0, 1, 0) * CFrame.Angles(0, 0, math.rad(-90))
+	t.near(AutoFlip.rollDeg(leftSide), -90, 1e-4, "on its left side: -90")
+	t.near(AutoFlip.rollDeg(rightSide), 90, 1e-4, "on its right side: +90")
+	t.near(math.abs(AutoFlip.rollDeg(roof)), 180, 1e-4, "on its roof: 180")
+	t.near(AutoFlip.rollDeg(yawed * CFrame.Angles(0, 0, math.rad(90))), -90, 1e-4, "the heading doesn't change it")
+	t.eq(AutoFlip.rollDeg(nose), 0, "on its nose: no roll")
+	t.eq(AutoFlip.rightingDir(leftSide), 1, "left side down: roll it clockwise (steer right)")
+	t.eq(AutoFlip.rightingDir(rightSide), -1, "right side down: the other way (steer left)")
+	-- Steering right (a turn along +LookVector) takes the left-side car toward
+	-- upright, and the right-side one away from it.
+	local nudge = CFrame.fromAxisAngle(leftSide.LookVector, math.rad(10))
+	t.ok(math.abs(AutoFlip.rollDeg(nudge * leftSide)) < 90, "steer right lifts a car off its left side")
+	t.ok(math.abs(AutoFlip.rollDeg(nudge * rightSide)) > 90, "and pushes one on its right side into the ground")
+	-- The driver's steer: on its side either way rolls it up the short way;
+	-- on its roof the steer picks the side.
+	t.eq(AutoFlip.steerDir(leftSide, 1, 135), 1, "left side, steer right: clockwise, up")
+	t.eq(AutoFlip.steerDir(leftSide, -1, 135), 1, "left side, steer left: still up the short way")
+	t.eq(AutoFlip.steerDir(rightSide, 1, 135), -1, "right side, steer right: up the short way")
+	t.near(AutoFlip.steerDir(rightSide, -0.5, 135), -0.5, 1e-9, "half a steer, half the push")
+	t.eq(AutoFlip.steerDir(roof, 1, 135), 1, "on its roof, steer right goes over clockwise")
+	t.eq(AutoFlip.steerDir(roof, -1, 135), -1, "and steer left the other way")
+
+	-- The roll torque: full while it is stopped, easing off near the target
+	-- rate, braking past it, never over the cap.
+	t.eq(AutoFlip.rollTorque(700, 0, 2.4, 20, 25000), 25000, "from rest it pushes as hard as it may")
+	t.ok(AutoFlip.rollTorque(700, 2.3, 2.4, 20, 25000) < 2000, "near the roll rate it eases off")
+	t.ok(AutoFlip.rollTorque(700, 3, 2.4, 20, 25000) < 0, "past it, it brakes")
+	t.eq(AutoFlip.rollTorque(700, 0, -2.4, 20, 25000), -25000, "the other way the same")
+
 	-- The ease starts and ends at rest.
 	t.near(AutoFlip.ease(0), 0, 1e-9, "ease 0")
 	t.near(AutoFlip.ease(1), 1, 1e-9, "ease 1")

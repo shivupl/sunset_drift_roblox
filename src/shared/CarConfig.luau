@@ -758,7 +758,44 @@ local config = {
 		enabled = true,
 		-- 75: well past a natl, which balances at 35 and lets go at 62
 		-- (twoWheel.targetRollDeg / tipRollDeg), so a held natl never trips it.
+		-- Capsized also means no wheel on the ground.
 		tiltDeg = 75,
+		-- Rolling it back (owner, 2026-10-04: the scripted roll was "to
+		-- robotic"; "if i get into a flipped (upside down or flat state) i
+		-- can like turn my wheels to reflip back to normal", and not wait).
+		-- A capsized car resting on something is rolled by a real torque
+		-- about its long axis while you steer: on its side either way rolls it
+		-- back up the short way, on its roof (past roofChoiceDeg of roll) the
+		-- way you steer picks the side it goes over. It heaves up off its
+		-- edge, tips past the balance point and drops onto its springs; let
+		-- go and it falls back. Untouched, after settleSeconds at rest it
+		-- rolls itself the short way.
+		steerDeadzone = 0.15,
+		roofChoiceDeg = 135,
+		-- It rolls at about this rate (degrees a second).
+		rollRateDegPerSec = 120,
+		-- How hard it chases that rate (per second; high, so it pushes at
+		-- the cap until it is rolling) and the most torque it may use, as a
+		-- multiple of what holds the car's weight at half its height off the
+		-- edge it pivots on. At 2 it jumped to 115 deg/s within 0.05 s, which
+		-- read as a machine (Studio, 2026-10-04); 1.5 and a push that builds
+		-- over rollRampSeconds heave it up instead.
+		rollGain = 20,
+		rollTorqueG = 1.5,
+		rollRampSeconds = 0.35,
+		-- It lets go once this upright, and gravity and the springs finish.
+		releaseTiltDeg = 40,
+		-- Only a car lying on something and nearly still can be rolled, so a
+		-- tumble in the air or a slide on its roof can't be steered: the car's
+		-- centre within half its cross-section's diagonal plus this of the
+		-- ground, slower than rollMaxSpeedMps.
+		groundGapM = 0.5,
+		rollMaxSpeedMps = 6,
+		-- And a roll only starts once it has stopped falling (m/s down).
+		rollMaxFallMps = 1.5,
+		-- If rolling itself hasn't got it up in this long (wedged against a
+		-- wall, say), the scripted roll below takes over as a last resort.
+		giveUpSeconds = 3,
 		-- At rest means slower than this, turning slower than this, for this
 		-- long: the roll has finished and the car is not about to right itself
 		-- or still sliding on its side. Long enough to read as "it's over",
@@ -766,8 +803,8 @@ local config = {
 		restSpeedMps = 2,
 		restSpinDegPerSec = 45,
 		settleSeconds = 0.8,
-		-- 0.75 s for a car on its side, 1.5 s off its roof: quick enough to
-		-- get going again, slow enough to watch it roll.
+		-- The scripted roll (last resort): 0.75 s for a car on its side, 1.5 s
+		-- off its roof.
 		flipSecondsPer90 = 0.75,
 		-- Kept between its lowest corner and the ground while it rolls, so the
 		-- edge it pivots on doesn't scrape through; 0 at the start and the landing.

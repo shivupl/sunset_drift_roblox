@@ -143,9 +143,20 @@ function VehicleController.start(model: Model, remotes: Folder)
 			AutoFlip.reset()
 			resetCar(model)
 		end
-		-- A capsized car at rest rolls back onto its wheels (AutoFlip); the
-		-- sim waits while it does, so nothing fights the roll.
-		if AutoFlip.step(model, rig, ConfigLoader.forCar(carId), dt) then
+		-- A capsized car is rolled back onto its wheels by steering, or rolls
+		-- itself after a moment (AutoFlip, with the sim running); only the
+		-- scripted last-resort roll stops the sim, so nothing fights it.
+		local last = VehicleController.lastState
+		local wheelsDown = 4
+		if last then
+			wheelsDown = 0
+			for _, w in last.wheels do
+				if w.grounded then
+					wheelsDown += 1
+				end
+			end
+		end
+		if AutoFlip.step(model, rig, ConfigLoader.forCar(carId), dt, input.steer, wheelsDown) then
 			TireSmoke.pause() -- nothing slides while it rolls back over
 			return
 		end
