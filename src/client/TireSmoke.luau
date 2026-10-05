@@ -468,7 +468,8 @@ function TireSmoke.contacts(rig: VehicleRig.Handles, cfg: any, state: VehicleSta
 		-- CarConfig.handbrake), though its per-wheel lock flag only trips once
 		-- the tyre is saturated: a lever pulled in a straight line drags them.
 		local surface = if state.handbrake and not def.front then 0 else ws.visualOmega * cfg.body.wheelRadius
-		slides[i] = TireHeat.slideSpeed(cfg.effects.tireHeat, pv, heading, surface)
+		local p = cfg.effects.tireHeat
+		slides[i] = TireHeat.slideSpeed(p, pv, heading, surface, if def.front then p.frontSideShare else 1)
 		treads[i] = TireHeat.treadVelocity(pv, heading, surface)
 		grounds[i] = flatSpeed(pv)
 	end

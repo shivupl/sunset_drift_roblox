@@ -26,6 +26,7 @@ local TireHeat = {}
 export type Params = {
 	gripSlipDeg: number, -- slip angle a gripping tyre runs without its tread sliding
 	gripSlipRatio: number, -- and slip ratio (spin or lock, as a share of rolling speed)
+	frontSideShare: number, -- share of a front tyre's sideways slide that counts (slideSpeed's sideShare)
 	slideStartMps: number, -- contact-patch slide speed where heating begins
 	slideFullMps: number, -- and where it is heating as hard as it can
 	heatPerSec: number, -- how fast a fully sliding tread heats (heat units a second)
@@ -47,7 +48,12 @@ export type Params = {
 -- sideways and gripSlipRatio along, both scaled by how fast the patch rolls,
 -- is taken off first; what's left is the tread really sliding: a drift, a
 -- burnout's spin, a lock-up's drag.
-function TireHeat.slideSpeed(p: Params, contactVel: Vector3, heading: Vector3, surfaceSpeed: number): number
+--
+-- `sideShare` (1 if left out) scales the sideways part only: the client
+-- passes frontSideShare for the front tyres, so their sideways scrub in a
+-- drift smokes far less while a front lock-up (all along the tyre) smokes as
+-- before.
+function TireHeat.slideSpeed(p: Params, contactVel: Vector3, heading: Vector3, surfaceSpeed: number, sideShare: number?): number
 	local flat = Vector3.new(contactVel.X, 0, contactVel.Z)
 	local h = Vector3.new(heading.X, 0, heading.Z)
 	if h.Magnitude < 1e-6 then
@@ -57,7 +63,7 @@ function TireHeat.slideSpeed(p: Params, contactVel: Vector3, heading: Vector3, s
 	local along = flat:Dot(h)
 	local across = (flat - h * along).Magnitude
 	local roll = math.max(math.abs(along), math.abs(surfaceSpeed))
-	local lat = math.max(0, across - math.abs(along) * math.tan(math.rad(p.gripSlipDeg)))
+	local lat = math.max(0, across - math.abs(along) * math.tan(math.rad(p.gripSlipDeg))) * (sideShare or 1)
 	local long = math.max(0, math.abs(surfaceSpeed - along) - roll * p.gripSlipRatio)
 	return math.sqrt(lat * lat + long * long)
 end

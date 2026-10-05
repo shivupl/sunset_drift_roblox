@@ -810,6 +810,16 @@ local config = {
 			-- grippy corners would have smoked.
 			gripSlipDeg = 8,
 			gripSlipRatio = 0.12,
+			-- Share of a front tyre's sideways slide that heats it. Owner,
+			-- 2026-10-04: "tone down" the front tyres smoking in a drift. In a
+			-- drift the fronts are steered into the slide and scrub sideways
+			-- far less hard than the spinning rears tear, and in drift
+			-- footage they barely smoke; at 1 a drift with light countersteer
+			-- (45 degrees, fronts 30-odd degrees off their heading) smoked the
+			-- outside front at 0.4. At 0.4 they smoke only when the car is
+			-- truly sideways or spinning. Sideways only: a front lock-up under
+			-- braking (all along the tyre) still smokes in full.
+			frontSideShare = 0.4,
 			-- Slide speed (m/s, beyond the grip's share) where the tread
 			-- starts heating, and where it heats flat out. 9: a committed
 			-- drift at 60 km/h slides the rears about 7-9 m/s sideways past
