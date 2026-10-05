@@ -270,6 +270,74 @@ driver's foot, which is what the drift videos show (each lift is its own
 overrun burst). It respects the 2026-09-22 ruling that pops come only on
 letting off; limiter pops stay off.
 
+## The drift overhaul: the line, the throttle's angle, modes
+
+The owner asked (2026-10-05) for "a full overhaul and perfection of the
+drifting system, different modes I can try different styles for each
+drivetype. all research based ... from throlle bursts to stable trifting
+and the standdard hajwala 360s", and then "make sure its easy to control
+the sideway drifting within the highway boundries". Research and design in
+docs/superpowers/specs (`2026-10-05-drift-overhaul-*`).
+
+**The line.** The first measurement decided the overhaul. A slide held on
+the gas from 100 km/h with the wheel centred held 41 degrees perfectly, but
+its path turned 74 degrees and it went 79 m sideways in four seconds; a
+carriageway is 38 m. A Tanteel chain wandered 49 m, a lever 360 left 20
+degrees off its line. The throw controller holds the angle against the
+path, so the tyres' lateral forces, all pointing inward in a slide, bend
+the path round at 0.8 g: a real drift's circle, right for a corner, wrong
+for a straight highway where hajwala lives. A real driver straightens the
+line with countersteer and by swinging the other way; the research splits
+the controls the same way (the rear's slip holds the angle, the front
+steers the path). Our wheel is already the angle's dial, so the line is an
+assist (`Line.luau`): while a slide is held, a sideways push at the centre
+of mass takes `hold` of the slide's own curve out and adds `steerG` toward
+the steered side. At the centre of mass it has no yaw moment, so every
+angle, 360 and catch number is the throw controller's as before; square to
+the velocity it does no work, so every speed number is the tyres'. Held
+into the slide, the wheel lets the hold go (a drift taking a corner);
+under the lever it has its own hold from straight up, faded in over 60-90
+km/h, so a highway 360 goes on down the road and a city handbrake turn
+stays a turn. It stays on through the throw's tail, because a 360's path
+held at 0 degrees the whole way round and then turned 7 to 15 in the
+wobble after the lever was let go.
+
+**The throttle sets the angle.** The research is unanimous that the gas is
+the angle in a real drift, that slow throttle build-up (10-20 deg/s) fails
+far less than fast, and that countersteer should be quicker than steer-in.
+So in the new modes a gas-held slide widens toward its band's top
+(`holdDecayDegPerSec` < 0), a lift tightens it (and flutters the exhaust,
+so the drift-video look comes from driving the slide, not from a separate
+trick), a stab kicks it with a surge of drive (`kickDriveScale`: wheelspin,
+revs and smoke from the physics), and steering into a gas-held slide turns
+it at a share of the rate (`dialIntoScale`) and stops at a ceiling
+(`dialMaxDeg`), where it used to spin; counter-steer keeps the whole rate,
+so a transition swings through as before. A gamepad's part throttle keeps
+the slide and tightens it in proportion (`keepThrottle`). The keyboard's
+throttle is binary, so its angle control is the feather and the stab.
+
+**Front drive and all-wheel drive follow their physics.** A front-drive car
+can only hold a slide with its rear braked: Tafheet holds on the lever
+(100 to 65 km/h over three seconds, the research's ʿaksiya bleed) and the
+gas pulls it straight with no countersteer, gaining speed. All-wheel drive
+flips strategy at about 25:75 front to rear: Rally (45:55) is shallow and
+gas pulls it in and on, Drift Mode (20:80) widens on the gas like rear
+drive, Tatweef (the Land Cruiser's 41:59) runs dead straight and is
+steered across the lanes, with a heavier 3.2 s 360.
+
+**New entries, each a mode's.** Power-over (gas and lock, 30-90 km/h: a
+low-gear move, never on a highway lane change), the clutch-kick entry (a
+lift and the gas back with the wheel turned: FR Legends' double tap,
+hajwala's neutral drop), the brake entry (the braking drift, front drive's
+left-foot brake), the pivot (brake and gas together on a held slide, on a
+quarter of the brake), and the lift throw.
+
+**Classic stays.** Each drivetrain's fourth mode is the drift-feel default
+exactly, so the overhaul can be compared against the car as it was, on the
+same car, in the same session. The lever's 360 is the same move on every
+mode: lever and full lock, about 2.5 s, 27 km/h lost; a mode sets only its
+rate (Rally 140 deg/s, Tatweef 125) and the line sends it straight on.
+
 ## Tafheet moves
 The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a
 straight highway, thrown left and right. The named moves are Ta'geed (a

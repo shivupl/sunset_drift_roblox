@@ -59,6 +59,20 @@ owner: which style each drivetrain defaults to, whether the choice is saved to t
 drive's slower launch (0-100 4.2 s against 3.65), and the catch that now waits out a feather
 (0.59-0.68 s against 0.53).
 
+**`drift-overhaul` (2026-10-05, branched from `drift-feel` at `8574a08`; not merged yet): the drift
+overhaul.** The owner asked for "a full overhaul and perfection of the drifting system ... from throlle
+bursts to stable trifting and the standdard hajwala 360s" with modes per drivetrain, and to keep the
+sideways drifting "within the highway boundries". The line (`VehicleSim/Line.luau`) keeps a held slide,
+a chain and a 360 on the highway (a held slide went 79 m sideways in 4 s; now 0-13 m by mode); in the
+new modes the throttle sets the angle (gas widens, a lift tightens and flutters, a stab kicks with a
+surge of drive), the wheel's into-dial is slower and capped, and new entries (power-over, the
+double-tap clutch kick, the brake tap, the pivot) belong to their modes. Twelve modes: Hajwala, Kick,
+High Angle (rear); Tafheet, Lift-Off, Pivot (front); Rally, Drift Mode, Tatweef (all-wheel); and
+Classic on each, the drift-feel default kept for A/B. Studio's `DriftLab` attribute tries numbers live.
+Research and design in docs/superpowers/specs (`2026-10-05-drift-overhaul-*`); measurements in TUNING.md
+(`drift`, `line`, `DriftStyles`). Open for the owner: the defaults per drivetrain, how strong the line
+is (`line.hold`), and whether the choice is saved to the profile. Merging it carries `drift-feel` too.
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
