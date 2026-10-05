@@ -785,12 +785,16 @@ local config = {
 		rollRampSeconds = 0.35,
 		-- It lets go once this upright, and gravity and the springs finish.
 		releaseTiltDeg = 40,
-		-- Only a car lying on something and nearly still can be rolled, so a
-		-- tumble in the air or a slide on its roof can't be steered: the car's
-		-- centre within half its cross-section's diagonal plus this of the
-		-- ground, slower than rollMaxSpeedMps.
+		-- Only a car lying on something can be rolled, so a tumble through
+		-- the air can't be steered: the car's centre within half its
+		-- cross-section's diagonal plus this of the ground, slower than
+		-- rollMaxSpeedMps. That was 6 m/s, and a car on its roof slid a long
+		-- way before it got that slow (owner, 2026-10-04: "make it so that i
+		-- can flip back before coming to a complete halt ... right now i have
+		-- to wait/slide quite a distance"): 40 lets it be rolled while it
+		-- still slides. Rolling itself still waits for it to stop (restSpeedMps).
 		groundGapM = 0.5,
-		rollMaxSpeedMps = 6,
+		rollMaxSpeedMps = 40,
 		-- And a roll only starts once it has stopped falling (m/s down).
 		rollMaxFallMps = 1.5,
 		-- If rolling itself hasn't got it up in this long (wedged against a

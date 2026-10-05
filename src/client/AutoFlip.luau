@@ -257,8 +257,9 @@ local function sizeOf(model: Model): Vector3
 	return e
 end
 
--- Whether a capsized car is lying on something (not tumbling through the air
--- or sliding along on its roof): its centre near the ground, and slow. With
+-- Whether a capsized car is lying on something, not tumbling through the
+-- air: its centre near the ground, and under rollMaxSpeedMps (sliding along
+-- on its roof is fine: it can be rolled before it stops). With
 -- `settled`, also not still falling: a roll only starts once it has landed,
 -- since a torque on a car dropping onto its side spun it in the air and it
 -- landed past upright and went over (Studio, 2026-10-04). A roll under way
