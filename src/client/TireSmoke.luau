@@ -495,7 +495,7 @@ function TireSmoke.update(state: VehicleState, dt: number)
 	for i, ws in state.wheels do
 		loads[i] = if ws.grounded then ws.load else 0
 	end
-	local shares = TireHeat.loadShares(loads)
+	local shares = TireHeat.loadShares(loads, p.frontLoadSwap)
 	local cf = o.rig.chassis.CFrame
 	for i, w in o.wheels do
 		local ws = state.wheels[i]

@@ -27,6 +27,7 @@ export type Params = {
 	gripSlipDeg: number, -- slip angle a gripping tyre runs without its tread sliding
 	gripSlipRatio: number, -- and slip ratio (spin or lock, as a share of rolling speed)
 	frontSideShare: number, -- share of a front tyre's sideways slide that counts (slideSpeed's sideShare)
+	frontLoadSwap: boolean, -- the front tyres take each other's load share (loadShares)
 	slideStartMps: number, -- contact-patch slide speed where heating begins
 	slideFullMps: number, -- and where it is heating as hard as it can
 	heatPerSec: number, -- how fast a fully sliding tread heats (heat units a second)
@@ -87,7 +88,12 @@ end
 -- times slide speed, and friction follows load: in a drift the loaded outside
 -- rear smokes hardest and the light inside one less; under braking, the
 -- fronts. Even shares when nothing is on the ground.
-function TireHeat.loadShares(loads: { number }): { number }
+--
+-- With `swapFronts` (loads in FL, FR, RL, RR order) the two fronts take each
+-- other's share, so the one that would smoke hardest smokes least and the
+-- other way round (owner, 2026-10-04: "the way the front 2 tires smoke works,
+-- reverse it"). The rears are left as they are.
+function TireHeat.loadShares(loads: { number }, swapFronts: boolean?): { number }
 	local total = 0
 	for _, l in loads do
 		total += math.max(0, l)
@@ -95,6 +101,9 @@ function TireHeat.loadShares(loads: { number }): { number }
 	local out = {}
 	for i, l in loads do
 		out[i] = if total > 1e-6 then math.max(0, l) * #loads / total else 1
+	end
+	if swapFronts and #out >= 2 then
+		out[1], out[2] = out[2], out[1]
 	end
 	return out
 end

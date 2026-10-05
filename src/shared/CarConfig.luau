@@ -857,6 +857,12 @@ local config = {
 			-- the body hides it). Sideways only: a front lock-up under braking
 			-- (all along the tyre) smokes in full whatever this is.
 			frontSideShare = 1,
+			-- The two fronts take each other's load share (TireHeat.loadShares),
+			-- so their smoke is the other way round: the front that would
+			-- smoke hardest (the loaded outside one) smokes least, and the
+			-- light inside one most. Owner, 2026-10-04: "the way the front 2
+			-- tires smoke works, reverse it". false puts it back.
+			frontLoadSwap = true,
 			-- Slide speed (m/s, beyond the grip's share) where the tread
 			-- starts heating, and where it heats flat out. 9: a committed
 			-- drift at 60 km/h slides the rears about 7-9 m/s sideways past

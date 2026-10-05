@@ -148,6 +148,10 @@ return function(t: T)
 	t.near(drifting[1], 1.5, 1e-9, "outside wheels carry 1.5 shares")
 	t.near(drifting[2], 0.5, 1e-9, "inside wheels 0.5")
 	t.near(TireHeat.loadShares({ 0, 0, 0, 0 })[3], 1, 1e-9, "nothing on the ground: even shares")
+	local swapped = TireHeat.loadShares({ 6000, 2000, 6000, 2000 }, true)
+	t.near(swapped[1], 0.5, 1e-9, "swapped: the loaded front left takes the light front's share")
+	t.near(swapped[2], 1.5, 1e-9, "and the light front right the loaded one's")
+	t.near(swapped[3], 1.5, 1e-9, "the rears are left as they are")
 	local function firstSmoke(share: number): number?
 		local h = 0
 		for i = 1, 120 do
