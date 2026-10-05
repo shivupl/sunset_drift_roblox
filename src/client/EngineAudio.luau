@@ -37,6 +37,7 @@ local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
 local CarLook = require(Shared.CarLook)
 local ExhaustStyles = require(Shared.ExhaustStyles)
+local DriftControl = require(Shared.VehicleSim.DriftControl)
 
 type VehicleState = Types.VehicleState
 
@@ -79,6 +80,9 @@ local rng = Random.new()
 local clock = 0 -- simulated seconds since attach
 local lastGear = 1
 local lastLoad = 0
+-- When the throttle was last up: a lift is read the way the sim reads one
+-- (DriftControl.liftStep), so a gamepad trigger's lift counts too.
+local liftState = DriftControl.newLift()
 local dipUntil = -1
 local blipAt = -math.huge
 local shiftSound: Sound? = nil
@@ -251,7 +255,7 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	local model = attached
 	if model then
 		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
-		local lifted = lastLoad >= audio.crackleLiftFrom and throttle < 0.1
+		local lifted = DriftControl.liftStep(liftState, throttle, audio.crackleLiftFrom, cfg.drift.liftTo, cfg.drift.liftWindowSeconds, dt)
 		-- In a slide the lift flutters instead (feathering mid-drift).
 		local sideways = math.abs(state.driftAngleDeg) >= audio.driftFlutterFromDeg
 			and math.abs(state.speedKmh) >= audio.driftFlutterMinKmh
@@ -365,6 +369,7 @@ function EngineAudio.detach()
 	clock = 0
 	lastGear = 1
 	lastLoad = 0
+	liftState = DriftControl.newLift()
 	dipUntil = -1
 	blipAt = -math.huge
 	punch = 0

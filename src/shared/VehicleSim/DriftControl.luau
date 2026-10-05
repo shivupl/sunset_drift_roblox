@@ -33,7 +33,15 @@
 --     still peaked at 1.5 degrees (Play, 2026-10-05).
 --
 -- None of it acts while the lever is in: the lever's 360, hold and catch
--- are the same on every style.
+-- are the same on every style. A lift with the lever in drops the gas hold at
+-- once, as before the feather, and the lever stops a lift throw it meets
+-- (final review, 2026-10-05: a bail-out letting go of the lever and the gas
+-- together held the angle for the feather first).
+--
+-- A lift is the throttle falling under liftTo within liftWindowSeconds of
+-- having been at liftFrom or more (liftStep): a gamepad trigger let go by
+-- hand passes through the middle over two or three frames, and a one-step
+-- edge missed it.
 --
 -- angleRateDeg is + toward straight, whichever side the car is sideways
 -- on; Throw.step applies it to its latched hold angle or its rate target.
@@ -53,6 +61,9 @@ export type Config = {
 	liftThrowMinKmh: number,
 	liftThrowSteer: number,
 	liftThrowRearGrip: number,
+	liftFrom: number,
+	liftTo: number,
+	liftWindowSeconds: number,
 	powerOverSteer: number,
 	powerOverMinKmh: number,
 	powerOverThrow: number,
@@ -69,13 +80,18 @@ export type SteeringGates = {
 	throwThrottleHoldKeepDeg: number,
 }
 
+-- When the throttle was last up, for spotting a lift (liftStep).
+export type Lift = {
+	highAge: number, -- seconds since the throttle was at liftFrom or more; huge once a lift has fired
+}
+
 export type State = {
 	holdOn: boolean, -- the gas is holding a slide
 	straight: number, -- seconds under the keep gate with the wheel centred
 	feather: number, -- seconds into a feather, -1 for none
 	kick: number, -- seconds of kick left
 	liftTimer: number, -- seconds of lift throw left
-	lastThrottle: number,
+	lift: Lift,
 }
 
 export type Input = {
@@ -83,7 +99,8 @@ export type Input = {
 	steer: number,
 	driftAngleDeg: number,
 	speedKmh: number,
-	lever: number, -- the handbrake's level, 0..1
+	lever: number, -- the handbrake's level, 0..1 (last step's: it arms the gas hold, as it always has)
+	leverNow: boolean?, -- the handbrake pressed this step (gates the feather and the lift throw)
 	twoWheel: boolean,
 }
 
@@ -96,12 +113,29 @@ export type Output = {
 	tractionAside: boolean,
 }
 
--- Lifting from at least this much throttle to under LIFT_TO is a lift.
-local LIFT_FROM = 0.6
-local LIFT_TO = 0.1
+function DriftControl.newLift(): Lift
+	return { highAge = math.huge }
+end
+
+-- Whether this step is a lift: the throttle under `to` within `window`
+-- seconds of having been at `from` or more. Fires once per lift. EngineAudio
+-- reads its lift bursts and the drift flutter through this too, so the two
+-- never disagree on what a lift is.
+function DriftControl.liftStep(l: Lift, throttle: number, from: number, to: number, window: number, dt: number): boolean
+	if throttle >= from then
+		l.highAge = 0
+		return false
+	end
+	l.highAge += dt
+	if throttle < to and l.highAge <= window + 1e-9 then
+		l.highAge = math.huge
+		return true
+	end
+	return false
+end
 
 function DriftControl.new(): State
-	return { holdOn = false, straight = 0, feather = -1, kick = 0, liftTimer = 0, lastThrottle = 0 }
+	return { holdOn = false, straight = 0, feather = -1, kick = 0, liftTimer = 0, lift = DriftControl.newLift() }
 end
 
 function DriftControl.reset(s: State)
@@ -110,7 +144,7 @@ function DriftControl.reset(s: State)
 	s.feather = -1
 	s.kick = 0
 	s.liftTimer = 0
-	s.lastThrottle = 0
+	s.lift = DriftControl.newLift()
 end
 
 function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, dt: number): Output
@@ -124,23 +158,32 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		s.straight += dt
 	end
 
-	-- The lift throw, read off the lift edge before the hold logic.
-	local liftEdge = s.lastThrottle >= LIFT_FROM and inp.throttle < LIFT_TO
+	-- The lever in, now or last step: nothing of a lift acts.
+	local leverIn = inp.lever > 0 or inp.leverNow == true
+
+	-- The lift throw, read off the lift before the hold logic.
+	local lifted = DriftControl.liftStep(s.lift, inp.throttle, cfg.liftFrom, cfg.liftTo, cfg.liftWindowSeconds, dt)
 	if
 		cfg.liftThrow > 0
-		and liftEdge
+		and lifted
 		and not inp.twoWheel
-		and inp.lever <= 0
+		and not leverIn
 		and inp.speedKmh >= cfg.liftThrowMinKmh
 		and math.abs(inp.steer) >= cfg.liftThrowSteer
 		and not sidewaysNow
 	then
 		s.liftTimer = cfg.liftThrowSeconds
 	end
+	if leverIn then
+		s.liftTimer = 0
+		s.kick = 0
+		s.feather = -1
+	end
 
 	if not gasOn then
-		-- A lift. Inside featherSeconds of a held slide it is a feather.
-		if s.holdOn and not inp.twoWheel then
+		-- A lift. Inside featherSeconds of a held slide, lever out, it is a
+		-- feather.
+		if s.holdOn and not inp.twoWheel and not leverIn then
 			s.feather = (if s.feather < 0 then 0 else s.feather) + dt
 			if s.feather > cfg.featherSeconds then
 				s.holdOn = false
@@ -151,7 +194,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 			s.feather = -1
 		end
 	else
-		if s.feather >= 0 and s.holdOn then
+		if s.feather >= 0 and s.holdOn and not leverIn then
 			-- The gas back inside a feather: the stab.
 			s.kick = cfg.kickSeconds
 		end
@@ -165,7 +208,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	local feathering = s.feather >= 0
 
 	local rate = 0
-	if s.holdOn and inp.lever <= 0 then
+	if s.holdOn and not leverIn then
 		if feathering then
 			rate += cfg.featherDegPerSec
 		end
@@ -193,7 +236,6 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		and not s.holdOn
 		and math.abs(inp.steer) >= cfg.powerOverSteer
 		and inp.speedKmh >= cfg.powerOverMinKmh
-	s.lastThrottle = inp.throttle
 	return {
 		gasHold = s.holdOn,
 		feathering = feathering,

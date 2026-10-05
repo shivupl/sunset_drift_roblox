@@ -22,7 +22,7 @@ local UIKit = require(script.Parent.UIKit)
 local SettingsPanel = {}
 
 local C = UITheme.color
-local root: Frame? = nil
+local root: ScrollingFrame? = nil
 local heading: TextLabel? = nil
 local row: Frame? = nil
 local note: TextLabel? = nil
@@ -32,7 +32,7 @@ local driftRow: Frame? = nil
 local driftNote: TextLabel? = nil
 local driftButtons: { [string]: TextButton } = {}
 local driftLayout: string? = nil -- the drivetrain the chips were built for
-local touchNow = false
+local touchNow = UIKit.isTouch()
 
 -- The chosen sky and drift style take the selected state (sodiumDim,
 -- sodium stroke); the drift style's line goes under its chips.
@@ -95,9 +95,22 @@ local function text(parent: Instance, s: string, order: number): TextLabel
 	return l
 end
 
-function SettingsPanel.build(parent: Instance, layoutOrder: number): Frame
-	local f = Instance.new("Frame")
+-- The tab scrolls: with the drift styles under the time of day it needs
+-- 270 px on touch, and a phone in landscape leaves the tab 163-222, where
+-- the chips ran over the footer and the blurb off the panel (final review,
+-- 2026-10-05). The Plates tab's list scrolls its buttons the same way.
+function SettingsPanel.build(parent: Instance, layoutOrder: number): ScrollingFrame
+	local f = Instance.new("ScrollingFrame")
 	f.Name = "Settings"
+	f.BorderSizePixel = 0
+	f.ScrollBarThickness = 4
+	f.ScrollBarImageColor3 = C.asphalt500
+	f.CanvasSize = UDim2.fromOffset(0, 0)
+	f.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	f.ScrollingDirection = Enum.ScrollingDirection.Y
+	-- When it scrolls, the bar takes its own strip instead of covering the
+	-- chips' right edge.
+	f.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	f.BackgroundTransparency = 1
 	f.LayoutOrder = layoutOrder
 	f.Visible = false
@@ -199,6 +212,7 @@ function SettingsPanel.fit(height: number, isTouch: boolean)
 		return
 	end
 	f.Size = UDim2.new(1, 0, 0, height)
+	f.ScrollBarThickness = if isTouch then 6 else 4
 	h.Size = UDim2.new(1, 0, 0, if isTouch then 26 else 22)
 	h.TextSize = UITheme.textSize("title", isTouch)
 	r.Size = UDim2.new(1, 0, 0, if isTouch then 56 else 44)

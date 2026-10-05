@@ -246,7 +246,8 @@ lever alone and change what the pedals do in a slide (`DriftControl`): how
 a short lift and the stab after it move the angle, whether a gas-held slide
 fades or settles into a band, and whether a lift or a power-over can start
 a slide. The lever 360 measures 2.4-2.6 s on every style and drivetrain.
-Each drivetrain's first style stays close to the car as it was; the others
+Each drivetrain's first style stays close to the car as it was (Rally lost a lift throw for this: an ordinary
+keyboard lane change at 60 km/h threw the tail out); the others
 go further (Power Over starts slides on the gas, which "throttle alone never
 starts a slide" used to forbid; High Angle settles at 45 degrees).
 
@@ -255,7 +256,9 @@ took a 30-degree slide to 1 degree a second later: setting the exhaust off
 mid-drift cost the drift. A lift under `featherSeconds` now keeps the hold,
 the angle moving meanwhile (rear drive tightens, front drive's lift-off
 oversteer swings it out), and the gas back kicks it (the clutch-kick feel on
-rear drive; the fronts pull it in on front drive). The cost is a hands-off
+rear drive; the fronts pull it in on front drive). Never with the lever in:
+a lift under the lever drops the gas hold at once, so letting go of the
+lever and the gas together is still the catch. The cost is a hands-off
 catch that waits out the feather first: 0.59-0.68 s against 0.53, after the
 feather's rate went up to 50 deg/s so the wait already straightens.
 

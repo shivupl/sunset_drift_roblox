@@ -295,6 +295,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		driftAngleDeg = driftAngleDeg,
 		speedKmh = Units.mpsToKmh(speed),
 		lever = self.handbrakeLevel,
+		leverNow = input.handbrake,
 		twoWheel = twoWheelActive,
 	}, dt)
 	local throttleHold = dc.gasHold

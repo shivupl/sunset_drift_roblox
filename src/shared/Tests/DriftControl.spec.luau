@@ -25,6 +25,9 @@ return function(t: T)
 			liftThrowMinKmh = 60,
 			liftThrowSteer = 0.5,
 			liftThrowRearGrip = 1,
+			liftFrom = 0.6,
+			liftTo = 0.1,
+			liftWindowSeconds = 0.15,
 			powerOverSteer = 2,
 			powerOverMinKmh = 30,
 			powerOverThrow = 0,
@@ -152,6 +155,47 @@ return function(t: T)
 	run(s, cfgWith({}), inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
 	o = run(s, cfgWith({}), inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
 	t.eq(o.throw, 0, "liftThrow 0 is off")
+
+	-- Nothing of a lift acts under the lever (final review I2)
+	s = DriftControl.new()
+	run(s, c, inp({ lever = 1 }), 0.1)
+	o = run(s, c, inp({ throttle = 0, lever = 1 }), dt)
+	t.eq(o.gasHold, false, "a lift with the lever in drops the gas hold at once (no feather)")
+	t.eq(o.feathering, false, "and is not a feather")
+	s = DriftControl.new()
+	run(s, c, inp({}), 0.1)
+	o = run(s, c, inp({ throttle = 0, leverNow = true }), dt)
+	t.eq(o.gasHold, false, "a lift in the same step as the lever is not a feather either")
+	s = DriftControl.new()
+	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
+	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
+	t.near(o.throw, 0.6, 1e-9, "armed by a lift just before the lever")
+	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, lever = 1 }), dt)
+	t.eq(o.throw, 0, "a lift throw stops when the lever goes in")
+	t.eq(o.rearGrip, 1, "and so does its grip cut")
+	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2 }), dt)
+	t.eq(o.throw, 0, "and does not come back after the lever")
+	s = DriftControl.new()
+	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
+	o = run(s, lift, inp({ throttle = 0, steer = 0.8, driftAngleDeg = 2, leverNow = true }), dt)
+	t.eq(o.throw, 0, "a lift in the same step as the lever is not a throw")
+
+	-- A trigger let go over a few frames is still a lift (final review I3)
+	s = DriftControl.new()
+	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
+	run(s, lift, inp({ throttle = 0.5, steer = 0.8, driftAngleDeg = 2 }), dt)
+	o = run(s, lift, inp({ throttle = 0.05, steer = 0.8, driftAngleDeg = 2 }), dt)
+	t.near(o.throw, 0.6, 1e-9, "a trigger let go over three frames (1, 0.5, 0.05) is a lift")
+	s = DriftControl.new()
+	run(s, lift, inp({ throttle = 1, steer = 0.8, driftAngleDeg = 2 }), 0.1)
+	run(s, lift, inp({ throttle = 0.4, steer = 0.8, driftAngleDeg = 2 }), 0.3)
+	o = run(s, lift, inp({ throttle = 0.05, steer = 0.8, driftAngleDeg = 2 }), dt)
+	t.eq(o.throw, 0, "easing off over a third of a second is not a lift")
+	local l = DriftControl.newLift()
+	t.eq(DriftControl.liftStep(l, 1, 0.6, 0.1, 0.15, dt), false, "on the gas: no lift")
+	t.eq(DriftControl.liftStep(l, 0, 0.6, 0.1, 0.15, dt), true, "off in one step: a lift")
+	t.eq(DriftControl.liftStep(l, 0, 0.6, 0.1, 0.15, dt), false, "a lift fires once")
+	t.eq(DriftControl.liftStep(DriftControl.newLift(), 0, 0.6, 0.1, 0.15, dt), false, "never on the gas: no lift")
 
 	-- Power-over: traction control steps aside with the wheel turned past powerOverSteer
 	o = DriftControl.step(DriftControl.new(), cfgWith({ powerOverSteer = 0.7 }), gates, inp({ steer = 0.8, driftAngleDeg = 0 }), dt)

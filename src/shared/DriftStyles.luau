@@ -70,7 +70,7 @@ DriftStyles.styles = {
 		blurb = "Slides settle deep, 40 to 60 degrees, and carry their speed. Swing it with long taps; lift to straighten.",
 		tuning = {
 			drivetrain = { layout = "RWD" },
-			-- Held 44-46 degrees for 4 s from 100, losing 7 km/h (Play,
+			-- Held 44-46 degrees for 4 s from 100, losing 7-8 km/h (Play,
 			-- 2026-10-05). Lift past the feather to straighten: the band grows
 			-- any held angle back to 40.
 			drift = { holdMinDeg = 40, holdMaxDeg = 60, holdEaseDegPerSec = 35, kickDeg = 10, slideReliefScale = 1.3 },
@@ -126,10 +126,15 @@ DriftStyles.styles = {
 		blurb = "A four-wheel power slide: shallow, driving forward. Flick it in.",
 		tuning = {
 			drivetrain = { layout = "AWD", frontShare = 0.45 },
+			-- The stronger Scandinavian flick (the flick's rear grip 0.55
+			-- against 0.7). It had a lift throw too (0.4), taken off: the
+			-- all-wheel cars' default must drive like the car as it was, and a
+			-- lift with the wheel past half at 60 km/h, an ordinary keyboard
+			-- lane change, threw the tail out (final review, 2026-10-05).
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP }, slipModel = { flickRearGripMultiplier = 0.55 } },
 			drift = {
 				holdMaxDeg = 35, holdEaseDegPerSec = 25, featherDegPerSec = 10, kickDeg = -3,
-				slideReliefScale = 1.25, liftThrow = 0.4, liftThrowRearGrip = 0.75,
+				slideReliefScale = 1.25,
 			},
 		},
 	},

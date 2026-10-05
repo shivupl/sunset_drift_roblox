@@ -482,7 +482,7 @@ local config = {
 		featherSeconds = 0.3,
 		-- 50 and 8 from 25 and 5: a hands-off catch (lift and centre) waits out
 		-- the feather first, and at 25 it took 0.82 s against 0.53 before
-		-- the feather; at 50 it takes 0.63-0.68, and a 0.2 s feather dips the
+		-- the feather; at 50 it takes 0.59-0.68, and a 0.2 s feather dips the
 		-- slide 3 degrees and the kick puts back all but 1-2 (Play,
 		-- 2026-10-05).
 		featherDegPerSec = 50,
@@ -504,6 +504,15 @@ local config = {
 		liftThrowMinKmh = 60,
 		liftThrowSteer = 0.5,
 		liftThrowRearGrip = 1,
+		-- What a lift is, for the lift throw and the exhaust (EngineAudio's
+		-- bursts and drift flutter): the throttle under liftTo within
+		-- liftWindowSeconds of having been at liftFrom or more. A gamepad
+		-- trigger let go by hand passes through the middle over two or three
+		-- frames, which a one-step edge missed (final review, 2026-10-05).
+		-- EngineAudio's liftFrom is engineAudio.crackleLiftFrom.
+		liftFrom = 0.6,
+		liftTo = 0.1,
+		liftWindowSeconds = 0.15,
 		-- Power-over: past this much steer launch and traction control step
 		-- aside (above 1: never), and the gas hold arms from
 		-- steering.throwThrottleHoldFromDeg times gasHoldFromScale. With
