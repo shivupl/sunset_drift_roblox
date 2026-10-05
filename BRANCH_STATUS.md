@@ -26,8 +26,8 @@ the fronts' load shares swapped at the owner's request (`frontLoadSwap`); tan du
 sand or dirt, its settings kept exactly as the owner signed them off. Specs in `AutoFlip.spec` and
 `TireHeat.spec`; tuning history in TUNING.md (autoFlip, effects).
 
-**`exhaust-flames` (local, from `main` at `0110774`, 2026-10-04/05; not merged): exhaust pop styles to
-try.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
+**`exhaust-flames` (merged into `main` 2026-10-05 by fast-forward, not pushed yet; the local branch is
+kept for now): exhaust pop styles.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
 sputter". Three new styles plus today's look as Classic (`ExhaustStyles`): Crackle (the default; a
 thinning, irregular string of cracks), Blue Flame (even cracks, blue-violet torches) and 2-Step (an
 even machine-gun beat). A fourth, Anti-Lag (a few big bangs and fireballs), was taken out completely
@@ -37,9 +37,11 @@ makes each burst; every pop is a real pop cut from a measured Creator Store reco
 (`Sound.PlaybackRegion`) with its animated flipbook flame and a pooled flash light on the same frame
 (`ExhaustPops`, `ExhaustFlames.flame`); the relay is one message a burst, rebuilt from its seed on every
 client. In Studio, P cycles the style. Spec, research and plan in docs/superpowers
-(`2026-10-04-exhaust-flame-*`); measurements in TUNING.md (`ExhaustStyles`). Open for the owner: which
-style(s) to keep, whether styles become garage items or ride on the exhaust tips, and the pop volumes
-(set by measured peaks, not by ear).
+(`2026-10-04-exhaust-flame-*`); measurements in TUNING.md (`ExhaustStyles`). The owner tried them in
+Play ("i think they work great") and asked for the rest to be merged. A final whole-branch review found
+no critical issues; its fixes (texture fallback, the flash light's range, Classic's count, 2-Step's
+beat, stale docs) went in before the merge. Open for the owner: whether styles become garage items or
+ride on the exhaust tips, and the pop volumes (set by measured peaks, not by ear).
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
