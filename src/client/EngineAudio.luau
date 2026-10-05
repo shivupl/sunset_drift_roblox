@@ -17,9 +17,10 @@
 -- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
 -- redline cuts the engine in and out like a limiter. Pops also come singly
 -- on an upshift from high rpm and now and then on the limiter (garage round
--- 2 §2; off by default, CarConfig). Every pop is also a flame: onPop fires
--- as each one plays (the exhaust flames, ExhaustFlames, wired in
--- init.client). The note also kicks
+-- 2 §2; off by default, CarConfig). This module only decides when: the
+-- pops themselves, their sound, flames and relay are ExhaustPops' (the
+-- exhaust styles, 2026-10-04), wired through onLift, onCut and onSingle in
+-- init.client. The note also kicks
 -- up when the throttle goes back on: an rpm offset for the audio only,
 -- since the sim's rpm follows the wheels. Lifting off has no offset; the
 -- note falls as the sim's rpm does.
@@ -34,6 +35,7 @@ local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
 local CarLook = require(Shared.CarLook)
+local ExhaustStyles = require(Shared.ExhaustStyles)
 
 type VehicleState = Types.VehicleState
 
@@ -53,9 +55,13 @@ type Voice = {
 
 local EngineAudio = {}
 
--- The flame hook (init.client wires it to ExhaustFlames): fires as each pop
--- sound plays.
-EngineAudio.onPop = nil :: ((model: Model) -> ())?
+-- The exhaust pop hooks (init.client wires them to ExhaustPops): a fast
+-- lift starts a burst, rev 0..1 by how high the revs were
+-- (ExhaustStyles.revFactor); the throttle going back on cuts what is left
+-- of it; an upshift or limiter pop is a single.
+EngineAudio.onLift = nil :: ((model: Model, rev: number) -> ())?
+EngineAudio.onCut = nil :: ((model: Model) -> ())?
+EngineAudio.onSingle = nil :: ((model: Model) -> ())?
 
 local LAYER_NAMES = { "idle", "lowLoad", "highLoad", "overrun" }
 local HALF_PI = math.pi / 2
@@ -72,9 +78,6 @@ local lastLoad = 0
 local dipUntil = -1
 local blipAt = -math.huge
 local shiftSound: Sound? = nil
-local pops: { Sound } = {} -- a small pool so pops can overlap
-local nextPop = 1
-local popQueue: { number } = {} -- clock times of pops still to fire
 local punch = 0 -- rpm the note sits over it after the throttle goes on
 local heardLoad = 0 -- the throttle the layers hear, eased (lift tapers off)
 local ignition = 0 -- 0 before the engine has started, 1 once it runs (fades in)
@@ -82,7 +85,7 @@ local chassisPart: BasePart? = nil
 local attached: Model? = nil
 local lastSimRpm = 0
 -- The garage exhaust's sound profile (CosmeticsConfig: engineVolume scales
--- the engine layers, crackleChance the pops in each lift-off burst), read
+-- the engine layers, crackleChance the single pops' chances), read
 -- from the driven car's Look and kept current while driving.
 local exhaustVolume = 1
 local exhaustCrackle = 1
@@ -150,11 +153,6 @@ function EngineAudio.attach(model: Model)
 	if audio.shiftSoundId ~= "" then
 		shiftSound = oneShot("Engine_shift", audio.shiftSoundId)
 	end
-	if audio.crackleSoundId ~= "" then
-		for i = 1, 3 do
-			table.insert(pops, oneShot("Engine_pop" .. i, audio.crackleSoundId))
-		end
-	end
 
 	-- Ignition: the chime now, the starter a moment later; the layers stay
 	-- silent until it has cranked (update fades them in).
@@ -180,19 +178,6 @@ function EngineAudio.attach(model: Model)
 		start.Ended:Once(function()
 			start:Destroy()
 		end)
-	end
-end
-
-local function pop(audio: typeof(ConfigLoader.current().effects.engineAudio))
-	local s = pops[nextPop]
-	nextPop = nextPop % #pops + 1
-	s.PlaybackSpeed = rng:NextNumber(audio.cracklePitch[1], audio.cracklePitch[2])
-	s.Volume = audio.crackleVolume * rng:NextNumber(audio.crackleVolumeRange[1], audio.crackleVolumeRange[2])
-	s.TimePosition = 0
-	s:Play()
-	local model = attached
-	if model and EngineAudio.onPop then
-		EngineAudio.onPop(model)
 	end
 end
 
@@ -259,36 +244,24 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	end
 	lastGear = gear
 
-	if #pops > 0 then
+	local model = attached
+	if model then
 		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
-		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 then
-			-- The exhaust scales the burst; a fraction is a chance of one more.
-			local scaled = rng:NextInteger(audio.crackleBurstPops[1], audio.crackleBurstPops[2]) * exhaustCrackle
-			local n = math.floor(scaled)
-			if rng:NextNumber() < scaled - n then
-				n += 1
-			end
-			for _ = 1, n do
-				table.insert(popQueue, clock + rng:NextNumber(0, audio.crackleBurstSeconds))
-			end
+		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 and EngineAudio.onLift then
+			EngineAudio.onLift(model, ExhaustStyles.revFactor(simRpm, audio.crackleMinRpm, drive.redlineRpm, audio.crackleRevFloor))
+		end
+		-- Back on the throttle cancels what is left of a burst.
+		if throttle >= 0.1 and lastLoad < 0.1 and EngineAudio.onCut then
+			EngineAudio.onCut(model)
 		end
 		-- One pop on an upshift from high rpm, and now and then on the
 		-- limiter; the exhaust's crackleChance scales both chances.
-		if shiftedUp and lastSimRpm >= audio.crackleShiftRpm and rng:NextNumber() < audio.crackleShiftChance * exhaustCrackle then
-			pop(audio)
+		if shiftedUp and lastSimRpm >= audio.crackleShiftRpm and rng:NextNumber() < audio.crackleShiftChance * exhaustCrackle and EngineAudio.onSingle then
+			EngineAudio.onSingle(model)
 		end
 		local onLimiter = simRpm >= drive.redlineRpm - audio.limiterBandRpm and throttle > 0.5
-		if onLimiter and rng:NextNumber() < audio.crackleLimiterPerSecond * exhaustCrackle * dt then
-			pop(audio)
-		end
-		for i = #popQueue, 1, -1 do
-			if popQueue[i] <= clock then
-				table.remove(popQueue, i)
-				-- Back on the throttle cancels what is left of a burst.
-				if throttle < 0.1 then
-					pop(audio)
-				end
-			end
+		if onLimiter and rng:NextNumber() < audio.crackleLimiterPerSecond * exhaustCrackle * dt and EngineAudio.onSingle then
+			EngineAudio.onSingle(model)
 		end
 	end
 	lastLoad = throttle
@@ -375,16 +348,10 @@ function EngineAudio.detach()
 	end
 	table.clear(voices)
 	table.clear(gains)
-	for _, s in pops do
-		s:Destroy()
-	end
-	table.clear(pops)
-	table.clear(popQueue)
 	if shiftSound then
 		shiftSound:Destroy()
 		shiftSound = nil
 	end
-	nextPop = 1
 	clock = 0
 	lastGear = 1
 	lastLoad = 0

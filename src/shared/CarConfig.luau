@@ -1194,24 +1194,20 @@ local config = {
 			blipFallSeconds = 0.3,
 			-- Overrun crackle: lifting from above crackleLiftFrom throttle
 			-- while over crackleMinKmh and crackleMinRpm fires a burst of
-			-- crackleBurstPops (min, max) pops over crackleBurstSeconds. The
-			-- owner (2026-09-22): only when going fast and letting off, 1 to
-			-- 3 times; the stray pops while coasting and braking are gone.
+			-- exhaust pops. The owner (2026-09-22): only when going fast and
+			-- letting off; the stray pops while coasting and braking are gone.
 			-- (Single pops on hard upshifts and the limiter exist below, off
-			-- by default under this ruling.) Every pop gets a random pitch in
-			-- cracklePitch and volume in crackleVolumeRange (times
-			-- crackleVolume), so no two bursts match. The pop is Mor5464's
-			-- "Car Backfire Exhaust" (112720519011313, 0.44 s), checked to
-			-- load in this place.
-			crackleSoundId = "rbxassetid://112720519011313",
-			crackleVolume = 0.35,
-			crackleVolumeRange = { 0.55, 1 },
-			cracklePitch = { 0.85, 1.2 },
+			-- by default under this ruling.) How the burst comes, sounds and
+			-- looks is the exhaust style's (ExhaustStyles, 2026-10-04: the
+			-- owner asked for "way cooler" flames and audio "like the
+			-- sputter"); the garage round 2 pop and its 1-3 pops in 0.5 s
+			-- are the Classic style. A lift from higher revs pops more: the
+			-- burst's size is crackleRevFloor at crackleMinRpm, rising to all
+			-- of it at the redline (ExhaustStyles.revFactor).
 			crackleMinRpm = 4000,
 			crackleMinKmh = 80,
 			crackleLiftFrom = 0.6,
-			crackleBurstPops = { 1, 3 },
-			crackleBurstSeconds = 0.5,
+			crackleRevFloor = 0.6,
 			-- Single pops, each with its exhaust flame: an upshift from above
 			-- crackleShiftRpm pops with crackleShiftChance, and sitting on the
 			-- limiter pops about crackleLimiterPerSecond times a second, both

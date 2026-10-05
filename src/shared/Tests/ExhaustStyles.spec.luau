@@ -87,4 +87,18 @@ return function(t: T)
 	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "small"), ","), "lick,root", "a small crackle: licks over the root")
 	t.eq(table.concat(ExhaustStyles.layersFor(S.crackle, "mid"), ","), "flash,lick,root,wisp", "a mid crackle adds the flash and a wisp")
 	t.eq(#ExhaustStyles.layersFor(S.classic, "mid"), 0, "Classic has no layers of its own (CosmeticsConfig's)")
+	-- Fewer pops lifting from lower revs: the floor at crackleMinRpm, all of
+	-- them at the redline.
+	t.near(ExhaustStyles.revFactor(4000, 4000, 7000, 0.6), 0.6, 1e-9, "at the crackle rpm: the floor")
+	t.near(ExhaustStyles.revFactor(7000, 4000, 7000, 0.6), 1, 1e-9, "at the redline: all of them")
+	t.near(ExhaustStyles.revFactor(5500, 4000, 7000, 0.6), 0.8, 1e-9, "halfway: halfway")
+	t.near(ExhaustStyles.revFactor(2000, 4000, 7000, 0.6), 0.6, 1e-9, "below: the floor")
+	t.near(ExhaustStyles.revFactor(9000, 4000, 7000, 0.6), 1, 1e-9, "past the redline: 1")
+	-- Every exhaust item's burst fits the relay at full revs, in every style.
+	for _, item in CosmeticsConfig.inCategory("exhaust") do
+		for _, id in ExhaustStyles.order do
+			local scale = ExhaustStyles.scaleFor(ExhaustStyles.styles[id], item.crackleChance or 1, 1)
+			t.ok(scale > 0 and scale < ExhaustStyles.maxScale, `{item.id} in {id}: scale {scale} under maxScale`)
+		end
+	end
 end

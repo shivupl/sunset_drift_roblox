@@ -268,30 +268,6 @@ CosmeticsConfig.flames = {
 	glowColor = Color3.fromHex("#FF6A1E"),
 	glowAmount = 0.6,
 	glowSeconds = 0.45,
-	-- Pops heard with the relayed and preview flames (the driver's own come
-	-- from EngineAudio): the crackle sound and ranges in
-	-- CarConfig effects.engineAudio, a pool of this many per car so pops
-	-- overlap.
-	soundPool = 3,
-	-- The garage REV button: this many pops (min, max, times the exhaust's
-	-- crackleChance) over burstSeconds.
-	revPops = { 3, 5 },
-	-- Pops that come in one relayed burst are spread over this window, as
-	-- EngineAudio spreads the driver's (crackleBurstSeconds).
-	burstSeconds = 0.5,
-	-- Relay limits (server CarControls). The driver's client sends each pop
-	-- as it plays; the server allows relayPopsPerSecond pops a second per
-	-- player, counted in pops, not messages (a titanium lift-off is at most
-	-- 8 pops in 0.5 s, so 10 a second never clips a real burst but stops a
-	-- script flooding every client), and no message may carry more than
-	-- maxPopsPerBurst (3 pops times the titanium's 2.5, rounded up, is 8).
-	relayPopsPerSecond = 10,
-	maxPopsPerBurst = 8,
-	-- A receiving client drops a relayed pop that lands within this long of
-	-- the car's last one (a relayed burst of several blocks for its whole
-	-- burstSeconds). The driver's own pops can come a frame apart, so this
-	-- only thins a flood; it never hides a real burst's first pop.
-	relayMinGapSeconds = 0.04,
 	-- Particle time for inspecting the effect in Studio: each emitter's
 	-- TimeScale, with jets and delays stretched to match, so a harness can
 	-- run a pop at 0.1 and freeze it at any age (BEHAVIOURS, "Freeze a

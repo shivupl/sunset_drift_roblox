@@ -4,8 +4,9 @@
 -- exhaust pops; the server checks they are sitting in that car's driver
 -- seat, copies the lamps onto the car Model as attributes (every client
 -- shows them, CarLights), plays the horn on the chassis, so every player
--- hears it, and relays each exhaust pop to every other player (the driver
--- has already played it; garage round 2 §2), and stamps each driver's tyre
+-- hears it, relays each exhaust burst to every other player as one message
+-- (the driver has already played it; every client rebuilds it from its
+-- seed: ExhaustStyles, 2026-10-04), and stamps each driver's tyre
 -- smoke levels on their car (client TireSmoke; 2026-10-04).
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,7 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared.VehicleRig)
 local ConfigLoader = require(Shared.ConfigLoader)
 local CarLamps = require(Shared.CarLamps)
-local CosmeticsConfig = require(Shared.CosmeticsConfig)
+local ExhaustStyles = require(Shared.ExhaustStyles)
 local Remotes = require(script.Parent.Remotes)
 
 local CarControls = {}
@@ -25,9 +26,8 @@ local MAX_PER_SECOND = 30
 
 local budget: { [Player]: { at: number, n: number } } = {}
 local sounding: { [Player]: Sound } = {} -- the horn each player is holding
--- Exhaust pops, limited on their own and counted in pops, not messages
--- (CosmeticsConfig.flames.relayPopsPerSecond): each pop is a flame and a
--- sound on every other player's client.
+-- Exhaust bursts, limited on their own (ExhaustStyles.relayPerSecond): each
+-- message is a whole burst of flames and sounds on every other client.
 local popBudget: { [Player]: { at: number, n: number } } = {}
 -- Tyre smoke: a driver sends its four levels only when they change, at most
 -- effects.smokeRelayHz a second; this allows twice that, so jitter in when
@@ -43,16 +43,13 @@ local function smokeAllowed(player: Player): boolean
 	return b.n <= 2 * ConfigLoader.current().effects.smokeRelayHz
 end
 
-local function popAllowed(player: Player, pops: number): boolean
+local function popAllowed(player: Player): boolean
 	local now = os.clock()
 	local held = popBudget[player]
 	local b: { at: number, n: number } = if held and now - held.at < 1 then held else { at = now, n = 0 }
 	popBudget[player] = b
-	if b.n + pops > CosmeticsConfig.flames.relayPopsPerSecond then
-		return false
-	end
-	b.n += pops
-	return true
+	b.n += 1
+	return b.n <= ExhaustStyles.relayPerSecond
 end
 
 local function allowed(player: Player): boolean
@@ -144,13 +141,14 @@ function CarControls.start(remotes: Remotes.RemoteTable)
 			sounding[player] = s
 		end
 	end)
-	remotes.ExhaustPops.OnServerEvent:Connect(function(player: Player, pops: any)
-		-- A whole number of pops, 1 to maxPopsPerBurst, from the seated
-		-- driver, within the rate; anything else is dropped.
-		if type(pops) ~= "number" or pops ~= pops or pops < 1 or pops > CosmeticsConfig.flames.maxPopsPerBurst or math.floor(pops) ~= pops then
+	remotes.ExhaustPops.OnServerEvent:Connect(function(player: Player, kind: any, style: any, seed: any, scale: any)
+		-- A burst, a single pop or a cut (ExhaustStyles.validRelay), from
+		-- the seated driver, within the rate; anything else is dropped,
+		-- including the garage round 2 one-number message.
+		if not ExhaustStyles.validRelay(kind, style, seed, scale) then
 			return
 		end
-		if not popAllowed(player, pops) then
+		if not popAllowed(player) then
 			return
 		end
 		local model = drivenBy(player)
@@ -159,7 +157,7 @@ function CarControls.start(remotes: Remotes.RemoteTable)
 		end
 		for _, other in Players:GetPlayers() do
 			if other ~= player then
-				remotes.ExhaustPops:FireClient(other, model, pops)
+				remotes.ExhaustPops:FireClient(other, model, kind, style, seed, scale)
 			end
 		end
 	end)

@@ -22,7 +22,7 @@ local WheelVisuals = require(script.WheelVisuals)
 local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
 local EngineAudio = require(script.EngineAudio)
-local ExhaustFlames = require(script.ExhaustFlames)
+local ExhaustPops = require(script.ExhaustPops)
 local TireSmoke = require(script.TireSmoke)
 local GarageView = require(script.Garage.GarageView)
 local GaragePanel = require(script.Garage.GaragePanel)
@@ -38,14 +38,20 @@ LoadCover.whenReady(WorldLights.start)
 CarBodies.start()
 CarLights.start()
 CarPlates.start()
--- Exhaust flames: the driver's own at each pop EngineAudio plays, and each
--- pop sent on to the server as it plays (so a burst the throttle cuts short
--- is cut short for everyone); everyone else's as the server relays them.
-EngineAudio.onPop = function(model: Model)
-	ExhaustFlames.pop(model)
-	ExhaustFlames.send(1)
+-- Exhaust pops: EngineAudio decides when (a fast lift, the throttle back on,
+-- an upshift or limiter pop); ExhaustPops plays the burst in the exhaust
+-- style with its sounds and flames and sends it on, so every player sees
+-- the same burst; everyone else's come as the server relays them.
+EngineAudio.onLift = function(model: Model, rev: number)
+	ExhaustPops.lift(model, rev)
 end
-ExhaustFlames.start(remotes)
+EngineAudio.onCut = function(model: Model)
+	ExhaustPops.cut(model)
+end
+EngineAudio.onSingle = function(model: Model)
+	ExhaustPops.single(model)
+end
+ExhaustPops.start(remotes)
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
 -- Tyre smoke: the car this client drives sends its levels through this

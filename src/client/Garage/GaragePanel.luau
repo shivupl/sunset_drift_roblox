@@ -63,7 +63,7 @@ local PlateStyles = require(Shared:WaitForChild("PlateStyles"))
 local Client = script.Parent.Parent
 local UIKit = require(Client:WaitForChild("UIKit"))
 local CarCosmetics = require(Client:WaitForChild("CarCosmetics"))
-local ExhaustFlames = require(Client:WaitForChild("ExhaustFlames"))
+local ExhaustPops = require(Client:WaitForChild("ExhaustPops"))
 local SpawnMenu = require(Client:WaitForChild("SpawnMenu"))
 local GarageView = require(script.Parent:WaitForChild("GarageView"))
 
@@ -1459,8 +1459,8 @@ buildTab = function(u: UI)
 					return
 				end
 				local item = CarLook.item(draftLook(), "exhaust")
-				ExhaustFlames.burst(m, ExhaustFlames.revPops(item), item)
-				revUntil = os.clock() + CosmeticsConfig.flames.burstSeconds
+				-- A burst in this client's exhaust style (ExhaustPops), waited out.
+				revUntil = os.clock() + ExhaustPops.rev(m, item)
 			end)
 		end)
 		itemCards(u, newGrid(u, u.grid, 1), "exhaust", 0)

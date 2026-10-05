@@ -326,8 +326,12 @@ ExhaustStyles.styles = {
 		light = { color = hex("#FF7A2A"), brightness = 6, rangeM = 12, seconds = 0.14 },
 		layers = {
 			core = root({ 4, 5 }, { { 0, 0.1 }, { 0.3, 0.15 }, { 1, 0.06 } }),
+			-- Locked to the car: in the world, its drag shed the car's speed in
+			-- a tenth of a second and the fireball fell ~3.5 m behind at
+			-- 110 km/h (Play, 2026-10-05). Locked layers reach further back at
+			-- speed instead (CosmeticsConfig.flames trailGain).
 			ball = layer({
-				texture = FIREBALL, flipbook = GRID8, from = "small", locked = false, alongMotion = false, turn = true,
+				texture = FIREBALL, flipbook = GRID8, from = "small", locked = true, alongMotion = false, turn = true,
 				count = { 2, 3 }, lifetime = { 0.22, 0.32 }, speed = { 2, 5 }, spreadDeg = 15,
 				drag = 5, riseMps2 = 3,
 				-- The fireball sheet starts as a point, so it is sized for its
@@ -440,8 +444,9 @@ ExhaustStyles.styles = {
 		light = { color = hex("#FF8A3A"), brightness = 4, rangeM = 10, seconds = 0.09 },
 		layers = {
 			core = root({ 4, 5 }, { { 0, 0.09 }, { 0.3, 0.13 }, { 1, 0.05 } }),
+			-- Locked to the car, as Anti-Lag's.
 			ball = layer({
-				texture = FIREBALL, flipbook = GRID8, from = "small", locked = false, alongMotion = false, turn = true,
+				texture = FIREBALL, flipbook = GRID8, from = "small", locked = true, alongMotion = false, turn = true,
 				count = { 1, 2 }, lifetime = { 0.12, 0.18 }, speed = { 2, 4 }, spreadDeg = 12,
 				drag = 5, riseMps2 = 2,
 				size = { { 0, 0.25 }, { 0.3, 0.55 }, { 1, 0.6 } },
@@ -548,6 +553,13 @@ function ExhaustStyles.layersFor(style: Style, class: Class): { string }
 	end
 	table.sort(out)
 	return out
+end
+
+-- The rev factor of a lift: floor at minRpm (the crackle rpm) rising to 1
+-- at the redline, since a lift from higher revs dumps more fuel for longer.
+function ExhaustStyles.revFactor(rpm: number, minRpm: number, redlineRpm: number, floor: number): number
+	local u = math.clamp((rpm - minRpm) / math.max(redlineRpm - minRpm, 1), 0, 1)
+	return floor + (1 - floor) * u
 end
 
 -- How much a burst is scaled: the exhaust's crackleChance through the

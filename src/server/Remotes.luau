@@ -11,7 +11,7 @@ export type RemoteTable = {
 	SlideResult: RemoteEvent, -- server -> client (points banked, cash earned; 0,0 = dropped)
 	CarLamps: RemoteEvent, -- client -> server (head, brake, reverse: booleans for the car I drive)
 	Horn: RemoteEvent, -- client -> server (true while held)
-	ExhaustPops: RemoteEvent, -- client -> server (pops from the car I drive, 1 as each plays); server -> every other client (that car's Model, pops) (CarControls)
+	ExhaustPops: RemoteEvent, -- client -> server (kind, style, seed, scale: a burst, single pop or cut from the car I drive); server -> every other client (that car's Model, kind, style, seed, scale) (CarControls, ExhaustPops)
 	TireSmoke: RemoteEvent, -- client -> server (TireHeat.pack of the car I drive's four smoke levels, on change): stamped on the car as its TireSmoke attribute (CarControls)
 	PlateQuery: RemoteFunction, -- client -> server (typed plate text, style "SA" | "DU", default "SA") -> { status, key, price, available, reason } (PlateService)
 	PlateAction: RemoteFunction, -- client -> server ("buy" | "equip" | "unequip", plate text, style) -> { status, reason } (PlateService)

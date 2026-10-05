@@ -9,13 +9,9 @@
 -- look is CosmeticsConfig.flames, scaled per exhaust item (flameSize,
 -- flameCore, flameColor).
 --
--- Who calls it:
---   * the driver's client, once per pop EngineAudio plays: pop here, and
---     send(1) to the server, so others see exactly the pops the driver
---     heard (a burst cut short by the throttle is cut short for them too);
---   * every other client, when the server relays a driver's pop (start
---     listens; burst plays the pops with their sound);
---   * the garage's REV button, on the turntable car (burst with sound).
+-- Who calls it: ExhaustPops, once per pop it plays, for the driver's car,
+-- every relayed car and the garage's REV (the sounds, bursts and relay are
+-- ExhaustPops'; 2026-10-04).
 --
 -- The emitters live under the outlet's own holder part, so they go when
 -- the look changes and CarCosmetics rebuilds the outlets.
@@ -30,7 +26,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared:WaitForChild("VehicleRig"))
@@ -501,112 +496,6 @@ function ExhaustFlames.flame(model: Model, styleId: string, pop: ExhaustSputter.
 		end
 	end
 	return first
-end
-
--- A pop sound on the car, from a small pool so pops overlap: the crackle
--- EngineAudio plays for the driver (CarConfig effects.engineAudio).
-local function popSound(model: Model)
-	local ok, handles = pcall(VehicleRig.handles, model)
-	if not ok then
-		return
-	end
-	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
-	local audio = ConfigLoader.forCar(if type(id) == "string" then id else nil).effects.engineAudio
-	if audio.crackleSoundId == "" then
-		return
-	end
-	local chassis = handles.chassis
-	local pool: { Sound } = {}
-	for i = 1, F.soundPool do
-		local name = `FlamePop{i}`
-		local s = chassis:FindFirstChild(name)
-		if not s or not s:IsA("Sound") then
-			local new = Instance.new("Sound")
-			new.Name = name
-			new.SoundId = audio.crackleSoundId
-			new.RollOffMaxDistance = 120
-			new.Parent = chassis
-			s = new
-		end
-		table.insert(pool, s :: Sound)
-	end
-	-- The least recently started one.
-	local pick = pool[1]
-	for _, s in pool do
-		if not s.IsPlaying then
-			pick = s
-			break
-		end
-	end
-	pick.PlaybackSpeed = rng:NextNumber(audio.cracklePitch[1], audio.cracklePitch[2])
-	pick.Volume = audio.crackleVolume * rng:NextNumber(audio.crackleVolumeRange[1], audio.crackleVolumeRange[2])
-	pick.TimePosition = 0
-	pick:Play()
-end
-
--- A burst: pops pops over burstSeconds, the first at once, each a flame
--- at every outlet with its pop sound (for cars this client does not drive,
--- and the garage preview). item as for pop.
-function ExhaustFlames.burst(model: Model, pops: number, item: CosmeticsConfig.Item?)
-	local n = math.clamp(math.floor(pops), 0, F.maxPopsPerBurst)
-	for i = 1, n do
-		local at = if i == 1 then 0 else rng:NextNumber(0.05, F.burstSeconds)
-		task.delay(at, function()
-			if model.Parent then
-				popSound(model)
-				ExhaustFlames.pop(model, item)
-			end
-		end)
-	end
-end
-
--- The garage REV button's burst size for an exhaust item.
-function ExhaustFlames.revPops(item: CosmeticsConfig.Item): number
-	local scaled = rng:NextInteger(F.revPops[1], F.revPops[2]) * (item.crackleChance or 1)
-	return math.min(math.round(scaled), F.maxPopsPerBurst)
-end
-
-local remote: RemoteEvent? = nil
--- Relayed bursts, per car: until when the last one plays (strong tables,
--- cleared on Destroying; BEHAVIOURS: never a weak table keyed by Instance).
-local busyUntil: { [Model]: number } = {}
-local watched: { [Model]: boolean } = {}
-
--- The driver's pops, for the server to relay to everyone else (the driver
--- has already played it).
-function ExhaustFlames.send(pops: number)
-	if remote and pops > 0 then
-		remote:FireServer(math.min(math.floor(pops), F.maxPopsPerBurst))
-	end
-end
-
--- Every client: play the bursts the server relays from other drivers.
-function ExhaustFlames.start(remotes: Folder)
-	local r = remotes:WaitForChild("ExhaustPops") :: RemoteEvent
-	remote = r
-	r.OnClientEvent:Connect(function(model: any, pops: any)
-		if typeof(model) ~= "Instance" or not model:IsA("Model") or type(pops) ~= "number" then
-			return
-		end
-		if not model:IsDescendantOf(Workspace) then
-			return
-		end
-		-- Drop a burst that lands while this car's last one is still
-		-- playing: the server limits each sender, this guards each car.
-		local now = os.clock()
-		if now < (busyUntil[model] or 0) then
-			return
-		end
-		busyUntil[model] = now + (if pops > 1 then F.burstSeconds else F.relayMinGapSeconds)
-		if not watched[model] then
-			watched[model] = true
-			model.Destroying:Once(function()
-				busyUntil[model] = nil
-				watched[model] = nil
-			end)
-		end
-		ExhaustFlames.burst(model, pops)
-	end)
 end
 
 return ExhaustFlames

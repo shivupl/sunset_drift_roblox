@@ -1,6 +1,5 @@
 --!strict
 local CosmeticsConfig = require(script.Parent.Parent.CosmeticsConfig)
-local ConfigLoader = require(script.Parent.Parent.ConfigLoader)
 local ExhaustTips = require(script.Parent.Parent.CosmeticMeshes.ExhaustTips)
 local Tests = require(script.Parent)
 type T = Tests.T
@@ -46,14 +45,8 @@ return function(t: T)
 			t.ok(item.flameSize ~= nil and (item.flameSize :: number) > 0, `{item.id} has a positive flameSize`)
 			t.ok(item.flameCore ~= nil, `{item.id} has a flameCore`)
 			t.ok(item.flameColor ~= nil, `{item.id} has a flameColor`)
-			-- The most pops a lift-off can ask for fit in one relayed burst,
-			-- for every car's engine audio.
-			local most = 0
-			for id in ConfigLoader.catalog().cars do
-				local pops = ConfigLoader.forCar(id).effects.engineAudio.crackleBurstPops[2]
-				most = math.max(most, math.ceil(pops * (item.crackleChance or 1)))
-			end
-			t.ok(most <= CosmeticsConfig.flames.maxPopsPerBurst, `{item.id}'s biggest burst ({most}) fits maxPopsPerBurst`)
+			-- The pops a lift-off asks for now travel as one relay message a
+			-- burst (ExhaustStyles.spec checks the scale every item can ask for).
 		end
 	end
 
@@ -177,8 +170,6 @@ return function(t: T)
 	-- (a quad at the titanium's 8-pop burst is then under 1,000 over half a
 	-- second).
 	t.ok(total <= 30, `at most 30 particles per pop per outlet (is {total})`)
-	t.ok(flames.maxPopsPerBurst >= 1, "flame relay burst limit is set")
-	t.ok(flames.relayPopsPerSecond >= flames.maxPopsPerBurst, "a second's relay budget holds the biggest burst")
 	t.eq(flames.timeScale, 1, "flame timeScale is 1 (only a Studio harness changes it)")
 
 	for _, c in CosmeticsConfig.CATEGORIES do
