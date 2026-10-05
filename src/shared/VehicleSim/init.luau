@@ -24,6 +24,7 @@ local Drivetrain = require(script.Drivetrain)
 local TwoWheel = require(script.TwoWheel)
 local Throw = require(script.Throw)
 local DriftControl = require(script.DriftControl)
+local Line = require(script.Line)
 
 type Config = CarConfig.Config
 type InputState = Types.InputState
@@ -721,6 +722,28 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 		end
 	end
 
+	-- 5c. The line (Line.luau): while a slide is held, a sideways push at
+	-- the centre of mass takes the held slide's own curve out and aims it
+	-- with the wheel, so it slides down the highway instead of round a
+	-- circle. Square to the velocity and at the centre of mass: no work, no
+	-- yaw moment.
+	if speed > 1 and not twoWheelActive and throwNow > 0 then
+		local flat = Vector3.new(vel.X, 0, vel.Z)
+		if flat.Magnitude > 1 then
+			local side = flat.Unit:Cross(Vector3.yAxis) -- right of the velocity
+			local a = Line.accel(cfg.line, {
+				held = true,
+				lever = hbLevel > 0,
+				steer = input.steer,
+				driftAngleDeg = driftAngleDeg,
+				speedKmh = Units.mpsToKmh(speed),
+				tyreLatAccel = totalForce:Dot(side) / mass,
+				gravity = g,
+			})
+			totalForce += side * (a * mass)
+		end
+	end
+
 	-- 6. Aero drag and rolling resistance at the centre of mass.
 	if speed > 0.1 then
 		local body = cfg.body
@@ -790,6 +813,8 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			speedKmh = Units.mpsToKmh(speed),
 			angleRateDeg = dc.angleRateDeg,
 			dt = dt,
+			-- The gas hold's ceiling, never under the lever or in a flick.
+			intoMaxDeg = if hbLevel <= 0 and self.flickTimer <= 0 and cfg.drift.dialMaxDeg < 180 then cfg.drift.dialMaxDeg else nil,
 		})
 	end
 	if twoWheelActive then

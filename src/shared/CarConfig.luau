@@ -527,6 +527,49 @@ local config = {
 		-- Times the car's slide momentum relief (slipModel.slideRelief); the
 		-- lever's (leverRelief) is left alone.
 		slideReliefScale = 1,
+		-- The gas hold's ceiling: steering into a slide held on the gas
+		-- (lever out) adds no angle past this, so the wheel held into a
+		-- slide takes it wider and the line (CarConfig.line) carries it
+		-- that way, where it used to come round. 180 is none: full lock on
+		-- the gas spins the car, the gas 360. The lever is never capped.
+		dialMaxDeg = 180,
+	},
+
+	-- The line (VehicleSim/Line.luau): where a held slide goes. Off here,
+	-- which is the car as it was (the Classic mode); the drift modes set it
+	-- (DriftStyles). The owner, 2026-10-05: "make sure its easy to control
+	-- the sideway drifting within the highway boundries". Measured before
+	-- it, a slide held on the gas from 100 km/h with the wheel centred went
+	-- 79 m sideways in 4 s, its path turned 74 degrees; a carriageway is
+	-- 38 m.
+	line = {
+		-- How much of a held slide's own curve is taken out with the wheel
+		-- centred: 0 is the tyres' circle, 1 dead straight on.
+		hold = 0,
+		-- Sideways g toward the steered side at full steer, on top: how fast
+		-- the wheel moves a held slide across the lanes.
+		steerG = 0,
+		-- Under the lever the wheel turns the spin, so only this share of it
+		-- aims the line; 0 sends a 360 straight on down the road.
+		leverSteerShare = 0,
+		-- The most the line ever adds, g.
+		maxG = 1,
+		-- It fades in from fromDeg of drift to fullDeg, and from minKmh to
+		-- fullKmh, so turning and parking never feel it.
+		fromDeg = 8,
+		fullDeg = 16,
+		minKmh = 30,
+		fullKmh = 50,
+		-- Steering into the slide lets this share of the hold go at full
+		-- steer: the wheel held into a drift is a corner being taken, so the
+		-- drift turns with the road.
+		intoRelease = 0,
+		-- Under the lever: its own hold, from straight up (a spin's onset is
+		-- where its path turns), over its own speeds, so a highway 360 goes
+		-- on down the road and a handbrake turn at city speed stays a turn.
+		leverHold = 0,
+		leverMinKmh = 60,
+		leverFullKmh = 90,
 	},
 
 	twoWheel = {

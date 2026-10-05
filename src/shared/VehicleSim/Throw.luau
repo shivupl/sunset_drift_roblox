@@ -51,6 +51,13 @@ export type Input = {
 	-- wheel turned it adds to the rate target instead. Optional; nil is 0.
 	angleRateDeg: number?,
 	dt: number?, -- the step, for moving the held angle
+	-- Steering into the slide adds no angle past this (fading in over the
+	-- last 10 degrees); counter-steer and angleRateDeg are untouched. The
+	-- gas hold's ceiling (DriftControl's dialMaxDeg): a held slide steered
+	-- into goes wider up to it and is aimed by the line from there, where
+	-- it used to spin (the owner, 2026-10-05: drifting kept "within the
+	-- highway boundries"). nil: no ceiling, as under the lever.
+	intoMaxDeg: number?,
 }
 
 function Throw.new(): State
@@ -90,7 +97,11 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 		driftRate = s * cfg.throwYawRateDegPerSec * cfg.throwFinishAuthority
 		state.holdLatched = false
 	elseif math.abs(inp.steer) > 0.05 then
-		driftRate = inp.steer * cfg.throwYawRateDegPerSec + math.sign(inp.driftAngleDeg) * (inp.angleRateDeg or 0)
+		local dial = inp.steer * cfg.throwYawRateDegPerSec
+		if inp.intoMaxDeg and inp.steer * inp.driftAngleDeg < 0 then
+			dial *= math.clamp((inp.intoMaxDeg - math.abs(inp.driftAngleDeg)) / 10, 0, 1)
+		end
+		driftRate = dial + math.sign(inp.driftAngleDeg) * (inp.angleRateDeg or 0)
 		state.holdLatched = false
 	else
 		-- Wheel centred: hold the angle. The hold tracks the drift until

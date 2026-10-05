@@ -208,6 +208,15 @@ local function deepMerge(into: { [string]: any }, from: { [string]: any })
 	end
 end
 
+-- A copy of a config with a partial config deep-merged over it (arrays
+-- replace). Studio's DriftLab attribute goes through this (client
+-- DriftStyle).
+function DriftStyles.merge(base: any, over: { [string]: any }): any
+	local cfg = deepCopy(base)
+	deepMerge(cfg, over)
+	return cfg
+end
+
 -- A car's config with a style on it: a copy, never the car's own table.
 function DriftStyles.apply(base: any, id: string): any
 	local cfg = deepCopy(base)

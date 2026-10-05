@@ -146,4 +146,15 @@ return function(t: T)
 	-- absent fields are today's controller
 	st = Throw.new()
 	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1 })), 16000, 1e-9, "no angleRateDeg: unchanged")
+
+	-- intoMaxDeg: steering into a slide adds no angle past it (the gas hold's
+	-- ceiling); it fades over the last 10 degrees, and counter-steer and the
+	-- pedals' rate are untouched. Into is the wheel against the drift's sign.
+	st = Throw.new()
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 50, intoMaxDeg = 45 })), 0, 1e-9, "into past the ceiling: nothing")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1, driftAngleDeg = -50, intoMaxDeg = 45 })), 0, 1e-9, "mirrored")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 40, yawRateDeg = -70, intoMaxDeg = 45 })), -3000, 1e-6, "five under it: half the into rate")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 30, yawRateDeg = -145, intoMaxDeg = 45 })), -3000, 1e-6, "well under it: the full rate")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = 1, driftAngleDeg = 50, yawRateDeg = 145, intoMaxDeg = 45 })), 3000, 1e-6, "counter-steer is never capped")
+	t.near(Throw.step(st, cfg, inp({ permission = 1, steer = -1, driftAngleDeg = 50, yawRateDeg = 25, angleRateDeg = 30, intoMaxDeg = 45 })), 3000, 1e-6, "the pedals' rate still acts past it")
 end

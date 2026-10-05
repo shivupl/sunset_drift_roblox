@@ -11,6 +11,7 @@
 -- comparing them on one car: the DriftStyleAny attribute, which O and the
 -- Settings tab clear), each shown at the top of the screen for a moment,
 -- like the flames' P.
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -35,6 +36,9 @@ DriftStyle.panelChanged = nil :: (() -> ())?
 
 -- Studio's any-drivetrain pick.
 local ANY_ATTRIBUTE = "DriftStyleAny"
+-- Studio only: a JSON partial config merged over the styled config, for
+-- trying numbers live (`{"line":{"hold":0.8}}`); empty or unset is off.
+local LAB_ATTRIBUTE = "DriftLab"
 -- The Studio switch's label: how long it stays up.
 local LABEL_SECONDS = 1.5
 
@@ -78,6 +82,14 @@ function DriftStyle.configFor(carId: string?): ConfigLoader.Config
 	if not cfg then
 		cfg = S().apply(ConfigLoader.forCar(id), styleId) :: ConfigLoader.Config
 		cache[key] = cfg
+	end
+	local lab = if RunService:IsStudio() then Players.LocalPlayer:GetAttribute(LAB_ATTRIBUTE) else nil
+	if type(lab) == "string" and lab ~= "" then
+		local ok, over = pcall(HttpService.JSONDecode, HttpService, lab)
+		if ok and type(over) == "table" then
+			return S().merge(cfg, over) :: ConfigLoader.Config
+		end
+		warn(`[DriftStyle] DriftLab is not a JSON object: {lab}`)
 	end
 	return cfg
 end
@@ -188,6 +200,7 @@ function DriftStyle.start()
 		player:GetAttributeChangedSignal(attr(layout)):Connect(notify)
 	end
 	player:GetAttributeChangedSignal(ANY_ATTRIBUTE):Connect(notify)
+	player:GetAttributeChangedSignal(LAB_ATTRIBUTE):Connect(notify)
 	if RunService:IsStudio() then
 		UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 			if processed or input.KeyCode ~= Enum.KeyCode.O then
