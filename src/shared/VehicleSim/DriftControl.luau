@@ -44,9 +44,11 @@
 --   * The clutch-kick entry (kickThrow): on the gas with the wheel turned,
 --     before the car is sideways, a lift and the gas back inside
 --     featherSeconds throws it, with the drive surging.
---   * The brake entry (brakeThrow): the brake pressed with the wheel turned
---     at speed, before the car is sideways, throws it once per press: the
---     braking drift's weight transfer, and front drive's left-foot brake.
+--   * The brake entry (brakeThrow): the brake pressed on the gas with the
+--     wheel turned at speed, before the car is sideways, throws it once per
+--     press: left-foot braking, the rally pendulum's brake. Off the gas the
+--     brake is only a brake: braking into a corner must never throw a
+--     default mode's car (final review, 2026-10-05).
 --   * The pivot (brakeGrowDegPerSec): brake and gas together in a held
 --     slide grow the angle, the rears dragging while the fronts pull
 --     (left-foot braking).
@@ -128,8 +130,8 @@ export type State = {
 	kick: number, -- seconds of kick left
 	liftTimer: number, -- seconds of lift throw left
 	lift: Lift,
-	gasWasOn: boolean, -- last step's gas, for spotting the stab
-	offAge: number, -- seconds the gas has been off after being on, -1 when it never was
+	gasWasOn: boolean, -- the gas has been on since the last real lift (under liftTo)
+	offAge: number, -- seconds since that lift, -1 when there was none
 	kickTimer: number, -- seconds of clutch-kick throw left
 	brakeWas: boolean, -- last step's brake, past brakeThrowFrom
 	brakeTimer: number, -- seconds of brake throw left
@@ -239,8 +241,10 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		s.liftTimer = cfg.liftThrowSeconds
 	end
 	-- The clutch-kick entry: the gas back on inside featherSeconds of a
-	-- lift, with the wheel turned at speed, before the car is sideways.
-	local stabbed = gasOn and not s.gasWasOn and s.offAge >= 0 and s.offAge <= cfg.featherSeconds
+	-- lift, with the wheel turned at speed, before the car is sideways. The
+	-- lift is a real one, under liftTo after the gas was on: a trigger
+	-- wobbling just under the gate mid-corner threw the car (final review).
+	local stabbed = gasOn and s.offAge >= 0 and s.offAge <= cfg.featherSeconds
 	if
 		cfg.kickThrow > 0
 		and stabbed
@@ -254,19 +258,21 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		s.kick = cfg.kickSeconds -- the surge rides with it
 	end
 	if gasOn then
+		s.gasWasOn = true
 		s.offAge = -1
-	elseif s.gasWasOn then
+	elseif s.gasWasOn and inp.throttle < cfg.liftTo then
+		s.gasWasOn = false
 		s.offAge = 0
 	elseif s.offAge >= 0 then
 		s.offAge += dt
 	end
-	s.gasWasOn = gasOn
 
 	-- The brake entry: the brake's press with the wheel turned at speed.
 	local braking = (inp.brake or 0) >= cfg.brakeThrowFrom
 	if
 		cfg.brakeThrow > 0
 		and braking
+		and gasOn -- a left foot: braking into a corner off the gas never throws it (final review)
 		and not s.brakeWas
 		and not inp.twoWheel
 		and not leverIn
@@ -287,8 +293,23 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	end
 
 	if s.holdOn and gasKeeps and not gasOn and not leverIn then
-		-- Part throttle over keepThrottle: still held, no feather.
-		s.feather = -1
+		-- Part throttle over keepThrottle: still held, not a lift. A feather
+		-- already running (a trigger let go and pressed again passes through
+		-- here) keeps running, so the stab after it still kicks; one that
+		-- lingers here past featherSeconds is no kick. Straight with the
+		-- wheel centred for the grace, it lets go as full gas does: a cruise
+		-- on part trigger kept a hold, and the throw's dial, armed for good
+		-- (final review, 2026-10-05).
+		if s.feather >= 0 then
+			s.feather += dt
+			if s.feather > cfg.featherSeconds then
+				s.feather = -1
+			end
+		end
+		if s.straight >= g.throwThrottleHoldGraceSeconds then
+			s.holdOn = false
+			s.feather = -1
+		end
 	elseif not gasOn then
 		-- A lift. Inside featherSeconds of a held slide, lever out, it is a
 		-- feather.
@@ -320,10 +341,12 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 	local pivoting = cfg.brakeGrowDegPerSec > 0 and braking and gasOn and s.holdOn and not leverIn
 
 	local rate = 0
+	-- Held on part throttle (not a feather): it may tighten under the band.
+	local partial = s.holdOn and not gasOn and not feathering
 	if s.holdOn and not leverIn then
 		if feathering then
 			rate += cfg.featherDegPerSec
-		elseif not gasOn and cfg.partialDegPerSec ~= 0 then
+		elseif partial and cfg.partialDegPerSec ~= 0 then
 			-- Part throttle: tighter the further off full gas.
 			rate += cfg.partialDegPerSec * math.clamp((1 - inp.throttle) / math.max(1 - keep, 1e-3), 0, 1)
 		end
@@ -338,7 +361,7 @@ function DriftControl.step(s: State, cfg: Config, g: SteeringGates, inp: Input, 
 		-- transition (a held chain in a high-angle style otherwise dropped
 		-- its hold at the straight moment, 2026-10-05); dead straight has no
 		-- side to grow on.
-		if a >= 1 and a < cfg.holdMinDeg then
+		if a >= 1 and a < cfg.holdMinDeg and not partial then
 			rate = math.min(rate, -cfg.holdEaseDegPerSec)
 		elseif a > cfg.holdMaxDeg then
 			rate = math.max(rate, cfg.holdEaseDegPerSec)

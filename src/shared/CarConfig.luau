@@ -550,10 +550,12 @@ local config = {
 		kickThrowMinKmh = 40,
 		kickThrowSteer = 0.6,
 		kickThrowRearGrip = 1,
-		-- The brake entry (0 off): the brake pressed past brakeThrowFrom with
-		-- the wheel past brakeThrowSteer at brakeThrowMinKmh or more, before
-		-- the car is sideways, throws it once per press: the braking drift's
-		-- weight transfer (front drive's left-foot brake).
+		-- The brake entry (0 off): the brake pressed past brakeThrowFrom on the
+		-- gas, with the wheel past brakeThrowSteer at brakeThrowMinKmh or
+		-- more, before the car is sideways, throws it once per press:
+		-- left-foot braking, the rally pendulum's brake. Off the gas the brake
+		-- is only a brake (final review: braking into a corner threw Rally,
+		-- a default).
 		brakeThrow = 0,
 		brakeThrowSeconds = 0.4,
 		brakeThrowMinKmh = 50,
@@ -566,11 +568,12 @@ local config = {
 		-- ...with the brake's force times this while it pivots: a light left
 		-- foot (a key is a full brake, 14 kN, which would stop the car).
 		brakeGrowBrakeScale = 1,
-		-- The gas hold's ceiling: steering into a slide held on the gas
-		-- (lever out) adds no angle past this, so the wheel held into a
-		-- slide takes it wider and the line (CarConfig.line) carries it
-		-- that way, where it used to come round. 180 is none: full lock on
-		-- the gas spins the car, the gas 360. The lever is never capped.
+		-- The gas hold's ceiling: steering into a slide held without the
+		-- lever or a flick (the gas hold, and the lift, brake, kick and power
+		-- throws) adds no angle past this, so the wheel held into a slide
+		-- takes it wider and the line (CarConfig.line) carries it that way,
+		-- where it used to come round. 180 is none: full lock on the gas
+		-- spins the car, the gas 360. The lever is never capped.
 		dialMaxDeg = 180,
 		-- Steering into a gas-held slide turns the angle at this share of
 		-- steering.throwYawRateDegPerSec; counter-steer keeps the whole rate,

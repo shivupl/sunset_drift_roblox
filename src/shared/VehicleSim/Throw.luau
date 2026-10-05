@@ -53,10 +53,10 @@ export type Input = {
 	dt: number?, -- the step, for moving the held angle
 	-- Steering into the slide adds no angle past this (fading in over the
 	-- last 10 degrees); counter-steer and angleRateDeg are untouched. The
-	-- gas hold's ceiling (DriftControl's dialMaxDeg): a held slide steered
-	-- into goes wider up to it and is aimed by the line from there, where
-	-- it used to spin (the owner, 2026-10-05: drifting kept "within the
-	-- highway boundries"). nil: no ceiling, as under the lever.
+	-- ceiling (drift.dialMaxDeg) on any slide without the lever or a flick:
+	-- one steered into goes wider up to it and is aimed by the line from
+	-- there, where it used to spin (the owner, 2026-10-05: drifting kept
+	-- "within the highway boundries"). nil: no ceiling, as under the lever.
 	intoMaxDeg: number?,
 	-- Steering into the slide turns the angle at this share of the rate;
 	-- counter-steer keeps the whole of it, so a transition swings through at

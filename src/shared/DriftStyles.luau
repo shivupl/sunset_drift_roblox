@@ -120,8 +120,8 @@ DriftStyles.styles = {
 			drift = {
 				holdDecayDegPerSec = -10, holdMinDeg = 45, holdMaxDeg = 55, holdEaseDegPerSec = 35,
 				-- A lift brings it in at 55 deg/s for a quarter second before
-				-- the catch: from 55 degrees, 0.97 s to straight (35 deg/s and
-				-- 0.3 s: 1.01). A 0.6 s press swings it through: a chain of
+				-- the catch: from 55 degrees, 0.90-0.97 s to straight (35 deg/s
+				-- and 0.3 s: 1.01). A 0.6 s press swings it through: a chain of
 				-- 41-53 degrees inside 3 m of the line (Play, 2026-10-05).
 				featherSeconds = 0.25, featherDegPerSec = 55,
 				kickDeg = 10, kickDriveScale = 1.5, slideReliefScale = 1.3,
@@ -170,8 +170,9 @@ DriftStyles.styles = {
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
 			line = LINE,
 			-- Lift at 60 km/h or more with the wheel past half: 0.3 for 0.4 s
-			-- with the rear at 0.6 (drift-feel, Play: 20 degrees in 0.31 s).
-			-- Gas pulls it straight at 12 deg/s; slides are short by nature.
+			-- with the rear at 0.6 (a full-key lift at 100 peaks 32 degrees,
+			-- Play, 2026-10-05). Gas pulls it straight at 12 deg/s; slides are
+			-- short by nature.
 			drift = {
 				liftThrow = 0.3, liftThrowSeconds = 0.4, liftThrowRearGrip = 0.6,
 				holdDecayDegPerSec = 12, holdMaxDeg = 35, holdEaseDegPerSec = 30,
@@ -184,13 +185,13 @@ DriftStyles.styles = {
 	pivot = {
 		name = "Pivot",
 		layout = "FWD",
-		blurb = "Left-foot braking: tap the brake turning in to throw it; brake and gas together swing it wider.",
+		blurb = "Left-foot braking: on the gas, tap the brake turning in to throw it; hold both to swing it wider.",
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
 			line = LINE,
-			-- The brake tapped with the wheel turned throws the tail (weight
-			-- onto the nose: 46 degrees from 100 with the key held); brake and
+			-- The brake tapped on the gas with the wheel turned throws the tail
+			-- (weight onto the nose; off the gas it is only a brake); brake and
 			-- gas together pivot it wider at 35 deg/s on a quarter of the brake
 			-- (25 netted +5 in half a second against the gas's pull, losing 2
 			-- km/h); the gas alone pulls it in (Play, 2026-10-05).
@@ -222,7 +223,7 @@ DriftStyles.styles = {
 	rally = {
 		name = "Rally",
 		layout = "AWD",
-		blurb = "Shallow four-wheel slides that drive forward: gas straightens and pulls you on, a lift rotates it. Flick or brake it in.",
+		blurb = "Shallow four-wheel slides that drive forward: gas straightens and pulls you on, a lift rotates it. Flick it in, or brake on the gas.",
 		tuning = {
 			drivetrain = { layout = "AWD", frontShare = 0.45 },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP }, slipModel = { flickRearGripMultiplier = 0.55 } },
@@ -231,11 +232,16 @@ DriftStyles.styles = {
 			-- driving forward (with no floor the slide was gone in 2 s, 97 to
 			-- 122 km/h: a flick, not a slide); a 0.2 s lift rotates it 5 (the
 			-- research's +5); the stab drives forward (-4). The brake entry is
-			-- the rally pendulum's brake. Play, 2026-10-05.
+			-- the rally pendulum's left-foot brake, on the gas only: braking
+			-- into a corner off the gas threw the car (final review). Play,
+			-- 2026-10-05.
 			drift = {
 				holdDecayDegPerSec = 6, holdMinDeg = 15, holdMaxDeg = 30, holdEaseDegPerSec = 25,
 				featherDegPerSec = -25, kickDeg = -4, kickDriveScale = 1.4, slideReliefScale = 1.4,
-				brakeThrow = 0.45, brakeThrowRearGrip = 0.6,
+				-- On the gas the brake slows the car less, so the throw is
+				-- stronger: 0.6 for 0.4 s at 0.5 takes it to 32 from 100 (0.45 at
+				-- 0.6: 17, short of the gas hold's 20).
+				brakeThrow = 0.6, brakeThrowSeconds = 0.4, brakeThrowRearGrip = 0.5,
 				dialMaxDeg = 35, dialIntoScale = 0.5,
 			},
 			-- The 360 a touch slower (2.8 s: the fronts keep pulling), and the
