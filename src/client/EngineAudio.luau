@@ -14,13 +14,14 @@
 --
 -- On top of the layers, four events read off the same state: an upshift
 -- dips the engine (the torque cut), an off-throttle downshift blips the
--- pitch, lifting fast fires a crackle of exhaust pops, and sitting on the
+-- pitch, lifting fast fires a crackle of exhaust pops (in a slide, the
+-- style's quicker flutter, so feathering flutters the flames), and sitting on the
 -- redline cuts the engine in and out like a limiter. Pops also come singly
 -- on an upshift from high rpm and now and then on the limiter (garage round
 -- 2 §2; off by default, CarConfig). This module only decides when: the
 -- pops themselves, their sound, flames and relay are ExhaustPops' (the
--- exhaust styles, 2026-10-04), wired through onLift, onCut and onSingle in
--- init.client. The note also kicks
+-- exhaust styles, 2026-10-04), wired through onLift, onCut, onSingle and
+-- onFlutter in init.client. The note also kicks
 -- up when the throttle goes back on: an rpm offset for the audio only,
 -- since the sim's rpm follows the wheels. Lifting off has no offset; the
 -- note falls as the sim's rpm does.
@@ -36,6 +37,7 @@ local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
 local CarLook = require(Shared.CarLook)
 local ExhaustStyles = require(Shared.ExhaustStyles)
+local DriftControl = require(Shared.VehicleSim.DriftControl)
 
 type VehicleState = Types.VehicleState
 
@@ -62,6 +64,9 @@ local EngineAudio = {}
 EngineAudio.onLift = nil :: ((model: Model, rev: number) -> ())?
 EngineAudio.onCut = nil :: ((model: Model) -> ())?
 EngineAudio.onSingle = nil :: ((model: Model) -> ())?
+-- A lift with the car sideways: the exhaust style's drift flutter, in place
+-- of onLift's burst (cut by onCut the same way).
+EngineAudio.onFlutter = nil :: ((model: Model) -> ())?
 
 local LAYER_NAMES = { "idle", "lowLoad", "highLoad", "overrun" }
 local HALF_PI = math.pi / 2
@@ -75,6 +80,9 @@ local rng = Random.new()
 local clock = 0 -- simulated seconds since attach
 local lastGear = 1
 local lastLoad = 0
+-- When the throttle was last up: a lift is read the way the sim reads one
+-- (DriftControl.liftStep), so a gamepad trigger's lift counts too.
+local liftState = DriftControl.newLift()
 local dipUntil = -1
 local blipAt = -math.huge
 local shiftSound: Sound? = nil
@@ -247,7 +255,13 @@ function EngineAudio.update(state: VehicleState, dt: number)
 	local model = attached
 	if model then
 		local fast = simRpm >= audio.crackleMinRpm and math.abs(state.speedKmh) >= audio.crackleMinKmh
-		if fast and lastLoad >= audio.crackleLiftFrom and throttle < 0.1 and EngineAudio.onLift then
+		local lifted = DriftControl.liftStep(liftState, throttle, audio.crackleLiftFrom, cfg.drift.liftTo, cfg.drift.liftWindowSeconds, dt)
+		-- In a slide the lift flutters instead (feathering mid-drift).
+		local sideways = math.abs(state.driftAngleDeg) >= audio.driftFlutterFromDeg
+			and math.abs(state.speedKmh) >= audio.driftFlutterMinKmh
+		if lifted and sideways and EngineAudio.onFlutter then
+			EngineAudio.onFlutter(model)
+		elseif lifted and fast and EngineAudio.onLift then
 			EngineAudio.onLift(model, ExhaustStyles.revFactor(simRpm, audio.crackleMinRpm, drive.redlineRpm, audio.crackleRevFloor))
 		end
 		-- Back on the throttle cancels what is left of a burst.
@@ -355,6 +369,7 @@ function EngineAudio.detach()
 	clock = 0
 	lastGear = 1
 	lastLoad = 0
+	liftState = DriftControl.newLift()
 	dipUntil = -1
 	blipAt = -math.huge
 	punch = 0

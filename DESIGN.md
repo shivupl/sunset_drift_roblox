@@ -200,18 +200,174 @@ seconds hands off and straightens by itself, and a full brake takes 58 to
 
 ## Drivetrain
 Torque curve by rpm, automatic gearbox, a differential that blends between
-open and welded. Wheel spin is not integrated; the tire reports when demand
-exceeded grip and the engine rpm floats up while it does. Engine braking on
+open and welded, on whichever axles the car drives (below). With the slip
+model the driven wheels spin and the engine turns with them; the legacy
+tyre reports when demand exceeded grip and the engine rpm floats up. Engine braking on
 lift shifts weight forward, which is what makes a lift-and-flick transition
 swing the rear across.
 
-There is no manual shift and no clutch kick. The kick was cut because it
-never earned its button: the handbrake initiates a slide faster and is the
+There is no manual shift and no clutch-kick button; the throttle stab
+after a feather does its job mid-drift (below). The button was cut because
+it never earned its place: the handbrake initiates a slide faster and is the
 control a hajwala driver actually uses, and a second initiation method meant
 a second set of grip numbers to keep honest. Reverse is not a selectable
 gear either. Holding the brake for reverseHoldSeconds after the car has
 stopped engages it and any throttle leaves it, so braking hard to a
 standstill cannot drop the car into reverse the moment it settles.
+
+## Drivetrains, drift styles and the feather
+
+The owner asked (2026-10-05) for the drift to "differ slightly depending on
+the drivestyle of the vehicle (awd,rwd,fwd,etc)", with "a couple different
+styles (multiple for each)" to try in game, and for "the ability to kick off
+the exhaust during a drift where the flames would also flutter like in
+drifting videos". Research and spec in docs/superpowers/specs
+(`2026-10-05-drift-feel-*`).
+
+**Real drive layouts.** Every car used to drive its rear wheels. Hajwala is
+mostly done in front-drive saloons (Camry, Accord, Sonata) thrown on the
+lever, beside rear-drive saloons and 4x4s, so the sim now drives whichever
+axles the car's `drivetrain.layout` says: each wheel gets its axle's share
+of the torque through its own diff blend, the engine braking and the
+crank's inertia go to the driven wheels, the gearbox and the engine read
+the driven wheels, and launch control caps the throttle over every driven
+axle (`Drivetrain.axleShares`, `Drivetrain.launchCap`). Rear drive is the
+old code path exactly. So front drive is not a label: its fronts spin on
+the launch and in a slide, the gas pulls along the way they point, and its
+tyre smoke comes off the front (the heat model follows whichever wheels
+slip). Front drive launches slower (0-100 4.2 s against 3.65: weight leaves
+the fronts), and giving the fronts more drive grip to close that made them
+scrub through a 360 (3.42 s against 2.5), so the tricks won.
+
+**Styles are knobs on the pedals, never on the lever.** The throw
+controller is what makes the 360, the chain and the catch repeatable, and
+the owner rated the tricks' ease "pretty good", so the styles leave the
+lever alone and change what the pedals do in a slide (`DriftControl`): how
+a short lift and the stab after it move the angle, whether a gas-held slide
+fades or settles into a band, and whether a lift or a power-over can start
+a slide. The lever 360 measures 2.4-2.6 s on every style and drivetrain.
+Each drivetrain's first style stays close to the car as it was (Rally lost a lift throw for this: an ordinary
+keyboard lane change at 60 km/h threw the tail out); the others
+go further (Power Over starts slides on the gas, which "throttle alone never
+starts a slide" used to forbid; High Angle settles at 45 degrees).
+
+**The feather.** A lift used to drop the gas hold at once, so a 0.25 s lift
+took a 30-degree slide to 1 degree a second later: setting the exhaust off
+mid-drift cost the drift. A lift under `featherSeconds` now keeps the hold,
+the angle moving meanwhile (rear drive tightens, front drive's lift-off
+oversteer swings it out), and the gas back kicks it (the clutch-kick feel on
+rear drive; the fronts pull it in on front drive). Never with the lever in:
+a lift under the lever drops the gas hold at once, so letting go of the
+lever and the gas together is still the catch. The cost is a hands-off
+catch that waits out the feather first: 0.59-0.68 s against 0.53, after the
+feather's rate went up to 50 deg/s so the wait already straightens.
+
+**The flutter.** That lift, when the car is sideways, fires the exhaust
+style's flutter instead of its lift burst: a dense run of mostly small pops,
+30-60 ms apart, whose flames overlap into a flickering tongue, cut when the
+gas comes back. Feathering mid-drift flutters the flames in time with the
+driver's foot, which is what the drift videos show (each lift is its own
+overrun burst). It respects the 2026-09-22 ruling that pops come only on
+letting off; limiter pops stay off.
+
+## The drift overhaul: the line, the throttle's angle, modes
+
+The owner asked (2026-10-05) for "a full overhaul and perfection of the
+drifting system, different modes I can try different styles for each
+drivetype. all research based ... from throlle bursts to stable trifting
+and the standdard hajwala 360s", and then "make sure its easy to control
+the sideway drifting within the highway boundries". Research and design in
+docs/superpowers/specs (`2026-10-05-drift-overhaul-*`).
+
+**The line.** The first measurement decided the overhaul. A slide held on
+the gas from 100 km/h with the wheel centred held 41 degrees perfectly, but
+its path turned 74 degrees and it went 79 m sideways in four seconds; a
+carriageway is 38 m. A Tanteel chain wandered 49 m, a lever 360 left 20
+degrees off its line. The throw controller holds the angle against the
+path, so the tyres' lateral forces, all pointing inward in a slide, bend
+the path round at 0.8 g: a real drift's circle, right for a corner, wrong
+for a straight highway where hajwala lives. A real driver straightens the
+line with countersteer and by swinging the other way; the research splits
+the controls the same way (the rear's slip holds the angle, the front
+steers the path). Our wheel is already the angle's dial, so the line is an
+assist (`Line.luau`): while a slide is held, a sideways push at the centre
+of mass takes `hold` of the slide's own curve out and adds `steerG` toward
+the steered side. At the centre of mass it has no yaw moment, so every
+angle, 360 and catch number is the throw controller's as before; square to
+the velocity it does no work, so every speed number is the tyres'. Held
+into the slide, the wheel lets the hold go (a drift taking a corner);
+under the lever it has its own hold from straight up, faded in over 60-90
+km/h, so a highway 360 goes on down the road and a city handbrake turn
+stays a turn. It stays on through the throw's tail, because a 360's path
+held at 0 degrees the whole way round and then turned 7 to 15 in the
+wobble after the lever was let go.
+
+**The throttle sets the angle.** The research is unanimous that the gas is
+the angle in a real drift, that slow throttle build-up (10-20 deg/s) fails
+far less than fast, and that countersteer should be quicker than steer-in.
+So in the new modes a gas-held slide widens toward its band's top
+(`holdDecayDegPerSec` < 0), a lift tightens it (and flutters the exhaust,
+so the drift-video look comes from driving the slide, not from a separate
+trick), a stab kicks it with a surge of drive (`kickDriveScale`: wheelspin,
+revs and smoke from the physics), and steering into a gas-held slide turns
+it at a share of the rate (`dialIntoScale`) and stops at a ceiling
+(`dialMaxDeg`), where it used to spin; counter-steer keeps the whole rate,
+so a transition swings through as before. A gamepad's part throttle keeps
+the slide and tightens it in proportion (`keepThrottle`). The keyboard's
+throttle is binary, so its angle control is the feather and the stab.
+
+**Front drive and all-wheel drive follow their physics.** A front-drive car
+can only hold a slide with its rear braked: Tafheet holds on the lever
+(100 to 65 km/h over three seconds, the research's ʿaksiya bleed) and the
+gas pulls it straight with no countersteer, gaining speed. All-wheel drive
+flips strategy at about 25:75 front to rear: Rally (45:55) is shallow and
+gas pulls it in and on, Drift Mode (20:80) widens on the gas like rear
+drive, Tatweef (the Land Cruiser's 41:59) runs dead straight and is
+steered across the lanes, with a heavier 3.2 s 360.
+
+**New entries, each a mode's.** Power-over (gas and lock, 30-90 km/h: a
+low-gear move, never on a highway lane change), the clutch-kick entry (a
+lift and the gas back with the wheel turned: FR Legends' double tap,
+hajwala's neutral drop), the brake entry (the braking drift, front drive's
+left-foot brake), the pivot (brake and gas together on a held slide, on a
+quarter of the brake), and the lift throw.
+
+**Classic stays.** Each drivetrain's fourth mode is the drift-feel default
+exactly, so the overhaul can be compared against the car as it was, on the
+same car, in the same session. The lever's 360 is the same move on every
+mode: lever and full lock, about 2.5 s, 27 km/h lost; a mode sets only its
+rate (Rally 140 deg/s, Tatweef 125) and the line sends it straight on.
+
+## Speed (speed-feel)
+
+The owner, 2026-10-05: "overall game driving feels pretty slow, is there a
+way to either increase speed or just make it feel faster, needs to feel at
+least 50% faster if not 2x", and chose both. **Faster:** the engine's torque
+times `powerScale` (1.45) on every car, a sixth gear, the top speed 300 from
+210, and a launch grip on the driven tyres off the line (1.4), because below
+about 100 km/h the launch was grip-limited and power alone did nothing
+there. The launch grip only acts while traction control may (pointing
+straight, lever out, four wheels), so no drift number moves. 0-100 is 1.3 to
+1.4 times quicker; 0-200 1.6 to 1.7 times on the rear- and front-drive cars
+(Krown Vik 14.1 to 8.9 s, Kamri 15.0 to 8.8), and the Batrol, which topped
+out at 196, reaches 200 in 11.3 s. A Hajwala slide from 150 and a lever 360
+from 160 measure as the same moves did from 100 and 110, and the natl is
+unchanged (36-37 degrees, down after 3.4 s). Real
+tafheet runs at 160-260, so ordinary drifting moving up from 100 to 150 is
+closer to the real thing. **Feels faster:** the desert highway is wide and
+sparse, so little streams past the camera. The view now widens further with
+speed (92 degrees at 200 against 85 at the old cap), the follow carries most
+of the car's velocity so a fast car no longer shrinks to a speck (the old
+smoothing trailed 8.4 m extra at 240), a faint shake comes in from 130,
+faint speed lines run out to the screen's edges from 140, and a wind roar
+rises under the engine. World-space particle streaks were tried first: from
+a chase camera they are seen end-on and read as smudges on the road, so the
+lines are screen-space. The owner then asked for 20% more, found it too
+fast, and settled on 10% more: powerScale 1.6, launchGrip 1.54, the top
+speed 330, every number scaled and not re-measured (the measurements above
+are at 1.45). The economy is untouched, which means slides pay
+about half again per second at the new speeds; `scoring.referenceSpeedKmh`
+is the knob if that should be held level.
 
 ## Tafheet moves
 The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a

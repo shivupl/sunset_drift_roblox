@@ -162,4 +162,82 @@ return function(t: T)
 	st = inSecond()
 	out = Drivetrain.step(st, cfg, r, dt, 1, 0, 16, true, false, spinMps, true)
 	t.eq(out.gear, 2, "slideShift off: the old box")
+
+	-- Axle shares by layout
+	local function shares(over: { [string]: any }): (number, number)
+		local c = table.clone(cfg) :: any
+		for k, v in over do
+			c[k] = v
+		end
+		return Drivetrain.axleShares(c)
+	end
+	local f, rr = shares({})
+	t.eq(f, 0, "no layout is rear drive: nothing to the front")
+	t.eq(rr, 1, "no layout is rear drive: everything to the rear")
+	f, rr = shares({ layout = "FWD", frontShare = 0.3 })
+	t.eq(f, 1, "front drive sends everything to the front, whatever frontShare says")
+	t.eq(rr, 0, "front drive sends nothing to the rear")
+	f, rr = shares({ layout = "AWD", frontShare = 0.3 })
+	t.near(f, 0.3, 1e-12, "all-wheel drive splits by frontShare")
+	t.near(rr, 0.7, 1e-12, "the rest to the rear")
+	f, rr = shares({ layout = "AWD", frontShare = 1.4 })
+	t.eq(f, 1, "frontShare clamps to 1")
+	f, rr = shares({ layout = "RWD", frontShare = 0.5 })
+	t.eq(f, 0, "rear drive ignores frontShare")
+
+	-- Launch cap: on rear drive it is exactly the formula VehicleSim used inline
+	local args = {
+		mass = 1600,
+		use = 1.0,
+		wheelInertia = 1.4,
+		engineInertia = 0.15,
+		overall = 3.5 * 3.9,
+		efficiency = 0.9,
+		radius = 0.33,
+		axles = { { cap = 0, share = 0 }, { cap = 7000, share = 1 } },
+	}
+	local tyreForce = 7000 * 1.0
+	local wheelInertia = 1.4 + 0.5 * 0.15 * (3.5 * 3.9) ^ 2
+	local carAccel = 2 * tyreForce / 1600
+	local wheelTorque = tyreForce * 0.33 + wheelInertia * carAccel / 0.33
+	local old = wheelTorque * 2 / (3.5 * 3.9 * 0.9)
+	t.near(Drivetrain.launchCap(args), old, 1e-9, "RWD launch cap equals the old inline formula")
+	-- Front drive: the same axle numbers moved to the front give the same cap
+	args.axles = { { cap = 7000, share = 1 }, { cap = 0, share = 0 } }
+	t.near(Drivetrain.launchCap(args), old, 1e-9, "FWD with the same tyre cap gives the same crank cap")
+	-- All-wheel drive: two axles share the work, so the crank may give more
+	args.axles = { { cap = 7000, share = 0.5 }, { cap = 7000, share = 0.5 } }
+	t.ok(Drivetrain.launchCap(args) > old, "AWD puts more torque down than one axle")
+	-- The weaker axle limits: halving the front's grip lowers the cap
+	local even = Drivetrain.launchCap(args)
+	args.axles = { { cap = 3500, share = 0.5 }, { cap = 7000, share = 0.5 } }
+	t.ok(Drivetrain.launchCap(args) < even, "the axle that runs out first sets the cap")
+	-- No driven axle (a bad config) never caps
+	args.axles = { { cap = 7000, share = 0 }, { cap = 7000, share = 0 } }
+	t.eq(Drivetrain.launchCap(args), math.huge, "no driven axle: no cap")
+
+	-- powerScale multiplies the engine's torque (speed-feel, 2026-10-05: the
+	-- owner wanted the driving "at least 50% faster")
+	local function torqueAt(c: any): number
+		local s0 = Drivetrain.new(c)
+		return Drivetrain.step(s0, c, r, dt, 1, 0, 10, false, false).torque
+	end
+	local base = torqueAt(cfg)
+	local scaled = table.clone(cfg) :: any
+	scaled.powerScale = 1.5
+	t.near(torqueAt(scaled), base * 1.5, 1e-9, "powerScale 1.5: half again the torque")
+	t.near(Drivetrain.torqueAt(scaled, 4000), 450, 1e-9, "torqueAt is the curve times powerScale")
+	t.near(Drivetrain.torqueAt(cfg, 4000), 300, 1e-9, "no powerScale: the curve")
+
+	-- launchGrip: the driven tyres' drive grip off the line, pointing
+	-- straight, fading to nothing between launchGripFullKmh and launchGripEndKmh
+	local lg = table.clone(cfg) :: any
+	lg.launchGrip = 1.4
+	lg.launchGripFullKmh = 60
+	lg.launchGripEndKmh = 140
+	t.near(Drivetrain.launchGrip(lg, 30, true), 1.4, 1e-9, "off the line: the whole boost")
+	t.near(Drivetrain.launchGrip(lg, 100, true), 1.2, 1e-9, "halfway through the fade: half")
+	t.near(Drivetrain.launchGrip(lg, 150, true), 1, 1e-9, "past the fade: none")
+	t.near(Drivetrain.launchGrip(lg, 30, false), 1, 1e-9, "sideways, the lever in or on two wheels: none (drifts untouched)")
+	t.near(Drivetrain.launchGrip(cfg, 30, true), 1, 1e-9, "no launchGrip: none")
 end

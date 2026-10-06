@@ -71,7 +71,18 @@ function Wheel.slipRatio(cfg: SlipConfig, vLong: number, omega: number, radius: 
 end
 
 -- Tyre force at a given wheel spin. fMax is load x grip x every multiplier.
-function Wheel.force(cfg: SlipConfig, axle: Tire.AxleConfig, vLong: number, vLat: number, omega: number, radius: number, fMax: number): Force
+-- longScale multiplies the drive grip only, while the tread turns faster
+-- than the road (the launch grip, Drivetrain.launchGrip); nil is 1.
+function Wheel.force(
+	cfg: SlipConfig,
+	axle: Tire.AxleConfig,
+	vLong: number,
+	vLat: number,
+	omega: number,
+	radius: number,
+	fMax: number,
+	longScale: number?
+): Force
 	local slipDeg = Tire.slipAngleDeg(vLong, vLat)
 	local kappa = Wheel.slipRatio(cfg, vLong, omega, radius)
 	if fMax <= 0 then
@@ -88,7 +99,9 @@ function Wheel.force(cfg: SlipConfig, axle: Tire.AxleConfig, vLong: number, vLat
 	-- deep floor. With no slip ratio this is exactly the legacy tyre.
 	local mu = Tire.gripCurve(s * axle.peakSlipDeg, axle)
 	local f = fMax * mu
-	local longGrip = axle.longitudinalGrip or 1
+	-- longScale is drive grip only: a braking wheel grips as it always did.
+	local driving = if vLong >= 0 then kappa > 0 else kappa < 0
+	local longGrip = (axle.longitudinalGrip or 1) * (if driving then longScale or 1 else 1)
 	return {
 		fx = f * (sx / s) * longGrip,
 		fy = -math.sign(vLat) * f * (sy / s),
@@ -121,16 +134,17 @@ function Wheel.step(
 	inertia: number,
 	driveTorque: number,
 	brakeTorque: number,
-	dt: number
+	dt: number,
+	longScale: number? -- the launch grip on the drive grip (Wheel.force)
 ): StepResult
 	local n = math.clamp(math.ceil(dt / math.max(cfg.substepSeconds, 1e-4)), 1, 32)
 	local h = dt / n
 	local sumFx, sumFy = 0, 0
-	local last: Force = Wheel.force(cfg, axle, vLong, vLat, omega, radius, fMax)
+	local last: Force = Wheel.force(cfg, axle, vLong, vLat, omega, radius, fMax, longScale)
 	-- Slope of the longitudinal force against wheel spin in the linear
 	-- region, the upper bound on the real slope. Using the bound only adds
 	-- damping to the implicit step, it never makes it unstable.
-	local longGrip = axle.longitudinalGrip or 1
+	local longGrip = (axle.longitudinalGrip or 1) * (longScale or 1)
 	local k = if fMax > 0 then fMax * longGrip * radius / (cfg.peakSlipRatio * math.max(math.abs(vLong), cfg.lowSpeedMps)) else 0
 	for _ = 1, n do
 		local fx = last.fx
@@ -148,7 +162,7 @@ function Wheel.step(
 			end
 		end
 		omega = nextOmega
-		last = Wheel.force(cfg, axle, vLong, vLat, omega, radius, fMax)
+		last = Wheel.force(cfg, axle, vLong, vLat, omega, radius, fMax, longScale)
 		sumFx += last.fx
 		sumFy += last.fy
 	end

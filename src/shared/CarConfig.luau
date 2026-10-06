@@ -202,8 +202,15 @@ local config = {
 		-- limited (8.6 kN on the rear axle, traction control hunting the
 		-- edge) and torque makes no difference to it; above that, in third
 		-- and up, the engine is the limit and this is what pulls 100-150.
+		-- Every car's curve is multiplied by powerScale below, and the launch
+		-- has launchGrip (speed-feel, 2026-10-05).
 		torqueCurve = { { 1000, 380 }, { 2500, 550 }, { 4000, 640 }, { 5500, 620 }, { 6500, 500 }, { 7000, 0 } },
-		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8 },
+		-- A sixth gear for the higher top speed (speed-feel, 2026-10-05): the
+		-- five-speed box ran out at the rev limiter near 270 km/h; 0.62 gives
+		-- about 350 at 6800 rpm (0.68 gave 320 for the 300 limit; the owner
+		-- then asked for 10% more overall), and the first five are untouched.
+		-- 0.58 (for +20%) was too tall: the Kamri was slower to 280.
+		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8, 0.62 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
 		drivelineEfficiency = 0.9,
@@ -214,6 +221,18 @@ local config = {
 		-- alone and yaws the car. Partial lock keeps the welded feel in a
 		-- four-wheel drift (loads stay close) and opens up when one lifts.
 		diffLock = 0.25,
+		-- Which wheels drive (DESIGN.md, Drivetrains). "RWD" is every car
+		-- until the catalog says otherwise (the owner, 2026-10-05: "the drift
+		-- style to differ slightly depending on the drivestyle of the vehicle
+		-- (awd,rwd,fwd,etc)"). FWD drives the fronts; AWD splits by
+		-- frontShare through a fixed centre diff. Drift styles set the split
+		-- (DriftStyles).
+		layout = "RWD",
+		frontShare = 0.5,
+		-- The front axle's diff under FWD and AWD, like diffLock for the
+		-- rear: open enough that a lifted wheel on two wheels does not yaw
+		-- the car.
+		frontDiffLock = 0.25,
 		idleRpm = 900,
 		redlineRpm = 6800,
 		upshiftRpm = 6400,
@@ -252,12 +271,31 @@ local config = {
 		-- ...and only after the brake has been held that long while stopped,
 		-- so braking to a standstill does not snap into reverse.
 		reverseHoldSeconds = 0.4,
-		-- Top speed as a limiter. 210 km/h: the map's 400 m curve is at the
-		-- grip limit at 220 (v^2/r = 9.3 m/s^2), the 2 km straight takes 34 s,
-		-- and it is still 20 over what most players will hold a lane at. Drive
-		-- fades over the last topSpeedFadeKmh so the ceiling is a plateau.
-		topSpeedKmh = 210,
-		topSpeedFadeKmh = 20,
+		-- Top speed as a limiter: drive fades over the last topSpeedFadeKmh so
+		-- the ceiling is a plateau. It was 210 (the map's 400 m curve is at the
+		-- grip limit at 220); 300 since speed-feel (2026-10-05: the owner,
+		-- "overall game driving feels pretty slow ... needs to feel at least
+		-- 50% faster if not 2x"; real tafheet runs 160-260), so that curve is a
+		-- braking corner now. A car whose drag tops it out first never sees
+		-- the limiter (the Pickup near 245, the Cruiser near 270). 330 from
+		-- 300 when the owner asked for 10% more overall (2026-10-05: "instead
+		-- of 20% do 10%, it feels to fast right now").
+		topSpeedKmh = 330,
+		topSpeedFadeKmh = 25,
+		-- The game's pace: the torque curve times powerScale. 1.45, then 1.6
+		-- for 10% more overall (2026-10-05), with the launch grip below: see
+		-- TUNING.md (drivetrain) for the measured 0-100, 0-200 and top speeds.
+		-- Up: quicker everywhere past the launch.
+		powerScale = 1.6,
+		-- The driven tyres' drive grip times launchGrip off the line, pointing
+		-- straight (never in a slide, under the lever or on two wheels),
+		-- fading out from launchGripFullKmh to launchGripEndKmh. Below about
+		-- 100 km/h the launch is grip-limited, so power alone did nothing
+		-- there. 1.4 to 140 km/h, then 1.54 to 155 for 10% more. Up: a harder
+		-- launch.
+		launchGrip = 1.54,
+		launchGripFullKmh = 60,
+		launchGripEndKmh = 155,
 		-- Launch traction control, active under this speed. A loop, not a
 		-- cap: the throttle multiplier winds down at cutRate while the rear
 		-- spins and back up at recoverRate while it grips, never below min.
@@ -268,6 +306,11 @@ local config = {
 		-- spinning at 82% of peak grip and the car pulled 3.6 m/s^2 instead of
 		-- 4.7. Gated off above tractionControlMaxDriftDeg of slide and while the
 		-- lever is in, so it never touches a drift.
+		-- Left at 120 with the game's pace: the review feared front drive's
+		-- fronts would spin from 120 to the 3-4 shift with 1.45 times the
+		-- torque, but the Hatch runs 100-160 in 2.46-2.53 s with it at 120 or
+		-- 160 alike, its fronts at their peak slip (11%), not past it
+		-- (speed-feel, Play, 2026-10-05).
 		tractionControlBelowKmh = 120,
 		tractionControlMaxDriftDeg = 8,
 		-- Floor raised and recovery quickened for the launch: at 0.35 and
@@ -452,6 +495,159 @@ local config = {
 		-- 0.2, down from 0.4: with the lever let go at 43 degrees and hands off,
 		-- 0.4 s of a still-cut rear was enough to spin the car to 175.
 		releaseSeconds = 0.15,
+	},
+
+	-- How the pedals work a slide (VehicleSim/DriftControl.luau). These are
+	-- the Classic style's numbers; DriftStyles sets them per style (the
+	-- owner, 2026-10-05: drift styles by drivetrain, and "the ability to
+	-- kick off the exhaust during a drift"). None of it acts while the lever
+	-- is in, so the lever's 360s, holds and catches are the same everywhere.
+	drift = {
+		-- The feather: a lift this short keeps a gas-held slide (it used to
+		-- drop at once: a 0.25 s lift took 30 degrees to 1 a second later,
+		-- measured 2026-10-05), with the angle moving this fast toward
+		-- straight meanwhile (- grows it: front drive's lift-off oversteer).
+		-- The gas back on inside it kicks kickDeg more angle over kickSeconds
+		-- (- pulls it in: the fronts pull straight). Lifting longer than this
+		-- is the catch, as before.
+		featherSeconds = 0.3,
+		-- 50 and 8 from 25 and 5: a hands-off catch (lift and centre) waits out
+		-- the feather first, and at 25 it took 0.82 s against 0.53 before
+		-- the feather; at 50 it takes 0.59-0.68, and a 0.2 s feather dips the
+		-- slide 3 degrees and the kick puts back all but 1-2 (Play,
+		-- 2026-10-05).
+		featherDegPerSec = 50,
+		kickDeg = 8,
+		kickSeconds = 0.2,
+		-- A gas-held slide's angle eases toward straight this fast (front
+		-- drive's slides fade), and is kept between holdMinDeg and
+		-- holdMaxDeg at holdEaseDegPerSec.
+		holdDecayDegPerSec = 0,
+		holdMinDeg = 0,
+		holdMaxDeg = 180,
+		holdEaseDegPerSec = 30,
+		-- The lift throw (0 off): lifting fast with the wheel past
+		-- liftThrowSteer at liftThrowMinKmh or more, before the car is
+		-- sideways, throws it with this permission and the rear's grip times
+		-- liftThrowRearGrip, for liftThrowSeconds. Lift-off oversteer.
+		liftThrow = 0,
+		liftThrowSeconds = 0.5,
+		liftThrowMinKmh = 60,
+		liftThrowSteer = 0.5,
+		liftThrowRearGrip = 1,
+		-- What a lift is, for the lift throw and the exhaust (EngineAudio's
+		-- bursts and drift flutter): the throttle under liftTo within
+		-- liftWindowSeconds of having been at liftFrom or more. A gamepad
+		-- trigger let go by hand passes through the middle over two or three
+		-- frames, which a one-step edge missed (final review, 2026-10-05).
+		-- EngineAudio's liftFrom is engineAudio.crackleLiftFrom.
+		liftFrom = 0.6,
+		liftTo = 0.1,
+		liftWindowSeconds = 0.15,
+		-- Power-over: past this much steer launch and traction control step
+		-- aside (above 1: never), and the gas hold arms from
+		-- steering.throwThrottleHoldFromDeg times gasHoldFromScale. With
+		-- powerOverThrow above 0 the gas and that much wheel at
+		-- powerOverMinKmh or more throw the car (that permission, the rear's
+		-- grip times powerOverRearGrip) until the gas hold takes it.
+		powerOverSteer = 2,
+		powerOverMinKmh = 30,
+		-- ...and no more than this: power-over is a low-gear move, and over it
+		-- a full-key lane change on the highway must not throw the car.
+		powerOverMaxKmh = 1000,
+		powerOverThrow = 0,
+		powerOverRearGrip = 1,
+		gasHoldFromScale = 1,
+		-- Times the car's slide momentum relief (slipModel.slideRelief); the
+		-- lever's (leverRelief) is left alone.
+		slideReliefScale = 1,
+		-- Part throttle (a trigger): an armed hold stays on over keepThrottle
+		-- (1: the gate, steering.throwThrottleHold, as before), tightening
+		-- toward straight by up to partialDegPerSec the further it is off
+		-- full gas. More gas, more angle.
+		keepThrottle = 1,
+		partialDegPerSec = 0,
+		-- The kick's drive: the stab after a feather pushes the driven
+		-- wheels this many times as hard for kickSeconds, the clutch dumped
+		-- (a burst of wheelspin, revs and smoke). 1 is none.
+		kickDriveScale = 1,
+		-- The clutch-kick entry (0 off): on the gas with the wheel past
+		-- kickThrowSteer at kickThrowMinKmh or more, before the car is
+		-- sideways, a lift and the gas back inside featherSeconds throws it
+		-- with this permission, the rear's grip times kickThrowRearGrip,
+		-- for kickThrowSeconds.
+		kickThrow = 0,
+		kickThrowSeconds = 0.4,
+		kickThrowMinKmh = 40,
+		kickThrowSteer = 0.6,
+		kickThrowRearGrip = 1,
+		-- The brake entry (0 off): the brake pressed past brakeThrowFrom on the
+		-- gas, with the wheel past brakeThrowSteer at brakeThrowMinKmh or
+		-- more, before the car is sideways, throws it once per press:
+		-- left-foot braking, the rally pendulum's brake. Off the gas the brake
+		-- is only a brake (final review: braking into a corner threw Rally,
+		-- a default).
+		brakeThrow = 0,
+		brakeThrowSeconds = 0.4,
+		brakeThrowMinKmh = 50,
+		brakeThrowSteer = 0.5,
+		brakeThrowRearGrip = 1,
+		brakeThrowFrom = 0.5,
+		-- The pivot: brake and gas together in a held slide grow the angle
+		-- this fast (left-foot braking). 0 is off.
+		brakeGrowDegPerSec = 0,
+		-- ...with the brake's force times this while it pivots: a light left
+		-- foot (a key is a full brake, 14 kN, which would stop the car).
+		brakeGrowBrakeScale = 1,
+		-- The gas hold's ceiling: steering into a slide held without the
+		-- lever or a flick (the gas hold, and the lift, brake, kick and power
+		-- throws) adds no angle past this, so the wheel held into a slide
+		-- takes it wider and the line (CarConfig.line) carries it that way,
+		-- where it used to come round. 180 is none: full lock on the gas
+		-- spins the car, the gas 360. The lever is never capped.
+		dialMaxDeg = 180,
+		-- Steering into a gas-held slide turns the angle at this share of
+		-- steering.throwYawRateDegPerSec; counter-steer keeps the whole rate,
+		-- so a transition swings through at full speed ("countersteer faster
+		-- than steer-in", research 2026-10-05). 1 is the old dial.
+		dialIntoScale = 1,
+	},
+
+	-- The line (VehicleSim/Line.luau): where a held slide goes. Off here,
+	-- which is the car as it was (the Classic mode); the drift modes set it
+	-- (DriftStyles). The owner, 2026-10-05: "make sure its easy to control
+	-- the sideway drifting within the highway boundries". Measured before
+	-- it, a slide held on the gas from 100 km/h with the wheel centred went
+	-- 79 m sideways in 4 s, its path turned 74 degrees; a carriageway is
+	-- 38 m.
+	line = {
+		-- How much of a held slide's own curve is taken out with the wheel
+		-- centred: 0 is the tyres' circle, 1 dead straight on.
+		hold = 0,
+		-- Sideways g toward the steered side at full steer, on top: how fast
+		-- the wheel moves a held slide across the lanes.
+		steerG = 0,
+		-- Under the lever the wheel turns the spin, so only this share of it
+		-- aims the line; 0 sends a 360 straight on down the road.
+		leverSteerShare = 0,
+		-- The most the line ever adds, g.
+		maxG = 1,
+		-- It fades in from fromDeg of drift to fullDeg, and from minKmh to
+		-- fullKmh, so turning and parking never feel it.
+		fromDeg = 8,
+		fullDeg = 16,
+		minKmh = 30,
+		fullKmh = 50,
+		-- Steering into the slide lets this share of the hold go at full
+		-- steer: the wheel held into a drift is a corner being taken, so the
+		-- drift turns with the road.
+		intoRelease = 0,
+		-- Under the lever: its own hold, from straight up (a spin's onset is
+		-- where its path turns), over its own speeds, so a highway 360 goes
+		-- on down the road and a handbrake turn at city speed stays a turn.
+		leverHold = 0,
+		leverMinKmh = 60,
+		leverFullKmh = 90,
 	},
 
 	twoWheel = {
@@ -663,6 +859,21 @@ local config = {
 		minSpeedForSwingMps = 3, -- below this the camera ignores the velocity direction
 		driftProfileEnterDeg = 25, -- |drift angle| that switches to the drift profile
 		driftProfileExitDeg = 12, -- and back to normal (hysteresis)
+		-- The follow carries this share of the car's own velocity, so at a
+		-- steady speed the camera trails only (1 - followAhead) of the
+		-- v / positionLag it used to (speed-feel, 2026-10-05). It trailed
+		-- 8.4 m extra at 240 km/h and the car shrank to a speck, which reads
+		-- as slow; under acceleration it still pulls back, which reads as fast.
+		-- 0 is the old follow.
+		followAhead = 0.7,
+		-- A faint shake at speed: up to maxDeg of pitch and yaw, from fromKmh
+		-- to fullKmh, at about hz. Subtle: the car must never look unstable.
+		shake = { fromKmh = 130, fullKmh = 320, maxDeg = 0.2, hz = 7 },
+		-- The widest the view may get across, degrees. The profiles' FOVs are
+		-- vertical, so a wide phone saw far more across than a 16:9 screen
+		-- (19.5:9 at 96: 135 against 126). 126 is a 16:9 screen at 96; a
+		-- 19.5:9 phone stops at 84 vertical.
+		maxHorizontalFov = 126,
 		-- Profiles: normal driving, sliding, and two-wheel. All distances in
 		-- metres. lateralOffset is toward the lifted side while on two wheels
 		-- (so the airborne wheels are in frame), toward the outside of the
@@ -674,9 +885,12 @@ local config = {
 				lookHeight = 0.8,
 				lateralOffset = 0,
 				driftSwing = 0.3, -- 0 follow heading, 1 follow velocity
+				-- The view widens with speed: 81 at 100 km/h, 92 at 200, 96 by
+				-- 236 (was 0.08 up to 85 at 190; speed-feel, 2026-10-05). A wider
+				-- view streams the roadside past faster at the edges.
 				baseFov = 70,
-				fovPerKmh = 0.08,
-				maxFov = 85,
+				fovPerKmh = 0.11,
+				maxFov = 96,
 				rollFollow = 0,
 			},
 			drift = {
@@ -686,8 +900,8 @@ local config = {
 				lateralOffset = 0,
 				driftSwing = 0.7,
 				baseFov = 74,
-				fovPerKmh = 0.08,
-				maxFov = 88,
+				fovPerKmh = 0.1,
+				maxFov = 98,
 				rollFollow = 0,
 			},
 			twoWheel = {
@@ -697,10 +911,53 @@ local config = {
 				lateralOffset = 2.5,
 				driftSwing = 0.15,
 				baseFov = 72,
-				fovPerKmh = 0.05,
-				maxFov = 82,
+				fovPerKmh = 0.07,
+				maxFov = 90,
 				rollFollow = 0.35,
 			},
+		},
+	},
+
+	-- Speed you can feel (client SpeedFeel; speed-feel, 2026-10-05: the
+	-- owner, "overall game driving feels pretty slow ... needs to feel at
+	-- least 50% faster if not 2x"). The desert highway is wide and sparse,
+	-- so little streams past the camera at any speed; these put something
+	-- close by that does. Studio: the LocalPlayer attribute SpeedFeelKmh
+	-- forces the speed the effects and the camera read (a parked car framed
+	-- at 200 km/h).
+	speedFeel = {
+		-- Speed lines: faint thin lines in the outer ring of the screen,
+		-- pointing at where the car is going and running outward, from
+		-- fromKmh, densest at fullKmh. They stand in for the peripheral blur
+		-- of real speed. (World-space particle streaks were tried first: seen
+		-- end-on from a chase camera they read as smudges on the road.)
+		lines = {
+			fromKmh = 140,
+			fullKmh = 280,
+			perSecond = 60, -- new lines a second at full (55, then +10%)
+			lifetime = { 0.18, 0.3 }, -- seconds
+			-- Where they run, as fractions of the screen's half-diagonal from
+			-- the point the car is heading for: born at inner..mid, gone by
+			-- outer. Never over the car: none within avoidDeg of straight down.
+			innerRadius = 0.5,
+			midRadius = 0.75,
+			outerRadius = 1.1,
+			avoidDeg = 35,
+			length = { 0.08, 0.2 }, -- fractions of the half-diagonal, longer with speed
+			thickness = 3, -- pixels
+			-- At their brightest. 0.82 and 2 px were all but invisible in a still
+			-- at 220 km/h; 0.7 and 3 px read at the edge of the eye.
+			transparency = 0.7,
+			color = Color3.fromRGB(255, 244, 230),
+		},
+		-- A wind roar under the engine, rising from fromKmh.
+		wind = {
+			soundId = "rbxassetid://116499982163496", -- "loop_wind_05", Creator Store
+			fromKmh = 60,
+			fullKmh = 280,
+			volume = 0.45,
+			pitchMin = 0.8,
+			pitchMax = 1.25,
 		},
 	},
 
@@ -1208,6 +1465,14 @@ local config = {
 			crackleMinKmh = 80,
 			crackleLiftFrom = 0.6,
 			crackleRevFloor = 0.6,
+			-- The drift flutter: a lift with the car at least this far
+			-- sideways and this fast fires the exhaust style's flutter instead
+			-- of its burst (ExhaustStyles), at any revs, so feathering
+			-- mid-drift flutters the flames while the drift carries on
+			-- (drift.featherSeconds). The owner, 2026-10-05: "kick off the
+			-- exhaust during a drift where the flames would also flutter".
+			driftFlutterFromDeg = 12,
+			driftFlutterMinKmh = 40,
 			-- Single pops, each with its exhaust flame: an upshift from above
 			-- crackleShiftRpm pops with crackleShiftChance, and sitting on the
 			-- limiter pops about crackleLimiterPerSecond times a second, both
@@ -1325,8 +1590,13 @@ local config = {
 		cashPerPoint = 0.01,
 		-- Validation. The server scores every driven car from its own
 		-- samples and never banks more than it saw.
-		maxPlausibleSpeedKmh = 320,
+		-- 390 with the top speed at 330 (speed-feel, 2026-10-05).
+		maxPlausibleSpeedKmh = 390,
 		teleportToleranceM = 8, -- movement beyond speed x dt plus this is a teleport
+		-- ...plus this much time at the reported speed: a stall in replication
+		-- at speed is not a teleport. A fixed 8 m was 0.19 s of travel at
+		-- 150 km/h and 0.1 s at 300 (speed-feel review, 2026-10-05).
+		teleportToleranceSeconds = 0.25,
 		serverTolerance = 1.25, -- how far a claim may exceed the server's own total
 		claimWindowSeconds = 1.5, -- how long a claim stays usable
 		sampleHz = 20, -- server sampling rate

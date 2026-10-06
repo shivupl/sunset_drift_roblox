@@ -3,11 +3,16 @@
 -- CarConfig.camera. Sits behind the car, lags, swings toward the velocity
 -- direction in a slide so the angle is visible, and on two wheels moves to
 -- the lifted side and tilts with the lean. Profile parameters cross-fade.
+-- With speed the view widens and a faint shake comes in, and the follow
+-- carries part of the car's velocity so a fast car does not shrink to a
+-- speck (speed-feel, 2026-10-05). The speed it reads is SpeedFeel.kmh, so
+-- Studio's SpeedFeelKmh previews it on a parked car.
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
+local SpeedFeel = require(script.Parent.SpeedFeel)
 
 type VehicleState = Types.VehicleState
 
@@ -40,6 +45,7 @@ local current: Params? = nil
 local profileName = "normal"
 local lastState: VehicleState? = nil
 local lateralSign = 0 -- which side the lateral offset goes to, smoothed
+local shakeTime = 0 -- seconds of simulated time, for the shake's noise
 
 local function flat(v: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -148,6 +154,9 @@ function CameraRig.start(model: Model)
 		local targetPos = pos - smoothedDir * (params.distance / metersPerStud)
 			+ Vector3.yAxis * (params.height / metersPerStud)
 			+ lateral
+		-- Carry followAhead of the car's own velocity, so a steady speed
+		-- trails only the rest of v / positionLag.
+		smoothedPos += chassis.AssemblyLinearVelocity * (camCfg.followAhead * dt)
 		local posAlpha = 1 - math.exp(-camCfg.positionLag * dt)
 		smoothedPos = smoothedPos:Lerp(targetPos, posAlpha)
 
@@ -161,8 +170,24 @@ function CameraRig.start(model: Model)
 				upVec = CFrame.fromAxisAngle(viewDir.Unit, -tilt) * Vector3.yAxis
 			end
 		end
-		cam.CFrame = CFrame.lookAt(smoothedPos, look, upVec)
-		cam.FieldOfView = math.min(params.baseFov + params.fovPerKmh * speedMps * 3.6, params.maxFov)
+		local kmh = SpeedFeel.kmh(speedMps * 3.6)
+		local camCf = CFrame.lookAt(smoothedPos, look, upVec)
+		-- The shake: low noise in pitch and yaw, faded in with speed.
+		local sh = camCfg.shake
+		local amp = sh.maxDeg * SpeedFeel.ramp(kmh, sh.fromKmh, sh.fullKmh)
+		if amp > 0 then
+			shakeTime += dt
+			local t = shakeTime * sh.hz
+			camCf *= CFrame.Angles(math.rad(amp * math.noise(t, 0.31)), math.rad(amp * math.noise(t, 7.7)), 0)
+		end
+		cam.CFrame = camCf
+		-- Capped at maxHorizontalFov across, whatever the screen's shape: the
+		-- field of view is vertical, so a 19.5:9 phone at 96 saw 135 degrees
+		-- across against 126 on a 16:9 screen (speed-feel review).
+		local vp = cam.ViewportSize
+		local aspect = if vp.Y > 0 then vp.X / vp.Y else 16 / 9
+		local across = math.deg(2 * math.atan(math.tan(math.rad(camCfg.maxHorizontalFov) / 2) / aspect))
+		cam.FieldOfView = math.min(params.baseFov + params.fovPerKmh * kmh, params.maxFov, across)
 	end)
 end
 

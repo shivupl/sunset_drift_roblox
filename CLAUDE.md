@@ -23,7 +23,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 
 Where the settings live:
 - **World:** `src/server/World/WorldConfig.luau` and `City/CityConfig.luau`.
-- **Car:** `src/shared/CarConfig.luau` and `CarCatalog.luau`.
+- **Car:** `src/shared/CarConfig.luau` and `CarCatalog.luau` (each car's `drivetrain.layout`); drift modes per drivetrain in `DriftStyles.luau` (Settings tab in game; O / Shift+O in Studio; L reloads them; the line that keeps a held slide on the highway is `CarConfig.line`).
 - **Garage and UI:** `WorldConfig.garage` (the building), `src/shared/GarageConfig.luau` (the view), `CosmeticsConfig.luau` (items and how looks are drawn), `UITheme.luau` (UI tokens).
 
 World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road starts at the origin and runs along -Z; +X is the road's right; the sunset is on the left.
@@ -49,6 +49,9 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
   - Spawn with `ReplicatedStorage.Remotes.SpawnCar:FireServer(id)`; the car is `Humanoid.SeatPart.Parent.Parent`.
   - Reset the car from the client with `PivotTo` and zeroed velocities, and turn `InputOverride` off afterwards.
   - Live config reload: set `OvReload = true` from the Client datamodel.
+  - Trying drift numbers live: set the LocalPlayer attribute `DriftLab` to a JSON partial config (`{"line":{"hold":0.8}}`); it is merged over the car's styled config at once (Studio only), and `""` turns it off. `DriftStyleAny` forces a mode on any car.
+  - The override bypasses the keyboard's steer ramp (4/s out, 8/s back); ramp `OvSteer` per frame to measure what a keyboard player gets.
+  - Framing speed effects: set the LocalPlayer attribute `SpeedFeelKmh` (Studio only) to the speed the camera's view, shake, speed lines and wind should read, anchor the car, then capture. `screen_capture` of a moving car takes about 30 s, so the car must stay on the 3.6 km straight that long.
 - **Trying sky values live:** the client resets `Lighting.ClockTime`, `Brightness` and `ExposureCompensation` to the player's Sunset/Night choice (`SkyConfig`, `client/Sky.luau`). In Studio, tick the LocalPlayer attribute `SkyFree` (Client view: Players > you > Attributes) to stop that; untick to restore. Tell the owner about it when they want to experiment with the sky.
 - **Debug readouts:** `Dbg*` attributes on the LocalPlayer, updated at 30 Hz.
 - **Focus Studio first** (`osascript -e 'tell application "RobloxStudio" to activate'`) before builds, captures or timing.

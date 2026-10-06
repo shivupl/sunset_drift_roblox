@@ -46,6 +46,23 @@ export type Input = {
 	yawRateDeg: number,
 	pathRateDeg: number, -- rate the velocity direction is turning, same sign
 	speedKmh: number,
+	-- Moves the held angle (DriftControl: the feather, the kick, a style's
+	-- decay and band), deg/s, + toward straight on either side. With the
+	-- wheel turned it adds to the rate target instead. Optional; nil is 0.
+	angleRateDeg: number?,
+	dt: number?, -- the step, for moving the held angle
+	-- Steering into the slide adds no angle past this (fading in over the
+	-- last 10 degrees); counter-steer and angleRateDeg are untouched. The
+	-- ceiling (drift.dialMaxDeg) on any slide without the lever or a flick:
+	-- one steered into goes wider up to it and is aimed by the line from
+	-- there, where it used to spin (the owner, 2026-10-05: drifting kept
+	-- "within the highway boundries"). nil: no ceiling, as under the lever.
+	intoMaxDeg: number?,
+	-- Steering into the slide turns the angle at this share of the rate;
+	-- counter-steer keeps the whole of it, so a transition swings through at
+	-- full speed (countersteer faster than steer-in, art of rally; research
+	-- 2026-10-05). nil is 1.
+	intoScale: number?,
 }
 
 function Throw.new(): State
@@ -85,7 +102,14 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 		driftRate = s * cfg.throwYawRateDegPerSec * cfg.throwFinishAuthority
 		state.holdLatched = false
 	elseif math.abs(inp.steer) > 0.05 then
-		driftRate = inp.steer * cfg.throwYawRateDegPerSec
+		local dial = inp.steer * cfg.throwYawRateDegPerSec
+		if inp.steer * inp.driftAngleDeg < 0 then
+			dial *= inp.intoScale or 1
+			if inp.intoMaxDeg then
+				dial *= math.clamp((inp.intoMaxDeg - math.abs(inp.driftAngleDeg)) / 10, 0, 1)
+			end
+		end
+		driftRate = dial + math.sign(inp.driftAngleDeg) * (inp.angleRateDeg or 0)
 		state.holdLatched = false
 	else
 		-- Wheel centred: hold the angle. The hold tracks the drift until
@@ -101,6 +125,14 @@ function Throw.step(state: State, cfg: Config, inp: Input): number
 				state.holdLatched = true
 			end
 		else
+			-- The pedals move the held angle (DriftControl), never through
+			-- straight and never past 179.
+			local rate = inp.angleRateDeg or 0
+			local h = state.holdAngleDeg
+			if rate ~= 0 and h ~= 0 then
+				local mag = math.max(0, math.abs(h) - rate * (inp.dt or 0))
+				state.holdAngleDeg = math.sign(h) * math.min(mag, 179)
+			end
 			local err = state.holdAngleDeg - inp.driftAngleDeg
 			if err > 180 then
 				err -= 360

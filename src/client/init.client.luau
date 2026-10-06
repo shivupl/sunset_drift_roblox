@@ -23,6 +23,7 @@ local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
 local EngineAudio = require(script.EngineAudio)
 local ExhaustPops = require(script.ExhaustPops)
+local DriftStyle = require(script.DriftStyle)
 local TireSmoke = require(script.TireSmoke)
 local GarageView = require(script.Garage.GarageView)
 local GaragePanel = require(script.Garage.GaragePanel)
@@ -51,7 +52,14 @@ end
 EngineAudio.onSingle = function(model: Model)
 	ExhaustPops.single(model)
 end
+-- A lift mid-drift: the style's flutter (feathering flutters the flames).
+EngineAudio.onFlutter = function(model: Model)
+	ExhaustPops.flutter(model)
+end
 ExhaustPops.start(remotes)
+-- Drift styles: the Settings tab picks one per drivetrain; in Studio O and
+-- Shift+O cycle them.
+DriftStyle.start()
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
 -- Tyre smoke: the car this client drives sends its levels through this

@@ -1,6 +1,7 @@
 --!strict
--- Holds the live CarConfig and CarCatalog and reloads them by cloning the
--- ModuleScripts. require() caches per instance, so requiring a fresh clone
+-- Holds the live CarConfig, CarCatalog and DriftStyles and reloads them by
+-- cloning the ModuleScripts (the drift styles too, so a style's numbers can
+-- be tried live with L, 2026-10-05). require() caches per instance, so requiring a fresh clone
 -- re-runs the module's current Source. Works on client and server.
 --
 -- A car never drives on CarConfig directly: forCar() hands out the shared
@@ -10,13 +11,16 @@ local Shared = script.Parent
 local CarConfig = require(Shared.CarConfig)
 local CarCatalog = require(Shared.CarCatalog)
 local VehicleRig = require(Shared.VehicleRig)
+local DriftStyles = require(Shared.DriftStyles)
 
 export type Config = CarConfig.Config
 export type Catalog = typeof(CarCatalog)
+export type Styles = typeof(DriftStyles)
 
 local ConfigLoader = {}
 local current: Config = CarConfig
 local catalog: Catalog = CarCatalog
+local styles: Styles = DriftStyles
 local perCar: { [string]: Config } = {}
 
 function ConfigLoader.current(): Config
@@ -25,6 +29,11 @@ end
 
 function ConfigLoader.catalog(): Catalog
 	return catalog
+end
+
+-- The live drift styles (DriftStyles; the client's DriftStyle applies them).
+function ConfigLoader.driftStyles(): Styles
+	return styles
 end
 
 -- The id that actually builds: the requested one if the catalog has it,
@@ -70,6 +79,10 @@ end
 function ConfigLoader.reload(): (Config, string?)
 	local okConfig, configResult = fresh("CarConfig")
 	local okCatalog, catalogResult = fresh("CarCatalog")
+	local okStyles, stylesResult = fresh("DriftStyles")
+	if okStyles then
+		styles = stylesResult :: Styles
+	end
 	if okConfig then
 		current = configResult :: Config
 	end
@@ -82,6 +95,9 @@ function ConfigLoader.reload(): (Config, string?)
 	end
 	if not okCatalog then
 		return current, catalogResult :: string
+	end
+	if not okStyles then
+		return current, stylesResult :: string
 	end
 	return current, nil
 end

@@ -40,6 +40,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
+local DriftStyles = require(Shared:WaitForChild("DriftStyles"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local UIKit = require(script.Parent.UIKit)
 local PlatesPanel = require(script.Parent.PlatesPanel)
@@ -261,7 +262,11 @@ local function specLine(entry: VehicleRig.CarEntry): string
 	local k = VehicleRig.scaleOf(entry)
 	local r = entry.rig
 	local mass = tostring(math.floor(r.massKg + 0.5)):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
-	return string.format("%.1f m long   ·   %s kg   ·   rear-wheel drive", r.collisionSizeM[3] * k, mass)
+	-- Which wheels drive: the catalog's drivetrain.layout (DriftStyles).
+	local tuning = entry.tuning
+	local layout = DriftStyles.layoutOf({ drivetrain = (tuning and tuning.drivetrain) or {} })
+	local drive = string.lower(DriftStyles.layoutName[layout])
+	return string.format("%.1f m long   ·   %s kg   ·   %s", r.collisionSizeM[3] * k, mass, drive)
 end
 
 local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
@@ -595,7 +600,9 @@ local function show(which: Tab)
 	if status then
 		(status :: TextLabel).Text = if which == "plates"
 			then "Plates are yours alone: nobody else can own the same one"
-			elseif which == "settings" then "Your settings are saved with your progress"
+			-- The drift style is for the session only until the owner picks
+			-- the styles to keep (DriftStyle), so only the sky is promised.
+			elseif which == "settings" then "Time of day is saved with your progress"
 			elseif isTouch() then "Tap a car to spawn it   ·   CARS reopens this"
 			else "Click a car to spawn it   ·   M reopens this"
 	end

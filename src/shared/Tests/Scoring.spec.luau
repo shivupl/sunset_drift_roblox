@@ -24,6 +24,7 @@ return function(t: T)
 		cashPerPoint = 0.01,
 		maxPlausibleSpeedKmh = 320,
 		teleportToleranceM = 8,
+		teleportToleranceSeconds = 0.25,
 		serverTolerance = 1.25,
 		claimWindowSeconds = 1.5,
 		sampleHz = 20,
@@ -254,6 +255,12 @@ return function(t: T)
 	t.ok(Scoring.plausible(cfg, a, b, 150, 0.05, 0.28), "normal movement passes")
 	t.eq(Scoring.plausible(cfg, a, Vector3.new(0, 0, -2000), 150, 0.05, 0.28), false, "a teleport fails")
 	t.eq(Scoring.plausible(cfg, a, b, 900, 0.05, 0.28), false, "an impossible speed fails")
+	-- A replication stall at speed is not a teleport: at 300 km/h a 0.2 s
+	-- stall moves the car 21 m in a 0.05 s sample (speed-feel review: a fixed
+	-- 8 m gave honest slides away above about 150 km/h)
+	local stalled = Vector3.new(0, 0, -(300 / 3.6) * 0.25 / 0.28)
+	t.ok(Scoring.plausible(cfg, a, stalled, 300, 0.05, 0.28), "a 0.2 s stall at 300 km/h passes")
+	t.eq(Scoring.plausible(cfg, a, Vector3.new(0, 0, -200 / 0.28), 300, 0.05, 0.28), false, "200 m in a sample at 300 km/h is still a teleport")
 
 	-- observe(): speed and drift angle from a pose and a velocity
 	local idle = CFrame.new() -- identity looks down -Z

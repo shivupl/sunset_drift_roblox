@@ -142,7 +142,7 @@ function CarControls.start(remotes: Remotes.RemoteTable)
 		end
 	end)
 	remotes.ExhaustPops.OnServerEvent:Connect(function(player: Player, kind: any, style: any, seed: any, scale: any)
-		-- A burst, a single pop or a cut (ExhaustStyles.validRelay), from
+		-- A burst, a drift flutter, a single pop or a cut (ExhaustStyles.validRelay), from
 		-- the seated driver, within the rate; anything else is dropped,
 		-- including the garage round 2 one-number message.
 		if not ExhaustStyles.validRelay(kind, style, seed, scale) then
