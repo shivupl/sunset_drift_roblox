@@ -18,10 +18,13 @@
 --     same seed rebuilds the same burst;
 --   * the garage's REV button (rev), on the turntable car, unrelayed.
 --
--- Trying styles: ExhaustStyles.default for everyone; in Studio only, P
--- cycles this client's style (the LocalPlayer attribute FlameStyle, shown
--- for a moment on screen), and a driver's bursts carry their style, so other
--- clients see the one the driver chose.
+-- Which style: the flame fitted to the car (CarLook's flame slot), bought
+-- in the garage, Classic until one is (garage-tyres-flames; the owner,
+-- 2026-10-05: "have classic be the default and the other flames
+-- purchasable in the garage"). A driver's bursts carry their style, so
+-- other clients see the driver's flame. In Studio only, P cycles this
+-- client's style over the fitted one (the LocalPlayer attribute
+-- FlameStyle, shown for a moment on screen).
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -84,8 +87,12 @@ local function chassisOf(model: Model): BasePart?
 end
 
 -- The car's own exhaust item (its Look attribute).
+local function lookOf(model: Model): CarLook.Look
+	return CarLook.decode(model:GetAttribute(CarLook.ATTRIBUTE))
+end
+
 local function exhaustItem(model: Model): CosmeticsConfig.Item
-	return CarLook.item(CarLook.decode(model:GetAttribute(CarLook.ATTRIBUTE)), "exhaust")
+	return CarLook.item(lookOf(model), "exhaust")
 end
 
 -- A free Sound for this clip on the car, from its pool (the first one not
@@ -259,21 +266,27 @@ local function send(kind: number, style: number, seed: number, scale: number)
 	end
 end
 
--- This client's style: the FlameStyle attribute if it names one, else the
--- default.
-function ExhaustPops.styleId(): string
-	local a = Players.LocalPlayer:GetAttribute(STYLE_ATTRIBUTE)
-	if type(a) == "string" and ExhaustStyles.styles[a] then
-		return a
+-- A look's flame style: in Studio, this client's FlameStyle pick (P) if it
+-- names one; else the look's flame, or the default (Classic).
+function ExhaustPops.styleId(look: CarLook.Look): string
+	if RunService:IsStudio() then
+		local a = Players.LocalPlayer:GetAttribute(STYLE_ATTRIBUTE)
+		if type(a) == "string" and ExhaustStyles.styles[a] then
+			return a
+		end
+	end
+	local id = CarLook.item(look, "flame").flameStyle
+	if id and ExhaustStyles.styles[id] then
+		return id
 	end
 	return ExhaustStyles.default
 end
 
--- The driver lifted off fast: a burst in this client's style, scaled by the
+-- The driver lifted off fast: a burst in the car's flame style, scaled by the
 -- exhaust and how high the revs were (rev, EngineAudio), sent on for
 -- everyone else.
 function ExhaustPops.lift(model: Model, rev: number)
-	local styleId = ExhaustPops.styleId()
+	local styleId = ExhaustPops.styleId(lookOf(model))
 	local style = ExhaustStyles.styles[styleId]
 	local scale = ExhaustStyles.scaleFor(style, exhaustItem(model).crackleChance or 1, rev)
 	local seed = rng:NextInteger(1, 2 ^ 31 - 1)
@@ -285,7 +298,7 @@ end
 -- burst, at full revs (a drift sits high), sent on as a flutter so every
 -- client rebuilds the same one. The throttle back on cuts it like a burst.
 function ExhaustPops.flutter(model: Model)
-	local styleId = ExhaustPops.styleId()
+	local styleId = ExhaustPops.styleId(lookOf(model))
 	local style = ExhaustStyles.styles[styleId]
 	local scale = ExhaustStyles.scaleFor(style, exhaustItem(model).crackleChance or 1, 1)
 	local seed = rng:NextInteger(1, 2 ^ 31 - 1)
@@ -305,16 +318,17 @@ end
 
 -- One pop (an upshift or the limiter), sent on.
 function ExhaustPops.single(model: Model)
-	local styleId = ExhaustPops.styleId()
+	local styleId = ExhaustPops.styleId(lookOf(model))
 	firePop(model, styleId, { t = 0, class = "mid", level = 1 }, nil)
 	send(KIND.single, ExhaustStyles.index(styleId) or 1, rng:NextInteger(1, 2 ^ 31 - 1), 1)
 end
 
--- The garage REV button: a burst in this client's style with the exhaust on
--- the turntable car (item: bought or only previewed), at full revs. Returns
--- how long it lasts, so the button waits it out.
-function ExhaustPops.rev(model: Model, item: CosmeticsConfig.Item): number
-	local styleId = ExhaustPops.styleId()
+-- The garage REV button: a burst with the exhaust and flame on the
+-- turntable car (look: bought or only previewed), at full revs. Returns how
+-- long it lasts, so the button waits it out.
+function ExhaustPops.rev(model: Model, look: CarLook.Look): number
+	local item = CarLook.item(look, "exhaust")
+	local styleId = ExhaustPops.styleId(look)
 	local style = ExhaustStyles.styles[styleId]
 	local pops = burst(model, styleId, rng:NextInteger(1, 2 ^ 31 - 1), ExhaustStyles.scaleFor(style, item.crackleChance or 1, 1), item)
 	return (if #pops > 0 then pops[#pops].t else 0) + 0.3
@@ -370,7 +384,7 @@ end
 
 local function cycleStyle()
 	local order = ExhaustStyles.order
-	local i = ExhaustStyles.index(ExhaustPops.styleId()) or 0
+	local i = ExhaustStyles.index(ExhaustPops.styleId({})) or 0
 	local nextId = order[i % #order + 1]
 	Players.LocalPlayer:SetAttribute(STYLE_ATTRIBUTE, nextId)
 	showStyle(nextId)

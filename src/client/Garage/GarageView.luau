@@ -36,6 +36,14 @@
 --
 -- The panel is the GaragePanel's (Task 7); this module only offers the
 -- hooks below and a fallback LEAVE button the panel can hide.
+--
+-- Shots (garage-polish, 2026-10-05; GarageConfig.shots): the panel asks
+-- for the shot of the category or sub-tab showing (focus). The full shot
+-- is the framing above, the turntable turning; a close shot turns the car
+-- to show the camera one side, holds it, and brings the camera in toward a
+-- point on it (a wheel hub, the exhaust outlets, a point in the body's
+-- box), the move eased over UITheme.motion.camera. A drag goes back out to
+-- the full shot.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -95,6 +103,9 @@ type Preview = {
 	pivot: CFrame, -- the chassis relative to the turntable frame, before the spin
 	centreY: number, -- studs above the turntable top of the car's middle
 	radius: number, -- studs, half the body's bounding diagonal
+	handles: VehicleRig.Handles,
+	lo: Vector3, -- the body's box in car space (studs, from the body mount)
+	hi: Vector3,
 }
 
 local state: "outside" | "entering" | "inside" | "leaving" = "outside"
@@ -116,11 +127,20 @@ local lastMove = 0
 local releaseVel = 0
 local releaseAt = -math.huge
 local lastDrag = -math.huge
--- A presentation (present(), the garage's REV): the turntable eases to a
--- set angle, calls onArrive, holds, then the auto-spin resumes. A drag,
--- a car switch or leaving cancels it without calling onArrive.
-type Presenting = { target: number, arrived: boolean, holdUntil: number, onArrive: () -> () }
-local presenting: Presenting? = nil
+-- The shot showing (GarageConfig.shots, or GarageConfig.FULL), and the
+-- move into it: the camera and lens when it began, and when. onArrive runs
+-- once the move is done and the turntable is at the shot's angle; a drag,
+-- a car switch, another focus or leaving drops it uncalled.
+local shot = GarageConfig.FULL
+local moveFrom: CFrame? = nil
+local fovFrom = GarageConfig.fovDeg
+local moveAt = -math.huge
+local onArrive: (() -> ())? = nil
+-- The camera as last placed, where the next move starts from.
+local lastCam: CFrame? = nil
+local lastFov = GarageConfig.fovDeg
+-- Bumped by every headlight flash, so a newer one takes over.
+local flashToken = 0
 
 -- The framing's sideways offset (fraction of the screen width), eased.
 local panelOpen = true
@@ -266,7 +286,7 @@ end
 -- The body's bounding box in car space (studs, origin at the body mount):
 -- its centre and half its diagonal. The body only: the rig's invisible
 -- boxes would widen it.
-local function bodyBox(model: Model): (Vector3, number)
+local function bodyBox(model: Model): (Vector3, number, Vector3, Vector3)
 	local handles = VehicleRig.handles(model)
 	local frame = handles.bodyMount.WorldCFrame
 	local lo = Vector3.one * math.huge
@@ -291,9 +311,10 @@ local function bodyBox(model: Model): (Vector3, number)
 	end
 	if lo.X > hi.X then
 		-- No visible piece: a box the size of the rig's chassis.
-		return Vector3.zero, handles.chassis.Size.Magnitude / 2
+		local half = handles.chassis.Size / 2
+		return Vector3.zero, half.Magnitude, -half, half
 	end
-	return (lo + hi) / 2, (hi - lo).Magnitude / 2
+	return (lo + hi) / 2, (hi - lo).Magnitude / 2, lo, hi
 end
 
 ------------------------------------------------------------------------
@@ -370,7 +391,7 @@ end
 local function destroyPreview()
 	local p = preview
 	preview = nil
-	presenting = nil
+	onArrive = nil
 	if p then
 		p.model:Destroy()
 	end
@@ -417,13 +438,26 @@ local function buildPreview(g: Garage, carId: string): Preview?
 		end
 		return nil
 	end
-	local centre, radius = bodyBox(m)
+	local centre, radius, lo, hi = bodyBox(m)
 	-- The chassis relative to the turntable frame: turned so the nose faces
 	-- the door (car -Z along the frame's +Z), the body's middle on the axis.
 	local mountM = VehicleRig.bodyMountM(ConfigLoader.forCar(carId))
 	local pivot = CFrame.Angles(0, math.pi, 0) * CFrame.new(-centre.X, 0, -centre.Z) * CFrame.new(-mountM / mps())
-	local p: Preview = { model = m, carId = carId, pivot = pivot, centreY = centre.Y, radius = radius }
+	local p: Preview = {
+		model = m,
+		carId = carId,
+		pivot = pivot,
+		centreY = centre.Y,
+		radius = radius,
+		handles = VehicleRig.handles(m),
+		lo = lo,
+		hi = hi,
+	}
 	preview = p
+	-- The shot's lamps on the new car (the tail shot's brake lights).
+	local sh = GarageConfig.shots[shot]
+	m:SetAttribute(CarLamps.BRAKE, sh ~= nil and sh.brake == true)
+	CarLamps.apply(m)
 	return p
 end
 
@@ -761,30 +795,92 @@ local function cameraCFrame(g: Garage, p: Preview?, now: number): CFrame
 	return cf * CFrame.Angles(0, math.atan(currentOffset(now) * 2 * tanH), 0)
 end
 
+-- Where a close shot looks, in the world: the named hub, the exhaust
+-- outlets' middle, or its point in the body's box.
+local function aimPoint(p: Preview, sh: GarageConfig.Shot): Vector3
+	if sh.aim == "hub" and sh.hub then
+		local hub = p.handles.hubs[sh.hub]
+		if hub and hub.part.Parent then
+			return hub.part.Position
+		end
+	elseif sh.aim == "outlets" then
+		local outlets = CarCosmetics.outlets(p.model)
+		if #outlets > 0 then
+			local sum = Vector3.zero
+			for _, a in outlets do
+				sum += a.WorldPosition
+			end
+			return sum / #outlets
+		end
+	end
+	local lo, hi = p.lo, p.hi
+	local c, half = (lo + hi) / 2, (hi - lo) / 2
+	-- Car space: +X the car's right, -Z its nose.
+	local at = Vector3.new(c.X + sh.box.x * half.X, lo.Y + sh.box.y * (hi.Y - lo.Y), c.Z - sh.box.z * half.Z)
+	return p.handles.bodyMount.WorldCFrame * at
+end
+
+-- A close shot's camera: on the full framing's bearing, distanceM back
+-- from the aim and eyeHeightM over the turntable, turned like the full
+-- framing so the aim sits screenOffset right of centre.
+local function closeCFrame(g: Garage, p: Preview, sh: GarageConfig.Shot, now: number): CFrame
+	local cam = Workspace.CurrentCamera
+	local s = mps()
+	local yaw = math.rad(GarageConfig.yawDeg)
+	local bearing = g.viewFrame:VectorToWorldSpace(Vector3.new(-math.sin(yaw), 0, math.cos(yaw)))
+	local aim = aimPoint(p, sh)
+	local flat = aim + bearing * (sh.distanceM / s)
+	local eye = Vector3.new(flat.X, (g.viewFrame * Vector3.new(0, sh.eyeHeightM / s, 0)).Y, flat.Z)
+	local cf = CFrame.lookAt(eye, aim)
+	local tanV = math.tan(math.rad((sh.fovDeg or GarageConfig.fovDeg) / 2))
+	local vp = if cam then cam.ViewportSize else Vector2.new(16, 9)
+	local tanH = tanV * vp.X / math.max(vp.Y, 1)
+	return cf * CFrame.Angles(0, math.atan(currentOffset(now) * 2 * tanH), 0)
+end
+
+-- The turntable angle that shows the camera a shot's side: angle 0 has the
+-- nose to the door, with the camera yawDeg round toward the car's right.
+local function shotAngle(sh: GarageConfig.Shot): number
+	return math.rad(sh.faceDeg - GarageConfig.yawDeg)
+end
+
+-- Switches the shot; the move starts from wherever the camera is.
+local function setShot(key: string)
+	if key == shot then
+		return
+	end
+	shot = key
+	moveFrom = lastCam
+	fovFrom = lastFov
+	moveAt = os.clock()
+	local sh = GarageConfig.shots[key]
+	if not sh then
+		-- Back to the full framing: spin again straight away, not after the
+		-- drag pause.
+		lastDrag = os.clock() - GarageConfig.resumeAfterSeconds
+		releaseVel = 0
+	end
+	local p = preview
+	if p and p.model.Parent then
+		p.model:SetAttribute(CarLamps.BRAKE, sh ~= nil and sh.brake == true)
+		CarLamps.apply(p.model)
+	end
+end
+
 local function step(dt: number)
 	local g = garage
 	if state ~= "inside" or not g or not g.folder.Parent then
 		return
 	end
 	local now = os.clock()
-	local pr = presenting
-	if pr and not dragging then
-		local R = GarageConfig.revPresent
-		if not pr.arrived then
-			-- The shortest way round, eased (exponential approach).
-			local delta = (pr.target - angle + math.pi) % (2 * math.pi) - math.pi
-			angle += delta * (1 - math.exp(-dt / R.easeSeconds))
-			if math.abs(delta) < math.rad(R.arriveDeg) then
-				pr.arrived = true
-				pr.holdUntil = now + R.holdSeconds
-				task.spawn(pr.onArrive)
-			end
-		elseif now >= pr.holdUntil then
-			presenting = nil
-			-- Spin again straight away, not after the drag pause.
-			lastDrag = now - GarageConfig.resumeAfterSeconds
-			releaseVel = 0
-		end
+	local sh = GarageConfig.shots[shot]
+	local atAngle = true
+	if sh and not dragging then
+		-- A close shot holds the car at its angle: the shortest way round,
+		-- eased (exponential approach).
+		local delta = (shotAngle(sh) - angle + math.pi) % (2 * math.pi) - math.pi
+		angle += delta * (1 - math.exp(-dt / GarageConfig.focus.easeSeconds))
+		atAngle = math.abs(delta) < math.rad(GarageConfig.focus.arriveDeg)
 	elseif not dragging then
 		local left = 1 - (now - releaseAt) / GarageConfig.inertiaSeconds
 		if left > 0 then
@@ -806,9 +902,25 @@ local function step(dt: number)
 	end
 	local cam = Workspace.CurrentCamera
 	if cam then
+		local want = if sh and p then closeCFrame(g, p, sh, now) else cameraCFrame(g, p, now)
+		local wantFov = if sh then sh.fovDeg or GarageConfig.fovDeg else GarageConfig.fovDeg
+		-- The move: from where the camera was to the shot's live framing
+		-- (the aim follows the car as the turntable turns), eased.
+		local info = UITheme.motion.camera
+		local a = math.clamp((now - moveAt) / info.Time, 0, 1)
+		local k = TweenService:GetValue(a, info.EasingStyle, info.EasingDirection)
+		local from = moveFrom
+		local cf = if from and k < 1 then from:Lerp(want, k) else want
+		local fov = fovFrom + (wantFov - fovFrom) * k
 		cam.CameraType = Enum.CameraType.Scriptable
-		cam.FieldOfView = GarageConfig.fovDeg
-		cam.CFrame = cameraCFrame(g, p, now)
+		cam.FieldOfView = fov
+		cam.CFrame = cf
+		lastCam, lastFov = cf, fov
+		local done = onArrive
+		if done and a >= 1 and atAngle then
+			onArrive = nil
+			task.spawn(done)
+		end
 	end
 	-- The default camera scripts may set it back while the character is
 	-- close to the camera; keep it hidden.
@@ -846,7 +958,9 @@ local function onInputBegan(input: InputObject, processed: boolean)
 		return
 	end
 	dragging = input
-	presenting = nil
+	-- Looking round: back out to the whole car.
+	onArrive = nil
+	setShot(GarageConfig.FULL)
 	dragX = input.Position.X
 	dragVel = 0
 	lastMove = os.clock()
@@ -1144,6 +1258,10 @@ local function enter(g: Garage, carIdArg: string?)
 		makeLights(g)
 		plateHome = g.turntable.CFrame
 		angle = 0
+		-- The full framing, placed at once (no move from the world camera).
+		shot = GarageConfig.FULL
+		moveFrom, moveAt, onArrive = nil, -math.huge, nil
+		fovFrom = GarageConfig.fovDeg
 		releaseVel, releaseAt, lastDrag = 0, -math.huge, -math.huge
 		panelOpen = true
 		offsetFrom, offsetTo, offsetAt = GarageConfig.screenOffset, GarageConfig.screenOffset, -math.huge
@@ -1365,20 +1483,50 @@ function GarageView.setCar(carId: string)
 	buildPreview(g, ConfigLoader.resolveCarId(carId))
 end
 
--- Turns the car's rear toward the camera (GarageConfig.revPresent: a rear
--- 3/4 with the exhaust in the open right-hand part of the screen), calls
--- onArrive once it is there, holds, then lets the turntable spin on. False
--- (and onArrive never called) when the view is not open or a presentation
--- is already running; a drag, car switch or leaving cancels it.
-function GarageView.present(onArrive: () -> ()): boolean
-	if state ~= "inside" or not preview or presenting then
+-- Shows a shot (GarageConfig.shots, or GarageConfig.FULL), and runs
+-- arrived (if given) once the camera and the turntable are there: at once
+-- if they already are. A later focus, a drag, a car switch or leaving
+-- drops arrived uncalled. False when the view is not open.
+function GarageView.focus(key: string, arrived: (() -> ())?): boolean
+	if state ~= "inside" or not preview then
 		return false
 	end
-	-- angle 0 is the nose toward the door (+Z); the camera sits yawDeg
-	-- round from the nose, so 180 - yawDeg puts the rear square to it.
-	local target = math.rad(180 - GarageConfig.yawDeg + GarageConfig.revPresent.turnDeg)
-	presenting = { target = target, arrived = false, holdUntil = 0, onArrive = onArrive }
+	if key ~= GarageConfig.FULL and not GarageConfig.shots[key] then
+		key = GarageConfig.FULL
+	end
+	setShot(key)
+	onArrive = arrived
 	return true
+end
+
+-- The headlights blink (GarageConfig.headFlash), for a headlight colour
+-- tapped; a newer flash takes over.
+function GarageView.flashHeadlights()
+	local p = preview
+	if state ~= "inside" or not p then
+		return
+	end
+	flashToken += 1
+	local mine = flashToken
+	local m = p.model
+	local F = GarageConfig.headFlash
+	local function set(on: boolean)
+		if m.Parent then
+			m:SetAttribute(CarLamps.HEAD, on)
+			CarLamps.apply(m)
+		end
+	end
+	task.spawn(function()
+		for _ = 1, F.blinks do
+			if flashToken ~= mine then
+				return
+			end
+			set(false)
+			task.wait(F.offSeconds)
+			set(GarageConfig.previewLampsOn)
+			task.wait(F.onSeconds)
+		end
+	end)
 end
 
 -- The car on the turntable, for CarCosmetics.apply.

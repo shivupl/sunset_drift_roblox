@@ -1,5 +1,7 @@
 --!strict
 local CosmeticsConfig = require(script.Parent.Parent.CosmeticsConfig)
+local DriftStyles = require(script.Parent.Parent.DriftStyles)
+local ExhaustStyles = require(script.Parent.Parent.ExhaustStyles)
 local ExhaustTips = require(script.Parent.Parent.CosmeticMeshes.ExhaustTips)
 local Tests = require(script.Parent)
 type T = Tests.T
@@ -91,9 +93,61 @@ return function(t: T)
 			end
 		end
 	end
-	-- tint is the last slot, so every look string written before it is
-	-- unchanged.
-	t.eq(CosmeticsConfig.CATEGORIES[#CosmeticsConfig.CATEGORIES], "tint", "tint is the last category")
+	-- New slots go on the end, so every look string written before them is
+	-- unchanged: tint (garage round 2), then tyre and flame
+	-- (garage-tyres-flames).
+	local n = #CosmeticsConfig.CATEGORIES
+	t.eq(CosmeticsConfig.CATEGORIES[n - 2], "tint", "tint comes after the round 1 slots")
+	t.eq(CosmeticsConfig.CATEGORIES[n - 1], "tyre", "tyre comes after tint")
+	t.eq(CosmeticsConfig.CATEGORIES[n], "flame", "flame is the last category")
+
+	-- Tyres (garage-tyres-flames): the stock tyre is every drivetrain's
+	-- Classic and fits every car; each other tyre names a real drift mode of
+	-- its own drivetrain, fits only that drivetrain, and every mode bar the
+	-- Classics is sold as one tyre.
+	local stockTyre = CosmeticsConfig.find(CosmeticsConfig.stockId("tyre")) :: CosmeticsConfig.Item
+	t.eq(stockTyre.id, "tyre_classic", "the stock tyre is Classic")
+	t.eq(stockTyre.driftStyle, nil, "the stock tyre names no mode (each drivetrain's default)")
+	local sold: { [string]: boolean } = {}
+	for _, layout in DriftStyles.layouts do
+		t.ok(CosmeticsConfig.fits(stockTyre, layout), `the stock tyre fits {layout}`)
+		t.eq(DriftStyles.styles[DriftStyles.default(layout)].name, "Classic", `{layout}'s default mode is Classic`)
+	end
+	for _, item in CosmeticsConfig.inCategory("tyre") do
+		if item.price > 0 then
+			local style = if item.driftStyle then DriftStyles.styles[item.driftStyle] else nil
+			t.ok(style ~= nil, `{item.id} names a drift mode`)
+			if style then
+				t.eq(item.layout, style.layout, `{item.id} fits its mode's drivetrain`)
+				t.eq(item.name, style.name, `{item.id} is called what its mode is`)
+				t.ok(style.name ~= "Classic", `{item.id} is not a Classic`)
+				for _, layout in DriftStyles.layouts do
+					t.eq(CosmeticsConfig.fits(item, layout), layout == style.layout, `{item.id} fits {layout} only if it is its own`)
+				end
+				sold[item.driftStyle :: string] = true
+			end
+		end
+	end
+	for id, style in DriftStyles.styles do
+		if style.name ~= "Classic" then
+			t.ok(sold[id], `the {id} mode is sold as a tyre`)
+		end
+	end
+
+	-- Flames: each names a real flame style, Classic is the free one, and
+	-- every style is sold.
+	t.eq(CosmeticsConfig.stockId("flame"), "flame_classic", "the stock flame is Classic")
+	t.eq((CosmeticsConfig.find("flame_classic") :: CosmeticsConfig.Item).flameStyle, ExhaustStyles.default, "the stock flame is the default flame style")
+	local soldFlames: { [string]: boolean } = {}
+	for _, item in CosmeticsConfig.inCategory("flame") do
+		t.ok(item.flameStyle ~= nil and ExhaustStyles.styles[item.flameStyle :: string] ~= nil, `{item.id} names a flame style`)
+		t.ok(item.flameCore ~= nil and item.flameColor ~= nil, `{item.id} has its tile's colours`)
+		t.ok(CosmeticsConfig.fits(item, "FWD"), `{item.id} fits every car`)
+		soldFlames[item.flameStyle or ""] = true
+	end
+	for _, id in ExhaustStyles.order do
+		t.ok(soldFlames[id], `the {id} flame style is sold`)
+	end
 
 	-- Flames get bigger up the exhaust ladder: factory smallest, titanium
 	-- largest (the spec's "factory small ... sport tips larger").

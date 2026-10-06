@@ -21,6 +21,8 @@ export type Look = {
 	decal: string?,
 	exhaust: string?,
 	tint: string?, -- garage round 2 §4; absent from every string written before it
+	tyre: string?, -- the drift mode (garage-tyres-flames); after tint, likewise
+	flame: string?, -- the exhaust flame style (garage-tyres-flames)
 	plate: string?,
 }
 

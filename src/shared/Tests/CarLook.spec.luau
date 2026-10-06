@@ -67,6 +67,19 @@ return function(t: T)
 	t.ok(isEmpty(CarLook.decode("tint=paint_red")), "decode drops a paint in the tint slot")
 	t.eq(CarLook.item({}, "tint").id, "tint_stock", "an empty look's tint is the stock item")
 
+	-- Tyre and flame (garage-tyres-flames): written after tint, an older
+	-- string decodes and re-encodes the same, the stock ones are not written.
+	local fitted: CarLook.Look = { tint = "tint_dark", tyre = "tyre_hajwala", flame = "flame_blue" }
+	t.eq(CarLook.encode(fitted), "tint=tint_dark;tyre=tyre_hajwala;flame=flame_blue", "tyre and flame are written after tint")
+	local fittedBack = CarLook.decode(CarLook.encode(fitted))
+	t.eq(fittedBack.tyre, "tyre_hajwala", "round trip keeps the tyre")
+	t.eq(fittedBack.flame, "flame_blue", "round trip keeps the flame")
+	t.eq(CarLook.encode({ tyre = "tyre_classic", flame = "flame_classic" }), "", "the stock tyre and flame are not written")
+	t.eq(CarLook.encode(CarLook.decode(tintString)), tintString, "a string written before tyres re-encodes the same")
+	t.ok(isEmpty(CarLook.decode("tyre=flame_blue")), "decode drops a flame in the tyre slot")
+	t.eq(CarLook.item({}, "tyre").id, "tyre_classic", "an empty look's tyre is Classic")
+	t.eq(CarLook.item({}, "flame").id, "flame_classic", "an empty look's flame is Classic")
+
 	t.eq(CarLook.item({}, "paint").id, "paint_stock", "an empty look's paint is the stock item")
 	t.eq(CarLook.item({}, "paint").id, CosmeticsConfig.stockId("paint"), "matches CosmeticsConfig.stockId")
 end

@@ -9,11 +9,14 @@
 -- standdard hajwala 360s". Research and design in docs/superpowers/specs/
 -- 2026-10-05-drift-overhaul-*.md.
 --
--- A car's catalog entry says which wheels it drives (drivetrain.layout);
--- the modes of that layout are offered in the menu's Settings tab, its
--- first is the default, and in Studio O cycles them (client DriftStyle).
--- Each layout has three modes and Classic, the drift-feel default kept
--- for comparing. A mode is a partial CarConfig deep-merged over the car's
+-- A car's catalog entry says which wheels it drives (drivetrain.layout).
+-- A mode is a tyre in the garage (CosmeticsConfig, garage-tyres-flames;
+-- the owner, 2026-10-05: "make the differnt driftmodes we made different
+-- tire options in the garage instead of drift options in the car menu. by
+-- default start all at classic"): the car drives the mode of the tyre
+-- fitted to it, Classic until one is bought, and in Studio O cycles them
+-- (client DriftStyle). Each layout has Classic, the drift-feel default,
+-- and three modes. A mode is a partial CarConfig deep-merged over the car's
 -- own config: the line, the pedals, the dial, the torque split, never a
 -- key a catalog car tunes (DriftStyles.spec), so each car keeps its own
 -- character. The lever's 360 is the same move on every mode; a mode only
@@ -24,7 +27,7 @@ local DriftStyles = {}
 export type Style = {
 	name: string,
 	layout: string, -- "RWD" | "FWD" | "AWD"
-	blurb: string, -- one line for the Settings tab
+	blurb: string, -- one line for the garage's tyre row
 	tuning: { [string]: any },
 }
 
@@ -133,7 +136,7 @@ DriftStyles.styles = {
 	classic = {
 		name = "Classic",
 		layout = "RWD",
-		blurb = "The car before the overhaul: the wheel is the angle, the slide follows the tyres.",
+		blurb = "The everyday tyre: the wheel sets the angle, the slide follows the tyres. Space spins.",
 		tuning = { drivetrain = { layout = "RWD" } },
 	},
 
@@ -208,7 +211,7 @@ DriftStyles.styles = {
 	classicFwd = {
 		name = "Classic",
 		layout = "FWD",
-		blurb = "The front-drive car before the overhaul (drift-feel's Handbrake): thrown on the lever, held on the gas.",
+		blurb = "The everyday tyre: throw it on the lever and hold it on the gas.",
 		tuning = {
 			drivetrain = { layout = "FWD" },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP } },
@@ -293,7 +296,7 @@ DriftStyles.styles = {
 	classicAwd = {
 		name = "Classic",
 		layout = "AWD",
-		blurb = "The all-wheel-drive car before the overhaul (drift-feel's Rally).",
+		blurb = "The everyday tyre: all four wheels pull, the wheel sets the angle, the slide follows the tyres.",
 		tuning = {
 			drivetrain = { layout = "AWD", frontShare = 0.45 },
 			tires = { front = { longitudinalGrip = FRONT_DRIVE_GRIP }, slipModel = { flickRearGripMultiplier = 0.55 } },
@@ -305,12 +308,13 @@ DriftStyles.styles = {
 	},
 } :: { [string]: Style }
 
--- The order the menu shows and Studio's Shift+O cycles; within a layout,
--- the first is its default.
+-- The order Studio's Shift+O cycles; within a layout, the first is its
+-- default: Classic, the free tyre (garage-tyres-flames: "by default start
+-- all at classic").
 DriftStyles.order = {
-	"hajwala", "power", "angle", "classic",
-	"tafheet", "liftoff", "pivot", "classicFwd",
-	"rally", "driftmode", "tatweef", "classicAwd",
+	"classic", "hajwala", "power", "angle",
+	"classicFwd", "tafheet", "liftoff", "pivot",
+	"classicAwd", "rally", "driftmode", "tatweef",
 }
 
 -- A config's layout: "RWD" unless it says FWD or AWD.

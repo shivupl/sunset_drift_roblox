@@ -3,7 +3,8 @@
 --
 -- Remote CosmeticsAction (RemoteFunction), each returning { status }:
 --   ("buy", id)                  buy a cosmetic at CosmeticsConfig's price
---   ("equip", carId, slot, id)   fit an owned cosmetic to one car (stock id or nil clears)
+--   ("equip", carId, slot, id)   fit an owned cosmetic to one car (stock id or nil clears);
+--                                a tyre only to a car of its drivetrain (garage-tyres-flames)
 --   ("plate", carId, plateKey?)  pick one of my plates for one car (nil clears)
 -- status: done | owned | cash | unavailable | busy | unknown | notowned.
 --
@@ -135,6 +136,12 @@ local function equip(player: Player, carId: any, slot: any, id: any): Reply
 		end
 		local item = CosmeticsConfig.find(id)
 		if not item or (item.category :: string) ~= slot then
+			return { status = "unknown" }
+		end
+		-- A tyre is a drift mode of one drivetrain (DriftStyles): it goes
+		-- only on a car that drives the same wheels.
+		local layout = ConfigLoader.driftStyles().layoutOf(ConfigLoader.forCar(carId))
+		if not CosmeticsConfig.fits(item, layout) then
 			return { status = "unknown" }
 		end
 		if not Economy.owns(player, id) then

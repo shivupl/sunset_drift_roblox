@@ -507,11 +507,13 @@ ExhaustStyles.styles = {
 } :: { [string]: Style }
 
 -- The styles in the order the Studio switch (P) cycles them; the index is
--- what the relay sends.
+-- what the relay sends, so the order never changes.
 ExhaustStyles.order = { "crackle", "blue", "twostep", "classic" }
--- The style every car uses until the owner picks (the Studio switch only
--- changes it on that client).
-ExhaustStyles.default = "crackle"
+-- The style a car pops in with no flame bought: each style is a garage
+-- flame (CosmeticsConfig, garage-tyres-flames; the owner, 2026-10-05:
+-- "have classic be the default and the other flames purchasable in the
+-- garage"). The Studio switch overrides it on that client.
+ExhaustStyles.default = "classic"
 
 -- Relay (client ExhaustPops, server CarControls). A driver sends one
 -- message a burst, (kind, style index, seed, scale); every client rebuilds
