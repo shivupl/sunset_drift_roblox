@@ -48,4 +48,21 @@ return function(t: T)
 	for role, spec in UITheme.type do
 		t.ok(spec.size >= 12, `{role} is at least 12 px`)
 	end
+	-- The garage (garage-ui-overhaul, 2026-10-06): the category rail's
+	-- role, the shade under the panel, and a palette that fits three
+	-- columns in the desktop panel.
+	local navRole: UITheme.Role = "nav"
+	local nav = UITheme.type[navRole]
+	t.ok(nav ~= nil and nav.caps and nav.family == UITheme.family.display, "nav is a display-face caps role")
+	local shade = UITheme.shade
+	t.ok(shade.near >= 0 and shade.near < shade.far and shade.far < 0.5, "the shade is darkest at the screen edge and still dark at the panel's")
+	local sp = UITheme.sidePanel
+	t.ok(sp.fadeTail > 0 and sp.touchFadeTail > 0, "the shade fades out past the panel")
+	-- The content column is the panel less its padding and the rail: the
+	-- rail's longest word, SUN STRIPS, measured 61 px in nav; 120 px leaves
+	-- it its padding with room to spare.
+	local railRoom = 120
+	local content = sp.width - 2 * UITheme.space.lg - railRoom
+	t.ok(3 * sp.paletteMinTile + 2 * UITheme.space.sm <= content, "three palette columns fit beside the rail on desktop")
+	t.ok(sp.touchPaletteMinTile >= UITheme.minTouchTarget, "a palette tile is a thumb target")
 end

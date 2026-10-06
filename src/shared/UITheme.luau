@@ -14,7 +14,7 @@
 -- through UITheme.px(size, true), which scales it by touchScale and floors
 -- tap targets at minTouchTarget.
 
-export type Role = "hero" | "display" | "title" | "heading" | "body" | "label" | "caption" | "price"
+export type Role = "hero" | "display" | "title" | "heading" | "body" | "label" | "caption" | "price" | "nav"
 
 local function hex(s: string): Color3
 	return Color3.fromHex(s)
@@ -92,6 +92,11 @@ UITheme.type = {
 	label = { family = UITheme.family.body, weight = Enum.FontWeight.Bold, size = 12, caps = true },
 	caption = { family = UITheme.family.body, weight = Enum.FontWeight.Regular, size = 12, caps = false },
 	price = { family = UITheme.family.display, weight = Enum.FontWeight.SemiBold, size = 16, caps = false },
+	-- The garage's category rail (garage-ui-overhaul, 2026-10-06): the
+	-- categories as a column of words, a size between title and heading so
+	-- the longest, SUN STRIPS, takes 61 px (77 on touch) and the rail
+	-- leaves the items room on a phone.
+	nav = { family = UITheme.family.display, weight = Enum.FontWeight.SemiBold, size = 18, caps = true },
 } :: { [Role]: TypeSpec }
 
 -- Arabic set beside or under English runs this much larger, because Arabic
@@ -107,6 +112,7 @@ UITheme.stroke = {
 	hairline = 1, -- cards, inputs: asphalt600
 	selected = 2, -- the selected option: sodium
 	focus = 2, -- keyboard / gamepad focus: lens
+	marker = 3, -- the bar beside the chosen row of the garage's category rail: sodium
 }
 
 -- Roblox has no box shadow. A shadow is a Frame one radius larger, offset
@@ -120,10 +126,34 @@ UITheme.minTouchTarget = 48 -- thumb
 UITheme.touchScale = 1.25
 
 -- The side panel (UI_SYSTEM.md "Targets and layout"; the garage panel,
--- 2026-09-28): 360 px wide on desktop; on touch 42% of the screen width, at
--- most 420 px, so the car always shows. A card grid inside it drops to one
--- column when the panel is narrower than oneColumnBelow.
-UITheme.sidePanel = { width = 360, touchFraction = 0.42, touchMax = 420, oneColumnBelow = 340 }
+-- 2026-09-28; widened in the garage-ui-overhaul, 2026-10-06, from 360 px and
+-- 42% at most 420, because its category rail costs width and a phone's
+-- width is less scarce than its height): 420 px wide on desktop, on touch
+-- 46% of the screen width at most 460 px, so the car always shows.
+-- fadeTail: how far past the panel its shade fades to clear (UITheme.shade).
+-- paletteMinTile: a palette (a grid of colour swatches) has as many columns
+-- as fit tiles this wide: 3 in the desktop panel, 2 on a phone.
+UITheme.sidePanel = {
+	width = 420,
+	touchFraction = 0.46,
+	touchMax = 460,
+	fadeTail = 200,
+	touchFadeTail = 96,
+	paletteMinTile = 76,
+	touchPaletteMinTile = 88,
+	-- The category rail's rows share its height on touch so all seven show
+	-- on a 350 px phone, but never under this (Apple's floor is 44; 40 x the
+	-- rail's width is still an easy thumb). Below it the rail scrolls.
+	railMinTouchRow = 40,
+}
+
+-- The garage's shade (garage-ui-overhaul, 2026-10-06): instead of a panel
+-- box, asphalt950 darkens the screen under the panel, `near` see-through at
+-- the screen's left edge and `far` at the panel's edge, then fades to clear
+-- over sidePanel.fadeTail, so the panel melts into the garage. 0.16 at the
+-- edge keeps paint and sand text at the panel's right over the bright
+-- floor readable (measured in Play).
+UITheme.shade = { near = 0.06, far = 0.16 }
 
 -- Motion.
 UITheme.motion = {

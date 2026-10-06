@@ -53,6 +53,14 @@ return function(t: T)
 		t.eq(v.shot, "exhaust", `exhaust/{v.id} frames the exhaust`)
 	end
 
+	-- PAINT's finishes are a sub-tab of their own (garage-ui-overhaul): the
+	-- colours, finishes and tints are three sets, one grid each.
+	local paintViews: { string } = {}
+	for _, v in GarageConfig.views.paint do
+		table.insert(paintViews, v.id)
+	end
+	t.eq(table.concat(paintViews, ","), "colour,finish,tint", "PAINT's sub-tabs are colour, finish, tint")
+
 	-- Sounds: an asset id and a volume in 0..1 each.
 	for _, kind in { "tab", "tap", "fit", "buy", "error" } do
 		local def = GarageConfig.sounds[kind]

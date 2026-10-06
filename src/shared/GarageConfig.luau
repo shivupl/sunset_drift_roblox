@@ -173,12 +173,18 @@ GarageConfig.FULL = "full"
 GarageConfig.focus = { easeSeconds = 0.25, arriveDeg = 1.5 }
 
 -- The panel's views: per category, its sub-tabs in order (more than one
--- shows a row of sub-tab chips), each with its label and shot. One view
--- shows no row. ids are the panel's, not stored anywhere.
+-- shows them as a row of words), each with its label and shot. One view
+-- shows no sub-tabs. ids are the panel's, not stored anywhere.
 export type View = { id: string, label: string, shot: string }
 GarageConfig.views = {
 	cars = { { id = "cars", label = "MY CARS", shot = "full" } },
-	paint = { { id = "colour", label = "COLOUR", shot = "full" }, { id = "tint", label = "TINT", shot = "side" } },
+	-- FINISH is a sub-tab of its own (garage-ui-overhaul, 2026-10-06): the
+	-- finish pills above the colours took three rows.
+	paint = {
+		{ id = "colour", label = "COLOUR", shot = "full" },
+		{ id = "finish", label = "FINISH", shot = "full" },
+		{ id = "tint", label = "TINT", shot = "side" },
+	},
 	rims = { { id = "rims", label = "RIMS", shot = "wheel" }, { id = "tyres", label = "TYRES", shot = "wheel" } },
 	plates = { { id = "plates", label = "PLATES", shot = "plate" } },
 	lights = { { id = "head", label = "HEADLIGHTS", shot = "head" }, { id = "tail", label = "TAIL LIGHTS", shot = "tail" } },

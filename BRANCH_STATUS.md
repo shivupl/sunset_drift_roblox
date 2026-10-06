@@ -117,6 +117,23 @@ and pop on cards, the cash counting down, the grid sliding in. Spec
 a Blue Flame tap fired its burst from the preview's exhaust as the camera arrived, no errors. Open for
 the owner: the shots' framings and the sounds (by ear), and the phone layout (not checked).
 
+**`garage-ui-overhaul` (2026-10-06, branched from `main` at `60cdede`; not merged): the garage
+panel redrawn.** The owner (a /goal): "polish the UI of the garage, a complete overhaul to make the UI
+look better and more organized + appealing. try different styles". Three styles were mocked in the
+Client over the real garage (a boxed panel with a swatch grid, full-bleed paint-chip cards, and a
+box-less shade with a list) and the hybrid built: no panel box but a shade that fades into the garage
+(its tail lets drags reach the turntable), one header row (GARAGE and the Arabic, the cash, a close
+button), the categories as a rail of words with a sliding sodium marker, sub-tabs as words with a
+sliding underline, FINISH a PAINT sub-tab of its own (its pills took three rows), colours as a
+palette grid and everything else as a list, each item's state a word under its name, and a foot that
+names what BUY buys. The panel is 420 px (46% of a phone). Spec
+`docs/superpowers/specs/2026-10-06-garage-ui-overhaul-design.md`; rules in UI_SYSTEM.md. Specs 12692
+passed, 14 failed (the VehicleRig baseline). In Play (desktop and `ForceTouch`): every category drew,
+15 paints in view (was 4), a tip and a finish previewed with the foot naming them, a purchase counted
+the cash down with its toast, collapse and the close button worked, no errors. Open for the owner: the
+look itself, and a real phone (a 350 px tall screen fits the rail only at 40 px rows; checked in a
+mock, not a device).
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left

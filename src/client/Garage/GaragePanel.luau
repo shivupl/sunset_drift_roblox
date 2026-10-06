@@ -10,14 +10,30 @@
 --
 -- GarageView owns the view (camera, turntable, the preview car, LEAVE by Esc
 -- or gamepad B); this module is built on its onEnter and torn down on its
--- onLeave. Every element comes from UIKit on the UITheme tokens, and the item
--- states are UI_SYSTEM.md "Shop items":
---   * on this car: button.selected ground and stroke, an ON CAR badge;
---   * owned: a secondary card with the gantry OWNED badge;
---   * for sale: a secondary card with the price chip (padlock, sodium);
---   * previewing: for sale plus the sodium stroke, and the foot bar
---     PREVIEWING · price · BUY;
---   * rare: a dusk diamond before the name.
+-- onLeave. Every element comes from UIKit on the UITheme tokens.
+--
+-- How it looks (garage-ui-overhaul, 2026-10-06, the owner: "a complete
+-- overhaul to make the UI look better and more organized + appealing";
+-- docs/superpowers/specs/2026-10-06-garage-ui-overhaul-design.md):
+--   * no panel box: a shade (UITheme.shade) darkens the screen under the
+--     panel and fades to clear past it, so the panel melts into the garage;
+--     the fading tail lets drags through to the turntable (PassThrough);
+--   * one header row: GARAGE and the Arabic, the cash, the close button
+--     (LEAVE);
+--   * the categories as a rail of words down the left (the nav role), the
+--     chosen one paint with a sodium bar that slides to it;
+--   * right of the rail: the sub-tabs as words with a sliding sodium
+--     underline and the category's action (REV, SHOP PLATES) at the row's
+--     end, a note where needed, the items, and the foot;
+--   * a set of colours is a palette (a grid of swatches: paint, tint, rims,
+--     head and tail lights); everything else is a list (a row per item);
+--   * each item's status is a word under its name (UI_SYSTEM.md "Shop
+--     items"): ON CAR in sodium for what is saved on this car, ✓ OWNED in
+--     gantryBright, or the price in sodium; what shows on the car now is
+--     drawn chosen (a palette swatch's sodium ring, a list row's selected
+--     ground and stroke); rare items get the dusk diamond before the name;
+--   * the foot names what you are about to buy: the item, its price, BUY;
+--     on MY CARS the car and DRIVE THIS.
 --
 -- Behaviour:
 --   * A tap applies the item to the turntable car at once
@@ -41,33 +57,33 @@
 --     says how the tyre showing drives. REV fires the flame showing, so a
 --     flame is heard and seen before it is bought.
 --   * Garage polish (2026-10-05, GarageConfig.views): a category with more
---     than one set of items has a row of sub-tabs (PAINT: COLOUR, TINT;
+--     than one set of items has sub-tabs (PAINT: COLOUR, FINISH, TINT;
 --     WHEELS: RIMS, TYRES; LIGHTS: HEADLIGHTS, TAIL LIGHTS; EXHAUST: TIPS,
---     FLAMES, with REV on the row), one grid each, remembered per category
+--     FLAMES, with REV on the row), one set each, remembered per category
 --     for the visit. Each view has a camera shot (GarageView.focus): the
 --     camera goes to the part; tapping the sub-tab again goes back in
 --     after a drag took it out. Tapping tips or a flame plays a burst once
 --     the camera is there; a headlight colour blinks the lamps. Sounds
 --     (GarageSounds) on a tab, a preview, a fit, a purchase and an error;
---     a card shrinks while pressed and pops when its item is fitted or
---     bought; the cash counts down after a purchase; a new grid slides up
---     into place. An item card's badge sits on its tile's corner (plates
---     keep the row under the name: their art fills the tile).
+--     an item shrinks while pressed and pops when it is fitted or bought;
+--     the cash counts down after a purchase; a new set slides up into
+--     place.
 --   * The pill on the panel's edge, H or gamepad Y collapse the panel; the
 --     car re-centres (GarageView.setPanelOpen).
 --
--- Taps on cards and chips are tracked here through UserInputService, not
--- with Activated, for the reason SpawnMenu's header gives: on a phone a
--- GuiButton inside a ScrollingFrame blocks the drag that scrolls it, and a
--- touch that moves a little never fires Activated. A press counts as a tap
--- if it lifts over the same card within TAP_SLOP_PX and the list did not
--- scroll.
+-- Taps on items, rail rows and sub-tabs are tracked here through
+-- UserInputService, not with Activated, for the reason SpawnMenu's header
+-- gives: on a phone a GuiButton inside a ScrollingFrame blocks the drag that
+-- scrolls it, and a touch that moves a little never fires Activated. A press
+-- counts as a tap if it lifts over the same item within TAP_SLOP_PX and the
+-- list did not scroll.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
+local GuiService = game:GetService("GuiService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local UITheme = require(Shared:WaitForChild("UITheme"))
@@ -112,12 +128,25 @@ local TOAST_SECONDS = 3
 local DISPLAY_ORDER = 15
 -- The confirm sheet's base ZIndex, above the panel's (UIKit.panel's 2).
 local SHEET_Z = 20
--- A card's name gets two lines; a line is the text size times this (Builder
--- Sans' line box at LineHeight 1, with room for Arabic marks).
+-- A line of text is the text size times this (Builder Sans' line box at
+-- LineHeight 1, with room for Arabic marks).
 local LINE_BOX = 1.3
--- An item tile's dots (rims, tips) keep to this share of its width, left
--- of the badge on its corner (garage-polish).
-local TILE_DOT_SHARE = 0.45
+-- A palette swatch is this many targets tall (50 px on desktop, 67 on
+-- touch): big enough to judge a colour, small enough for four rows of
+-- three in view (garage-ui-overhaul).
+local SWATCH_TALL = 1.4
+-- A list row's swatch is this many times as wide as it is tall; a banner
+-- (sun strips, plates: their art is wide) WIDE_SWATCH.
+local ROW_SWATCH = 1.6
+local WIDE_SWATCH = 2.2
+-- A finish swatch's highlight: the car's paint is lifted toward white by
+-- this much at the swatch's top corner for a shiny (Glass) finish, plus
+-- FINISH_SHINE_PER_REFLECTANCE for each unit of reflectance, so Gloss,
+-- Metallic and Chrome read as a ladder (0.35, 0.5, 0.8).
+local FINISH_SHINE = 0.35
+local FINISH_SHINE_PER_REFLECTANCE = 3
+-- The close button's cross: each stroke is this share of the button.
+local CLOSE_MARK = 0.4
 
 local TABS: { { id: Tab, label: string } } = {
 	{ id = "cars", label = "MY CARS" },
@@ -130,6 +159,12 @@ local TABS: { { id: Tab, label: string } } = {
 	{ id = "decal", label = "SUN STRIPS" },
 	{ id = "exhaust", label = "EXHAUST" },
 }
+
+-- The sets shown as a palette, a grid of swatches: the ones that are
+-- colours. Everything else is a list, a row per item (garage-ui-overhaul).
+local PALETTES: { [string]: boolean } = { paint = true, tint = true, rims = true, head = true, tail = true }
+-- List rows whose swatch is a banner.
+local WIDE: { [string]: boolean } = { decal = true, plate = true }
 
 -- What each category is called on the confirm sheet.
 local CATEGORY_NAMES: { [string]: string } = {
@@ -160,12 +195,14 @@ type Card = {
 	name: string,
 	price: number,
 	rare: boolean,
+	row: boolean, -- a list row; else a palette tile
 	frame: Frame,
+	-- The chosen mark: a row's stroke, or the ring round a tile's swatch.
 	stroke: UIStroke,
-	tile: Frame?,
+	tile: Frame?, -- the swatch, faded when the car can't show the slot
 	nameLabel: TextLabel,
-	badges: Frame,
-	badgeSig: string?,
+	status: TextLabel,
+	statusSig: string?,
 }
 
 type Tap = {
@@ -183,25 +220,30 @@ type Press = {
 	cancelled: boolean,
 }
 
+type Grid = { layout: UIGridLayout, palette: boolean }
+
 type UI = {
 	gui: ScreenGui,
 	dock: Frame,
-	panel: Frame,
-	panelPad: UIPadding,
+	shade: Frame,
+	tail: Frame,
 	handle: TextButton,
 	header: Frame,
-	titleHolder: Frame,
-	titleRow: Frame,
+	title: TextLabel,
+	arabic: TextLabel,
 	cash: TextLabel,
 	leave: TextButton,
-	chips: Frame,
-	chipButtons: { [Tab]: TextButton },
+	rail: ScrollingFrame,
+	railRows: { [Tab]: Frame },
+	railLabels: { [Tab]: TextLabel },
+	railBar: Frame,
+	content: Frame,
 	sub: Frame,
 	subList: UIListLayout,
 	grid: ScrollingFrame,
-	gridLayouts: { UIGridLayout },
+	grids: { Grid },
 	foot: Frame,
-	footText: TextLabel,
+	footName: TextLabel,
 	footPrice: TextLabel,
 	footButton: TextButton,
 	toast: Frame,
@@ -228,11 +270,8 @@ local confirmed: { [Slot]: string } = {}
 -- are ignored.
 local epoch = 0
 local cards: { Card } = {}
--- PAINT's finish row and its pills, flowed by relayout.
-local finishRow: Frame? = nil
--- WHEELS: the line under the tyres' title, how the tyre showing drives.
+-- WHEELS: the line over the tyres, how the tyre showing drives.
 local tyreNote: TextLabel? = nil
-local finishPills: { GuiObject } = {}
 -- The owned plates changed while the PLATES list could not be rebuilt.
 local platesDirty = false
 local taps: { Tap } = {}
@@ -247,6 +286,15 @@ local relaying = false
 local revUntil = 0
 -- Each category's sub-tab (GarageConfig.views), for this visit.
 local subTab: { [string]: string } = {}
+-- Where the sub-tab underline last sat, so a new choice in the same
+-- category slides it there from the old one.
+local underlineWas: { tab: Tab, x: number, w: number }? = nil
+-- The rail's row height, as last laid out (the bar's slide needs it), the
+-- bar's slide while it runs, and the rail's widest word this visit: the
+-- rail only grows, so the items don't shift when a wider word turns bold.
+local railRowH = 0
+local railTween: Tween? = nil
+local railLabelW = 0
 -- The cash as shown, and where it is heading: it counts down after a
 -- purchase (GarageConfig.feel.cashCountSeconds).
 local cashShown: number? = nil
@@ -451,17 +499,19 @@ local function lineBox(role: UITheme.Role): number
 	return math.ceil(UITheme.textSize(role, touch) * LINE_BOX)
 end
 
--- A badge's height: the tallest badge text (a price) and its xs padding.
-local function badgeHeight(): number
-	return UITheme.textSize("price", touch) + 2 * space("xs")
+-- A palette swatch's height.
+local function swatchHeight(): number
+	return math.floor(target() * SWATCH_TALL + 0.5)
 end
 
--- An item card: the tile (its badge on the corner) and two lines of name.
--- rowBadge: the badge in a row under the name (plates: their art fills
--- the tile).
-local function cardHeight(rowBadge: boolean?): number
-	local h = 2 * space("sm") + target() + space("sm") + 2 * lineBox("heading")
-	return if rowBadge then h + space("xs") + badgeHeight() else h
+-- A palette tile: the swatch, a line of name and the status line.
+local function tileHeight(): number
+	return swatchHeight() + space("xs") + lineBox("body") + lineBox("price")
+end
+
+-- A list row: the name over the status line, padded.
+local function rowHeight(): number
+	return 2 * space("sm") + lineBox("body") + lineBox("price")
 end
 
 local function panelWidth(u: UI): number
@@ -477,8 +527,26 @@ local function panelWidth(u: UI): number
 	return math.min(math.floor(vp * sp.touchFraction), sp.touchMax)
 end
 
-local function columns(u: UI): number
-	return if panelWidth(u) < UITheme.sidePanel.oneColumnBelow then 1 else 2
+-- How far the shade (and the confirm sheet's dim) runs past the gui's
+-- edges: under Roblox's top bar and any notch, so it has no edge of its
+-- own but the fade.
+local function shadeBleed(): number
+	return GuiService:GetGuiInset().Y + space("xxxl")
+end
+
+-- How far past the panel its shade fades to clear.
+local function fadeTail(): number
+	local sp = UITheme.sidePanel
+	return if touch then sp.touchFadeTail else sp.fadeTail
+end
+
+-- A palette's columns: as many as fit tiles paletteMinTile wide (3 in the
+-- desktop panel, 2 on a phone).
+local function paletteColumns(width: number): number
+	local sp = UITheme.sidePanel
+	local minTile = if touch then sp.touchPaletteMinTile else sp.paletteMinTile
+	local gap = space("sm")
+	return math.max(1, math.floor((width + gap) / (minTile + gap)))
 end
 
 ------------------------------------------------------------------------
@@ -557,21 +625,20 @@ end
 ------------------------------------------------------------------------
 
 local function tileBlank(tile: Frame)
+	-- Nothing to draw: a dark swatch, outlined by its ring or edge.
 	tile.BackgroundColor3 = C.asphalt700
-	UIKit.stroke(tile, "asphalt600", UITheme.stroke.hairline)
 end
 
+-- n dots in a row across the swatch's middle (rims, lights, tips, tyres).
+-- aspect: a dot this many times wider than tall (the Big Oval Tip).
 local function tileCircles(tile: Frame, n: number, color: Color3, aspect: number?)
 	tileBlank(tile)
 	local row = Instance.new("Frame")
+	row.Name = "Dots"
 	row.BackgroundTransparency = 1
 	row.Size = UDim2.fromScale(1, 1)
 	local l = list(row, true, space("xs"))
-	-- At the tile's left: the badge sits on its right corner.
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, space("sm"))
-	pad.Parent = row
+	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	row.Parent = tile
 	local dots: { Frame } = {}
 	for i = 1, n do
@@ -580,28 +647,35 @@ local function tileCircles(tile: Frame, n: number, color: Color3, aspect: number
 		dot.BorderSizePixel = 0
 		dot.LayoutOrder = i
 		UIKit.corner(dot, "pill")
-		-- A dark tip (Quad Tips) would vanish on the tile without an edge.
+		-- A dark tip (Quad Tips) would vanish on the swatch without an edge.
 		UIKit.stroke(dot, "asphalt500", UITheme.stroke.hairline)
 		dot.Parent = row
 		table.insert(dots, dot)
 	end
-	-- Half a target across, or smaller so every dot fits the tile's left
-	-- part, clear of the badge (Quad Tips' fourth ran under the price at
-	-- the full size, Play 2026-10-05). aspect: a dot this many times wider
-	-- than tall (the Big Oval Tip).
+	-- As big as fits: every dot across the swatch with a margin, and no
+	-- taller than three fifths of it. aspect: a dot this many times wider
+	-- than tall.
 	local wide = aspect or 1
 	local function fit()
-		local room = tile.AbsoluteSize.X * TILE_DOT_SHARE - space("sm") - (n - 1) * space("xs")
-		local d = math.floor(target() * 0.5)
-		if room > 0 then
-			d = math.max(math.min(d, math.floor(room / (n * wide))), 4)
+		local size = tile.AbsoluteSize
+		if size.X < 1 or size.Y < 1 then
+			return
 		end
+		local room = size.X - 2 * space("sm") - (n - 1) * space("xs")
+		local d = math.floor(math.min(room / (n * wide), size.Y * 0.6))
+		d = math.max(d, 4)
 		for _, dot in dots do
 			dot.Size = UDim2.fromOffset(math.floor(d * wide), d)
 		end
 	end
 	fit()
 	tile:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+end
+
+-- The paint the turntable car shows now: a finish is drawn on it.
+local function shownPaint(): Color3
+	local item = CarLook.item(draftLook(), "paint")
+	return item.color or ConfigLoader.entry(carId).body.paint
 end
 
 local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
@@ -613,6 +687,22 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 			-- Factory: the car's own catalog paint.
 			tile.BackgroundColor3 = ConfigLoader.entry(carId).body.paint
 		end
+	elseif c == "finish" then
+		-- The car's paint in this finish: darkened and greyed as the finish
+		-- does (CarCosmetics), with a highlight across a shiny one, so the
+		-- finishes read as a ladder at a glance (garage-ui-overhaul).
+		local h, s, v = shownPaint():ToHSV()
+		local base = Color3.fromHSV(h, s * (1 - (item.desaturate or 0)), v * (1 - (item.darken or 0)))
+		local shine = if item.material == Enum.Material.Glass then FINISH_SHINE + FINISH_SHINE_PER_REFLECTANCE * (item.reflectance or 0) else 0
+		tile.BackgroundColor3 = Color3.new(1, 1, 1)
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, base:Lerp(C.lens, shine)),
+			ColorSequenceKeypoint.new(0.5, base),
+			ColorSequenceKeypoint.new(1, base:Lerp(C.asphalt950, shine * 0.3)),
+		})
+		g.Rotation = 35
+		g.Parent = tile
 	elseif c == "rims" or c == "head" or c == "tail" then
 		if item.color then
 			tileCircles(tile, 1, item.color)
@@ -646,6 +736,8 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 		end
 	elseif c == "tint" then
 		-- The film over sand, as the desert looks through a side window.
+		-- Limo's film is nearly the shade's own colour: the swatch's ring
+		-- keeps it from vanishing.
 		if item.glassColor and item.glassTransparency then
 			tile.BackgroundColor3 = C.sand
 			local film = Instance.new("Frame")
@@ -655,15 +747,12 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 			film.BackgroundColor3 = item.glassColor
 			film.BackgroundTransparency = item.glassTransparency
 			film.Parent = tile
-			-- Limo's film is nearly the card's own colour: an edge keeps the
-			-- swatch from vanishing, as the dark exhaust tips have.
-			UIKit.stroke(tile, "asphalt500", UITheme.stroke.hairline)
 		else
 			tileBlank(tile)
 		end
 	elseif c == "tyre" then
-		-- Every tyre looks alike: it is how it drives that differs (the line
-		-- under the row's title).
+		-- Every tyre looks alike: it is how it drives that differs (the note
+		-- over the list).
 		tileCircles(tile, 1, C.asphalt900)
 	elseif c == "flame" then
 		-- The style's colours, from the hot core at the mouth to its body.
@@ -681,7 +770,7 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 end
 
 ------------------------------------------------------------------------
--- Cards and their states.
+-- Items and their states.
 ------------------------------------------------------------------------
 
 type CardState = {
@@ -740,61 +829,67 @@ local function stateOf(card: Card, ctx: Context): CardState
 	}
 end
 
-local function setBadge(card: Card, kind: string?, text: string)
-	local sig = if kind then `{kind}:{text}` else ""
-	if card.badgeSig == sig then
+-- A car's line under its name: its drivetrain, which is what decides the
+-- tyres it takes.
+local function carNote(id: string): string
+	local styles = ConfigLoader.driftStyles()
+	return styles.layoutName[styles.layoutOf(ConfigLoader.forCar(id))] or ""
+end
+
+-- The word under an item's name (UI_SYSTEM.md "Shop items"): ON CAR, a
+-- green tick, the price, a note, or nothing.
+type StatusKind = "oncar" | "owned" | "price" | "note" | "none"
+
+local function setStatus(card: Card, kind: StatusKind, text: string)
+	local sig = `{kind}:{text}`
+	if card.statusSig == sig then
 		return
 	end
-	card.badgeSig = sig
-	for _, child in card.badges:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-	if kind then
-		UIKit.badge(card.badges, kind :: any, text, touch)
-	end
+	card.statusSig = sig
+	local s = card.status
+	local role: UITheme.Role = if kind == "price" then "price" elseif kind == "note" then "caption" else "label"
+	s.FontFace = UITheme.font(role)
+	s.TextSize = UITheme.textSize(role, touch)
+	s.TextColor3 = if kind == "owned" then C.gantryBright elseif kind == "note" then C.sandDim else C.sodium
+	s.Text = if UITheme.type[role].caps then string.upper(text) else text
 end
 
 local function paintCard(card: Card, down: boolean?, ctx: Context?)
 	local st = stateOf(card, ctx or context())
-	local look: UITheme.State
-	local sodiumStroke = false
-	if st.disabled then
-		look = UITheme.button.disabled
-	elseif card.slot == nil then
-		look = if st.showing then UITheme.button.selected elseif down then UITheme.button.secondaryPressed else UITheme.button.secondary
-		sodiumStroke = st.showing
-	elseif st.onCar and st.showing then
-		look = UITheme.button.selected
-		sodiumStroke = true
+	-- What shows on the car now is drawn chosen (garage-ui-overhaul): a
+	-- palette swatch's sodium ring, a list row's selected ground and stroke.
+	-- One item per set shows, so there is one per set.
+	local chosen = st.showing and not st.disabled
+	if card.row then
+		local look = if chosen then UITheme.button.selected elseif down and not st.disabled then UITheme.button.secondaryPressed else nil
+		card.frame.BackgroundTransparency = if look then 0 else 1
+		if look then
+			card.frame.BackgroundColor3 = look.bg
+		end
+		card.stroke.Transparency = if chosen then 0 else 1
 	else
-		look = if down then UITheme.button.secondaryPressed else UITheme.button.secondary
-		-- Previewing: the sodium stroke on a secondary card.
-		sodiumStroke = st.showing
+		card.stroke.Color = if chosen then C.sodium else C.asphalt600
+		card.stroke.Thickness = if chosen then UITheme.stroke.selected else UITheme.stroke.hairline
 	end
-	card.frame.BackgroundColor3 = look.bg
-	card.nameLabel.TextColor3 = look.text
-	card.stroke.Color = if sodiumStroke then C.sodium else C.asphalt600
-	card.stroke.Thickness = if sodiumStroke then UITheme.stroke.selected else UITheme.stroke.hairline
+	card.nameLabel.TextColor3 = if st.disabled then C.asphalt500 else C.paint
 	local tile = card.tile
 	if tile then
 		tile.BackgroundTransparency = if st.disabled then UITheme.alpha.disabled else 0
 	end
 	if st.disabled then
-		setBadge(card, nil, "")
+		setStatus(card, "none", "")
 	elseif card.slot == nil then
 		if st.driving then
-			setBadge(card, "owned", "✓ DRIVING")
+			setStatus(card, "owned", "✓ DRIVING")
 		else
-			setBadge(card, nil, "")
+			setStatus(card, "note", carNote(card.key))
 		end
 	elseif st.onCar then
-		setBadge(card, "oncar", "ON CAR")
+		setStatus(card, "oncar", "ON CAR")
 	elseif st.owned then
-		setBadge(card, "owned", "✓ OWNED")
+		setStatus(card, "owned", "✓ OWNED")
 	else
-		setBadge(card, "price", money(card.price))
+		setStatus(card, "price", money(card.price))
 	end
 end
 
@@ -824,14 +919,14 @@ local function scaleOf(frame: GuiObject): UIScale
 	return sc
 end
 
--- Pressed: the card shrinks a little (GarageConfig.feel.pressScale).
+-- Pressed: the item shrinks a little (GarageConfig.feel.pressScale).
 local function pressCard(card: Card, down: boolean)
 	paintCard(card, down)
 	local to = if down then GarageConfig.feel.pressScale else 1
 	TweenService:Create(scaleOf(card.frame), UITheme.motion.quick, { Scale = to }):Play()
 end
 
--- Fitted or bought: the item's card pops (feel.popScale) and settles.
+-- Fitted or bought: the item pops (feel.popScale) and settles.
 local function popCard(key: string)
 	for _, card in cards do
 		if card.key == key and card.frame.Parent then
@@ -845,121 +940,104 @@ local function popCard(key: string)
 	end
 end
 
--- A grid card: tile with its badge on the corner, name (up to two lines);
--- rowBadge puts the badge in a row under the name instead.
-local function buildCard(parent: Instance, order: number, key: string, slot: Slot?, name: string, price: number, rare: boolean, drawTile: (Frame) -> (), rowBadge: boolean?): Card
-	local f = Instance.new("Frame")
-	f.Name = "Card_" .. (if key == "" then "account" else key)
-	f.BackgroundColor3 = UITheme.button.secondary.bg
-	f.BorderSizePixel = 0
-	f.LayoutOrder = order
-	f.Active = true
-	UIKit.corner(f, "md")
-	local stroke = UIKit.stroke(f, "asphalt600", UITheme.stroke.hairline)
-	padAll(f, space("sm"))
-
-	local tile = Instance.new("Frame")
-	tile.Name = "Tile"
-	tile.BorderSizePixel = 0
-	tile.Size = UDim2.new(1, 0, 0, target())
-	tile.ClipsDescendants = true
-	UIKit.corner(tile, "sm")
-	tile.Parent = f
-	drawTile(tile)
-
-	local label = UIKit.text(f, "", "heading", "paint", touch, true)
+-- The name and status lines of an item, from x across. shrink: the name
+-- shrinks to fit, from body down to caption size, instead of being cut
+-- (a palette tile: Sodium Orange is 104 px at touch size, a phone's tile
+-- 99).
+local function itemText(f: Frame, x: number, y: number, name: string, rare: boolean, shrink: boolean): (TextLabel, TextLabel)
+	local label = UIKit.text(f, "", "body", "paint", touch, false)
 	label.Name = "ItemName"
 	label.AutomaticSize = Enum.AutomaticSize.None
 	label.RichText = true
 	label.Text = nameText(name, rare)
-	label.TextYAlignment = Enum.TextYAlignment.Top
 	label.TextTruncate = Enum.TextTruncate.AtEnd
-	label.Position = UDim2.fromOffset(0, target() + space("sm"))
-	label.Size = UDim2.new(1, 0, 0, 2 * lineBox("heading"))
-
-	local badges = Instance.new("Frame")
-	badges.Name = "Badges"
-	badges.BackgroundTransparency = 1
-	if rowBadge then
-		badges.AnchorPoint = Vector2.new(0, 1)
-		badges.Position = UDim2.fromScale(0, 1)
-		badges.Size = UDim2.new(1, 0, 0, badgeHeight())
-		list(badges, true, space("xs"))
-		badges.Parent = f
-	else
-		-- On the tile's top-right corner, over the swatch.
-		local inset = space("xs")
-		badges.AnchorPoint = Vector2.new(1, 0)
-		badges.Position = UDim2.new(1, -inset, 0, inset)
-		badges.Size = UDim2.new(1, -2 * inset, 0, badgeHeight())
-		badges.ZIndex = 2
-		local l = list(badges, true, space("xs"))
-		l.HorizontalAlignment = Enum.HorizontalAlignment.Right
-		badges.Parent = tile
+	label.Position = UDim2.fromOffset(x, y)
+	label.Size = UDim2.new(1, -x, 0, lineBox("body"))
+	if shrink then
+		label.TextScaled = true
+		local limit = Instance.new("UITextSizeConstraint")
+		limit.MaxTextSize = UITheme.textSize("body", touch)
+		limit.MinTextSize = UITheme.textSize("caption", touch)
+		limit.Parent = label
 	end
+	local status = UIKit.text(f, "", "label", "sodium", touch, false)
+	status.Name = "Status"
+	status.AutomaticSize = Enum.AutomaticSize.None
+	status.TextTruncate = Enum.TextTruncate.AtEnd
+	status.Position = UDim2.fromOffset(x, y + lineBox("body"))
+	status.Size = UDim2.new(1, -x, 0, lineBox("price"))
+	return label, status
+end
 
-	f.Parent = parent
+local function newCard(f: Frame, key: string, slot: Slot?, name: string, price: number, rare: boolean, row: boolean, stroke: UIStroke, tile: Frame, label: TextLabel, status: TextLabel): Card
 	local card: Card = {
 		key = key,
 		slot = slot,
 		name = name,
 		price = price,
 		rare = rare,
+		row = row,
 		frame = f,
 		stroke = stroke,
 		tile = tile,
 		nameLabel = label,
-		badges = badges,
+		status = status,
 	}
 	table.insert(cards, card)
 	return card
 end
 
--- A finish pill: name and badge in one row, for the row above the colours.
-local function buildPill(parent: Instance, order: number, item: CosmeticsConfig.Item): Card
+local function itemFrame(parent: Instance, order: number, key: string): Frame
 	local f = Instance.new("Frame")
-	f.Name = "Pill_" .. item.id
-	f.BackgroundColor3 = UITheme.button.secondary.bg
+	f.Name = "Card_" .. (if key == "" then "account" else key)
+	f.BackgroundTransparency = 1
 	f.BorderSizePixel = 0
 	f.LayoutOrder = order
-	f.AutomaticSize = Enum.AutomaticSize.X
-	f.Size = UDim2.fromOffset(0, target())
 	f.Active = true
-	UIKit.corner(f, "sm")
-	local stroke = UIKit.stroke(f, "asphalt600", UITheme.stroke.hairline)
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, space("sm"))
-	pad.PaddingRight = UDim.new(0, space("sm"))
-	pad.Parent = f
-	list(f, true, space("sm"))
-	local label = UIKit.text(f, "", "label", "paint", touch, false)
-	label.Name = "ItemName"
-	label.RichText = true
-	label.Text = nameText(string.upper(item.name), item.rare == true)
-	label.LayoutOrder = 1
-	local badges = Instance.new("Frame")
-	badges.Name = "Badges"
-	badges.BackgroundTransparency = 1
-	badges.AutomaticSize = Enum.AutomaticSize.X
-	badges.Size = UDim2.fromOffset(0, badgeHeight())
-	badges.LayoutOrder = 2
-	list(badges, true, space("xs"))
-	badges.Parent = f
 	f.Parent = parent
-	local card: Card = {
-		key = item.id,
-		slot = item.category,
-		name = item.name,
-		price = item.price,
-		rare = item.rare == true,
-		frame = f,
-		stroke = stroke,
-		tile = nil,
-		nameLabel = label,
-		badges = badges,
-	}
-	table.insert(cards, card)
-	return card
+	return f
+end
+
+-- A palette tile: the swatch with its ring, the name under it, the status
+-- word under that.
+local function buildTile(parent: Instance, order: number, key: string, slot: Slot?, name: string, price: number, rare: boolean, drawTile: (Frame) -> ()): Card
+	local f = itemFrame(parent, order, key)
+	local tile = Instance.new("Frame")
+	tile.Name = "Tile"
+	tile.BorderSizePixel = 0
+	tile.Size = UDim2.new(1, 0, 0, swatchHeight())
+	tile.ClipsDescendants = true
+	UIKit.corner(tile, "md")
+	local ring = UIKit.stroke(tile, "asphalt600", UITheme.stroke.hairline)
+	tile.Parent = f
+	drawTile(tile)
+	local label, status = itemText(f, 0, swatchHeight() + space("xs"), name, rare, true)
+	return newCard(f, key, slot, name, price, rare, false, ring, tile, label, status)
+end
+
+-- A list row: the swatch at the left, the name over the status word; the
+-- row's ground and stroke show when it is chosen or pressed. wide: a
+-- banner's swatch (sun strips, plates).
+local function buildRow(parent: Instance, order: number, key: string, slot: Slot?, name: string, price: number, rare: boolean, drawTile: (Frame) -> (), wide: boolean?): Card
+	local f = itemFrame(parent, order, key)
+	f.BackgroundColor3 = UITheme.button.secondaryPressed.bg
+	UIKit.corner(f, "md")
+	local stroke = UIKit.stroke(f, "sodium", UITheme.stroke.selected)
+	stroke.Transparency = 1
+	padAll(f, space("sm"))
+	local h = rowHeight() - 2 * space("sm")
+	local w = math.floor(h * (if wide then WIDE_SWATCH else ROW_SWATCH) + 0.5)
+	local tile = Instance.new("Frame")
+	tile.Name = "Tile"
+	tile.BorderSizePixel = 0
+	tile.Size = UDim2.fromOffset(w, h)
+	tile.ClipsDescendants = true
+	UIKit.corner(tile, "sm")
+	UIKit.stroke(tile, "asphalt600", UITheme.stroke.hairline)
+	tile.Parent = f
+	drawTile(tile)
+	local label, status = itemText(f, w + space("md"), 0, name, rare, false)
+	return newCard(f, key, slot, name, price, rare, true, stroke, tile, label, status)
 end
 
 ------------------------------------------------------------------------
@@ -1023,24 +1101,20 @@ local function applyPreview()
 	m:SetAttribute("Plate", plateKeyFor(look.plate))
 end
 
+-- The foot names what its button acts on (garage-ui-overhaul): the item
+-- previewing, its price and BUY; on MY CARS the car and DRIVE THIS.
 local function paintFoot(u: UI)
 	local p = previewing
 	local was = u.foot.Visible
 	if p and tab ~= "cars" then
 		local item = CosmeticsConfig.find(p.id)
-		u.footText.Text = "PREVIEWING"
-		u.footText.TextColor3 = C.sand
-		u.footText.FontFace = UITheme.font("label")
-		u.footText.TextSize = UITheme.textSize("label", touch)
+		u.footName.Text = if item then nameText(item.name, item.rare == true) else ""
 		u.footPrice.Visible = true
 		u.footPrice.Text = money(if item then item.price else 0)
 		u.footButton.Text = "BUY"
 		u.foot.Visible = true
 	elseif tab == "cars" then
-		u.footText.Text = ConfigLoader.entry(carId).displayName
-		u.footText.TextColor3 = C.paint
-		u.footText.FontFace = UITheme.font("heading")
-		u.footText.TextSize = UITheme.textSize("heading", touch)
+		u.footName.Text = ConfigLoader.entry(carId).displayName
 		u.footPrice.Visible = false
 		u.footButton.Text = "DRIVE THIS"
 		u.foot.Visible = true
@@ -1335,6 +1409,10 @@ local function openSheet(u: UI)
 	local frame, scrim = UIKit.sheet(u.gui, touch, SHEET_Z)
 	frame.Name = "ConfirmSheet"
 	scrim.Name = "ConfirmScrim"
+	-- The dim runs under the top bar too, like the panel's shade.
+	local bleed = shadeBleed()
+	scrim.Position = UDim2.fromOffset(-bleed, -bleed)
+	scrim.Size = UDim2.new(1, 2 * bleed, 1, 2 * bleed)
 	-- Active does not stop a button under the scrim from hearing a click
 	-- (SpawnMenu's header notes the same; measured again 2026-09-28: LEAVE
 	-- fired through it). The panel's own buttons check `sheet` instead;
@@ -1495,62 +1573,87 @@ end
 -- The category's content.
 ------------------------------------------------------------------------
 
-local function newGrid(u: UI, parent: Instance, order: number): Frame
+-- A set's grid: a palette's columns, or a list's single column (sizeGrids).
+local function newGrid(u: UI, order: number, palette: boolean): Frame
 	local g = Instance.new("Frame")
-	g.Name = "Grid"
+	g.Name = if palette then "Palette" else "List"
 	g.BackgroundTransparency = 1
 	g.AutomaticSize = Enum.AutomaticSize.Y
 	g.Size = UDim2.new(1, 0, 0, 0)
 	g.LayoutOrder = order
 	local layout = Instance.new("UIGridLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.CellPadding = UDim2.fromOffset(space("sm"), space("sm"))
+	layout.CellPadding = if palette then UDim2.fromOffset(space("sm"), space("md")) else UDim2.fromOffset(0, space("xs"))
 	layout.Parent = g
-	table.insert(u.gridLayouts, layout)
-	g.Parent = parent
+	table.insert(u.grids, { layout = layout, palette = palette })
+	g.Parent = u.grid
 	return g
 end
 
 local function sizeGrids(u: UI)
-	local cols = columns(u)
-	local gap = space("sm")
-	for _, layout in u.gridLayouts do
-		layout.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, cardHeight(tab == "plates"))
+	-- The items' width: the list's, less the room either side kept for a
+	-- chosen item's ring (the Slide padding).
+	local width = u.grid.AbsoluteWindowSize.X - 2 * UITheme.stroke.selected
+	for _, g in u.grids do
+		if g.palette then
+			local cols = paletteColumns(width)
+			local gap = space("sm")
+			g.layout.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, tileHeight())
+		else
+			g.layout.CellSize = UDim2.new(1, 0, 0, rowHeight())
+		end
 	end
 end
 
-local function itemCards(u: UI, parent: Instance, category: Category, orderBase: number)
+local function tapCard(u: UI, card: Card, onTap: () -> ())
+	registerTap({
+		gui = card.frame,
+		scroll = u.grid,
+		onTap = onTap,
+		onDown = function(down)
+			pressCard(card, down)
+		end,
+	})
+end
+
+-- A category's items: a palette for colours, else a list.
+local function itemCards(u: UI, category: Category, order: number)
+	local palette = PALETTES[category] == true
+	local parent = newGrid(u, order, palette)
 	local layout = carLayout()
 	for i, item in CosmeticsConfig.inCategory(category) do
 		-- Tyres: only the ones for this car's drivetrain.
 		if not CosmeticsConfig.fits(item, layout) then
 			continue
 		end
-		local card = buildCard(parent, orderBase + i, item.id, category, item.name, item.price, item.rare == true, function(tile)
+		local function draw(tile: Frame)
 			drawItemTile(tile, item)
+		end
+		local card = if palette
+			then buildTile(parent, i, item.id, category, item.name, item.price, item.rare == true, draw)
+			else buildRow(parent, i, item.id, category, item.name, item.price, item.rare == true, draw, WIDE[category])
+		tapCard(u, card, function()
+			chooseItem(category, item.id)
 		end)
-		registerTap({
-			gui = card.frame,
-			scroll = u.grid,
-			onTap = function()
-				chooseItem(category, item.id)
-			end,
-			onDown = function(down)
-				pressCard(card, down)
-			end,
-		})
 	end
+end
+
+-- A line under the sub-tabs: why a set can't be fitted, or how the tyres
+-- drive.
+local function note(u: UI, text: string, name: string): TextLabel
+	local l = UIKit.text(u.sub, text, "caption", "sand", touch, true)
+	l.Name = name
+	l.LayoutOrder = 1
+	return l
 end
 
 local function clearContent(u: UI)
 	closeSheet()
 	press = nil
-	finishRow = nil
 	tyreNote = nil
-	table.clear(finishPills)
 	table.clear(cards)
 	table.clear(taps)
-	table.clear(u.gridLayouts)
+	table.clear(u.grids)
 	for _, child in u.grid:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
@@ -1563,13 +1666,56 @@ local function clearContent(u: UI)
 	end
 end
 
--- The chips go through the tracker too, like every card.
-local function registerChips(u: UI)
+-- Where the rail's sodium bar sits across: centred in the rail's left
+-- padding, beside the words.
+local function railBarX(): number
+	return math.floor((space("lg") - UITheme.stroke.marker) / 2)
+end
+
+-- The rail's chosen row: its word paint and bold, the sodium bar beside it,
+-- sliding there over motion.panel when `slide`.
+local function paintRail(u: UI, slide: boolean)
+	local index = 1
+	for i, entry in TABS do
+		local chosen = entry.id == tab
+		local label = u.railLabels[entry.id]
+		local face = UITheme.font("nav")
+		label.FontFace = if chosen then Font.new(face.Family, Enum.FontWeight.Bold) else face
+		label.TextColor3 = if chosen then C.paint else C.sand
+		if chosen then
+			index = i
+		end
+	end
+	local h = railRowH
+	if h <= 0 then
+		return
+	end
+	local barH = math.floor(h / 2)
+	local to = UDim2.fromOffset(railBarX(), (index - 1) * h + math.floor((h - barH) / 2))
+	u.railBar.Size = UDim2.fromOffset(UITheme.stroke.marker, barH)
+	-- A slide still running would carry the bar to a row's old place.
+	local running = railTween
+	if running then
+		running:Cancel()
+		railTween = nil
+	end
+	if slide then
+		local tw = TweenService:Create(u.railBar, UITheme.motion.panel, { Position = to })
+		railTween = tw
+		tw:Play()
+	else
+		u.railBar.Position = to
+	end
+end
+
+-- The rail's rows go through the tap tracker too, like every item: the
+-- rail scrolls on a short phone.
+local function registerRail(u: UI)
 	for _, entry in TABS do
-		local b = u.chipButtons[entry.id]
+		local label = u.railLabels[entry.id]
 		registerTap({
-			gui = b,
-			scroll = nil,
+			gui = u.railRows[entry.id],
+			scroll = u.rail,
 			onTap = function()
 				GarageSounds.play("tab")
 				if tab ~= entry.id then
@@ -1581,19 +1727,16 @@ local function registerChips(u: UI)
 				-- took it out).
 				focusView()
 			end,
+			onDown = function(down)
+				if entry.id ~= tab then
+					label.TextColor3 = if down then C.paint else C.sand
+				end
+			end,
 		})
 	end
 end
 
-local function paintChips(u: UI)
-	for id, b in u.chipButtons do
-		UIKit.setSelected(b, id == tab)
-		-- UIKit makes a pressable Active; the tracker handles these taps.
-		b.Active = false
-	end
-end
-
--- A sub-tab tapped: its grid and its shot; the one showing tapped again
+-- A sub-tab tapped: its set and its shot; the one showing tapped again
 -- brings the camera back in after a drag took it out.
 local function chooseView(id: string)
 	local u = ui
@@ -1609,35 +1752,97 @@ local function chooseView(id: string)
 	focusView()
 end
 
--- The sub-tab row (GarageConfig.views) at the top of the sub area, for a
--- category with more than one set of items; EXHAUST's REV at its end.
-local function buildSubTabs(u: UI)
+-- The sub row (GarageConfig.views): the sub-tabs as words, the chosen one
+-- with a sodium underline that slides to it from the last choice in this
+-- category; the category's action at the row's end (REV, SHOP PLATES).
+local function buildSubRow(u: UI)
 	local subs = views()
-	if #subs < 2 then
+	if #subs < 2 and tab ~= "exhaust" and tab ~= "plates" then
 		return
 	end
-	local view = currentView()
 	local row = Instance.new("Frame")
 	row.Name = "SubTabs"
 	row.BackgroundTransparency = 1
 	row.Size = UDim2.new(1, 0, 0, target())
 	row.LayoutOrder = 0
-	list(row, true, space("sm"))
 	row.Parent = u.sub
-	for i, v in subs do
-		local b = UIKit.chip(row, v.label, touch)
-		b.Name = "Sub_" .. v.id
-		b.LayoutOrder = i
-		UIKit.setSelected(b, v.id == view.id)
-		-- UIKit makes a pressable Active; the tracker handles these taps.
-		b.Active = false
-		registerTap({
-			gui = b,
-			scroll = nil,
-			onTap = function()
-				chooseView(v.id)
-			end,
-		})
+	if #subs >= 2 then
+		local view = currentView()
+		-- Each word is padded into a wider target; the row starts that far
+		-- left so the first word's letters line up with the items.
+		local padX = space("sm")
+		local words = Instance.new("Frame")
+		words.Name = "Words"
+		words.BackgroundTransparency = 1
+		words.AutomaticSize = Enum.AutomaticSize.X
+		words.Size = UDim2.new(0, 0, 1, 0)
+		words.Position = UDim2.fromOffset(-padX, 0)
+		list(words, true, 0)
+		words.Parent = row
+		local line = Instance.new("Frame")
+		line.Name = "Underline"
+		line.BackgroundColor3 = C.sodium
+		line.BorderSizePixel = 0
+		line.AnchorPoint = Vector2.new(0, 1)
+		line.Size = UDim2.fromOffset(0, UITheme.stroke.selected)
+		line.Parent = row
+		local chosenWord: TextLabel? = nil
+		for i, v in subs do
+			local chosen = v.id == view.id
+			local w = UIKit.text(words, v.label, "label", if chosen then "paint" else "sandDim", touch, false)
+			w.Name = "Sub_" .. v.id
+			w.LayoutOrder = i
+			w.Size = UDim2.new(0, 0, 1, 0)
+			w.AutomaticSize = Enum.AutomaticSize.X
+			local p = Instance.new("UIPadding")
+			p.PaddingLeft = UDim.new(0, padX)
+			p.PaddingRight = UDim.new(0, padX)
+			p.Parent = w
+			if chosen then
+				chosenWord = w
+			end
+			registerTap({
+				gui = w,
+				scroll = nil,
+				onTap = function()
+					chooseView(v.id)
+				end,
+				onDown = function(down)
+					if not chosen then
+						w.TextColor3 = if down then C.paint else C.sandDim
+					end
+				end,
+			})
+		end
+		local cw = chosenWord
+		if cw then
+			local slid = false
+			local function place()
+				if not line.Parent then
+					return
+				end
+				local x = cw.AbsolutePosition.X - row.AbsolutePosition.X + padX
+				local width = cw.AbsoluteSize.X - 2 * padX
+				if width <= 0 then
+					return
+				end
+				local to = { Position = UDim2.new(0, x, 1, 0), Size = UDim2.fromOffset(width, UITheme.stroke.selected) }
+				local was = underlineWas
+				underlineWas = { tab = tab, x = x, w = width }
+				if not slid and was and was.tab == tab and was.x ~= x then
+					line.Position = UDim2.new(0, was.x, 1, 0)
+					line.Size = UDim2.fromOffset(was.w, UITheme.stroke.selected)
+					TweenService:Create(line, UITheme.motion.panel, to):Play()
+				else
+					line.Position = to.Position
+					line.Size = to.Size
+				end
+				slid = true
+			end
+			cw:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+			words:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+			place()
+		end
 	end
 	if tab == "exhaust" then
 		-- REV: a burst of pops and flames on the turntable car, with the
@@ -1645,7 +1850,8 @@ local function buildSubTabs(u: UI)
 		-- part of what a player is choosing (garage round 2 §2).
 		local rev = UIKit.button(row, "REV", "secondary", touch)
 		rev.Name = "Rev"
-		rev.LayoutOrder = 99
+		rev.AnchorPoint = Vector2.new(1, 0.5)
+		rev.Position = UDim2.fromScale(1, 0.5)
 		rev.Activated:Connect(function()
 			local m = previewModel
 			if sheet or not m or not m.Parent or os.clock() < revUntil then
@@ -1664,129 +1870,85 @@ local function buildSubTabs(u: UI)
 				revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
 			end)
 		end)
-	end
-end
-
--- The grid slides up into place (UITheme.motion.panel).
-local function slideIn(u: UI)
-	local pad = u.grid:FindFirstChild("Slide")
-	if pad and pad:IsA("UIPadding") then
-		pad.PaddingTop = UDim.new(0, space("md"))
-		TweenService:Create(pad, UITheme.motion.panel, { PaddingTop = UDim.new(0, 0) }):Play()
-	end
-end
-
-buildTab = function(u: UI)
-	clearContent(u)
-	registerChips(u)
-	paintChips(u)
-	u.grid.CanvasPosition = Vector2.zero
-	buildSubTabs(u)
-	local view = currentView()
-
-	if tab == "cars" then
-		local g = newGrid(u, u.grid, 1)
-		for i, car in SpawnMenu.cars() do
-			local entry = car.entry
-			local card = buildCard(g, i, car.id, nil, entry.displayName, 0, false, function(tile)
-				tile.BackgroundColor3 = entry.body.paint
-			end)
-			registerTap({
-				gui = card.frame,
-				scroll = u.grid,
-				onTap = function()
-					chooseCar(car.id)
-				end,
-				onDown = function(down)
-					pressCard(card, down)
-				end,
-			})
-		end
-	elseif tab == "paint" then
-		if view.id == "tint" then
-			if not shows("tint") then
-				local note = UIKit.text(u.sub, "This car's windows can't be tinted yet", "caption", "sand", touch, true)
-				note.Name = "NoWindows"
-				note.LayoutOrder = 2
-			end
-			itemCards(u, newGrid(u, u.grid, 1), "tint", 0)
-		else
-			-- The finish row above the colours: it wraps (relayout flows it), so
-			-- every finish shows at any width.
-			local row = Instance.new("Frame")
-			row.Name = "Finishes"
-			row.BackgroundTransparency = 1
-			row.Size = UDim2.new(1, 0, 0, target())
-			row.LayoutOrder = 1
-			row.Parent = u.sub
-			finishRow = row
-			for i, item in CosmeticsConfig.inCategory("finish") do
-				local card = buildPill(row, i, item)
-				table.insert(finishPills, card.frame)
-				card.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-					if ui == u then
-						relayout(u)
-					end
-				end)
-				registerTap({
-					gui = card.frame,
-					scroll = nil,
-					onTap = function()
-						chooseItem("finish", item.id)
-					end,
-					onDown = function(down)
-						pressCard(card, down)
-					end,
-				})
-			end
-			if not paintable() then
-				local note = UIKit.text(u.sub, "This car's paint can't be changed yet", "caption", "sand", touch, true)
-				note.Name = "NotPaintable"
-				note.LayoutOrder = 2
-			end
-			itemCards(u, newGrid(u, u.grid, 1), "paint", 0)
-		end
-	elseif tab == "rims" then
-		if view.id == "tyres" then
-			-- The drift mode, for this car's drivetrain (garage-tyres-flames):
-			-- the drivetrain and how the tyre showing drives.
-			local note = UIKit.text(u.grid, "", "caption", "sand", touch, true)
-			note.Name = "TyreNote"
-			note.LayoutOrder = 1
-			tyreNote = note
-			itemCards(u, newGrid(u, u.grid, 2), "tyre", 0)
-		else
-			itemCards(u, newGrid(u, u.grid, 1), "rims", 0)
-		end
-	elseif tab == "lights" then
-		itemCards(u, newGrid(u, u.grid, 1), if view.id == "tail" then "tail" else "head", 0)
-	elseif tab == "decal" then
-		local title = UIKit.title(u.grid, "SUN STRIPS", "شريط", "title", touch)
-		title.LayoutOrder = 1
-		if not shows("decal") then
-			local note = UIKit.text(u.sub, "This car has no spot for a sun strip yet", "caption", "sand", touch, true)
-			note.Name = "NoSpot"
-			note.LayoutOrder = 1
-		end
-		itemCards(u, newGrid(u, u.grid, 2), "decal", 0)
-	elseif tab == "exhaust" then
-		if not shows("exhaust") then
-			local note = UIKit.text(u.sub, "This car has no spot for exhaust tips yet", "caption", "sand", touch, true)
-			note.Name = "NoSpot"
-			note.LayoutOrder = 1
-		end
-		itemCards(u, newGrid(u, u.grid, 1), if view.id == "flames" then "flame" else "exhaust", 0)
 	elseif tab == "plates" then
-		local shop = UIKit.button(u.sub, "SHOP PLATES", "secondary", touch)
+		local shop = UIKit.button(row, "SHOP PLATES", "secondary", touch)
 		shop.Name = "ShopPlates"
-		shop.LayoutOrder = 1
+		shop.AnchorPoint = Vector2.new(1, 0.5)
+		shop.Position = UDim2.fromScale(1, 0.5)
 		shop.Activated:Connect(function()
 			if sheet then
 				return -- under the confirm sheet
 			end
 			SpawnMenu.openTab("plates")
 		end)
-		local g = newGrid(u, u.grid, 1)
+	end
+end
+
+-- The new set slides up into place (UITheme.motion.panel); its padding
+-- rests at the room kept for a chosen item's ring.
+local function slideIn(u: UI)
+	local pad = u.grid:FindFirstChild("Slide")
+	if pad and pad:IsA("UIPadding") then
+		local rest = UITheme.stroke.selected
+		pad.PaddingTop = UDim.new(0, rest + space("md"))
+		TweenService:Create(pad, UITheme.motion.panel, { PaddingTop = UDim.new(0, rest) }):Play()
+	end
+end
+
+buildTab = function(u: UI)
+	clearContent(u)
+	registerRail(u)
+	paintRail(u, true)
+	u.grid.CanvasPosition = Vector2.zero
+	buildSubRow(u)
+	local view = currentView()
+
+	if tab == "cars" then
+		local g = newGrid(u, 1, false)
+		for i, car in SpawnMenu.cars() do
+			local entry = car.entry
+			local card = buildRow(g, i, car.id, nil, entry.displayName, 0, false, function(tile)
+				tile.BackgroundColor3 = entry.body.paint
+			end)
+			tapCard(u, card, function()
+				chooseCar(car.id)
+			end)
+		end
+	elseif tab == "paint" then
+		if view.id == "tint" then
+			if not shows("tint") then
+				note(u, "This car's windows can't be tinted yet", "NoWindows")
+			end
+			itemCards(u, "tint", 1)
+		else
+			if not paintable() then
+				note(u, "This car's paint can't be changed yet", "NotPaintable")
+			end
+			itemCards(u, if view.id == "finish" then "finish" else "paint", 1)
+		end
+	elseif tab == "rims" then
+		if view.id == "tyres" then
+			-- The drift mode, for this car's drivetrain (garage-tyres-flames):
+			-- the drivetrain and how the tyre showing drives.
+			tyreNote = note(u, "", "TyreNote")
+			itemCards(u, "tyre", 1)
+		else
+			itemCards(u, "rims", 1)
+		end
+	elseif tab == "lights" then
+		itemCards(u, if view.id == "tail" then "tail" else "head", 1)
+	elseif tab == "decal" then
+		if not shows("decal") then
+			note(u, "This car has no spot for a sun strip yet", "NoSpot")
+		end
+		itemCards(u, "decal", 1)
+	elseif tab == "exhaust" then
+		if not shows("exhaust") then
+			note(u, "This car has no spot for exhaust tips yet", "NoSpot")
+		end
+		itemCards(u, if view.id == "flames" then "flame" else "exhaust", 1)
+	elseif tab == "plates" then
+		local g = newGrid(u, 1, false)
 		local format: PlateStyles.Format = plateFormat()
 		local keys = ownedPlates()
 		local options: { { key: string, name: string } } = { { key = "", name = "My plate · every car" } }
@@ -1794,21 +1956,19 @@ buildTab = function(u: UI)
 			table.insert(options, { key = k, name = shownPlate(k) })
 		end
 		for i, o in options do
-			local card = buildCard(g, i, o.key, "plate", o.name, 0, false, function(tile)
+			local card = buildRow(g, i, o.key, "plate", o.name, 0, false, function(tile)
+				-- The plate art is the swatch, edges and all.
 				tile.BackgroundTransparency = 1
+				local edge = tile:FindFirstChildOfClass("UIStroke")
+				if edge then
+					edge:Destroy()
+				end
 				PlateStyles.draw(tile, plateKeyFor(o.key), format)
 			end, true)
 			card.tile = nil -- the plate art is the tile; it never fades
-			registerTap({
-				gui = card.frame,
-				scroll = u.grid,
-				onTap = function()
-					choosePlate(o.key)
-				end,
-				onDown = function(down)
-					pressCard(card, down)
-				end,
-			})
+			tapCard(u, card, function()
+				choosePlate(o.key)
+			end)
 		end
 		if #keys == 0 then
 			local hint = UIKit.text(u.grid, "Plates you buy show here", "caption", "sandDim", touch, true)
@@ -1824,92 +1984,83 @@ end
 -- Layout.
 ------------------------------------------------------------------------
 
--- Lays `items` out left to right, wrapping at `width`; returns the height.
-local function flow(items: { GuiObject }, width: number, gap: number): number
-	local x, y, lineH = 0, 0, 0
-	for _, o in items do
-		local w, h = o.AbsoluteSize.X, o.AbsoluteSize.Y
-		if x > 0 and x + w > width then
-			x = 0
-			y += lineH + gap
-			lineH = 0
-		end
-		o.Position = UDim2.fromOffset(x, y)
-		x += w + gap
-		lineH = math.max(lineH, h)
-	end
-	return y + lineH
-end
-
 relayout = function(u: UI)
 	if relaying then
 		return
 	end
 	relaying = true
 	local w = panelWidth(u)
-	local r = UITheme.radius.lg
 	local pad = space("lg")
-	local gap = space("md")
-	local handleW = target()
-	-- The panel docks on the left: its left corners sit off-screen, so only
-	-- the right edge is rounded.
-	u.dock.Size = UDim2.new(0, w + space("sm") + handleW, 1, 0)
+	local tail = fadeTail()
+	u.dock.Size = UDim2.new(0, w + tail, 1, 0)
 	u.dock.Position = UDim2.fromOffset(if collapsed then -w else 0, 0)
-	u.panel.Position = UDim2.fromOffset(-r, 0)
-	u.panel.Size = UDim2.new(0, w + r, 1, 0)
-	u.panelPad.PaddingLeft = UDim.new(0, pad + r)
-	u.handle.Size = UDim2.fromOffset(handleW, 2 * target())
+	local bleed = shadeBleed()
+	u.shade.Position = UDim2.fromOffset(-bleed, -bleed)
+	u.shade.Size = UDim2.new(0, w + bleed, 1, 2 * bleed)
+	u.tail.Position = UDim2.fromOffset(w, -bleed)
+	u.tail.Size = UDim2.new(0, tail, 1, 2 * bleed)
+	u.handle.Size = UDim2.fromOffset(target(), 2 * target())
 	u.handle.Position = UDim2.new(0, w + space("sm"), 0.5, 0)
 
-	-- Header: the title and cash, LEAVE at the right.
-	local leaveW = u.leave.AbsoluteSize.X
-	u.titleHolder.Size = UDim2.new(1, -(leaveW + gap), 0, 0)
-	local titleH = u.titleRow.AbsoluteSize.Y
-	u.cash.Position = UDim2.fromOffset(0, titleH + space("xxs"))
-	local headerH = math.max(titleH + space("xxs") + UITheme.textSize("price", touch), target())
-	u.header.Size = UDim2.new(1, 0, 0, headerH)
-	local y = headerH + gap
+	-- Header: GARAGE and the Arabic after it; the cash and the close button
+	-- at the right.
+	local top = space("md")
+	local headerH = math.max(target(), u.title.AbsoluteSize.Y)
+	u.header.Position = UDim2.fromOffset(pad, top)
+	u.header.Size = UDim2.fromOffset(w - 2 * pad, headerH)
+	u.arabic.Position = UDim2.new(0, u.title.AbsoluteSize.X + space("md"), 0.5, 0)
+	u.cash.Position = UDim2.new(1, -(u.leave.AbsoluteSize.X + space("md")), 0.5, 0)
+	local y = top + headerH + space("lg")
+	local height = math.max(u.gui.AbsoluteSize.Y - y - pad, 0)
 
-	-- The categories wrap onto as many rows as the width needs (review fix
-	-- round 1: a scrolling row hid DECALS, now SUN STRIPS, and EXHAUST off the
-	-- edge).
-	local chipList: { GuiObject } = {}
+	-- The rail: as wide as its longest word. On touch the rows share its
+	-- height, between railMinTouchRow and a target, so all seven show.
 	for _, entry in TABS do
-		table.insert(chipList, u.chipButtons[entry.id])
+		railLabelW = math.max(railLabelW, u.railLabels[entry.id].AbsoluteSize.X)
 	end
-	local contentW = u.chips.AbsoluteSize.X
-	local chipsH = flow(chipList, contentW, space("sm"))
-	u.chips.Position = UDim2.fromOffset(0, y)
-	u.chips.Size = UDim2.new(1, 0, 0, chipsH)
-	y += chipsH + gap
-
-	local fr = finishRow
-	if fr and fr.Parent then
-		fr.Size = UDim2.new(1, 0, 0, flow(finishPills, contentW, space("sm")))
+	local railW = pad + railLabelW + space("sm")
+	local rowH = target() + space("xs")
+	if touch then
+		rowH = math.clamp(math.floor(height / #TABS), UITheme.sidePanel.railMinTouchRow, target())
+	end
+	u.rail.Position = UDim2.fromOffset(0, y)
+	u.rail.Size = UDim2.fromOffset(railW, height)
+	u.rail.CanvasSize = UDim2.fromOffset(0, rowH * #TABS)
+	for i, entry in TABS do
+		local row = u.railRows[entry.id]
+		row.Position = UDim2.fromOffset(0, (i - 1) * rowH)
+		row.Size = UDim2.new(1, 0, 0, rowH)
+	end
+	if rowH ~= railRowH then
+		railRowH = rowH
+		paintRail(u, false)
 	end
 
+	-- The content column, top-aligned with the rail.
+	local cx = railW + space("md")
+	u.content.Position = UDim2.fromOffset(cx, y)
+	u.content.Size = UDim2.fromOffset(math.max(w - cx - pad, 0), height)
+	local cy = 0
 	local subH = u.subList.AbsoluteContentSize.Y
 	u.sub.Visible = subH > 0
 	if subH > 0 then
-		u.sub.Position = UDim2.fromOffset(0, y)
 		u.sub.Size = UDim2.new(1, 0, 0, subH)
-		y += subH + gap
+		cy = subH + space("sm")
 	end
-
 	local bottom = 0
 	if u.foot.Visible then
-		local footH = target() + 2 * space("sm")
+		local footH = math.max(target(), lineBox("heading") + lineBox("price")) + 2 * space("sm")
 		u.foot.Size = UDim2.new(1, 0, 0, footH)
 		u.foot.Position = UDim2.new(0, 0, 1, -footH)
-		bottom += footH + gap
+		bottom += footH + space("sm")
 	end
 	if u.toast.Visible then
 		local th = u.toast.AbsoluteSize.Y
 		u.toast.Position = UDim2.new(0, 0, 1, -(bottom + th))
 		bottom += th + space("sm")
 	end
-	u.grid.Position = UDim2.fromOffset(0, y)
-	u.grid.Size = UDim2.new(1, 0, 1, -(y + bottom))
+	u.grid.Position = UDim2.fromOffset(0, cy)
+	u.grid.Size = UDim2.new(1, 0, 1, -(cy + bottom))
 	sizeGrids(u)
 	relaying = false
 end
@@ -1926,6 +2077,8 @@ local function setCollapsed(c: boolean)
 	collapsed = c
 	local w = panelWidth(u)
 	TweenService:Create(u.dock, UITheme.motion.panel, { Position = UDim2.fromOffset(if c then -w else 0, 0) }):Play()
+	-- The shade's tail would stay on the screen's edge: it fades instead.
+	TweenService:Create(u.tail, UITheme.motion.panel, { BackgroundTransparency = if c then 1 else 0 }):Play()
 	u.handle.Text = if c then "›" else "‹"
 	GarageView.setPanelOpen(not c)
 end
@@ -1934,13 +2087,29 @@ end
 -- Build and tear down.
 ------------------------------------------------------------------------
 
+-- A shade layer: asphalt950, see-through from `from` at its left to `to`
+-- at its right.
+local function shadeFrame(parent: Instance, name: string, from: number, to: number): Frame
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.BackgroundColor3 = C.asphalt950
+	f.BorderSizePixel = 0
+	local g = Instance.new("UIGradient")
+	g.Transparency = NumberSequence.new(from, to)
+	g.Parent = f
+	f.Parent = parent
+	return f
+end
+
 local function build(): UI
 	touch = UIKit.isTouch()
+	railLabelW = 0
+	railRowH = 0
 	local g = Instance.new("ScreenGui")
 	g.Name = "GaragePanel"
 	g.ResetOnSpawn = false
 	-- Not IgnoreGuiInset: the panel runs under Roblox's top bar, never
-	-- beneath its buttons.
+	-- beneath its buttons (the shade alone bleeds up under it).
 	g.IgnoreGuiInset = false
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = DISPLAY_ORDER
@@ -1951,12 +2120,15 @@ local function build(): UI
 	dock.Size = UDim2.fromScale(0, 1)
 	dock.Parent = g
 
-	local panel = UIKit.panel(dock, touch)
-	panel.Name = "Panel"
-	panel.Active = true
-	local panelPad = panel:FindFirstChildOfClass("UIPadding") :: UIPadding
+	-- The shade (UITheme.shade): under the panel it counts as the panel (a
+	-- drag there is not the turntable's); its tail past the panel fades to
+	-- clear and lets drags through (GarageView.overUi skips PassThrough).
+	local shade = shadeFrame(dock, "Shade", UITheme.shade.near, UITheme.shade.far)
+	shade.Active = true
+	local tail = shadeFrame(dock, "ShadeTail", UITheme.shade.far, 1)
+	tail:SetAttribute("PassThrough", true)
 
-	-- The collapse handle: a pill on the panel's right edge at mid-height,
+	-- The collapse handle: a pill just past the panel's edge at mid-height,
 	-- where a left thumb reaches.
 	local handle = Instance.new("TextButton")
 	handle.Name = "Handle"
@@ -1976,83 +2148,126 @@ local function build(): UI
 	local header = Instance.new("Frame")
 	header.Name = "Header"
 	header.BackgroundTransparency = 1
-	header.Parent = panel
-	local titleHolder = Instance.new("Frame")
-	titleHolder.Name = "TitleHolder"
-	titleHolder.BackgroundTransparency = 1
-	titleHolder.Size = UDim2.new(1, 0, 1, 0)
-	titleHolder.Parent = header
-	local titleRow = UIKit.title(titleHolder, "GARAGE", "كراج", "display", touch)
+	header.Parent = dock
+	local title = UIKit.text(header, "GARAGE", "display", "paint", touch, false)
+	title.Name = "Title"
+	title.AnchorPoint = Vector2.new(0, 0.5)
+	title.Position = UDim2.fromScale(0, 0.5)
+	-- The Arabic follows the English: the right edge holds the cash and the
+	-- close button (UI_SYSTEM.md "Arabic with English").
+	local arabic = Instance.new("TextLabel")
+	arabic.Name = "Arabic"
+	arabic.BackgroundTransparency = 1
+	arabic.AutomaticSize = Enum.AutomaticSize.XY
+	arabic.Size = UDim2.fromOffset(0, 0)
+	arabic.AnchorPoint = Vector2.new(0, 0.5)
+	arabic.FontFace = UITheme.font("title")
+	arabic.TextSize = math.floor(UITheme.textSize("title", touch) * UITheme.arabicScale + 0.5)
+	arabic.TextColor3 = C.sand
+	arabic.Text = "كراج"
+	arabic.Parent = header
 	-- Your balance is not something to press or pay: paint, not sodium.
-	local cash = UIKit.text(titleHolder, "0", "price", "paint", touch, false)
+	local cash = UIKit.text(header, "0", "title", "paint", touch, false)
 	cash.Name = "Cash"
-	local leave = UIKit.button(header, "LEAVE", "secondary", touch)
+	cash.AnchorPoint = Vector2.new(1, 0.5)
+	-- LEAVE: a square close button, its mark two crossed strokes (no emoji).
+	local leave = UIKit.button(header, "", "secondary", touch)
 	leave.Name = "Leave"
-	leave.AnchorPoint = Vector2.new(1, 0)
-	leave.Position = UDim2.fromScale(1, 0)
-
-	local chips = Instance.new("Frame")
-	chips.Name = "Categories"
-	chips.BackgroundTransparency = 1
-	chips.Size = UDim2.new(1, 0, 0, UITheme.target(touch))
-	chips.Parent = panel
-	local chipButtons: { [Tab]: TextButton } = {}
-	for i, entry in TABS do
-		-- A tab is a chip in the title role (UI_SYSTEM.md "title: section
-		-- title, tab names"), as the spawn menu's tabs are.
-		local b = UIKit.chip(chips, entry.label, touch)
-		b.Name = entry.label
-		b.FontFace = UITheme.font("title")
-		b.TextSize = UITheme.textSize("title", touch)
-		b.LayoutOrder = i
-		b.Active = false
-		chipButtons[entry.id] = b
-		-- The row wraps by measured chip widths: lay out again once known.
-		b:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-			local cur = ui
-			if cur and cur.chipButtons == chipButtons then
-				relayout(cur)
-			end
-		end)
+	leave.AutomaticSize = Enum.AutomaticSize.None
+	leave.Size = UDim2.fromOffset(target(), target())
+	leave.AnchorPoint = Vector2.new(1, 0.5)
+	leave.Position = UDim2.fromScale(1, 0.5)
+	for _, angle in { 45, -45 } do
+		local stroke = Instance.new("Frame")
+		stroke.Name = "Mark"
+		stroke.BackgroundColor3 = C.paint
+		stroke.BorderSizePixel = 0
+		stroke.AnchorPoint = Vector2.new(0.5, 0.5)
+		stroke.Position = UDim2.fromScale(0.5, 0.5)
+		stroke.Size = UDim2.fromOffset(math.floor(target() * CLOSE_MARK + 0.5), UITheme.stroke.selected)
+		stroke.Rotation = angle
+		stroke.Parent = leave
 	end
+
+	-- The rail: the categories as words.
+	local rail = scroller("Rail", false)
+	rail.ScrollBarThickness = 0
+	rail.AutomaticCanvasSize = Enum.AutomaticSize.None
+	rail.Parent = dock
+	local railRows: { [Tab]: Frame } = {}
+	local railLabels: { [Tab]: TextLabel } = {}
+	for _, entry in TABS do
+		local row = Instance.new("Frame")
+		row.Name = entry.label
+		row.BackgroundTransparency = 1
+		row.Parent = rail
+		local label = UIKit.text(row, entry.label, "nav", "sand", touch, false)
+		label.Name = "Label"
+		label.AnchorPoint = Vector2.new(0, 0.5)
+		label.Position = UDim2.new(0, space("lg"), 0.5, 0)
+		railRows[entry.id] = row
+		railLabels[entry.id] = label
+	end
+	local railBar = Instance.new("Frame")
+	railBar.Name = "Marker"
+	railBar.BackgroundColor3 = C.sodium
+	railBar.BorderSizePixel = 0
+	UIKit.corner(railBar, "pill")
+	railBar.Parent = rail
+
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.BackgroundTransparency = 1
+	content.Parent = dock
 
 	local sub = Instance.new("Frame")
 	sub.Name = "Sub"
 	sub.BackgroundTransparency = 1
-	local subList = list(sub, false, space("sm"))
-	sub.Parent = panel
+	local subList = list(sub, false, space("xs"))
+	sub.Parent = content
 
 	local grid = scroller("Items", false)
 	list(grid, false, space("md"))
-	-- Eased from space md to 0 as a new grid comes in (slideIn).
+	-- Room either side for a chosen item's ring; the top eases from more
+	-- as a new set comes in (slideIn).
 	local slide = Instance.new("UIPadding")
 	slide.Name = "Slide"
+	local ring = UDim.new(0, UITheme.stroke.selected)
+	slide.PaddingTop, slide.PaddingBottom, slide.PaddingLeft, slide.PaddingRight = ring, ring, ring, ring
 	slide.Parent = grid
-	grid.Parent = panel
+	grid.Parent = content
 
+	-- The foot: a hairline over the item's name and price, and the action.
 	local foot = Instance.new("Frame")
 	foot.Name = "Foot"
-	foot.BackgroundColor3 = C.asphalt800
-	foot.BorderSizePixel = 0
+	foot.BackgroundTransparency = 1
 	foot.Visible = false
-	UIKit.corner(foot, "md")
-	UIKit.stroke(foot, "asphalt600", UITheme.stroke.hairline)
-	local footPad = Instance.new("UIPadding")
-	footPad.PaddingLeft = UDim.new(0, space("md"))
-	footPad.PaddingRight = UDim.new(0, space("sm"))
-	footPad.Parent = foot
-	foot.Parent = panel
-	local footRow = Instance.new("Frame")
-	footRow.BackgroundTransparency = 1
-	footRow.Size = UDim2.fromScale(1, 1)
-	list(footRow, true, space("sm"))
-	footRow.Parent = foot
-	local footText = UIKit.text(footRow, "", "label", "sand", touch, false)
-	footText.Name = "Status"
-	footText.LayoutOrder = 1
-	footText.TextTruncate = Enum.TextTruncate.AtEnd
-	local footPrice = UIKit.text(footRow, "", "price", "sodium", touch, false)
+	foot.Parent = content
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.BackgroundColor3 = C.asphalt600
+	rule.BorderSizePixel = 0
+	rule.Size = UDim2.new(1, 0, 0, UITheme.stroke.hairline)
+	rule.Parent = foot
+	local footItem = Instance.new("Frame")
+	footItem.Name = "Item"
+	footItem.BackgroundTransparency = 1
+	footItem.AutomaticSize = Enum.AutomaticSize.Y
+	footItem.AnchorPoint = Vector2.new(0, 0.5)
+	footItem.Position = UDim2.fromScale(0, 0.5)
+	list(footItem, false, 0)
+	footItem.Parent = foot
+	local footName = UIKit.text(footItem, "", "heading", "paint", touch, false)
+	footName.Name = "Name"
+	footName.AutomaticSize = Enum.AutomaticSize.None
+	footName.Size = UDim2.new(1, 0, 0, lineBox("heading"))
+	footName.RichText = true
+	footName.TextTruncate = Enum.TextTruncate.AtEnd
+	footName.LayoutOrder = 1
+	local footPrice = UIKit.text(footItem, "", "price", "sodium", touch, false)
 	footPrice.Name = "Price"
+	footPrice.AutomaticSize = Enum.AutomaticSize.None
+	footPrice.Size = UDim2.new(1, 0, 0, lineBox("price"))
 	footPrice.LayoutOrder = 2
 	local footButton = UIKit.button(foot, "BUY", "primary", touch)
 	footButton.Name = "Action"
@@ -2067,38 +2282,40 @@ local function build(): UI
 	toastFrame.Visible = false
 	UIKit.corner(toastFrame, "sm")
 	padAll(toastFrame, space("sm"))
-	toastFrame.Parent = panel
+	toastFrame.Parent = content
 	local toastLabel = UIKit.text(toastFrame, "", "body", "paint", touch, true)
 
 	local u: UI = {
 		gui = g,
 		dock = dock,
-		panel = panel,
-		panelPad = panelPad,
+		shade = shade,
+		tail = tail,
 		handle = handle,
 		header = header,
-		titleHolder = titleHolder,
-		titleRow = titleRow,
+		title = title,
+		arabic = arabic,
 		cash = cash,
 		leave = leave,
-		chips = chips,
-		chipButtons = chipButtons,
+		rail = rail,
+		railRows = railRows,
+		railLabels = railLabels,
+		railBar = railBar,
+		content = content,
 		sub = sub,
 		subList = subList,
 		grid = grid,
-		gridLayouts = {},
+		grids = {},
 		foot = foot,
-		footText = footText,
+		footName = footName,
 		footPrice = footPrice,
 		footButton = footButton,
 		toast = toastFrame,
 		toastLabel = toastLabel,
 	}
 
-	-- The status text stops short of the action button.
+	-- The item's words stop short of the action button.
 	local function fitFoot()
-		footRow.Size = UDim2.new(1, -(footButton.AbsoluteSize.X + space("sm")), 1, 0)
-		footText.Size = UDim2.fromOffset(0, 0)
+		footItem.Size = UDim2.new(1, -(footButton.AbsoluteSize.X + space("md")), 0, 0)
 	end
 	footButton:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitFoot)
 	fitFoot()
@@ -2130,11 +2347,14 @@ local function build(): UI
 		end
 	end)
 
-	-- chips: its width (the panel's content width) sets where the row wraps.
-	local watchedList: { Instance } = { titleRow, leave, subList, g, chips }
-	for _, watched in watchedList do
-		local prop = if watched:IsA("UIListLayout") then "AbsoluteContentSize" else "AbsoluteSize"
-		watched:GetPropertyChangedSignal(prop):Connect(function()
+	-- Measured sizes the layout reads: lay out again when one changes.
+	local watched: { Instance } = { title, leave, subList, g }
+	for _, label in railLabels do
+		table.insert(watched, label)
+	end
+	for _, w in watched do
+		local prop = if w:IsA("UIListLayout") then "AbsoluteContentSize" else "AbsoluteSize"
+		w:GetPropertyChangedSignal(prop):Connect(function()
 			if ui == u then
 				relayout(u)
 			end
@@ -2143,6 +2363,13 @@ local function build(): UI
 	toastFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		if ui == u and toastFrame.Visible then
 			relayout(u)
+		end
+	end)
+	-- The palette's columns follow the list's width (a scroll bar coming
+	-- or going changes it).
+	grid:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(function()
+		if ui == u then
+			sizeGrids(u)
 		end
 	end)
 

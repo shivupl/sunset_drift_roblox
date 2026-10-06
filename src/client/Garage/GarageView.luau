@@ -939,7 +939,9 @@ local function overUi(pos: Vector3): boolean
 	end
 	for _, o in playerGui:GetGuiObjectsAtPosition(pos.X, pos.Y) do
 		local screen = o:FindFirstAncestorOfClass("ScreenGui")
-		if o ~= fadeFrame and o.Visible and (screen == nil or screen.Enabled) and (o:IsA("GuiButton") or o.BackgroundTransparency < 1) then
+		-- PassThrough: drawn but not in the way, like the garage panel's
+		-- shade fading out past the panel (garage-ui-overhaul).
+		if o ~= fadeFrame and o.Visible and (screen == nil or screen.Enabled) and not o:GetAttribute("PassThrough") and (o:IsA("GuiButton") or o.BackgroundTransparency < 1) then
 			return true
 		end
 	end

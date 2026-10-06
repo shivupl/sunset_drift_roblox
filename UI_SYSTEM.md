@@ -57,6 +57,14 @@ Rules:
   modal dim, `alpha.disabled` 0.5 for a faded control, and `alpha.hud` 0.35
   for the two surfaces that float over the road while you drive (the HUD
   card and the CARS button), which must let the road through.
+- **The garage's shade** (`UITheme.shade`, garage-ui-overhaul 2026-10-06):
+  the garage panel has no box. asphalt950 darkens the screen under it, 0.06
+  see-through at the screen's edge to `shade.far` 0.16 at the panel's edge,
+  then fades to clear over `sidePanel.fadeTail` (200 px, 96 on touch), so
+  the panel melts into the garage. Its tail lets drags through to the
+  turntable (the `PassThrough` attribute, which `GarageView.overUi` skips).
+  It and the confirm sheet's dim run under Roblox's top bar, so neither
+  shows an edge there.
 
 ## Type
 
@@ -75,6 +83,7 @@ Two families, from Roblox's own font set:
 | `label` | Builder Sans | Bold | 12 | 15 | CAPS | Buttons, chips, badges |
 | `caption` | Builder Sans | Regular | 12 | 15 | Sentence | Hints, footnotes |
 | `price` | Oswald | SemiBold | 16 | 20 | Digits | Cash amounts |
+| `nav` | Oswald | SemiBold | 18 | 23 | CAPS | The garage's category rail (the chosen word Bold) |
 
 - Touch sizes are desktop × `touchScale` (1.25), via `UITheme.px`.
 - Nothing is smaller than 12 px on desktop, 15 px on touch.
@@ -92,6 +101,9 @@ the same, in a fixed way:
   size. The Arabic is right-aligned (`TextXAlignment.Right`).
 - **Where a line is too narrow for both** (a phone header), the Arabic goes
   under the English, left-aligned, `body` role × 1.15, in `sand`.
+- **Where the right edge holds something else** (the garage header: the
+  cash and the close button), the Arabic follows the English after
+  `space.md`, in `sand`, the `title` role × 1.15.
 - **Only titles are bilingual** (screen titles, sheet titles, section
   titles). Tabs, chips, buttons, prices, item names and running text are
   English only; doubling every line makes a menu twice as long and half as
@@ -114,6 +126,7 @@ the same, in a fixed way:
 | `stroke.hairline` | 1: cards and inputs, `asphalt600` |
 | `stroke.selected` | 2: the selected option, `sodium` |
 | `stroke.focus` | 2: gamepad and keyboard focus, `lens` |
+| `stroke.marker` | 3: the bar beside the garage rail's chosen word, `sodium` |
 | `shadow` | A Frame behind the panel, `spread` 2 px larger, `offsetY` 4 px down, `asphalt950` at 0.55 |
 
 - Padding inside a panel: `lg` (16). Between cards: `sm` (8). Between
@@ -126,9 +139,19 @@ the same, in a fixed way:
   (`UITheme.minTarget` / `minTouchTarget`, read through `UITheme.target(touch)`).
 - On a phone, controls you use often sit in the bottom two thirds of the
   screen or down the side panel, where a thumb reaches.
-- A side panel is 360 px wide on desktop, 42% of the screen width (at most
-  420 px) on touch, and always leaves the car or the road visible
-  (`UITheme.sidePanel`; a card grid in it drops to one column under 340 px).
+- A side panel is 420 px wide on desktop, 46% of the screen width (at most
+  460 px) on touch, and always leaves the car or the road visible
+  (`UITheme.sidePanel`; widened from 360 px and 42% in the garage-ui-overhaul,
+  2026-10-06, because the garage's category rail costs width and a phone's
+  width is less scarce than its height).
+- The garage's category rail: rows a target plus `space.xs` tall on
+  desktop; on touch the seven rows share the rail's height so all show on a
+  350 px phone, at most a target and never under `railMinTouchRow` (40 px;
+  Apple's floor is 44, and a 40 px row is as wide as the rail). Below that
+  the rail scrolls.
+- A palette (a grid of colour swatches) has as many columns as fit tiles
+  `paletteMinTile` wide (76 px; 88 on touch): three on desktop, two on a
+  phone. A palette name that does not fit shrinks, down to caption size.
 
 ## States
 
@@ -148,39 +171,49 @@ State changes tween over `motion.quick` (0.12 s). Panels slide over
 ## Shop items: owned, equipped, previewing, for sale
 
 The difference between what you own and what you do not must be
-unmistakable at a glance:
+unmistakable at a glance.
+
+**In the garage** (garage-ui-overhaul, 2026-10-06), an item's state is a
+word under its name, with no badge ground: on the shade a coloured word
+reads at once, and the swatch stays clear.
 
 | Item state | How it looks |
 |---|---|
-| **Equipped** (on this car) | `button.selected`: sodium stroke, and an `ON CAR` label chip in sodium |
-| **Owned** | Card as `secondary`, and a `gantry` badge with a tick and `OWNED` in paint |
-| **For sale** | Card as `secondary`, with a price chip: `sodiumDim` ground, the price in `sodium` `price` type, a padlock glyph. No green anywhere. |
-| **Previewing** (for sale, on the car now) | As for sale plus the sodium stroke, and a bar across the panel's foot: `PREVIEWING` and the price, with a primary `BUY` button |
+| **On car** (saved on this car) | `ON CAR`, `label` role, in sodium |
+| **Owned** | `✓ OWNED`, `label` role, in gantryBright |
+| **For sale** | The price, `price` role, in sodium. No green anywhere. |
+| **Showing on the car now** (saved or previewing) | Chosen: a palette swatch gets the 2 px sodium ring; a list row gets the `button.selected` ground and stroke. One item per set shows, so one per set is chosen; while a preview shows, the saved item keeps its `ON CAR` word without the ring. |
+| **Previewing** (for sale, on the car now) | Chosen, with its price, and the foot names it: the item's name, its price, and a primary `BUY` |
+| **Disabled** (the car can't show the slot) | The swatch at `alpha.disabled`, the name asphalt500, no word |
 | **Rare** | A small `dusk` diamond before the name; nothing else changes |
+| **Pressed** | A list row takes the `button.secondaryPressed` ground; any item shrinks to `GarageConfig.feel.pressScale` |
+
+A set of colours is a **palette**, a grid of swatches with the name and the
+word under each (paint colour, tint, rims, head and tail lights);
+everything else is a **list**, a row per item with its swatch at the left
+(finish, tyres, tips, flames, sun strips, plates, my cars; a car's word is
+its drivetrain, or `✓ DRIVING`).
+
+**In the spawn menu's PLATES tab**, a plate card keeps the badges: `ON CAR`
+on a sodium chip, `✓ OWNED` on a gantry chip (`UIKit.badge`).
 
 A category is named for what a player knows it as: the windscreen banner
-is `SUN STRIPS` (chip) with a `title` row `SUN STRIPS` / `شريط` over its
-cards, though the code, the slot key and the stored ids still say `decal`
-(garage round 3 §4; ids are on profiles and never change). The seven chips
-wrap onto two rows on desktop (5 + 2) and with `ForceTouch` (4 + 3), every
-label fitting its chip (measured 2026-09-29).
+is `SUN STRIPS`, though the code, the slot key and the stored ids still say
+`decal` (garage round 3 §4; ids are on profiles and never change). The
+garage's seven categories are a rail of words down the panel's left
+(`nav` role), the chosen one paint and bold with the sodium marker beside
+it, which slides to a new choice.
 
-A category's action that is not an item (the EXHAUST tab's `REV`, which
-plays the flames on the turntable car) is a `secondary` button in the
-category's sub row above the cards, never a card, and it costs nothing. A
-category with more than one set of items has a row of **sub-tab chips** at
-the top of its sub row, the chosen one in the selected state (PAINT:
-COLOUR, TINT; WHEELS: RIMS, TYRES; LIGHTS: HEADLIGHTS, TAIL LIGHTS;
-EXHAUST: TIPS, FLAMES, with REV at the row's end), and shows one set's
-grid at a time; the sub-tabs replaced the title rows each later set had
-(garage-polish, 2026-10-05, `GarageConfig.views`). Each sub-tab also
-moves the garage camera to its part.
-
-An item card's state badge (`ON CAR`, `OWNED`, the price chip) sits on the
-**top-right corner of its tile**, over the swatch, with any dots on the
-tile kept to its left; the badges carry their own grounds, so they read
-on any swatch. Plate cards keep the badge in a row under the name, since
-the plate art fills their tile.
+A category with more than one set of items has **sub-tabs**: words in the
+`label` role at the top of its content, the chosen one paint with a 2 px
+sodium underline that slides to a new choice, the others sandDim (PAINT:
+COLOUR, FINISH, TINT; WHEELS: RIMS, TYRES; LIGHTS: HEADLIGHTS, TAIL LIGHTS;
+EXHAUST: TIPS, FLAMES). One set shows at a time (garage-polish,
+2026-10-05, `GarageConfig.views`; FINISH became a sub-tab in the overhaul),
+and each sub-tab moves the garage camera to its part. A category's action
+that is not an item (EXHAUST's `REV`, which plays the flames on the
+turntable car; PLATES' `SHOP PLATES`) is a `secondary` button at the end
+of that row, never an item, and it costs nothing.
 
 Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing
