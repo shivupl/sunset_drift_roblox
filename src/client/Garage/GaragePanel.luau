@@ -2003,12 +2003,26 @@ relayout = function(u: UI)
 	u.handle.Position = UDim2.new(0, w + space("sm"), 0.5, 0)
 
 	-- Header: GARAGE and the Arabic after it; the cash and the close button
-	-- at the right.
+	-- at the right. Where the row is too narrow for all four (a phone, a
+	-- big balance), the Arabic goes under the English (UI_SYSTEM.md
+	-- "Arabic with English").
 	local top = space("md")
-	local headerH = math.max(target(), u.title.AbsoluteSize.Y)
+	local titleSize, arabicSize = u.title.AbsoluteSize, u.arabic.AbsoluteSize
+	local right = u.cash.AbsoluteSize.X + space("md") + u.leave.AbsoluteSize.X
+	local stacked = titleSize.X + space("md") + arabicSize.X + space("md") + right > w - 2 * pad
+	local textH = if stacked then titleSize.Y + space("xxs") + arabicSize.Y else titleSize.Y
+	local headerH = math.max(target(), textH)
 	u.header.Position = UDim2.fromOffset(pad, top)
 	u.header.Size = UDim2.fromOffset(w - 2 * pad, headerH)
-	u.arabic.Position = UDim2.new(0, u.title.AbsoluteSize.X + space("md"), 0.5, 0)
+	local textTop = math.floor((headerH - textH) / 2)
+	u.title.AnchorPoint = Vector2.zero
+	u.title.Position = UDim2.fromOffset(0, textTop)
+	u.arabic.AnchorPoint = Vector2.zero
+	if stacked then
+		u.arabic.Position = UDim2.fromOffset(0, textTop + titleSize.Y + space("xxs"))
+	else
+		u.arabic.Position = UDim2.fromOffset(titleSize.X + space("md"), textTop + math.floor((titleSize.Y - arabicSize.Y) / 2))
+	end
 	u.cash.Position = UDim2.new(1, -(u.leave.AbsoluteSize.X + space("md")), 0.5, 0)
 	local y = top + headerH + space("lg")
 	local height = math.max(u.gui.AbsoluteSize.Y - y - pad, 0)
@@ -2348,7 +2362,7 @@ local function build(): UI
 	end)
 
 	-- Measured sizes the layout reads: lay out again when one changes.
-	local watched: { Instance } = { title, leave, subList, g }
+	local watched: { Instance } = { title, arabic, cash, leave, subList, g }
 	for _, label in railLabels do
 		table.insert(watched, label)
 	end

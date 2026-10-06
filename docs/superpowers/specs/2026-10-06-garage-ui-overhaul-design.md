@@ -86,7 +86,9 @@ only to show the marker.)
 - **Header**, one row: `GARAGE` (display) and `كراج` after it (title role
   × `arabicScale`, sand), the cash (title role, paint) at the right, and a
   square close button (×, secondary, a target square) at the far right.
-  The close button is LEAVE: Esc and gamepad B still leave too. The Arabic
+  The close button is LEAVE: Esc and gamepad B still leave too. Where
+  the row is too narrow for all four (a phone with a big balance), the
+  Arabic goes under the English. The Arabic
   follows the English instead of sitting at the right edge, because the
   cash and the close button hold the right edge (UI_SYSTEM.md gets that
   case). The confirm sheet's dim runs under the top bar too, like the

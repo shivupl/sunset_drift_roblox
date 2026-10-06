@@ -103,7 +103,11 @@ the same, in a fixed way:
   under the English, left-aligned, `body` role × 1.15, in `sand`.
 - **Where the right edge holds something else** (the garage header: the
   cash and the close button), the Arabic follows the English after
-  `space.md`, in `sand`, the `title` role × 1.15.
+  `space.md`, in `sand`, the `title` role × 1.15. Where even that row is
+  too narrow (a phone with a big balance: measured on touch, GARAGE 79 px,
+  the Arabic 37, a 12-digit balance 120, the close button 48, against a
+  345 px phone panel's 305), the Arabic goes under the English at the
+  same size (a smaller one would fit the row again and flip back).
 - **Only titles are bilingual** (screen titles, sheet titles, section
   titles). Tabs, chips, buttons, prices, item names and running text are
   English only; doubling every line makes a menu twice as long and half as
