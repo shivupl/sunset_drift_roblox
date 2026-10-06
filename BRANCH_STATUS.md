@@ -75,8 +75,8 @@ is (`line.hold`), and whether the choice is saved to the profile. Merging it car
 
 **`speed-feel` (2026-10-05, branched from `drift-overhaul` at `78d12c3`; not merged yet): the driving
 made faster and made to feel faster.** The owner: "overall game driving feels pretty slow ... needs to
-feel at least 50% faster if not 2x", and chose both. More torque on every car (`drivetrain.powerScale`),
-a sixth gear, the top speed 300, a launch grip off the line; a wider speed view, a camera that no longer
+feel at least 50% faster if not 2x", and chose both. More torque on every car (`drivetrain.powerScale`, 1.6),
+a sixth gear, the top speed 330, a launch grip off the line; a wider speed view, a camera that no longer
 trails a fast car, a faint high-speed shake, faint screen-edge speed lines and a wind roar
 (`client/SpeedFeel`). Measured in TUNING.md (`drivetrain`, `camera`, `speedFeel`). Open for the owner:
 whether earnings should be held level (`scoring.referenceSpeedKmh`), the wind sound (picked unheard),

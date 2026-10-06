@@ -362,7 +362,10 @@ smoothing trailed 8.4 m extra at 240), a faint shake comes in from 130,
 faint speed lines run out to the screen's edges from 140, and a wind roar
 rises under the engine. World-space particle streaks were tried first: from
 a chase camera they are seen end-on and read as smudges on the road, so the
-lines are screen-space. The economy is untouched, which means slides pay
+lines are screen-space. The owner then asked for 20% more, found it too
+fast, and settled on 10% more: powerScale 1.6, launchGrip 1.54, the top
+speed 330, every number scaled and not re-measured (the measurements above
+are at 1.45). The economy is untouched, which means slides pay
 about half again per second at the new speeds; `scoring.referenceSpeedKmh`
 is the knob if that should be held level.
 

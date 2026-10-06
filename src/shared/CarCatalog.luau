@@ -183,9 +183,9 @@ local cars: { [string]: CarEntry } = {
 				upshiftRpm = 5600,
 				downshiftRpm = 2600,
 				shiftTime = 0.2,
-				-- 255 from 180 with the game's pace (speed-feel, 2026-10-05), a
-				-- ceiling: drag tops it out near 245 (236 after 26 s flat out).
-				topSpeedKmh = 255,
+				-- 280 from 180 with the game's pace (speed-feel, 2026-10-05), a
+				-- ceiling drag may keep it under.
+				topSpeedKmh = 280,
 				-- Same brakes as the sedan hauling 600 kg more: it stops late.
 				brakeForce = 15000,
 			},
@@ -258,9 +258,9 @@ local cars: { [string]: CarEntry } = {
 				upshiftRpm = 5400,
 				downshiftRpm = 2400,
 				shiftTime = 0.14,
-				-- 285 from 200 with the game's pace (speed-feel, 2026-10-05), a
-				-- ceiling: drag tops it out near 270 (267 after 26 s flat out).
-				topSpeedKmh = 285,
+				-- 315 from 200 with the game's pace (speed-feel, 2026-10-05), a
+				-- ceiling drag may keep it under.
+				topSpeedKmh = 315,
 			},
 			tires = {
 				-- A soft front that pushes on turn-in, a rear that keeps most

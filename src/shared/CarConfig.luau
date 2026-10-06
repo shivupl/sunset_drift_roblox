@@ -206,9 +206,11 @@ local config = {
 		-- has launchGrip (speed-feel, 2026-10-05).
 		torqueCurve = { { 1000, 380 }, { 2500, 550 }, { 4000, 640 }, { 5500, 620 }, { 6500, 500 }, { 7000, 0 } },
 		-- A sixth gear for the higher top speed (speed-feel, 2026-10-05): the
-		-- five-speed box ran out at the rev limiter near 270 km/h; 0.68 gives
-		-- about 320 at 6800 rpm, and the first five are untouched.
-		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8, 0.68 },
+		-- five-speed box ran out at the rev limiter near 270 km/h; 0.62 gives
+		-- about 350 at 6800 rpm (0.68 gave 320 for the 300 limit; the owner
+		-- then asked for 10% more overall), and the first five are untouched.
+		-- 0.58 (for +20%) was too tall: the Kamri was slower to 280.
+		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8, 0.62 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
 		drivelineEfficiency = 0.9,
@@ -275,21 +277,25 @@ local config = {
 		-- "overall game driving feels pretty slow ... needs to feel at least
 		-- 50% faster if not 2x"; real tafheet runs 160-260), so that curve is a
 		-- braking corner now. A car whose drag tops it out first never sees
-		-- the limiter (the Pickup near 245, the Cruiser near 270).
-		topSpeedKmh = 300,
+		-- the limiter (the Pickup near 245, the Cruiser near 270). 330 from
+		-- 300 when the owner asked for 10% more overall (2026-10-05: "instead
+		-- of 20% do 10%, it feels to fast right now").
+		topSpeedKmh = 330,
 		topSpeedFadeKmh = 25,
-		-- The game's pace: the torque curve times powerScale. 1.45 with the
-		-- launch grip below: see TUNING.md (drivetrain) for the measured
-		-- 0-100, 0-200 and 1 km. Up: quicker everywhere past the launch.
-		powerScale = 1.45,
+		-- The game's pace: the torque curve times powerScale. 1.45, then 1.6
+		-- for 10% more overall (2026-10-05), with the launch grip below: see
+		-- TUNING.md (drivetrain) for the measured 0-100, 0-200 and top speeds.
+		-- Up: quicker everywhere past the launch.
+		powerScale = 1.6,
 		-- The driven tyres' drive grip times launchGrip off the line, pointing
 		-- straight (never in a slide, under the lever or on two wheels),
 		-- fading out from launchGripFullKmh to launchGripEndKmh. Below about
 		-- 100 km/h the launch is grip-limited, so power alone did nothing
-		-- there. Up: a harder launch.
-		launchGrip = 1.4,
+		-- there. 1.4 to 140 km/h, then 1.54 to 155 for 10% more. Up: a harder
+		-- launch.
+		launchGrip = 1.54,
 		launchGripFullKmh = 60,
-		launchGripEndKmh = 140,
+		launchGripEndKmh = 155,
 		-- Launch traction control, active under this speed. A loop, not a
 		-- cap: the throttle multiplier winds down at cutRate while the rear
 		-- spins and back up at recoverRate while it grips, never below min.
@@ -862,7 +868,7 @@ local config = {
 		followAhead = 0.7,
 		-- A faint shake at speed: up to maxDeg of pitch and yaw, from fromKmh
 		-- to fullKmh, at about hz. Subtle: the car must never look unstable.
-		shake = { fromKmh = 130, fullKmh = 300, maxDeg = 0.18, hz = 7 },
+		shake = { fromKmh = 130, fullKmh = 320, maxDeg = 0.2, hz = 7 },
 		-- The widest the view may get across, degrees. The profiles' FOVs are
 		-- vertical, so a wide phone saw far more across than a 16:9 screen
 		-- (19.5:9 at 96: 135 against 126). 126 is a 16:9 screen at 96; a
@@ -928,7 +934,7 @@ local config = {
 		lines = {
 			fromKmh = 140,
 			fullKmh = 280,
-			perSecond = 55, -- new lines a second at full
+			perSecond = 60, -- new lines a second at full (55, then +10%)
 			lifetime = { 0.18, 0.3 }, -- seconds
 			-- Where they run, as fractions of the screen's half-diagonal from
 			-- the point the car is heading for: born at inner..mid, gone by
@@ -1584,8 +1590,8 @@ local config = {
 		cashPerPoint = 0.01,
 		-- Validation. The server scores every driven car from its own
 		-- samples and never banks more than it saw.
-		-- 360 from 320 with the top speed at 300 (speed-feel, 2026-10-05).
-		maxPlausibleSpeedKmh = 360,
+		-- 390 with the top speed at 330 (speed-feel, 2026-10-05).
+		maxPlausibleSpeedKmh = 390,
 		teleportToleranceM = 8, -- movement beyond speed x dt plus this is a teleport
 		-- ...plus this much time at the reported speed: a stall in replication
 		-- at speed is not a teleport. A fixed 8 m was 0.19 s of travel at
