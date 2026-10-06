@@ -84,8 +84,8 @@ trails a fast car, a faint high-speed shake, faint screen-edge speed lines and a
 whether earnings should be held level (`scoring.referenceSpeedKmh`), the wind sound (picked unheard),
 and how strong the lines and shake are.
 
-**`garage-tyres-flames` (2026-10-05, branched from `main` at `3b4116b`; not merged yet): drift modes
-as tyres, flame styles as garage items.** The owner: "make the differnt driftmodes we made different
+**`garage-tyres-flames` (2026-10-05, branched from `main` at `3b4116b`; merged into `main` with
+`garage-polish` on 2026-10-06, and deleted): drift modes as tyres, flame styles as garage items.** The owner: "make the differnt driftmodes we made different
 tire options in the garage instead of drift options in the car menu. by default start all at classic
 ... same for the tire flames. have classic be the default and the other flames purchasable in the
 garage". Two new cosmetic slots, `tyre` and `flame`, appended after `tint` so every saved look reads
@@ -101,8 +101,8 @@ worked, a rear-drive tyre was refused on the front-drive Hatch, and the fitted t
 to their mode and style; specs 12587 passed, 14 failed (the VehicleRig baseline). Open for the owner:
 the prices.
 
-**`garage-polish` (2026-10-05, branched from `garage-tyres-flames` at `2c9f3ca`; not merged yet): the
-garage made to go to each part.** The owner: "when selecting exhaust tips or flames, it should like
+**`garage-polish` (2026-10-05, branched from `garage-tyres-flames` at `2c9f3ca`; merged into `main`
+on 2026-10-06, and deleted): the garage made to go to each part.** The owner: "when selecting exhaust tips or flames, it should like
 zoom into that part and for the flames, shoudl do a quick play of it ... overall improve and polish the
 garage", choosing panel layout and sound and motion on top. Close camera shots per part
 (`GarageConfig.shots`: the wheel, the windows, each lamp corner, the windscreen, the plate, the
@@ -113,7 +113,7 @@ EXHAUST: TIPS, FLAMES, REV); the badge moved onto the tile's corner, so cards ar
 (tab, tap, an impact wrench on a fit, a cash register on a purchase, error; picked unheard), a press
 and pop on cards, the cash counting down, the grid sliding in. Spec
 `docs/superpowers/specs/2026-10-05-garage-polish-design.md`. Light testing at the owner's word: specs
-12682 passed, 14 failed (the VehicleRig baseline); in Play the wheel, tail and exhaust shots framed,
+12682 passed, 14 failed (the VehicleRig baseline, on the branch and again on `main` after the merge); in Play the wheel, tail and exhaust shots framed,
 a Blue Flame tap fired its burst from the preview's exhaust as the camera arrived, no errors. Open for
 the owner: the shots' framings and the sounds (by ear), and the phone layout (not checked).
 
