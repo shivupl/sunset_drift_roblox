@@ -22,7 +22,9 @@ export type ViewLight = {
 	shadows: boolean?, -- default false
 }
 
--- Camera. One fixed framing, no zoom, no presets (owner's brief).
+-- Camera. The full framing (the `full` shot below): the whole car. Until
+-- garage-polish (2026-10-05) it was the only one ("no zoom, no presets",
+-- the 2026-09-28 brief); now each part has its close shot (`shots`).
 -- The spec asked for 40 (a long lens flattens less and flatters the car),
 -- but at 40 the distance that fits the kamri07 is 10.3 m, and at 35 degrees
 -- round that put the eye in the display bay's front-left corner, inside the
@@ -107,16 +109,105 @@ GarageConfig.resumeAfterSeconds = 3 -- auto-spin comes back this long after the 
 -- A flick's release speed is capped here, so one hard swipe does not spin
 -- the car in a blur.
 GarageConfig.maxFlickDegPerSec = 360
--- REV (garage round 2 §2, fix round 1: fired wherever the turntable faced,
--- side-on the flame streamed behind the panel or off-screen): the turntable
--- first eases the car to a rear 3/4, turnDeg off square-on to the camera,
--- so the tips and their flames sit in the open right of the screen; the
--- burst fires on arrival (within arriveDeg), holds holdSeconds, then the
--- spin resumes. easeSeconds is the ease's time constant (about 1.1 s from
--- 76 degrees away, measured). turnDeg 35 put the right-hand flame off the
--- screen's right edge; at 15 both tips and their flames sit on screen,
--- clear of the panel (Play, Kamri, titanium, 2026-09-28).
-GarageConfig.revPresent = { turnDeg = 15, easeSeconds = 0.25, arriveDeg = 1.5, holdSeconds = 1.5 }
+-- Close shots (garage-polish; the owner, 2026-10-05: "when selecting
+-- exhaust tips or flames, it should like zoom into that part and for the
+-- flames, shoudl do a quick play of it ... overall improve and polish the
+-- garage"). Each category and sub-tab of the panel has a shot (`views`).
+-- A close shot turns the turntable so the car shows the camera one side
+-- and holds it there (no spin), and the camera comes in toward a point on
+-- the car. The camera keeps the full framing's bearing and only comes
+-- closer, so it never meets a wall: the eye is the aim point moved
+-- distanceM back toward the full framing's eye, eyeHeightM over the
+-- turntable's top, turned like the full framing so the aim sits
+-- screenOffset right of centre. A drag goes back out to `full`.
+--   faceDeg: which way the car faces the camera, degrees round from its
+--     nose toward its right: 0 nose on, 90 the right side, 180 the rear.
+--   aim: "hub" (the wheel `hub` names, VehicleRig.WHEELS), "outlets" (the
+--     exhaust outlets' middle, CarCosmetics.outlets) or "box"; `box` is
+--     the point in the body's bounding box, as fractions: x -1 left to 1
+--     right, y 0 bottom to 1 top, z -1 rear to 1 front. A hub or outlets
+--     the car lacks falls back to `box`.
+--   distanceM / eyeHeightM: the eye from the aim (flat), and its height.
+--   fovDeg: the lens, default fovDeg above. brake: the brake lights on.
+-- Numbers are first framings, checked in Play on the Krown Vik.
+export type Shot = {
+	faceDeg: number,
+	aim: string,
+	hub: string?,
+	box: { x: number, y: number, z: number },
+	distanceM: number,
+	eyeHeightM: number,
+	fovDeg: number?,
+	brake: boolean?,
+}
+GarageConfig.shots = {
+	-- The side windows, square on: the tint.
+	side = { faceDeg = 90, aim = "box", box = { x = 1, y = 0.68, z = 0 }, distanceM = 4.2, eyeHeightM = 1.35 },
+	-- The front-right wheel, low and a little from the front: rims, tyres.
+	-- At 2.3 m the wheel filled the frame and the arch was cut off (Krown
+	-- Vik, Play 2026-10-05).
+	wheel = { faceDeg = 75, aim = "hub", hub = "FR", box = { x = 1, y = 0.25, z = 0.6 }, distanceM = 3, eyeHeightM = 0.7 },
+	-- The front-right corner: the headlights.
+	head = { faceDeg = 35, aim = "box", box = { x = 0.6, y = 0.55, z = 1 }, distanceM = 3, eyeHeightM = 1 },
+	-- The rear-right corner, brake lights on: the tail lights.
+	tail = { faceDeg = 150, aim = "box", box = { x = 0.6, y = 0.6, z = -1 }, distanceM = 3, eyeHeightM = 1.1, brake = true },
+	-- The windscreen's top from in front and above: the sun strip.
+	windscreen = { faceDeg = 10, aim = "box", box = { x = 0, y = 0.85, z = 0.3 }, distanceM = 3.6, eyeHeightM = 2.4 },
+	-- The rear, square on: the plate.
+	plate = { faceDeg = 180, aim = "box", box = { x = 0, y = 0.35, z = -1 }, distanceM = 2.8, eyeHeightM = 0.9 },
+	-- The exhaust: REV's old angle (garage round 2 §2), a rear 3/4 15
+	-- degrees past square on, where both tips and their flames sat clear
+	-- of the panel (turnDeg 35 put the right-hand flame off the screen's
+	-- edge; Play, Kamri, titanium, 2026-09-28). Low: from 0.8 m the Krown
+	-- Vik's factory pipe was hidden under its bumper (Play, 2026-10-05).
+	exhaust = { faceDeg = 195, aim = "outlets", box = { x = 0, y = 0.2, z = -1 }, distanceM = 3, eyeHeightM = 0.45 },
+} :: { [string]: Shot }
+-- The shot with no close-up: the full framing above, the turntable turning.
+GarageConfig.FULL = "full"
+
+-- Moving between shots: the camera takes UITheme.motion.camera (0.8 s,
+-- Sine in-out) from wherever it was; the turntable eases to the shot's
+-- angle with this time constant (seconds) and has arrived within
+-- arriveDeg, when a shot's onArrive (REV's burst) runs. 0.25 s took about
+-- 1.1 s from 76 degrees away (measured for REV, 2026-09-28).
+GarageConfig.focus = { easeSeconds = 0.25, arriveDeg = 1.5 }
+
+-- The panel's views: per category, its sub-tabs in order (more than one
+-- shows a row of sub-tab chips), each with its label and shot. One view
+-- shows no row. ids are the panel's, not stored anywhere.
+export type View = { id: string, label: string, shot: string }
+GarageConfig.views = {
+	cars = { { id = "cars", label = "MY CARS", shot = "full" } },
+	paint = { { id = "colour", label = "COLOUR", shot = "full" }, { id = "tint", label = "TINT", shot = "side" } },
+	rims = { { id = "rims", label = "RIMS", shot = "wheel" }, { id = "tyres", label = "TYRES", shot = "wheel" } },
+	plates = { { id = "plates", label = "PLATES", shot = "plate" } },
+	lights = { { id = "head", label = "HEADLIGHTS", shot = "head" }, { id = "tail", label = "TAIL LIGHTS", shot = "tail" } },
+	decal = { { id = "decal", label = "SUN STRIPS", shot = "windscreen" } },
+	exhaust = { { id = "tips", label = "TIPS", shot = "exhaust" }, { id = "flames", label = "FLAMES", shot = "exhaust" } },
+} :: { [string]: { View } }
+
+-- A headlight colour tapped: the lamps blink this many times, off for
+-- offSeconds and back on for onSeconds each, so the colour reads lit.
+GarageConfig.headFlash = { blinks = 2, offSeconds = 0.09, onSeconds = 0.14 }
+-- The panel's sounds, for this player only (client Garage/GarageSounds):
+-- a category or sub-tab, an unbought item previewed, an owned item
+-- fitted, a purchase, an error. Picked unheard for the owner to try
+-- (garage-polish, 2026-10-05): Roblox's own UI set (clicks, Delete) and
+-- Pro Sound Effects' (Creator Store, licensed by Roblox) impact wrench and
+-- cash register. A sound that fails to load is skipped. volume 0 mutes one.
+GarageConfig.sounds = {
+	tab = { id = "rbxassetid://15675032796", volume = 0.5 }, -- Roblox_UI_Small_Click
+	tap = { id = "rbxassetid://15675059323", volume = 0.45 }, -- Roblox_UI_Bright_Click
+	fit = { id = "rbxassetid://9117704306", volume = 0.3 }, -- Pneumatic Impact Wrench Drill On Off 4 (SFX), 1.1 s
+	buy = { id = "rbxassetid://9113728049", volume = 0.5 }, -- Cash Register 2 (SFX), 1.7 s
+	error = { id = "rbxassetid://15675075163", volume = 0.45 }, -- Roblox_UI_Delete
+} :: { [string]: { id: string, volume: number } }
+
+-- The panel's motion (garage-polish): a card shrinks to pressScale while
+-- pressed, pops to popScale and back when its item is fitted or bought,
+-- and the cash readout counts down over cashCountSeconds after a purchase.
+GarageConfig.feel = { pressScale = 0.96, popScale = 1.06, cashCountSeconds = 0.6 }
+
 -- The preview's headlights (and so its tails) are on, so the Lights
 -- category's colours show on the turntable; off would leave the lenses as
 -- plain glass.

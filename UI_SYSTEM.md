@@ -168,9 +168,19 @@ label fitting its chip (measured 2026-09-29).
 A category's action that is not an item (the EXHAUST tab's `REV`, which
 plays the flames on the turntable car) is a `secondary` button in the
 category's sub row above the cards, never a card, and it costs nothing. A
-category with a second set of items (PAINT's window tint) gives it a
-`title` row (`WINDOW TINT` / `تظليل`) and its own card grid below the first,
-in the same scroll.
+category with more than one set of items has a row of **sub-tab chips** at
+the top of its sub row, the chosen one in the selected state (PAINT:
+COLOUR, TINT; WHEELS: RIMS, TYRES; LIGHTS: HEADLIGHTS, TAIL LIGHTS;
+EXHAUST: TIPS, FLAMES, with REV at the row's end), and shows one set's
+grid at a time; the sub-tabs replaced the title rows each later set had
+(garage-polish, 2026-10-05, `GarageConfig.views`). Each sub-tab also
+moves the garage camera to its part.
+
+An item card's state badge (`ON CAR`, `OWNED`, the price chip) sits on the
+**top-right corner of its tile**, over the swatch, with any dots on the
+tile kept to its left; the badges carry their own grounds, so they read
+on any swatch. Plate cards keep the badge in a row under the name, since
+the plate art fills their tile.
 
 Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing

@@ -36,10 +36,23 @@
 --   * PLATES equips one of your plates on this car; SHOP PLATES opens the
 --     spawn menu's plates tab, which stays the one place plates are bought.
 --   * WHEELS has the rims and the tyres, EXHAUST the tips and the flames
---     (garage-tyres-flames, 2026-10-05). A tyre is a drift mode: the row
---     lists only the tyres for this car's drivetrain, and the line under
---     its title says how the tyre showing drives. REV fires the flame
---     showing, so a flame is heard and seen before it is bought.
+--     (garage-tyres-flames, 2026-10-05). A tyre is a drift mode: the list
+--     has only the tyres for this car's drivetrain, and the line over it
+--     says how the tyre showing drives. REV fires the flame showing, so a
+--     flame is heard and seen before it is bought.
+--   * Garage polish (2026-10-05, GarageConfig.views): a category with more
+--     than one set of items has a row of sub-tabs (PAINT: COLOUR, TINT;
+--     WHEELS: RIMS, TYRES; LIGHTS: HEADLIGHTS, TAIL LIGHTS; EXHAUST: TIPS,
+--     FLAMES, with REV on the row), one grid each, remembered per category
+--     for the visit. Each view has a camera shot (GarageView.focus): the
+--     camera goes to the part; tapping the sub-tab again goes back in
+--     after a drag took it out. Tapping tips or a flame plays a burst once
+--     the camera is there; a headlight colour blinks the lamps. Sounds
+--     (GarageSounds) on a tab, a preview, a fit, a purchase and an error;
+--     a card shrinks while pressed and pops when its item is fitted or
+--     bought; the cash counts down after a purchase; a new grid slides up
+--     into place. An item card's badge sits on its tile's corner (plates
+--     keep the row under the name: their art fills the tile).
 --   * The pill on the panel's edge, H or gamepad Y collapse the panel; the
 --     car re-centres (GarageView.setPanelOpen).
 --
@@ -63,6 +76,7 @@ local CarLook = require(Shared:WaitForChild("CarLook"))
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local VehicleRig = require(Shared:WaitForChild("VehicleRig"))
 local CarPlateMounts = require(Shared:WaitForChild("CarPlateMounts"))
+local GarageConfig = require(Shared:WaitForChild("GarageConfig"))
 local PlateText = require(Shared:WaitForChild("PlateText"))
 local PlateStyles = require(Shared:WaitForChild("PlateStyles"))
 local Client = script.Parent.Parent
@@ -71,6 +85,7 @@ local CarCosmetics = require(Client:WaitForChild("CarCosmetics"))
 local ExhaustPops = require(Client:WaitForChild("ExhaustPops"))
 local SpawnMenu = require(Client:WaitForChild("SpawnMenu"))
 local GarageView = require(script.Parent:WaitForChild("GarageView"))
+local GarageSounds = require(script.Parent:WaitForChild("GarageSounds"))
 
 local GaragePanel = {}
 
@@ -100,6 +115,9 @@ local SHEET_Z = 20
 -- A card's name gets two lines; a line is the text size times this (Builder
 -- Sans' line box at LineHeight 1, with room for Arabic marks).
 local LINE_BOX = 1.3
+-- An item tile's dots (rims, tips) keep to this share of its width, left
+-- of the badge on its corner (garage-polish).
+local TILE_DOT_SHARE = 0.45
 
 local TABS: { { id: Tab, label: string } } = {
 	{ id = "cars", label = "MY CARS" },
@@ -227,6 +245,13 @@ local modalBefore = false
 local relaying = false
 -- REV's last burst runs until this os.clock(); taps before then do nothing.
 local revUntil = 0
+-- Each category's sub-tab (GarageConfig.views), for this visit.
+local subTab: { [string]: string } = {}
+-- The cash as shown, and where it is heading: it counts down after a
+-- purchase (GarageConfig.feel.cashCountSeconds).
+local cashShown: number? = nil
+local cashTarget: number? = nil
+local cashToken = 0
 
 ------------------------------------------------------------------------
 -- What the player owns and has saved (Player attributes from Economy).
@@ -431,8 +456,12 @@ local function badgeHeight(): number
 	return UITheme.textSize("price", touch) + 2 * space("xs")
 end
 
-local function cardHeight(): number
-	return 2 * space("sm") + target() + space("sm") + 2 * lineBox("heading") + space("xs") + badgeHeight()
+-- An item card: the tile (its badge on the corner) and two lines of name.
+-- rowBadge: the badge in a row under the name (plates: their art fills
+-- the tile).
+local function cardHeight(rowBadge: boolean?): number
+	local h = 2 * space("sm") + target() + space("sm") + 2 * lineBox("heading")
+	return if rowBadge then h + space("xs") + badgeHeight() else h
 end
 
 local function panelWidth(u: UI): number
@@ -538,21 +567,41 @@ local function tileCircles(tile: Frame, n: number, color: Color3, aspect: number
 	row.BackgroundTransparency = 1
 	row.Size = UDim2.fromScale(1, 1)
 	local l = list(row, true, space("xs"))
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	-- At the tile's left: the badge sits on its right corner.
+	l.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, space("sm"))
+	pad.Parent = row
 	row.Parent = tile
-	local d = math.floor(target() * 0.5)
+	local dots: { Frame } = {}
 	for i = 1, n do
 		local dot = Instance.new("Frame")
 		dot.BackgroundColor3 = color
 		dot.BorderSizePixel = 0
-		-- aspect: a dot this many times wider than tall (the Big Oval Tip).
-		dot.Size = UDim2.fromOffset(math.floor(d * (aspect or 1)), d)
 		dot.LayoutOrder = i
 		UIKit.corner(dot, "pill")
 		-- A dark tip (Quad Tips) would vanish on the tile without an edge.
 		UIKit.stroke(dot, "asphalt500", UITheme.stroke.hairline)
 		dot.Parent = row
+		table.insert(dots, dot)
 	end
+	-- Half a target across, or smaller so every dot fits the tile's left
+	-- part, clear of the badge (Quad Tips' fourth ran under the price at
+	-- the full size, Play 2026-10-05). aspect: a dot this many times wider
+	-- than tall (the Big Oval Tip).
+	local wide = aspect or 1
+	local function fit()
+		local room = tile.AbsoluteSize.X * TILE_DOT_SHARE - space("sm") - (n - 1) * space("xs")
+		local d = math.floor(target() * 0.5)
+		if room > 0 then
+			d = math.max(math.min(d, math.floor(room / (n * wide))), 4)
+		end
+		for _, dot in dots do
+			dot.Size = UDim2.fromOffset(math.floor(d * wide), d)
+		end
+	end
+	fit()
+	tile:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 end
 
 local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
@@ -757,13 +806,48 @@ local function paintCards()
 	local note = tyreNote
 	if note then
 		local styles = ConfigLoader.driftStyles()
-		local mode = styles.resolve(carLayout(), CarLook.item(ctx.draft, "tyre").driftStyle)
-		note.Text = styles.styles[mode].blurb
+		local layout = carLayout()
+		local mode = styles.resolve(layout, CarLook.item(ctx.draft, "tyre").driftStyle)
+		note.Text = `{styles.layoutName[layout]} · {styles.styles[mode].blurb}`
 	end
 end
 
--- A grid card: tile, name (up to two lines), badge.
-local function buildCard(parent: Instance, order: number, key: string, slot: Slot?, name: string, price: number, rare: boolean, drawTile: (Frame) -> ()): Card
+-- A card's scale, made on first use.
+local function scaleOf(frame: GuiObject): UIScale
+	local found = frame:FindFirstChild("Press")
+	if found and found:IsA("UIScale") then
+		return found
+	end
+	local sc = Instance.new("UIScale")
+	sc.Name = "Press"
+	sc.Parent = frame
+	return sc
+end
+
+-- Pressed: the card shrinks a little (GarageConfig.feel.pressScale).
+local function pressCard(card: Card, down: boolean)
+	paintCard(card, down)
+	local to = if down then GarageConfig.feel.pressScale else 1
+	TweenService:Create(scaleOf(card.frame), UITheme.motion.quick, { Scale = to }):Play()
+end
+
+-- Fitted or bought: the item's card pops (feel.popScale) and settles.
+local function popCard(key: string)
+	for _, card in cards do
+		if card.key == key and card.frame.Parent then
+			local sc = scaleOf(card.frame)
+			local up = TweenService:Create(sc, UITheme.motion.quick, { Scale = GarageConfig.feel.popScale })
+			up.Completed:Once(function()
+				TweenService:Create(sc, UITheme.motion.quick, { Scale = 1 }):Play()
+			end)
+			up:Play()
+		end
+	end
+end
+
+-- A grid card: tile with its badge on the corner, name (up to two lines);
+-- rowBadge puts the badge in a row under the name instead.
+local function buildCard(parent: Instance, order: number, key: string, slot: Slot?, name: string, price: number, rare: boolean, drawTile: (Frame) -> (), rowBadge: boolean?): Card
 	local f = Instance.new("Frame")
 	f.Name = "Card_" .. (if key == "" then "account" else key)
 	f.BackgroundColor3 = UITheme.button.secondary.bg
@@ -796,11 +880,23 @@ local function buildCard(parent: Instance, order: number, key: string, slot: Slo
 	local badges = Instance.new("Frame")
 	badges.Name = "Badges"
 	badges.BackgroundTransparency = 1
-	badges.AnchorPoint = Vector2.new(0, 1)
-	badges.Position = UDim2.fromScale(0, 1)
-	badges.Size = UDim2.new(1, 0, 0, badgeHeight())
-	list(badges, true, space("xs"))
-	badges.Parent = f
+	if rowBadge then
+		badges.AnchorPoint = Vector2.new(0, 1)
+		badges.Position = UDim2.fromScale(0, 1)
+		badges.Size = UDim2.new(1, 0, 0, badgeHeight())
+		list(badges, true, space("xs"))
+		badges.Parent = f
+	else
+		-- On the tile's top-right corner, over the swatch.
+		local inset = space("xs")
+		badges.AnchorPoint = Vector2.new(1, 0)
+		badges.Position = UDim2.new(1, -inset, 0, inset)
+		badges.Size = UDim2.new(1, -2 * inset, 0, badgeHeight())
+		badges.ZIndex = 2
+		local l = list(badges, true, space("xs"))
+		l.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		badges.Parent = tile
+	end
 
 	f.Parent = parent
 	local card: Card = {
@@ -884,6 +980,7 @@ local function toast(text: string, kind: "done" | "error" | "info")
 		u.toastLabel.TextColor3 = C.gantryBright
 		u.toastLabel.Text = "✓ " .. text
 	elseif kind == "error" then
+		GarageSounds.play("error")
 		u.toast.BackgroundColor3 = C.beaconDim
 		u.toastLabel.TextColor3 = C.paint
 		u.toastLabel.Text = text
@@ -966,6 +1063,39 @@ end
 
 local buildTab: (u: UI) -> ()
 
+-- The cash readout: straight to a rise, counting down to a fall (a
+-- purchase) over GarageConfig.feel.cashCountSeconds.
+local function showCash(u: UI)
+	local target = cashNow()
+	if cashTarget == target then
+		return
+	end
+	local from = cashShown
+	cashTarget = target
+	cashToken += 1
+	local mine = cashToken
+	if from == nil or target >= from then
+		cashShown = target
+		u.cash.Text = money(target)
+		return
+	end
+	local info = UITheme.motion.panel
+	local seconds = GarageConfig.feel.cashCountSeconds
+	local t0 = os.clock()
+	task.spawn(function()
+		while cashToken == mine and ui == u do
+			local a = math.clamp((os.clock() - t0) / seconds, 0, 1)
+			local shown = from + (target - from) * TweenService:GetValue(a, info.EasingStyle, info.EasingDirection)
+			cashShown = shown
+			u.cash.Text = money(shown)
+			if a >= 1 then
+				break
+			end
+			task.wait()
+		end
+	end)
+end
+
 local function refresh()
 	local u = ui
 	if not u or not inside then
@@ -988,7 +1118,7 @@ local function refresh()
 	applyPreview()
 	paintCards()
 	paintFoot(u)
-	u.cash.Text = money(cashNow())
+	showCash(u)
 	local s = sheet
 	if s then
 		s.update()
@@ -1066,29 +1196,87 @@ local function sendEquip(slot: Slot)
 	end)
 end
 
+-- The category's views (GarageConfig.views): its sub-tabs, or one.
+local function views(): { GarageConfig.View }
+	return GarageConfig.views[tab] or { { id = tab, label = "", shot = GarageConfig.FULL } }
+end
+
+-- The sub-tab showing: the one chosen this visit, else the first.
+local function currentView(): GarageConfig.View
+	local list = views()
+	local chosen = subTab[tab]
+	for _, v in list do
+		if v.id == chosen then
+			return v
+		end
+	end
+	return list[1]
+end
+
+-- The camera to the view's part (GarageView.focus); arrived runs once it
+-- is there.
+local function focusView(arrived: (() -> ())?)
+	GarageView.focus(currentView().shot, arrived)
+end
+
+-- What a tap shows besides the look: tips or a flame play a burst once
+-- the camera is on the exhaust (a new tap starts a new one: ExhaustPops'
+-- newest burst wins); a headlight colour blinks the lamps.
+local function autoPreview(slot: Category)
+	if slot == "exhaust" or slot == "flame" then
+		local m = previewModel
+		if not m then
+			return
+		end
+		focusView(function()
+			if previewModel ~= m or not m.Parent then
+				return
+			end
+			revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
+		end)
+	elseif slot == "head" then
+		GarageView.flashHeadlights()
+	end
+end
+
 local function chooseItem(slot: Category, id: string)
 	if not shows(slot) then
 		return
 	end
 	local p = previewing
 	if p and p.slot == slot and p.id == id then
+		-- The preview tapped again: show it again.
+		GarageSounds.play("tap")
+		autoPreview(slot)
 		return
 	end
 	-- Choosing any other card drops an unbought preview.
 	previewing = nil
 	if owns(id) then
 		if slotValue(draftLook(), slot) ~= id or want[slot] ~= nil then
+			GarageSounds.play("fit")
+			popCard(id)
 			want[slot] = id
 			sendEquip(slot)
+		else
+			GarageSounds.play("tap")
 		end
 	else
+		GarageSounds.play("tap")
 		previewing = { slot = slot :: string, id = id }
 	end
 	refresh()
+	autoPreview(slot)
 end
 
 local function choosePlate(key: string)
 	previewing = nil
+	if slotValue(draftLook(), "plate") ~= key then
+		GarageSounds.play("fit")
+		popCard(key)
+	else
+		GarageSounds.play("tap")
+	end
 	want.plate = key
 	sendEquip("plate")
 	refresh()
@@ -1098,6 +1286,7 @@ local function chooseCar(id: string)
 	if id == carId then
 		return
 	end
+	GarageSounds.play("tap")
 	previewing = nil
 	newEpoch()
 	GarageView.setCar(id)
@@ -1260,6 +1449,10 @@ local function openSheet(u: UI)
 			status = invoke("buy", id)
 		end
 		if status == "done" or status == "owned" then
+			if status == "done" and inside and epoch == myEpoch then
+				GarageSounds.play("buy")
+				popCard(id)
+			end
 			-- The buy used one of the server's actions: a "busy" here is the
 			-- rate limit, retried like sendEquip's.
 			local fitted = invoke("equip", forCar, slot, id)
@@ -1322,7 +1515,7 @@ local function sizeGrids(u: UI)
 	local cols = columns(u)
 	local gap = space("sm")
 	for _, layout in u.gridLayouts do
-		layout.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, cardHeight())
+		layout.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, cardHeight(tab == "plates"))
 	end
 end
 
@@ -1343,7 +1536,7 @@ local function itemCards(u: UI, parent: Instance, category: Category, orderBase:
 				chooseItem(category, item.id)
 			end,
 			onDown = function(down)
-				paintCard(card, down)
+				pressCard(card, down)
 			end,
 		})
 	end
@@ -1378,11 +1571,15 @@ local function registerChips(u: UI)
 			gui = b,
 			scroll = nil,
 			onTap = function()
+				GarageSounds.play("tab")
 				if tab ~= entry.id then
 					tab = entry.id
 					buildTab(u)
 					refresh()
 				end
+				-- The camera to the category's part (again, after a drag
+				-- took it out).
+				focusView()
 			end,
 		})
 	end
@@ -1396,11 +1593,96 @@ local function paintChips(u: UI)
 	end
 end
 
+-- A sub-tab tapped: its grid and its shot; the one showing tapped again
+-- brings the camera back in after a drag took it out.
+local function chooseView(id: string)
+	local u = ui
+	if not u then
+		return
+	end
+	GarageSounds.play("tab")
+	if subTab[tab] ~= id and currentView().id ~= id then
+		subTab[tab] = id
+		buildTab(u)
+		refresh()
+	end
+	focusView()
+end
+
+-- The sub-tab row (GarageConfig.views) at the top of the sub area, for a
+-- category with more than one set of items; EXHAUST's REV at its end.
+local function buildSubTabs(u: UI)
+	local subs = views()
+	if #subs < 2 then
+		return
+	end
+	local view = currentView()
+	local row = Instance.new("Frame")
+	row.Name = "SubTabs"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, target())
+	row.LayoutOrder = 0
+	list(row, true, space("sm"))
+	row.Parent = u.sub
+	for i, v in subs do
+		local b = UIKit.chip(row, v.label, touch)
+		b.Name = "Sub_" .. v.id
+		b.LayoutOrder = i
+		UIKit.setSelected(b, v.id == view.id)
+		-- UIKit makes a pressable Active; the tracker handles these taps.
+		b.Active = false
+		registerTap({
+			gui = b,
+			scroll = nil,
+			onTap = function()
+				chooseView(v.id)
+			end,
+		})
+	end
+	if tab == "exhaust" then
+		-- REV: a burst of pops and flames on the turntable car, with the
+		-- exhaust and flame on it now (bought or only previewing), so the flame is
+		-- part of what a player is choosing (garage round 2 §2).
+		local rev = UIKit.button(row, "REV", "secondary", touch)
+		rev.Name = "Rev"
+		rev.LayoutOrder = 99
+		rev.Activated:Connect(function()
+			local m = previewModel
+			if sheet or not m or not m.Parent or os.clock() < revUntil then
+				return -- under the confirm sheet, or the last burst is still going
+			end
+			-- The camera on the exhaust first (GarageView.focus), then the
+			-- burst, with the exhaust on the car at that moment.
+			GarageSounds.play("tap")
+			focusView(function()
+				local now = previewModel
+				if not now or now ~= m or not m.Parent then
+					return
+				end
+				-- A burst with the exhaust and flame showing (ExhaustPops),
+				-- waited out.
+				revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
+			end)
+		end)
+	end
+end
+
+-- The grid slides up into place (UITheme.motion.panel).
+local function slideIn(u: UI)
+	local pad = u.grid:FindFirstChild("Slide")
+	if pad and pad:IsA("UIPadding") then
+		pad.PaddingTop = UDim.new(0, space("md"))
+		TweenService:Create(pad, UITheme.motion.panel, { PaddingTop = UDim.new(0, 0) }):Play()
+	end
+end
+
 buildTab = function(u: UI)
 	clearContent(u)
 	registerChips(u)
 	paintChips(u)
 	u.grid.CanvasPosition = Vector2.zero
+	buildSubTabs(u)
+	local view = currentView()
 
 	if tab == "cars" then
 		local g = newGrid(u, u.grid, 1)
@@ -1416,75 +1698,68 @@ buildTab = function(u: UI)
 					chooseCar(car.id)
 				end,
 				onDown = function(down)
-					paintCard(card, down)
+					pressCard(card, down)
 				end,
 			})
 		end
 	elseif tab == "paint" then
-		-- The finish row above the colours: it wraps (relayout flows it), so
-		-- every finish shows at any width.
-		local row = Instance.new("Frame")
-		row.Name = "Finishes"
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, target())
-		row.LayoutOrder = 1
-		row.Parent = u.sub
-		finishRow = row
-		for i, item in CosmeticsConfig.inCategory("finish") do
-			local card = buildPill(row, i, item)
-			table.insert(finishPills, card.frame)
-			card.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-				if ui == u then
-					relayout(u)
-				end
-			end)
-			registerTap({
-				gui = card.frame,
-				scroll = nil,
-				onTap = function()
-					chooseItem("finish", item.id)
-				end,
-				onDown = function(down)
-					paintCard(card, down)
-				end,
-			})
+		if view.id == "tint" then
+			if not shows("tint") then
+				local note = UIKit.text(u.sub, "This car's windows can't be tinted yet", "caption", "sand", touch, true)
+				note.Name = "NoWindows"
+				note.LayoutOrder = 2
+			end
+			itemCards(u, newGrid(u, u.grid, 1), "tint", 0)
+		else
+			-- The finish row above the colours: it wraps (relayout flows it), so
+			-- every finish shows at any width.
+			local row = Instance.new("Frame")
+			row.Name = "Finishes"
+			row.BackgroundTransparency = 1
+			row.Size = UDim2.new(1, 0, 0, target())
+			row.LayoutOrder = 1
+			row.Parent = u.sub
+			finishRow = row
+			for i, item in CosmeticsConfig.inCategory("finish") do
+				local card = buildPill(row, i, item)
+				table.insert(finishPills, card.frame)
+				card.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+					if ui == u then
+						relayout(u)
+					end
+				end)
+				registerTap({
+					gui = card.frame,
+					scroll = nil,
+					onTap = function()
+						chooseItem("finish", item.id)
+					end,
+					onDown = function(down)
+						pressCard(card, down)
+					end,
+				})
+			end
+			if not paintable() then
+				local note = UIKit.text(u.sub, "This car's paint can't be changed yet", "caption", "sand", touch, true)
+				note.Name = "NotPaintable"
+				note.LayoutOrder = 2
+			end
+			itemCards(u, newGrid(u, u.grid, 1), "paint", 0)
 		end
-		if not paintable() then
-			local note = UIKit.text(u.sub, "This car's paint can't be changed yet", "caption", "sand", touch, true)
-			note.Name = "NotPaintable"
-			note.LayoutOrder = 2
-		end
-		itemCards(u, newGrid(u, u.grid, 1), "paint", 0)
-		-- Window tint, the third row under PAINT (garage round 2 §4).
-		local tint = UIKit.title(u.grid, "WINDOW TINT", "تظليل", "title", touch)
-		tint.LayoutOrder = 2
-		if not shows("tint") then
-			local note = UIKit.text(u.grid, "This car's windows can't be tinted yet", "caption", "sand", touch, true)
-			note.Name = "NoWindows"
-			note.LayoutOrder = 3
-		end
-		itemCards(u, newGrid(u, u.grid, 4), "tint", 0)
 	elseif tab == "rims" then
-		local rims = UIKit.title(u.grid, "RIMS", "جنوط", "title", touch)
-		rims.LayoutOrder = 1
-		itemCards(u, newGrid(u, u.grid, 2), "rims", 0)
-		-- Tyres: the drift mode, for this car's drivetrain
-		-- (garage-tyres-flames), and how the tyre showing drives.
-		local styles = ConfigLoader.driftStyles()
-		local tyres = UIKit.title(u.grid, "TYRES · " .. string.upper(styles.layoutName[carLayout()]), "كفرات", "title", touch)
-		tyres.LayoutOrder = 3
-		local note = UIKit.text(u.grid, "", "caption", "sand", touch, true)
-		note.Name = "TyreNote"
-		note.LayoutOrder = 4
-		tyreNote = note
-		itemCards(u, newGrid(u, u.grid, 5), "tyre", 0)
+		if view.id == "tyres" then
+			-- The drift mode, for this car's drivetrain (garage-tyres-flames):
+			-- the drivetrain and how the tyre showing drives.
+			local note = UIKit.text(u.grid, "", "caption", "sand", touch, true)
+			note.Name = "TyreNote"
+			note.LayoutOrder = 1
+			tyreNote = note
+			itemCards(u, newGrid(u, u.grid, 2), "tyre", 0)
+		else
+			itemCards(u, newGrid(u, u.grid, 1), "rims", 0)
+		end
 	elseif tab == "lights" then
-		local head = UIKit.title(u.grid, "HEADLIGHTS", "الأنوار الأمامية", "title", touch)
-		head.LayoutOrder = 1
-		itemCards(u, newGrid(u, u.grid, 2), "head", 0)
-		local tail = UIKit.title(u.grid, "TAIL LIGHTS", "الأنوار الخلفية", "title", touch)
-		tail.LayoutOrder = 3
-		itemCards(u, newGrid(u, u.grid, 4), "tail", 0)
+		itemCards(u, newGrid(u, u.grid, 1), if view.id == "tail" then "tail" else "head", 0)
 	elseif tab == "decal" then
 		local title = UIKit.title(u.grid, "SUN STRIPS", "شريط", "title", touch)
 		title.LayoutOrder = 1
@@ -1500,36 +1775,7 @@ buildTab = function(u: UI)
 			note.Name = "NoSpot"
 			note.LayoutOrder = 1
 		end
-		-- REV: a burst of pops and flames on the turntable car, with the
-		-- exhaust and flame on it now (bought or only previewing), so the flame is
-		-- part of what a player is choosing (garage round 2 §2).
-		local rev = UIKit.button(u.sub, "REV", "secondary", touch)
-		rev.Name = "Rev"
-		rev.LayoutOrder = 2
-		rev.Activated:Connect(function()
-			local m = previewModel
-			if sheet or not m or not m.Parent or os.clock() < revUntil then
-				return -- under the confirm sheet, or the last burst is still going
-			end
-			-- The rear comes round first (GarageView.present), then the burst,
-			-- with the exhaust on the car at that moment.
-			GarageView.present(function()
-				local now = previewModel
-				if not now or now ~= m or not m.Parent then
-					return
-				end
-				-- A burst with the exhaust and flame showing (ExhaustPops),
-				-- waited out.
-				revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
-			end)
-		end)
-		local tips = UIKit.title(u.grid, "EXHAUST TIPS", "أطراف العادم", "title", touch)
-		tips.LayoutOrder = 1
-		itemCards(u, newGrid(u, u.grid, 2), "exhaust", 0)
-		-- The flame style (garage-tyres-flames).
-		local flames = UIKit.title(u.grid, "FLAMES", "لهب", "title", touch)
-		flames.LayoutOrder = 3
-		itemCards(u, newGrid(u, u.grid, 4), "flame", 0)
+		itemCards(u, newGrid(u, u.grid, 1), if view.id == "flames" then "flame" else "exhaust", 0)
 	elseif tab == "plates" then
 		local shop = UIKit.button(u.sub, "SHOP PLATES", "secondary", touch)
 		shop.Name = "ShopPlates"
@@ -1551,7 +1797,7 @@ buildTab = function(u: UI)
 			local card = buildCard(g, i, o.key, "plate", o.name, 0, false, function(tile)
 				tile.BackgroundTransparency = 1
 				PlateStyles.draw(tile, plateKeyFor(o.key), format)
-			end)
+			end, true)
 			card.tile = nil -- the plate art is the tile; it never fades
 			registerTap({
 				gui = card.frame,
@@ -1560,7 +1806,7 @@ buildTab = function(u: UI)
 					choosePlate(o.key)
 				end,
 				onDown = function(down)
-					paintCard(card, down)
+					pressCard(card, down)
 				end,
 			})
 		end
@@ -1571,6 +1817,7 @@ buildTab = function(u: UI)
 	end
 	sizeGrids(u)
 	relayout(u)
+	slideIn(u)
 end
 
 ------------------------------------------------------------------------
@@ -1777,6 +2024,10 @@ local function build(): UI
 
 	local grid = scroller("Items", false)
 	list(grid, false, space("md"))
+	-- Eased from space md to 0 as a new grid comes in (slideIn).
+	local slide = Instance.new("UIPadding")
+	slide.Name = "Slide"
+	slide.Parent = grid
 	grid.Parent = panel
 
 	local foot = Instance.new("Frame")
@@ -1921,6 +2172,8 @@ local function onEnter(id: string, preview: Model)
 	previewing = nil
 	newEpoch()
 	lastApplied = nil
+	table.clear(subTab)
+	cashShown, cashTarget = nil, nil
 	-- The spawn menu can be open over the view (it reopens on stepping out
 	-- of a car); the panel takes the screen.
 	SpawnMenu.close()
@@ -1935,6 +2188,7 @@ local function onEnter(id: string, preview: Model)
 	GarageView.setPanelOpen(true)
 	buildTab(u)
 	refresh()
+	focusView()
 end
 
 local function onLeave()
@@ -2053,6 +2307,7 @@ end
 
 function GaragePanel.start(remotes: Folder)
 	remote = remotes:WaitForChild("CosmeticsAction") :: RemoteFunction
+	GarageSounds.start()
 	-- This panel has its own LEAVE in the header.
 	GarageView.setLeaveButton(false)
 	GarageView.onEnter = onEnter

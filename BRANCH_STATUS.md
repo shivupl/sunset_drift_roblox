@@ -101,6 +101,22 @@ worked, a rear-drive tyre was refused on the front-drive Hatch, and the fitted t
 to their mode and style; specs 12587 passed, 14 failed (the VehicleRig baseline). Open for the owner:
 the prices.
 
+**`garage-polish` (2026-10-05, branched from `garage-tyres-flames` at `2c9f3ca`; not merged yet): the
+garage made to go to each part.** The owner: "when selecting exhaust tips or flames, it should like
+zoom into that part and for the flames, shoudl do a quick play of it ... overall improve and polish the
+garage", choosing panel layout and sound and motion on top. Close camera shots per part
+(`GarageConfig.shots`: the wheel, the windows, each lamp corner, the windscreen, the plate, the
+exhaust), the car turned and held, the camera eased in; a drag goes back out. Tapping tips or a flame
+plays a burst once the camera is there; headlight colours blink the lamps; TAIL LIGHTS has the brake
+lights on. Sub-tabs replace the title rows (PAINT: COLOUR, TINT; WHEELS: RIMS, TYRES; LIGHTS;
+EXHAUST: TIPS, FLAMES, REV); the badge moved onto the tile's corner, so cards are shorter. Sounds
+(tab, tap, an impact wrench on a fit, a cash register on a purchase, error; picked unheard), a press
+and pop on cards, the cash counting down, the grid sliding in. Spec
+`docs/superpowers/specs/2026-10-05-garage-polish-design.md`. Light testing at the owner's word: specs
+12682 passed, 14 failed (the VehicleRig baseline); in Play the wheel, tail and exhaust shots framed,
+a Blue Flame tap fired its burst from the preview's exhaust as the camera arrived, no errors. Open for
+the owner: the shots' framings and the sounds (by ear), and the phone layout (not checked).
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
