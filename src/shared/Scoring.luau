@@ -46,6 +46,7 @@ export type Config = {
 	cashPerPoint: number,
 	maxPlausibleSpeedKmh: number,
 	teleportToleranceM: number,
+	teleportToleranceSeconds: number?, -- a replication stall this long at speed is not a teleport
 	serverTolerance: number,
 	claimWindowSeconds: number,
 	sampleHz: number,
@@ -302,7 +303,10 @@ function Scoring.plausible(cfg: Config, prevPos: Vector3, pos: Vector3, speedKmh
 		return false
 	end
 	local movedM = (pos - prevPos).Magnitude * metersPerStud
-	local allowedM = (speedKmh / 3.6) * dt + cfg.teleportToleranceM
+	-- The time term lets a stall in replication through at speed: a fixed
+	-- margin alone was 0.19 s of travel at 150 km/h and 0.1 s at 300
+	-- (speed-feel review).
+	local allowedM = (speedKmh / 3.6) * (dt + (cfg.teleportToleranceSeconds or 0)) + cfg.teleportToleranceM
 	return movedM <= allowedM
 end
 

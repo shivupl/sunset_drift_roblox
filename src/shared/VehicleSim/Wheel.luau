@@ -71,8 +71,8 @@ function Wheel.slipRatio(cfg: SlipConfig, vLong: number, omega: number, radius: 
 end
 
 -- Tyre force at a given wheel spin. fMax is load x grip x every multiplier.
--- longScale multiplies the drive grip only (the launch grip,
--- Drivetrain.launchGrip); nil is 1.
+-- longScale multiplies the drive grip only, while the tread turns faster
+-- than the road (the launch grip, Drivetrain.launchGrip); nil is 1.
 function Wheel.force(
 	cfg: SlipConfig,
 	axle: Tire.AxleConfig,
@@ -99,7 +99,9 @@ function Wheel.force(
 	-- deep floor. With no slip ratio this is exactly the legacy tyre.
 	local mu = Tire.gripCurve(s * axle.peakSlipDeg, axle)
 	local f = fMax * mu
-	local longGrip = (axle.longitudinalGrip or 1) * (longScale or 1)
+	-- longScale is drive grip only: a braking wheel grips as it always did.
+	local driving = if vLong >= 0 then kappa > 0 else kappa < 0
+	local longGrip = (axle.longitudinalGrip or 1) * (if driving then longScale or 1 else 1)
 	return {
 		fx = f * (sx / s) * longGrip,
 		fy = -math.sign(vLat) * f * (sy / s),

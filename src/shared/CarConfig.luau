@@ -202,6 +202,8 @@ local config = {
 		-- limited (8.6 kN on the rear axle, traction control hunting the
 		-- edge) and torque makes no difference to it; above that, in third
 		-- and up, the engine is the limit and this is what pulls 100-150.
+		-- Every car's curve is multiplied by powerScale below, and the launch
+		-- has launchGrip (speed-feel, 2026-10-05).
 		torqueCurve = { { 1000, 380 }, { 2500, 550 }, { 4000, 640 }, { 5500, 620 }, { 6500, 500 }, { 7000, 0 } },
 		-- A sixth gear for the higher top speed (speed-feel, 2026-10-05): the
 		-- five-speed box ran out at the rev limiter near 270 km/h; 0.68 gives
@@ -267,14 +269,13 @@ local config = {
 		-- ...and only after the brake has been held that long while stopped,
 		-- so braking to a standstill does not snap into reverse.
 		reverseHoldSeconds = 0.4,
-		-- Top speed as a limiter. 210 km/h: the map's 400 m curve is at the
-		-- grip limit at 220 (v^2/r = 9.3 m/s^2), the 2 km straight takes 34 s,
-		-- and it is still 20 over what most players will hold a lane at. Drive
-		-- fades over the last topSpeedFadeKmh so the ceiling is a plateau.
-		-- 300 from 210 (speed-feel, 2026-10-05: the owner, "overall game
-		-- driving feels pretty slow ... needs to feel at least 50% faster if
-		-- not 2x"; real tafheet runs 160-260). The map's 400 m curve is at the
-		-- grip limit at 220, so past that it is a braking corner.
+		-- Top speed as a limiter: drive fades over the last topSpeedFadeKmh so
+		-- the ceiling is a plateau. It was 210 (the map's 400 m curve is at the
+		-- grip limit at 220); 300 since speed-feel (2026-10-05: the owner,
+		-- "overall game driving feels pretty slow ... needs to feel at least
+		-- 50% faster if not 2x"; real tafheet runs 160-260), so that curve is a
+		-- braking corner now. A car whose drag tops it out first never sees
+		-- the limiter (the Pickup near 245, the Cruiser near 270).
 		topSpeedKmh = 300,
 		topSpeedFadeKmh = 25,
 		-- The game's pace: the torque curve times powerScale. 1.45 with the
@@ -299,6 +300,11 @@ local config = {
 		-- spinning at 82% of peak grip and the car pulled 3.6 m/s^2 instead of
 		-- 4.7. Gated off above tractionControlMaxDriftDeg of slide and while the
 		-- lever is in, so it never touches a drift.
+		-- Left at 120 with the game's pace: the review feared front drive's
+		-- fronts would spin from 120 to the 3-4 shift with 1.45 times the
+		-- torque, but the Hatch runs 100-160 in 2.46-2.53 s with it at 120 or
+		-- 160 alike, its fronts at their peak slip (11%), not past it
+		-- (speed-feel, Play, 2026-10-05).
 		tractionControlBelowKmh = 120,
 		tractionControlMaxDriftDeg = 8,
 		-- Floor raised and recovery quickened for the launch: at 0.35 and
@@ -857,6 +863,11 @@ local config = {
 		-- A faint shake at speed: up to maxDeg of pitch and yaw, from fromKmh
 		-- to fullKmh, at about hz. Subtle: the car must never look unstable.
 		shake = { fromKmh = 130, fullKmh = 300, maxDeg = 0.18, hz = 7 },
+		-- The widest the view may get across, degrees. The profiles' FOVs are
+		-- vertical, so a wide phone saw far more across than a 16:9 screen
+		-- (19.5:9 at 96: 135 against 126). 126 is a 16:9 screen at 96; a
+		-- 19.5:9 phone stops at 84 vertical.
+		maxHorizontalFov = 126,
 		-- Profiles: normal driving, sliding, and two-wheel. All distances in
 		-- metres. lateralOffset is toward the lifted side while on two wheels
 		-- (so the airborne wheels are in frame), toward the outside of the
@@ -1576,6 +1587,10 @@ local config = {
 		-- 360 from 320 with the top speed at 300 (speed-feel, 2026-10-05).
 		maxPlausibleSpeedKmh = 360,
 		teleportToleranceM = 8, -- movement beyond speed x dt plus this is a teleport
+		-- ...plus this much time at the reported speed: a stall in replication
+		-- at speed is not a teleport. A fixed 8 m was 0.19 s of travel at
+		-- 150 km/h and 0.1 s at 300 (speed-feel review, 2026-10-05).
+		teleportToleranceSeconds = 0.25,
 		serverTolerance = 1.25, -- how far a claim may exceed the server's own total
 		claimWindowSeconds = 1.5, -- how long a claim stays usable
 		sampleHz = 20, -- server sampling rate

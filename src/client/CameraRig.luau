@@ -181,7 +181,13 @@ function CameraRig.start(model: Model)
 			camCf *= CFrame.Angles(math.rad(amp * math.noise(t, 0.31)), math.rad(amp * math.noise(t, 7.7)), 0)
 		end
 		cam.CFrame = camCf
-		cam.FieldOfView = math.min(params.baseFov + params.fovPerKmh * kmh, params.maxFov)
+		-- Capped at maxHorizontalFov across, whatever the screen's shape: the
+		-- field of view is vertical, so a 19.5:9 phone at 96 saw 135 degrees
+		-- across against 126 on a 16:9 screen (speed-feel review).
+		local vp = cam.ViewportSize
+		local aspect = if vp.Y > 0 then vp.X / vp.Y else 16 / 9
+		local across = math.deg(2 * math.atan(math.tan(math.rad(camCfg.maxHorizontalFov) / 2) / aspect))
+		cam.FieldOfView = math.min(params.baseFov + params.fovPerKmh * kmh, params.maxFov, across)
 	end)
 end
 

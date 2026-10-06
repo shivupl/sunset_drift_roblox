@@ -347,9 +347,12 @@ times `powerScale` (1.45) on every car, a sixth gear, the top speed 300 from
 210, and a launch grip on the driven tyres off the line (1.4), because below
 about 100 km/h the launch was grip-limited and power alone did nothing
 there. The launch grip only acts while traction control may (pointing
-straight, lever out, four wheels), so no drift number moves: 0-200 is 1.6
-to 1.7 times quicker on every drivetrain, and a Hajwala slide from 150 and a
-lever 360 from 160 measure as the same moves did from 100 and 110. Real
+straight, lever out, four wheels), so no drift number moves. 0-100 is 1.3 to
+1.4 times quicker; 0-200 1.6 to 1.7 times on the rear- and front-drive cars
+(Krown Vik 14.1 to 8.9 s, Kamri 15.0 to 8.8), and the Batrol, which topped
+out at 196, reaches 200 in 11.3 s. A Hajwala slide from 150 and a lever 360
+from 160 measure as the same moves did from 100 and 110, and the natl is
+unchanged (36-37 degrees, down after 3.4 s). Real
 tafheet runs at 160-260, so ordinary drifting moving up from 100 to 150 is
 closer to the real thing. **Feels faster:** the desert highway is wide and
 sparse, so little streams past the camera. The view now widens further with

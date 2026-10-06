@@ -76,4 +76,12 @@ return function(t: T)
 	local plainStep = Wheel.step(cfg, axle, 10 * 1.05 / r, 10, 0, r, fMax, 1.2, 600, 0, 1 / 60)
 	local boostStep = Wheel.step(cfg, axle, 10 * 1.05 / r, 10, 0, r, fMax, 1.2, 600, 0, 1 / 60, 1.4)
 	t.ok(boostStep.fx > plainStep.fx, "the step passes longScale through")
+	-- ...and only on the drive: a braking wheel grips as it always did
+	-- (speed-feel review: it shortened braking on the driven axle)
+	local braking = Wheel.force(cfg, axle, v, 0, v * 0.95 / r, r, fMax)
+	local brakingBoost = Wheel.force(cfg, axle, v, 0, v * 0.95 / r, r, fMax, 1.4)
+	t.near(brakingBoost.fx, braking.fx, 1e-6, "longScale leaves a braking wheel alone")
+	local reversing = Wheel.force(cfg, axle, -v, 0, -v * 1.05 / r, r, fMax)
+	local reversingBoost = Wheel.force(cfg, axle, -v, 0, -v * 1.05 / r, r, fMax, 1.4)
+	t.near(reversingBoost.fx, reversing.fx * 1.4, 1e-6, "driving backwards is drive too")
 end

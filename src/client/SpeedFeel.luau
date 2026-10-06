@@ -37,6 +37,7 @@ local gui: ScreenGui? = nil
 local lines: { Line } = {}
 local free: { Frame } = {}
 local owed = 0 -- fractional lines owed to the spawn rate
+local lastCentre: Vector2? = nil -- where the lines last ran out from
 local wind: Sound? = nil
 local rng = Random.new()
 
@@ -128,13 +129,22 @@ function SpeedFeel.start(model: Model)
 
 		-- Speed lines, around the point the car is heading for.
 		local l = feel.lines
-		local k = SpeedFeel.ramp(kmh, l.fromKmh, l.fullKmh)
 		local view = cam.ViewportSize
 		local halfDiag = view.Magnitude / 2
 		local camCf = cam.CFrame
 		local ahead = if vel.Magnitude > 1 then vel.Unit else camCf.LookVector
+		-- Only while the car is going where the camera looks: through a 360
+		-- the point it heads for swings off the screen, and the lines faded
+		-- out instead of radiating from the middle over a receding view
+		-- (speed-feel review).
+		local facing = math.clamp((ahead:Dot(camCf.LookVector) - 0.5) / 0.4, 0, 1)
+		local k = SpeedFeel.ramp(kmh, l.fromKmh, l.fullKmh) * facing
 		local vp, onScreen = cam:WorldToViewportPoint(camCf.Position + ahead * 1000)
-		local centre = if onScreen then Vector2.new(vp.X, vp.Y) else view / 2
+		local centre = lastCentre or view / 2
+		if onScreen then
+			centre = Vector2.new(vp.X, vp.Y)
+		end
+		lastCentre = centre
 		owed += l.perSecond * k * dt
 		while owed >= 1 and #free > 0 do
 			owed -= 1
@@ -167,8 +177,8 @@ function SpeedFeel.start(model: Model)
 				f.Size = UDim2.fromOffset(ln.length * halfDiag, l.thickness)
 				f.Rotation = math.deg(ln.angle)
 				f.BackgroundColor3 = l.color
-				-- Fades in and out over its life.
-				f.BackgroundTransparency = 1 - (1 - l.transparency) * math.sin(math.pi * t)
+				-- Fades in and out over its life, and with the view.
+				f.BackgroundTransparency = 1 - (1 - l.transparency) * math.sin(math.pi * t) * facing
 				f.Visible = true
 			end
 		end
@@ -200,6 +210,7 @@ function SpeedFeel.stop()
 	table.clear(lines)
 	table.clear(free)
 	owed = 0
+	lastCentre = nil
 	if wind then
 		wind:Destroy()
 		wind = nil
