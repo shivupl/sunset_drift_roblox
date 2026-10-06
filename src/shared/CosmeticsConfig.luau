@@ -1,6 +1,7 @@
 --!strict
 -- Garage cosmetics: paint, finish, rims, head/tail lamp colour, sun strips
--- (the "decal" category) and exhaust tips. Asked by the owner on
+-- (the "decal" category), exhaust tips, window tint, tyres (the drift
+-- mode) and exhaust flames (the flame style). Asked by the owner on
 -- 2026-09-28, alongside the garage and customisation spec
 -- (hajwala-project-phases.md / the 2026-09-28 garage design docs): every
 -- car should have paint, wheels, lights, a strip and an exhaust to buy and
@@ -12,9 +13,18 @@
 -- string) and never renamed once shipped, only added to. A stock id per
 -- category (price 0) is the factory look nobody has to buy; CarLook falls
 -- back to it when nothing is owned or chosen for that slot.
+--
+-- Tyres and flames (garage-tyres-flames, the owner, 2026-10-05: "make the
+-- differnt driftmodes we made different tire options in the garage instead
+-- of drift options in the car menu. by default start all at classic ...
+-- same for the tire flames. have classic be the default and the other
+-- flames purchasable in the garage"). A tyre is a drift mode
+-- (DriftStyles): each fits one drivetrain, bought once for every car with
+-- it; the stock Classic tyre is each drivetrain's Classic. A flame is an
+-- exhaust flame style (ExhaustStyles); the stock one is Classic.
 local CosmeticsConfig = {}
 
-export type Category = "paint" | "finish" | "rims" | "head" | "tail" | "decal" | "exhaust" | "tint"
+export type Category = "paint" | "finish" | "rims" | "head" | "tail" | "decal" | "exhaust" | "tint" | "tyre" | "flame"
 
 export type Item = {
 	id: string,
@@ -52,6 +62,14 @@ export type Item = {
 	glassColor: Color3?,
 	glassTransparency: number?,
 	screenTransparency: number?,
+	-- Tyre only: the drift mode it drives (a DriftStyles id) and the
+	-- drivetrain it fits ("RWD", "FWD", "AWD"). The stock tyre has neither:
+	-- it is every drivetrain's Classic (DriftStyles.default).
+	driftStyle: string?,
+	layout: string?,
+	-- Flame only: the exhaust flame style (an ExhaustStyles id). Its tile in
+	-- the garage runs from flameCore to flameColor, the style's own colours.
+	flameStyle: string?,
 }
 
 -- Garage actions (buy, equip, plate) a player may send per second through
@@ -404,9 +422,10 @@ CosmeticsConfig.flames = {
 }
 
 -- Panel order: also the order categories' chips appear in within the panel.
--- tint was added last (garage round 2 §4), so every look string written
--- before it encodes exactly as it did.
-CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust", "tint" } :: { Category }
+-- tint was added last (garage round 2 §4), then tyre and flame
+-- (garage-tyres-flames), so every look string written before them encodes
+-- exactly as it did.
+CosmeticsConfig.CATEGORIES = { "paint", "finish", "rims", "head", "tail", "decal", "exhaust", "tint", "tyre", "flame" } :: { Category }
 
 -- Ordered as shown in the panel within each category.
 CosmeticsConfig.items = {
@@ -543,6 +562,34 @@ CosmeticsConfig.items = {
 	{ id = "tint_light", category = "tint", name = "Light", price = 15000, glassColor = Color3.fromHex("#1C2328"), glassTransparency = 0.5, screenTransparency = 0.7 },
 	{ id = "tint_dark", category = "tint", name = "Dark", price = 25000, glassColor = Color3.fromHex("#121619"), glassTransparency = 0.3, screenTransparency = 0.62 },
 	{ id = "tint_limo", category = "tint", name = "Limo", price = 45000, rare = true, glassColor = Color3.fromHex("#0A0B0D"), glassTransparency = 0.12, screenTransparency = 0.55 },
+
+	-- TYRES: the drift mode (DriftStyles; garage-tyres-flames). Classic is
+	-- free and fits every car; the rest fit their own drivetrain only, and
+	-- the garage shows a car the ones it can take. The modes are the drift
+	-- overhaul's (2026-10-05), each tuned in Play; they change the handling,
+	-- so they are priced alike, a first guess at 25,000 for the owner to
+	-- weigh like every price here.
+	{ id = "tyre_classic", category = "tyre", name = "Classic", price = 0 },
+	{ id = "tyre_hajwala", category = "tyre", name = "Hajwala", price = 25000, driftStyle = "hajwala", layout = "RWD" },
+	{ id = "tyre_kick", category = "tyre", name = "Kick", price = 25000, driftStyle = "power", layout = "RWD" },
+	{ id = "tyre_angle", category = "tyre", name = "High Angle", price = 25000, driftStyle = "angle", layout = "RWD" },
+	{ id = "tyre_tafheet", category = "tyre", name = "Tafheet", price = 25000, driftStyle = "tafheet", layout = "FWD" },
+	{ id = "tyre_liftoff", category = "tyre", name = "Lift-Off", price = 25000, driftStyle = "liftoff", layout = "FWD" },
+	{ id = "tyre_pivot", category = "tyre", name = "Pivot", price = 25000, driftStyle = "pivot", layout = "FWD" },
+	{ id = "tyre_rally", category = "tyre", name = "Rally", price = 25000, driftStyle = "rally", layout = "AWD" },
+	{ id = "tyre_driftmode", category = "tyre", name = "Drift Mode", price = 25000, driftStyle = "driftmode", layout = "AWD" },
+	{ id = "tyre_tatweef", category = "tyre", name = "Tatweef", price = 25000, driftStyle = "tatweef", layout = "AWD" },
+
+	-- FLAMES: the exhaust flame style (ExhaustStyles; garage-tyres-flames).
+	-- Classic, the garage round 2 flame, is free; the 2026-10-04 styles are
+	-- bought, a first guess priced by how much show they put on: Crackle's
+	-- dense pops, 2-Step's even bangs, Blue Flame's long blue jets. The
+	-- exhaust tips still scale whichever flame is on (crackleChance,
+	-- flameSize).
+	{ id = "flame_classic", category = "flame", name = "Classic", price = 0, flameStyle = "classic", flameCore = Color3.fromHex("#6C8CFF"), flameColor = Color3.fromHex("#FF6A1A") },
+	{ id = "flame_crackle", category = "flame", name = "Crackle", price = 20000, flameStyle = "crackle", flameCore = Color3.fromHex("#4A7BFF"), flameColor = Color3.fromHex("#FF8A2A") },
+	{ id = "flame_twostep", category = "flame", name = "2-Step", price = 30000, flameStyle = "twostep", flameCore = Color3.fromHex("#FFD27A"), flameColor = Color3.fromHex("#FF8A2A") },
+	{ id = "flame_blue", category = "flame", name = "Blue Flame", price = 40000, rare = true, flameStyle = "blue", flameCore = Color3.fromHex("#2E5BFF"), flameColor = Color3.fromHex("#B040FF") },
 } :: { Item }
 
 local byId: { [string]: Item } = {}
@@ -577,6 +624,12 @@ end
 function CosmeticsConfig.isStock(id: string): boolean
 	local item = byId[id]
 	return item ~= nil and item.price == 0
+end
+
+-- Whether an item fits a car of this drivetrain ("RWD", "FWD", "AWD"):
+-- a tyre only its own; everything else, and the stock tyre, every car.
+function CosmeticsConfig.fits(item: Item, layout: string): boolean
+	return item.layout == nil or item.layout == layout
 end
 
 -- The item with this id, or nil.

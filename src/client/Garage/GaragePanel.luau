@@ -35,6 +35,11 @@
 --     for that car the way the spawn menu does and leaves the view.
 --   * PLATES equips one of your plates on this car; SHOP PLATES opens the
 --     spawn menu's plates tab, which stays the one place plates are bought.
+--   * WHEELS has the rims and the tyres, EXHAUST the tips and the flames
+--     (garage-tyres-flames, 2026-10-05). A tyre is a drift mode: the row
+--     lists only the tyres for this car's drivetrain, and the line under
+--     its title says how the tyre showing drives. REV fires the flame
+--     showing, so a flame is heard and seen before it is bought.
 --   * The pill on the panel's edge, H or gamepad Y collapse the panel; the
 --     car re-centres (GarageView.setPanelOpen).
 --
@@ -118,6 +123,8 @@ local CATEGORY_NAMES: { [string]: string } = {
 	decal = "Sun strip",
 	exhaust = "Exhaust",
 	tint = "Window tint",
+	tyre = "Tyres",
+	flame = "Exhaust flame",
 }
 
 -- CosmeticsAction statuses, as the player reads them.
@@ -205,6 +212,8 @@ local epoch = 0
 local cards: { Card } = {}
 -- PAINT's finish row and its pills, flowed by relayout.
 local finishRow: Frame? = nil
+-- WHEELS: the line under the tyres' title, how the tyre showing drives.
+local tyreNote: TextLabel? = nil
 local finishPills: { GuiObject } = {}
 -- The owned plates changed while the PLATES list could not be rebuilt.
 local platesDirty = false
@@ -279,13 +288,25 @@ local function savedLook(): Look
 	return look
 end
 
+-- The drivetrain of the car on the turntable: its tyres are the ones that
+-- fit it (CosmeticsConfig.fits).
+local function carLayout(): string
+	return ConfigLoader.driftStyles().layoutOf(ConfigLoader.forCar(carId))
+end
+
 -- The effective id in a slot: the item's id, or for the plate the key
 -- ("" for the account's plate).
 local function slotValue(look: Look, slot: Slot): string
 	if slot == "plate" then
 		return look.plate or ""
 	end
-	return CarLook.item(look, slot :: Category).id
+	local item = CarLook.item(look, slot :: Category)
+	-- A tyre that no longer fits the car (the catalog changed its
+	-- drivetrain) drives as Classic (DriftStyle), so it shows as Classic.
+	if item.layout ~= nil and item.layout ~= carLayout() then
+		return CosmeticsConfig.stockId(slot :: Category)
+	end
+	return item.id
 end
 
 local function setSlot(look: Look, slot: Slot, value: string)
@@ -372,7 +393,8 @@ local function showsSlot(slot: string, canPaint: boolean, hasStrip: boolean, has
 		return canPaint
 	elseif slot == "decal" then
 		return hasStrip
-	elseif slot == "exhaust" then
+	elseif slot == "exhaust" or slot == "flame" then
+		-- The flames come out of the tips' outlets (CarCosmetics.outlets).
 		return hasTips
 	elseif slot == "tint" then
 		return hasWindows
@@ -590,6 +612,20 @@ local function drawItemTile(tile: Frame, item: CosmeticsConfig.Item)
 		else
 			tileBlank(tile)
 		end
+	elseif c == "tyre" then
+		-- Every tyre looks alike: it is how it drives that differs (the line
+		-- under the row's title).
+		tileCircles(tile, 1, C.asphalt900)
+	elseif c == "flame" then
+		-- The style's colours, from the hot core at the mouth to its body.
+		if item.flameCore and item.flameColor then
+			tile.BackgroundColor3 = Color3.new(1, 1, 1)
+			local g = Instance.new("UIGradient")
+			g.Color = ColorSequence.new(item.flameCore, item.flameColor)
+			g.Parent = tile
+		else
+			tileBlank(tile)
+		end
 	else
 		tileBlank(tile)
 	end
@@ -717,6 +753,12 @@ local function paintCards()
 	local ctx = context()
 	for _, card in cards do
 		paintCard(card, nil, ctx)
+	end
+	local note = tyreNote
+	if note then
+		local styles = ConfigLoader.driftStyles()
+		local mode = styles.resolve(carLayout(), CarLook.item(ctx.draft, "tyre").driftStyle)
+		note.Text = styles.styles[mode].blurb
 	end
 end
 
@@ -1285,7 +1327,12 @@ local function sizeGrids(u: UI)
 end
 
 local function itemCards(u: UI, parent: Instance, category: Category, orderBase: number)
+	local layout = carLayout()
 	for i, item in CosmeticsConfig.inCategory(category) do
+		-- Tyres: only the ones for this car's drivetrain.
+		if not CosmeticsConfig.fits(item, layout) then
+			continue
+		end
 		local card = buildCard(parent, orderBase + i, item.id, category, item.name, item.price, item.rare == true, function(tile)
 			drawItemTile(tile, item)
 		end)
@@ -1306,6 +1353,7 @@ local function clearContent(u: UI)
 	closeSheet()
 	press = nil
 	finishRow = nil
+	tyreNote = nil
 	table.clear(finishPills)
 	table.clear(cards)
 	table.clear(taps)
@@ -1417,7 +1465,19 @@ buildTab = function(u: UI)
 		end
 		itemCards(u, newGrid(u, u.grid, 4), "tint", 0)
 	elseif tab == "rims" then
-		itemCards(u, newGrid(u, u.grid, 1), "rims", 0)
+		local rims = UIKit.title(u.grid, "RIMS", "جنوط", "title", touch)
+		rims.LayoutOrder = 1
+		itemCards(u, newGrid(u, u.grid, 2), "rims", 0)
+		-- Tyres: the drift mode, for this car's drivetrain
+		-- (garage-tyres-flames), and how the tyre showing drives.
+		local styles = ConfigLoader.driftStyles()
+		local tyres = UIKit.title(u.grid, "TYRES · " .. string.upper(styles.layoutName[carLayout()]), "كفرات", "title", touch)
+		tyres.LayoutOrder = 3
+		local note = UIKit.text(u.grid, "", "caption", "sand", touch, true)
+		note.Name = "TyreNote"
+		note.LayoutOrder = 4
+		tyreNote = note
+		itemCards(u, newGrid(u, u.grid, 5), "tyre", 0)
 	elseif tab == "lights" then
 		local head = UIKit.title(u.grid, "HEADLIGHTS", "الأنوار الأمامية", "title", touch)
 		head.LayoutOrder = 1
@@ -1441,7 +1501,7 @@ buildTab = function(u: UI)
 			note.LayoutOrder = 1
 		end
 		-- REV: a burst of pops and flames on the turntable car, with the
-		-- exhaust on it now (bought or only previewing), so the flame is
+		-- exhaust and flame on it now (bought or only previewing), so the flame is
 		-- part of what a player is choosing (garage round 2 §2).
 		local rev = UIKit.button(u.sub, "REV", "secondary", touch)
 		rev.Name = "Rev"
@@ -1458,12 +1518,18 @@ buildTab = function(u: UI)
 				if not now or now ~= m or not m.Parent then
 					return
 				end
-				local item = CarLook.item(draftLook(), "exhaust")
-				-- A burst in this client's exhaust style (ExhaustPops), waited out.
-				revUntil = os.clock() + ExhaustPops.rev(m, item)
+				-- A burst with the exhaust and flame showing (ExhaustPops),
+				-- waited out.
+				revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
 			end)
 		end)
-		itemCards(u, newGrid(u, u.grid, 1), "exhaust", 0)
+		local tips = UIKit.title(u.grid, "EXHAUST TIPS", "أطراف العادم", "title", touch)
+		tips.LayoutOrder = 1
+		itemCards(u, newGrid(u, u.grid, 2), "exhaust", 0)
+		-- The flame style (garage-tyres-flames).
+		local flames = UIKit.title(u.grid, "FLAMES", "لهب", "title", touch)
+		flames.LayoutOrder = 3
+		itemCards(u, newGrid(u, u.grid, 4), "flame", 0)
 	elseif tab == "plates" then
 		local shop = UIKit.button(u.sub, "SHOP PLATES", "secondary", touch)
 		shop.Name = "ShopPlates"

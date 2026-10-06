@@ -111,9 +111,9 @@ function VehicleController.start(model: Model, remotes: Folder)
 	local id = model:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
 	carId = if type(id) == "string" then id else nil
 	exitRemote = remotes:FindFirstChild("ExitCar") :: RemoteEvent
-	-- The sim drives on the car's config with this player's drift style on
-	-- it (DriftStyle), and takes a new one the moment the style changes.
-	DriftStyle.setCar(carId)
+	-- The sim drives on the car's config with the drift mode of its tyre on
+	-- it (DriftStyle), and takes a new one the moment the mode changes.
+	DriftStyle.setCar(carId, model)
 	local s = VehicleSim.new(model, DriftStyle.configFor(carId))
 	DriftStyle.changed = function()
 		if sim == s then

@@ -23,7 +23,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 
 Where the settings live:
 - **World:** `src/server/World/WorldConfig.luau` and `City/CityConfig.luau`.
-- **Car:** `src/shared/CarConfig.luau` and `CarCatalog.luau` (each car's `drivetrain.layout`); drift modes per drivetrain in `DriftStyles.luau` (Settings tab in game; O / Shift+O in Studio; L reloads them; the line that keeps a held slide on the highway is `CarConfig.line`).
+- **Car:** `src/shared/CarConfig.luau` and `CarCatalog.luau` (each car's `drivetrain.layout`); drift modes per drivetrain in `DriftStyles.luau` (bought and fitted as tyres in the garage, `CosmeticsConfig` category `tyre`; O / Shift+O in Studio; L reloads them; the line that keeps a held slide on the highway is `CarConfig.line`); exhaust flame styles in `ExhaustStyles.luau` (garage flames, category `flame`; P in Studio).
 - **Garage and UI:** `WorldConfig.garage` (the building), `src/shared/GarageConfig.luau` (the view), `CosmeticsConfig.luau` (items and how looks are drawn), `UITheme.luau` (UI tokens).
 
 World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road starts at the origin and runs along -Z; +X is the road's right; the sunset is on the left.

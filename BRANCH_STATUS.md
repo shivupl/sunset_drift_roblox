@@ -26,8 +26,8 @@ the fronts' load shares swapped at the owner's request (`frontLoadSwap`); tan du
 sand or dirt, its settings kept exactly as the owner signed them off. Specs in `AutoFlip.spec` and
 `TireHeat.spec`; tuning history in TUNING.md (autoFlip, effects).
 
-**`exhaust-flames` (merged into `main` 2026-10-05 by fast-forward, not pushed yet; the local branch is
-kept for now): exhaust pop styles.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
+**`exhaust-flames` (merged into `main` 2026-10-05 by fast-forward and pushed with it; the local branch
+is kept for now): exhaust pop styles.** The owner asked for "different exhaust flame variants but really cool ones" with audio "like the
 sputter". Three new styles plus today's look as Classic (`ExhaustStyles`): Crackle (the default; a
 thinning, irregular string of cracks), Blue Flame (even cracks, blue-violet torches) and 2-Step (an
 even machine-gun beat). A fourth, Anti-Lag (a few big bangs and fireballs), was taken out completely
@@ -40,8 +40,8 @@ client. In Studio, P cycles the style. Spec, research and plan in docs/superpowe
 (`2026-10-04-exhaust-flame-*`); measurements in TUNING.md (`ExhaustStyles`). The owner tried them in
 Play ("i think they work great") and asked for the rest to be merged. A final whole-branch review found
 no critical issues; its fixes (texture fallback, the flash light's range, Classic's count, 2-Step's
-beat, stale docs) went in before the merge. Open for the owner: whether styles become garage items or
-ride on the exhaust tips, and the pop volumes (set by measured peaks, not by ear).
+beat, stale docs) went in before the merge. Open for the owner: the pop volumes (set by measured
+peaks, not by ear). The styles became garage flames on `garage-tyres-flames`.
 
 **`drift-feel` (2026-10-05, branched from `main` at `2d3e066`; merged into `main` the same day with
 `drift-overhaul` and `speed-feel`, and deleted): drivetrains, drift styles, the feather and the drift
@@ -83,6 +83,23 @@ trails a fast car, a faint high-speed shake, faint screen-edge speed lines and a
 (`client/SpeedFeel`). Measured in TUNING.md (`drivetrain`, `camera`, `speedFeel`). Open for the owner:
 whether earnings should be held level (`scoring.referenceSpeedKmh`), the wind sound (picked unheard),
 and how strong the lines and shake are.
+
+**`garage-tyres-flames` (2026-10-05, branched from `main` at `3b4116b`; not merged yet): drift modes
+as tyres, flame styles as garage items.** The owner: "make the differnt driftmodes we made different
+tire options in the garage instead of drift options in the car menu. by default start all at classic
+... same for the tire flames. have classic be the default and the other flames purchasable in the
+garage". Two new cosmetic slots, `tyre` and `flame`, appended after `tint` so every saved look reads
+the same. Every car starts on Classic tyres (its drivetrain's Classic mode) and the Classic flame
+(now `ExhaustStyles.default`); the nine other modes are tyres at 25,000 that fit only their
+drivetrain (the server refuses the rest), and Crackle, 2-Step and Blue Flame are flames at 20,000,
+30,000 and 40,000. WHEELS shows the car's tyres under its rims with the showing tyre's blurb; EXHAUST
+shows the flames under the tips, and REV plays the flame showing. The DRIFT MODE section left the
+Settings tab. This settles three open calls: the drift defaults (Classic), saving the choice (per car,
+with the look), and whether flame styles become garage items (yes). Studio's O, Shift+O, P and
+`DriftLab` still override what is fitted. Checked in Play: the rows and preview drew, buy and fit
+worked, a rear-drive tyre was refused on the front-drive Hatch, and the fitted tyre and flame resolved
+to their mode and style; specs 12587 passed, 14 failed (the VehicleRig baseline). Open for the owner:
+the prices.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

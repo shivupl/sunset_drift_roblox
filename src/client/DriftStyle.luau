@@ -1,16 +1,17 @@
 --!strict
--- Which drift style this player drives (DriftStyles; the owner, 2026-10-05:
--- "implement a couple different styles (multiple for each) that i can test
--- and try out in game"). One choice per drivetrain, kept as LocalPlayer
--- attributes (DriftStyle_RWD, DriftStyle_FWD, DriftStyle_AWD) for the
--- session, so swapping cars keeps it. Not saved to the profile until the
--- owner picks the styles to keep.
+-- Which drift mode the car this client drives is on (DriftStyles): the
+-- mode of the tyre fitted to it, read from the car's Look attribute
+-- (CarLook's tyre slot), Classic until one is bought. Tyres are bought and
+-- fitted in the garage and saved per car with the rest of its look
+-- (garage-tyres-flames; the owner, 2026-10-05: "make the differnt
+-- driftmodes we made different tire options in the garage instead of drift
+-- options in the car menu"). A tyre fitted while driving takes at once.
 --
--- The menu's Settings tab sets it (SettingsPanel). In Studio only, O cycles
--- the current car's styles and Shift+O every style, any drivetrain (for
--- comparing them on one car: the DriftStyleAny attribute, which O and the
--- Settings tab clear), each shown at the top of the screen for a moment,
--- like the flames' P.
+-- In Studio only, O cycles the current car's modes (the LocalPlayer
+-- attributes DriftStyle_RWD, DriftStyle_FWD, DriftStyle_AWD, which win
+-- over the tyre) and Shift+O every mode, any drivetrain (for comparing them
+-- on one car: the DriftStyleAny attribute, which O clears), each shown at
+-- the top of the screen for a moment, like the flames' P.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +20,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
+local CarLook = require(Shared:WaitForChild("CarLook"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 
 local DriftStyle = {}
@@ -28,11 +30,8 @@ local function S(): ConfigLoader.Styles
 	return ConfigLoader.driftStyles()
 end
 
--- The sim swaps its config when the choice changes (VehicleController); the
--- Settings tab repaints, and rebuilds its chips when the car's drivetrain
--- changes.
+-- The sim swaps its config when the mode changes (VehicleController).
 DriftStyle.changed = nil :: (() -> ())?
-DriftStyle.panelChanged = nil :: (() -> ())?
 
 -- Studio's any-drivetrain pick.
 local ANY_ATTRIBUTE = "DriftStyleAny"
@@ -42,9 +41,14 @@ local LAB_ATTRIBUTE = "DriftLab"
 -- The Studio switch's label: how long it stays up.
 local LABEL_SECONDS = 1.5
 
--- The car this client drives, or drove last (its drivetrain is what the
--- Settings tab offers); nil before the first.
+-- The car this client drives, or drove last, and its model (whose Look
+-- carries the tyre); nil before the first.
 local car: string? = nil
+local carModel: Model? = nil
+local lookConn: RBXScriptConnection? = nil
+-- The mode the car was last on, so a look change that leaves the tyre
+-- alone (a paint) does not swap the sim's config.
+local lastStyle: string? = nil
 -- Configs with a style on, per car and style, until a config reload.
 local cache: { [string]: ConfigLoader.Config } = {}
 
@@ -54,23 +58,34 @@ end
 
 -- The drivetrain of the car this client drives, or drove last (the default
 -- car's before any).
-function DriftStyle.carLayout(): string
+local function carLayout(): string
 	return S().layoutOf(ConfigLoader.forCar(car))
 end
 
--- This player's style for a drivetrain.
-function DriftStyle.current(layout: string): string
-	return S().resolve(layout, Players.LocalPlayer:GetAttribute(attr(layout)))
+-- The mode of the tyre on the car this client drives, for its drivetrain:
+-- a tyre that does not fit it (the catalog changed the car's drivetrain),
+-- or none, is the drivetrain's Classic (DriftStyles.resolve).
+local function tyreStyle(layout: string): string
+	local model = carModel
+	local look = if model then CarLook.decode(model:GetAttribute(CarLook.ATTRIBUTE)) else {}
+	return S().resolve(layout, CarLook.item(look, "tyre").driftStyle)
 end
 
--- The style a car drives on: Studio's any-drivetrain pick if one is set,
--- else this player's style for the car's drivetrain.
+-- The mode a car drives on: in Studio, the any-drivetrain pick or O's pick
+-- for the drivetrain if one is set; else its tyre's.
 function DriftStyle.forCar(carId: string?): string
-	local any = Players.LocalPlayer:GetAttribute(ANY_ATTRIBUTE)
-	if RunService:IsStudio() and type(any) == "string" and S().styles[any] then
-		return any
+	local layout = S().layoutOf(ConfigLoader.forCar(carId))
+	if RunService:IsStudio() then
+		local any = Players.LocalPlayer:GetAttribute(ANY_ATTRIBUTE)
+		if type(any) == "string" and S().styles[any] then
+			return any
+		end
+		local picked = Players.LocalPlayer:GetAttribute(attr(layout))
+		if picked ~= nil then
+			return S().resolve(layout, picked)
+		end
 	end
-	return DriftStyle.current(S().layoutOf(ConfigLoader.forCar(carId)))
+	return tyreStyle(layout)
 end
 
 -- The config a car's sim drives on: the car's own with its style on.
@@ -100,29 +115,38 @@ function DriftStyle.clearCache()
 	table.clear(cache)
 end
 
--- The car this client now drives (VehicleController).
-function DriftStyle.setCar(carId: string?)
-	if carId then
-		car = carId
-	end
-	if DriftStyle.panelChanged then
-		DriftStyle.panelChanged()
-	end
-end
-
 local function notify()
+	lastStyle = DriftStyle.forCar(car)
 	if DriftStyle.changed then
 		DriftStyle.changed()
 	end
-	if DriftStyle.panelChanged then
-		DriftStyle.panelChanged()
+end
+
+-- The car this client now drives (VehicleController): its tyre is watched,
+-- so one fitted in the garage takes at once.
+function DriftStyle.setCar(carId: string?, model: Model?)
+	if carId then
+		car = carId
+	end
+	if lookConn then
+		lookConn:Disconnect()
+		lookConn = nil
+	end
+	carModel = model
+	lastStyle = DriftStyle.forCar(car)
+	if model then
+		lookConn = model:GetAttributeChangedSignal(CarLook.ATTRIBUTE):Connect(function()
+			if DriftStyle.forCar(car) ~= lastStyle then
+				notify()
+			end
+		end)
 	end
 end
 
--- Pick a style, for its own drivetrain; clears Studio's any-drivetrain
--- pick. The attributes' change signals tell the sim and the panel (start),
--- so a harness setting them directly works the same.
-function DriftStyle.set(id: string)
+-- Studio's O: a mode for its own drivetrain; clears the any-drivetrain
+-- pick. The attributes' change signals tell the sim (start), so a harness
+-- setting them directly works the same.
+local function set(id: string)
 	local style = S().styles[id]
 	if not style then
 		return
@@ -183,13 +207,13 @@ end
 -- O: the next style of the car's drivetrain. Shift+O: the next of all.
 local function cycle(all: boolean)
 	local current = DriftStyle.forCar(car)
-	local list = if all then S().order else S().forLayout(DriftStyle.carLayout())
+	local list = if all then S().order else S().forLayout(carLayout())
 	local i = table.find(list, current) or 0
 	local nextId = list[i % #list + 1]
 	if all then
 		Players.LocalPlayer:SetAttribute(ANY_ATTRIBUTE, nextId)
 	else
-		DriftStyle.set(nextId)
+		set(nextId)
 	end
 	showLabel(nextId)
 end
