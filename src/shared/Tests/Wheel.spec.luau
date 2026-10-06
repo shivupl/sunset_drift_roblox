@@ -65,4 +65,15 @@ return function(t: T)
 	-- Brakes stop the wheel, never reverse it.
 	local braked = Wheel.step(cfg, axle, 5, 0, 0, r, 0, 1.2, 0, 1e5, 1 / 60)
 	t.near(braked.omega, 0, 1e-9, "a brake stops the wheel at zero")
+
+	-- longScale (the launch grip) multiplies the drive grip, nothing sideways
+	local driving = Wheel.force(cfg, axle, v, 0, v * 1.05 / r, r, fMax)
+	local boosted = Wheel.force(cfg, axle, v, 0, v * 1.05 / r, r, fMax, 1.4)
+	t.near(boosted.fx, driving.fx * 1.4, 1e-6, "longScale 1.4: 1.4 times the drive force")
+	local side = Wheel.force(cfg, axle, v, vLat, v / r, r, fMax, 1.4)
+	t.near(side.fy, rolling.fy, 1e-6, "and the same sideways force")
+	-- a launch with the boost pulls harder through the step
+	local plainStep = Wheel.step(cfg, axle, 10 * 1.05 / r, 10, 0, r, fMax, 1.2, 600, 0, 1 / 60)
+	local boostStep = Wheel.step(cfg, axle, 10 * 1.05 / r, 10, 0, r, fMax, 1.2, 600, 0, 1 / 60, 1.4)
+	t.ok(boostStep.fx > plainStep.fx, "the step passes longScale through")
 end

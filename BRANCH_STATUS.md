@@ -73,6 +73,15 @@ Research and design in docs/superpowers/specs (`2026-10-05-drift-overhaul-*`); m
 (`drift`, `line`, `DriftStyles`). Open for the owner: the defaults per drivetrain, how strong the line
 is (`line.hold`), and whether the choice is saved to the profile. Merging it carries `drift-feel` too.
 
+**`speed-feel` (2026-10-05, branched from `drift-overhaul` at `78d12c3`; not merged yet): the driving
+made faster and made to feel faster.** The owner: "overall game driving feels pretty slow ... needs to
+feel at least 50% faster if not 2x", and chose both. More torque on every car (`drivetrain.powerScale`),
+a sixth gear, the top speed 300, a launch grip off the line; a wider speed view, a camera that no longer
+trails a fast car, a faint high-speed shake, faint screen-edge speed lines and a wind roar
+(`client/SpeedFeel`). Measured in TUNING.md (`drivetrain`, `camera`, `speedFeel`). Open for the owner:
+whether earnings should be held level (`scoring.referenceSpeedKmh`), the wind sound (picked unheard),
+and how strong the lines and shake are. Merging it carries `drift-overhaul` and `drift-feel` too.
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left

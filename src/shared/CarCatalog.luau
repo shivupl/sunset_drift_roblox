@@ -183,7 +183,8 @@ local cars: { [string]: CarEntry } = {
 				upshiftRpm = 5600,
 				downshiftRpm = 2600,
 				shiftTime = 0.2,
-				topSpeedKmh = 180,
+				-- 255 from 180 with the game's pace (speed-feel, 2026-10-05).
+				topSpeedKmh = 255,
 				-- Same brakes as the sedan hauling 600 kg more: it stops late.
 				brakeForce = 15000,
 			},
@@ -256,7 +257,8 @@ local cars: { [string]: CarEntry } = {
 				upshiftRpm = 5400,
 				downshiftRpm = 2400,
 				shiftTime = 0.14,
-				topSpeedKmh = 200,
+				-- 285 from 200 with the game's pace (speed-feel, 2026-10-05).
+				topSpeedKmh = 285,
 			},
 			tires = {
 				-- A soft front that pushes on turn-in, a rear that keeps most

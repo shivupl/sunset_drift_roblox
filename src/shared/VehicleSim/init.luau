@@ -13,7 +13,6 @@
 local Shared = script.Parent
 local Types = require(Shared.Types)
 local Units = require(Shared.Units)
-local Curve = require(Shared.Curve)
 local CarConfig = require(Shared.CarConfig)
 local VehicleRig = require(Shared.VehicleRig)
 local Steering = require(script.Steering)
@@ -496,6 +495,10 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- (Drivetrain.launchCap): in first gear the crank's inertia through the
 	-- gearing is ten times a wheel's, and leaving it out capped the launch
 	-- 18% short.
+	-- The launch grip (Drivetrain.launchGrip): the driven tyres' drive grip
+	-- off the line, pointing straight. Never in a slide, under the lever or
+	-- on two wheels (tractionAllowed), so no drift number moves.
+	local launchGrip = Drivetrain.launchGrip(cfg.drivetrain, Units.mpsToKmh(speed), tractionAllowed)
 	local throttle = input.throttle
 	if slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
 		local sc = slipCfg :: Wheel.SlipConfig
@@ -506,7 +509,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			local cap = math.huge
 			for i = first, first + 1 do
 				local load = contacts[i].susp.force
-				cap = math.min(cap, load * tyre.grip * Wheel.loadFactor(sc, load, staticLoad) * (tyre.longitudinalGrip or 1))
+				cap = math.min(cap, load * tyre.grip * Wheel.loadFactor(sc, load, staticLoad) * (tyre.longitudinalGrip or 1) * launchGrip)
 			end
 			return cap
 		end
@@ -525,7 +528,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			efficiency = cfg.drivetrain.drivelineEfficiency,
 			radius = cfg.body.wheelRadius,
 		})
-		local curveTorque = Curve.lookup(cfg.drivetrain.torqueCurve, self.drivetrain.rpm)
+		local curveTorque = Drivetrain.torqueAt(cfg.drivetrain, self.drivetrain.rpm)
 		if curveTorque > 0 then
 			throttle = math.min(throttle, crankCap / curveTorque)
 		end
@@ -635,7 +638,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 			end
 			local staticLoad = mass * g / 4
 			local fMax = c.susp.force * axle.grip * wheelGrip * Wheel.loadFactor(sc, c.susp.force, staticLoad)
-			local res = Wheel.step(sc, axle, w.omega, c.vLong, c.vLat, r, fMax, inertia, driveTorque, brakeTorque, dt)
+			local res = Wheel.step(sc, axle, w.omega, c.vLong, c.vLat, r, fMax, inertia, driveTorque, brakeTorque, dt, if share > 0 then launchGrip else nil)
 			w.omega = res.omega
 			local fade = math.clamp(math.sqrt(c.vLong * c.vLong + c.vLat * c.vLat) / cfg.tires.speedFadeMps, 0, 1)
 			out = {

@@ -215,4 +215,29 @@ return function(t: T)
 	-- No driven axle (a bad config) never caps
 	args.axles = { { cap = 7000, share = 0 }, { cap = 7000, share = 0 } }
 	t.eq(Drivetrain.launchCap(args), math.huge, "no driven axle: no cap")
+
+	-- powerScale multiplies the engine's torque (speed-feel, 2026-10-05: the
+	-- owner wanted the driving "at least 50% faster")
+	local function torqueAt(c: any): number
+		local s0 = Drivetrain.new(c)
+		return Drivetrain.step(s0, c, r, dt, 1, 0, 10, false, false).torque
+	end
+	local base = torqueAt(cfg)
+	local scaled = table.clone(cfg) :: any
+	scaled.powerScale = 1.5
+	t.near(torqueAt(scaled), base * 1.5, 1e-9, "powerScale 1.5: half again the torque")
+	t.near(Drivetrain.torqueAt(scaled, 4000), 450, 1e-9, "torqueAt is the curve times powerScale")
+	t.near(Drivetrain.torqueAt(cfg, 4000), 300, 1e-9, "no powerScale: the curve")
+
+	-- launchGrip: the driven tyres' drive grip off the line, pointing
+	-- straight, fading to nothing between launchGripFullKmh and launchGripEndKmh
+	local lg = table.clone(cfg) :: any
+	lg.launchGrip = 1.4
+	lg.launchGripFullKmh = 60
+	lg.launchGripEndKmh = 140
+	t.near(Drivetrain.launchGrip(lg, 30, true), 1.4, 1e-9, "off the line: the whole boost")
+	t.near(Drivetrain.launchGrip(lg, 100, true), 1.2, 1e-9, "halfway through the fade: half")
+	t.near(Drivetrain.launchGrip(lg, 150, true), 1, 1e-9, "past the fade: none")
+	t.near(Drivetrain.launchGrip(lg, 30, false), 1, 1e-9, "sideways, the lever in or on two wheels: none (drifts untouched)")
+	t.near(Drivetrain.launchGrip(cfg, 30, true), 1, 1e-9, "no launchGrip: none")
 end

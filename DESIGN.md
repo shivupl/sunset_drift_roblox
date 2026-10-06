@@ -338,6 +338,31 @@ same car, in the same session. The lever's 360 is the same move on every
 mode: lever and full lock, about 2.5 s, 27 km/h lost; a mode sets only its
 rate (Rally 140 deg/s, Tatweef 125) and the line sends it straight on.
 
+## Speed (speed-feel)
+
+The owner, 2026-10-05: "overall game driving feels pretty slow, is there a
+way to either increase speed or just make it feel faster, needs to feel at
+least 50% faster if not 2x", and chose both. **Faster:** the engine's torque
+times `powerScale` (1.45) on every car, a sixth gear, the top speed 300 from
+210, and a launch grip on the driven tyres off the line (1.4), because below
+about 100 km/h the launch was grip-limited and power alone did nothing
+there. The launch grip only acts while traction control may (pointing
+straight, lever out, four wheels), so no drift number moves: 0-200 is 1.6
+to 1.7 times quicker on every drivetrain, and a Hajwala slide from 150 and a
+lever 360 from 160 measure as the same moves did from 100 and 110. Real
+tafheet runs at 160-260, so ordinary drifting moving up from 100 to 150 is
+closer to the real thing. **Feels faster:** the desert highway is wide and
+sparse, so little streams past the camera. The view now widens further with
+speed (92 degrees at 200 against 85 at the old cap), the follow carries most
+of the car's velocity so a fast car no longer shrinks to a speck (the old
+smoothing trailed 8.4 m extra at 240), a faint shake comes in from 130,
+faint speed lines run out to the screen's edges from 140, and a wind roar
+rises under the engine. World-space particle streaks were tried first: from
+a chase camera they are seen end-on and read as smudges on the road, so the
+lines are screen-space. The economy is untouched, which means slides pay
+about half again per second at the new speeds; `scoring.referenceSpeedKmh`
+is the knob if that should be held level.
+
 ## Tafheet moves
 The reference is real tafheet: factory-setup cars at 160 to 260 km/h on a
 straight highway, thrown left and right. The named moves are Ta'geed (a

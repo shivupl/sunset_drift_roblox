@@ -50,6 +50,15 @@ export type Config = {
 	layout: string?,
 	frontShare: number?,
 	frontDiffLock: number?,
+	-- The game's pace (speed-feel, 2026-10-05: the owner, "needs to feel at
+	-- least 50% faster if not 2x"): the torque curve times powerScale, and
+	-- the driven tyres' drive grip times launchGrip off the line, pointing
+	-- straight, fading out between launchGripFullKmh and launchGripEndKmh.
+	-- nil is 1.
+	powerScale: number?,
+	launchGrip: number?,
+	launchGripFullKmh: number?,
+	launchGripEndKmh: number?,
 }
 
 export type State = {
@@ -75,6 +84,28 @@ export type Output = {
 }
 
 local RPM_PER_RAD_S = 60 / (2 * math.pi)
+
+-- The engine's torque at this rpm: the curve times powerScale.
+function Drivetrain.torqueAt(cfg: Config, rpm: number): number
+	return Curve.lookup(cfg.torqueCurve, rpm) * (cfg.powerScale or 1)
+end
+
+-- The driven tyres' drive grip multiplier at this speed. Only while the
+-- caller allows traction control (pointing straight, the lever out, on four
+-- wheels): a slide, a throw and a natl never see it, so every drift number
+-- is the tyres' own. Below the launch the tyres cannot put more than about
+-- 1 g down, and power does nothing there; this is what makes the launch
+-- quicker.
+function Drivetrain.launchGrip(cfg: Config, speedKmh: number, allowed: boolean): number
+	local boost = cfg.launchGrip
+	if not allowed or not boost then
+		return 1
+	end
+	local full = cfg.launchGripFullKmh or 0
+	local stop = cfg.launchGripEndKmh or full
+	local fade = if stop > full then math.clamp((stop - speedKmh) / (stop - full), 0, 1) elseif speedKmh <= full then 1 else 0
+	return 1 + (boost - 1) * fade
+end
 
 function Drivetrain.new(cfg: Config): State
 	return { gear = 1, rpm = cfg.idleRpm, spinRpm = 0, shiftTimer = 0, reverseHold = 0, tc = 1 }
@@ -259,7 +290,7 @@ function Drivetrain.step(
 	if state.shiftTimer <= 0 and rpm < cfg.redlineRpm then
 		local speedKmh = math.abs(speed) * 3.6
 		local ceiling = math.clamp((cfg.topSpeedKmh - speedKmh) / math.max(cfg.topSpeedFadeKmh, 1), 0, 1)
-		torque = Curve.lookup(cfg.torqueCurve, rpm) * throttle * ceiling
+		torque = Drivetrain.torqueAt(cfg, rpm) * throttle * ceiling
 	end
 	local drivePerRearWheel = torque * overall * cfg.drivelineEfficiency / wheelRadius / 2
 

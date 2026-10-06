@@ -203,7 +203,10 @@ local config = {
 		-- edge) and torque makes no difference to it; above that, in third
 		-- and up, the engine is the limit and this is what pulls 100-150.
 		torqueCurve = { { 1000, 380 }, { 2500, 550 }, { 4000, 640 }, { 5500, 620 }, { 6500, 500 }, { 7000, 0 } },
-		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8 },
+		-- A sixth gear for the higher top speed (speed-feel, 2026-10-05): the
+		-- five-speed box ran out at the rev limiter near 270 km/h; 0.68 gives
+		-- about 320 at 6800 rpm, and the first five are untouched.
+		gearRatios = { 3.5, 2.1, 1.4, 1.0, 0.8, 0.68 },
 		reverseRatio = 3.2,
 		finalDrive = 3.9,
 		drivelineEfficiency = 0.9,
@@ -268,8 +271,24 @@ local config = {
 		-- grip limit at 220 (v^2/r = 9.3 m/s^2), the 2 km straight takes 34 s,
 		-- and it is still 20 over what most players will hold a lane at. Drive
 		-- fades over the last topSpeedFadeKmh so the ceiling is a plateau.
-		topSpeedKmh = 210,
-		topSpeedFadeKmh = 20,
+		-- 300 from 210 (speed-feel, 2026-10-05: the owner, "overall game
+		-- driving feels pretty slow ... needs to feel at least 50% faster if
+		-- not 2x"; real tafheet runs 160-260). The map's 400 m curve is at the
+		-- grip limit at 220, so past that it is a braking corner.
+		topSpeedKmh = 300,
+		topSpeedFadeKmh = 25,
+		-- The game's pace: the torque curve times powerScale. 1.45 with the
+		-- launch grip below: see TUNING.md (drivetrain) for the measured
+		-- 0-100, 0-200 and 1 km. Up: quicker everywhere past the launch.
+		powerScale = 1.45,
+		-- The driven tyres' drive grip times launchGrip off the line, pointing
+		-- straight (never in a slide, under the lever or on two wheels),
+		-- fading out from launchGripFullKmh to launchGripEndKmh. Below about
+		-- 100 km/h the launch is grip-limited, so power alone did nothing
+		-- there. Up: a harder launch.
+		launchGrip = 1.4,
+		launchGripFullKmh = 60,
+		launchGripEndKmh = 140,
 		-- Launch traction control, active under this speed. A loop, not a
 		-- cap: the throttle multiplier winds down at cutRate while the rear
 		-- spins and back up at recoverRate while it grips, never below min.
@@ -828,6 +847,16 @@ local config = {
 		minSpeedForSwingMps = 3, -- below this the camera ignores the velocity direction
 		driftProfileEnterDeg = 25, -- |drift angle| that switches to the drift profile
 		driftProfileExitDeg = 12, -- and back to normal (hysteresis)
+		-- The follow carries this share of the car's own velocity, so at a
+		-- steady speed the camera trails only (1 - followAhead) of the
+		-- v / positionLag it used to (speed-feel, 2026-10-05). It trailed
+		-- 8.4 m extra at 240 km/h and the car shrank to a speck, which reads
+		-- as slow; under acceleration it still pulls back, which reads as fast.
+		-- 0 is the old follow.
+		followAhead = 0.7,
+		-- A faint shake at speed: up to maxDeg of pitch and yaw, from fromKmh
+		-- to fullKmh, at about hz. Subtle: the car must never look unstable.
+		shake = { fromKmh = 130, fullKmh = 300, maxDeg = 0.18, hz = 7 },
 		-- Profiles: normal driving, sliding, and two-wheel. All distances in
 		-- metres. lateralOffset is toward the lifted side while on two wheels
 		-- (so the airborne wheels are in frame), toward the outside of the
@@ -839,9 +868,12 @@ local config = {
 				lookHeight = 0.8,
 				lateralOffset = 0,
 				driftSwing = 0.3, -- 0 follow heading, 1 follow velocity
+				-- The view widens with speed: 81 at 100 km/h, 92 at 200, 96 by
+				-- 236 (was 0.08 up to 85 at 190; speed-feel, 2026-10-05). A wider
+				-- view streams the roadside past faster at the edges.
 				baseFov = 70,
-				fovPerKmh = 0.08,
-				maxFov = 85,
+				fovPerKmh = 0.11,
+				maxFov = 96,
 				rollFollow = 0,
 			},
 			drift = {
@@ -851,8 +883,8 @@ local config = {
 				lateralOffset = 0,
 				driftSwing = 0.7,
 				baseFov = 74,
-				fovPerKmh = 0.08,
-				maxFov = 88,
+				fovPerKmh = 0.1,
+				maxFov = 98,
 				rollFollow = 0,
 			},
 			twoWheel = {
@@ -862,10 +894,53 @@ local config = {
 				lateralOffset = 2.5,
 				driftSwing = 0.15,
 				baseFov = 72,
-				fovPerKmh = 0.05,
-				maxFov = 82,
+				fovPerKmh = 0.07,
+				maxFov = 90,
 				rollFollow = 0.35,
 			},
+		},
+	},
+
+	-- Speed you can feel (client SpeedFeel; speed-feel, 2026-10-05: the
+	-- owner, "overall game driving feels pretty slow ... needs to feel at
+	-- least 50% faster if not 2x"). The desert highway is wide and sparse,
+	-- so little streams past the camera at any speed; these put something
+	-- close by that does. Studio: the LocalPlayer attribute SpeedFeelKmh
+	-- forces the speed the effects and the camera read (a parked car framed
+	-- at 200 km/h).
+	speedFeel = {
+		-- Speed lines: faint thin lines in the outer ring of the screen,
+		-- pointing at where the car is going and running outward, from
+		-- fromKmh, densest at fullKmh. They stand in for the peripheral blur
+		-- of real speed. (World-space particle streaks were tried first: seen
+		-- end-on from a chase camera they read as smudges on the road.)
+		lines = {
+			fromKmh = 140,
+			fullKmh = 280,
+			perSecond = 55, -- new lines a second at full
+			lifetime = { 0.18, 0.3 }, -- seconds
+			-- Where they run, as fractions of the screen's half-diagonal from
+			-- the point the car is heading for: born at inner..mid, gone by
+			-- outer. Never over the car: none within avoidDeg of straight down.
+			innerRadius = 0.5,
+			midRadius = 0.75,
+			outerRadius = 1.1,
+			avoidDeg = 35,
+			length = { 0.08, 0.2 }, -- fractions of the half-diagonal, longer with speed
+			thickness = 3, -- pixels
+			-- At their brightest. 0.82 and 2 px were all but invisible in a still
+			-- at 220 km/h; 0.7 and 3 px read at the edge of the eye.
+			transparency = 0.7,
+			color = Color3.fromRGB(255, 244, 230),
+		},
+		-- A wind roar under the engine, rising from fromKmh.
+		wind = {
+			soundId = "rbxassetid://116499982163496", -- "loop_wind_05", Creator Store
+			fromKmh = 60,
+			fullKmh = 280,
+			volume = 0.45,
+			pitchMin = 0.8,
+			pitchMax = 1.25,
 		},
 	},
 
@@ -1498,7 +1573,8 @@ local config = {
 		cashPerPoint = 0.01,
 		-- Validation. The server scores every driven car from its own
 		-- samples and never banks more than it saw.
-		maxPlausibleSpeedKmh = 320,
+		-- 360 from 320 with the top speed at 300 (speed-feel, 2026-10-05).
+		maxPlausibleSpeedKmh = 360,
 		teleportToleranceM = 8, -- movement beyond speed x dt plus this is a teleport
 		serverTolerance = 1.25, -- how far a claim may exceed the server's own total
 		claimWindowSeconds = 1.5, -- how long a claim stays usable

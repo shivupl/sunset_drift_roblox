@@ -165,7 +165,7 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | Field | What it does | OS | INIT | 2W |
 |---|---|---|---|---|
 | torqueCurve | Engine torque by rpm. More torque = more power-over. Raised about a third for tafheet speeds; launch is traction-limited so 0 to 100 barely moved (7.7 s), the gain is above 100 km/h. | ↑ | ↑ | — |
-| gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. | ↑ | ↑ | — |
+| gearRatios / finalDrive | Shorter (bigger numbers) = more drive force at speed = easier to break traction with throttle. A sixth gear (0.68) for the 300 top speed: the five-speed box ran out at the rev limiter near 270 km/h. | ↑ | ↑ | — |
 | reverseRatio | Reverse gearing. | — | — | — |
 | drivelineEfficiency | Scales all drive force. | ↑ | ↑ | — |
 | layout / frontShare / frontDiffLock | Which wheels drive (`"RWD"`, `"FWD"`, `"AWD"`; Drivetrain.axleShares), the front axle's share of the torque under AWD (a fixed-split centre diff), and the front axle's diff blend like diffLock. RWD is the old path exactly (shares 0/1, measured within noise of before). Front drive measured on the Kamri: 0-30/60/100 in 1.22/2.42/4.20 s against 1.06/1.95/3.65 on rear drive (a launch moves weight off the fronts), the lever 360 2.48 s at 78 km/h against 2.45 at 84, the natl unchanged (40 degrees, down at 3.4-3.5 s). All-wheel drive on the Batrol and Kruzer 80: launch, 360 and natl within a few hundredths of rear drive. The drift styles set frontShare (Rally 0.45, Drift Mode 0.15); the catalog sets layout. | — | — | — |
@@ -180,7 +180,9 @@ the throw controller and the lever's grip cut, not by softening the rear.
 | brakeForce / brakeBias | Pedal strength and split. More rear bias = brake-induced rotation. | bias ↓ | bias ↓ | — |
 | brakeFadeMps | Anti-jitter at rest. | — | — | — |
 | reverseEngageMps | Speed under which the car counts as stopped for selecting reverse. | — | — | — |
-| topSpeedKmh / topSpeedFadeKmh | The ceiling, as a limiter: drive fades to nothing over the last fade band so the car sits at the top instead of hitting a wall. 210 because the 400 m curve is at the grip limit at 220 and the straight takes 34 s. Raise for a faster map, lower for a tighter one. |
+| topSpeedKmh / topSpeedFadeKmh | The ceiling, as a limiter: drive fades to nothing over the last fade band so the car sits at the top instead of hitting a wall. 300 / 25 from 210 / 20 (speed-feel, 2026-10-05: the owner, "overall game driving feels pretty slow ... needs to feel at least 50% faster if not 2x"); the Pickup 255 and the Cruiser 285 in the catalog. The map's 400 m curve is at the grip limit at 220, so past that it is a braking corner. |
+| powerScale | The game's pace: the torque curve times this (`Drivetrain.torqueAt`), on every car. 1.45. With launchGrip and the sixth gear, measured flat-out from a standstill (before → after): Krown Vik (rear) 0-100 4.06 → 2.86 s, 0-150 7.81 → 5.42, 0-200 14.13 → 8.92, 203 → 263 km/h at 16 s; Kamri (front) 4.42 → 3.39, 7.68 → 5.71, 14.99 → 8.81, 202 → 267; Batrol (all) 5.36 → 3.97, 9.75 → 6.97, none → 11.33, 196 → 238. Drifts are unchanged in feel at the new speeds: Hajwala holds 39 degrees from 150 (145 → 138 km/h over 4 s, path 5 degrees, 8 m), a lever 360 from 160 comes round in 2.54 s and exits at 131, 1 m off its line. Up: quicker everywhere past the launch. | ↑ | — | — |
+| launchGrip / launchGripFullKmh / launchGripEndKmh | The driven tyres' drive grip times launchGrip off the line, pointing straight (only while traction control is allowed: never in a slide, under the lever or on two wheels, so no drift number moves), fading out from 60 to 140 km/h. Below about 100 km/h the launch is grip-limited, so power alone did nothing there. 1.4. Up: a harder launch. | — | — | — |
 | tractionControlBelowKmh / tractionControlMaxDriftDeg / tractionControlMin / tractionControlCutRate / tractionControlRecoverRate | Traction control, a loop that winds throttle down while the rear spins and back up while it grips. Active under the speed and only while the drift angle is under the max and the lever is out, so it never touches a slide. Measured: 0-100 went 7.3 s (fixed cap) to 6.3 s (loop through the midrange) to 4.4 s with the floor at 0.6, recovery at 4/s, the rear's longitudinalGrip at 1.4 and the torque up 15%. Below 100 km/h the launch is grip limited (8.6 kN on the rear axle) and torque does not move it; the torque is what pulls 100-150. A lower floor or slower recovery is a lazier launch. |
 | reverseHoldSeconds | How long the brake must be held once stopped before reverse engages. Any throttle returns to drive and resets it. Raise if stopping hard drops you into reverse; lower if reversing out feels sticky. The gearbox is automatic and there is no manual shift, so this is the only gear choice a player makes. | — | — | — |
 
@@ -341,6 +343,8 @@ key or button goes down.
 | profileBlendRate | How fast profile parameters cross-fade (1/s). |
 | minSpeedForSwingMps | Below this the camera ignores velocity direction. |
 | driftProfileEnterDeg / driftProfileExitDeg | Drift angle that switches to the drift profile and back (hysteresis). |
+| followAhead | The follow carries this share of the car's own velocity, so at a steady speed the camera trails only (1 - followAhead) of v / positionLag. 0.7 (speed-feel, 2026-10-05): at 0 it trailed 8.4 m extra at 240 km/h and the car shrank to a speck; under acceleration it still pulls back. 0 is the old follow. |
+| shake | A faint pitch and yaw shake with speed, from fromKmh to fullKmh, up to maxDeg, at about hz (130 / 300 / 0.18 / 7). Subtle: the car must never look unstable. 0 maxDeg is off. |
 
 ### camera.profiles.normal / drift / twoWheel
 The two-wheel profile is active while lifting or balanced; the drift profile past the enter angle; normal otherwise.
@@ -349,8 +353,18 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | distance / height / lookHeight | Where the camera sits and aims, metres. |
 | lateralOffset | Sideways offset: toward the lifted side on two wheels (airborne wheels in frame), toward the outside of the slide in the drift profile. |
 | driftSwing | 0 looks along the heading, 1 along the velocity direction. |
-| baseFov / fovPerKmh / maxFov | Speed-widened field of view. |
+| baseFov / fovPerKmh / maxFov | Speed-widened field of view (vertical, degrees). Normal 70 + 0.11 per km/h up to 96 (81 at 100, 92 at 200), drift 74 + 0.1 to 98, two-wheel 72 + 0.07 to 90; it was 0.08 up to 85 (speed-feel, 2026-10-05). A wider view streams the roadside past faster at the edges; the car looks smaller. |
 | rollFollow | Fraction of the car's roll applied as horizon tilt. Two-wheel profile only, by default. |
+
+## speedFeel (client `SpeedFeel`)
+Speed you can feel (speed-feel, 2026-10-05). The desert highway is wide and sparse, so little streams past the camera at any speed. **Studio:** the LocalPlayer attribute `SpeedFeelKmh` forces the speed these and the camera read, so a parked car can be framed at 200 km/h.
+
+| Field | What it does |
+|---|---|
+| lines.fromKmh / fullKmh / perSecond | Faint speed lines in the outer ring of the screen, running out from the point the car is heading for: none under 140, 55 a second at 280. World-space particle streaks were tried first and read as smudges on the road from a chase camera. |
+| lines.lifetime / innerRadius / midRadius / outerRadius / avoidDeg | Each lives 0.18-0.3 s, born between 0.5 and 0.75 of the half-diagonal and gone by 1.1; none within 35 degrees of straight down, where the car is. |
+| lines.length / thickness / transparency / color | 0.08-0.2 of the half-diagonal (longer with speed), 3 px, 0.7 at their brightest (0.82 and 2 px were all but invisible in a still at 220). |
+| wind.soundId / fromKmh / fullKmh / volume / pitchMin / pitchMax | A wind roar under the engine (Creator Store "loop_wind_05"), rising from 60 to full at 280 km/h, to 0.45, its pitch 0.8 to 1.25. Empty id is off. |
 
 ## road
 | Field | What it does |
@@ -467,7 +481,7 @@ turn of the car relative to where it is going, whatever the path did.
 | impactDecelKmhPerSec | A sustained deceleration this hard counts as a crash and drops the run. Hard braking reads about 40, a wall reads several hundred. Lower it and firm braking will start killing runs. |
 | impactSmoothSeconds | The window that deceleration is measured over. Must stay comfortably above 1 / scoring.sampleHz or the server will read replication jitter as a crash. |
 | pointsPerSecond | Master payout knob. Points per second at the reference angle and speed at x1. |
-| referenceAngleDeg / referenceSpeedKmh | What "one unit" of angle and speed means. Lower either one to make every slide pay more. |
+| referenceAngleDeg / referenceSpeedKmh | What "one unit" of angle and speed means. Lower either one to make every slide pay more. Since speed-feel (2026-10-05) slides happen faster (150 instead of 100 is ordinary), so they pay about half again per second at the same angle; raise referenceSpeedKmh to about 140 to keep earnings where they were. Left at 100: the owner's call. |
 | maxAngleFactor | Ceiling on the angle term, so a 179° slide is not worth four times a 45° one. |
 | chainStep | How much each direction change adds to the multiplier. |
 | chainMax | Ceiling on the multiplier. |
@@ -481,7 +495,7 @@ scores every driven car from its own samples and never banks more than it saw.
 
 | Field | What it does |
 |---|---|
-| maxPlausibleSpeedKmh | A sample faster than this throws the slide away. Set it above anything the car can actually reach. |
+| maxPlausibleSpeedKmh | A sample faster than this throws the slide away. Set it above anything the car can actually reach: 360 with the top speed at 300 (speed-feel, 2026-10-05). |
 | teleportToleranceM | Movement beyond `speed x dt` plus this counts as a teleport and throws the slide away. Too low and normal replication jitter will eat honest runs. |
 | serverTolerance | How far a client's claim may exceed the server's own total before it is capped. It exists because the two sample at different rates; 1.25 means a cheat can gain at most 25% over an honest run of the same slide. |
 | claimWindowSeconds | How long a submitted claim stays usable. Past it the server banks its own figure. |
