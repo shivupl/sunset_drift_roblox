@@ -35,6 +35,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local Input = require(script.Parent)
+-- The control variants on trial (hud-variants): while one is on, bind hands
+-- the controls to it instead of building these.
+local HudLab = require(script.Parent.Parent:WaitForChild("HudLab"))
 
 local Touch = {}
 Touch.onDebugToggle = nil :: (() -> ())?
@@ -97,6 +100,9 @@ local connections: { RBXScriptConnection } = {}
 local natlOn = false
 local wasUp = false
 local leanVisible = true
+-- Between bind and unbind: the car is being driven, so a style switch
+-- rebuilds the controls.
+local bound = false
 
 local function isPress(io: InputObject): boolean
 	return io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1
@@ -366,6 +372,11 @@ function Touch.bind()
 		return
 	end
 	Touch.unbind()
+	bound = true
+	if HudLab.active() then
+		HudLab.bindTouch()
+		return
+	end
 	local g = Instance.new("ScreenGui")
 	g.Name = "HajwalaTouch"
 	g.ResetOnSpawn = false
@@ -430,6 +441,7 @@ end
 -- Called every step with the sim's two-wheel mode: the NATL toggle turns
 -- itself off once a lift has ended, so the lean slider goes away with it.
 function Touch.observe(twoWheelMode: string)
+	HudLab.observe(twoWheelMode)
 	local up = twoWheelMode == "lifting" or twoWheelMode == "balanced"
 	if natlOn and wasUp and not up then
 		setNatl(false)
@@ -439,6 +451,7 @@ end
 
 -- The lean slider is only on screen while the car is in two-wheel mode.
 function Touch.setLeanVisible(visible: boolean)
+	HudLab.setLeanVisible(visible)
 	if visible == leanVisible then
 		return
 	end
@@ -454,6 +467,8 @@ function Touch.setLeanVisible(visible: boolean)
 end
 
 function Touch.unbind()
+	bound = false
+	HudLab.unbindTouch()
 	for _, c in connections do
 		c:Disconnect()
 	end
@@ -477,5 +492,12 @@ function Touch.unbind()
 		Input.raw.steerDigital = 0
 	end
 end
+
+-- A style switched mid-drive: the controls are rebuilt for it.
+HudLab.onSwitched(function()
+	if bound then
+		Touch.bind()
+	end
+end)
 
 return Touch

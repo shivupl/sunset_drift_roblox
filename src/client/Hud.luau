@@ -31,6 +31,9 @@ local ConfigLoader = require(Shared.ConfigLoader)
 local Scoring = require(Shared.Scoring)
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local UIKit = require(script.Parent.UIKit)
+-- The HUD variants on trial (hud-variants): while one is on, this HUD hides
+-- and hands each update and flash to it.
+local HudLab = require(script.Parent:WaitForChild("HudLab"))
 
 type VehicleState = Types.VehicleState
 
@@ -209,6 +212,7 @@ end
 -- Called when the server reports what a finished slide was worth. points of
 -- zero means the slide was lost rather than banked.
 function Hud.flashResult(points: number, cash: number)
+	HudLab.flashResult(points, cash)
 	local cfg = ConfigLoader.current().hud
 	if points > 0 then
 		flashText = if cash > 0 then `BANKED {comma(points)}  +{comma(cash)}` else `BANKED {comma(points)}`
@@ -224,6 +228,7 @@ end
 -- A 360 completed inside the slide in progress: shown next to the live
 -- counter, which keeps running.
 function Hud.flashSpin(bonus: number, spins: number)
+	HudLab.flashSpin(bonus, spins)
 	local cfg = ConfigLoader.current().hud
 	flashText = if spins > 1 then `{spins * 360}!  +{comma(bonus)}` else `360!  +{comma(bonus)}`
 	flashColor = DONE
@@ -237,6 +242,14 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 		Hud.hide()
 		return
 	end
+	if HudLab.active() then
+		if gui then
+			gui.Enabled = false
+		end
+		HudLab.update(state, score)
+		return
+	end
+	HudLab.hide()
 	local now = os.clock()
 	if now - lastUpdate < 1 / 30 then
 		return
@@ -296,6 +309,7 @@ function Hud.update(state: VehicleState, score: Scoring.State)
 end
 
 function Hud.hide()
+	HudLab.hide()
 	if gui then
 		gui.Enabled = false
 	end
