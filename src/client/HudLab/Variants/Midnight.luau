@@ -10,6 +10,11 @@ local GuiService = game:GetService("GuiService")
 local HudLab = script.Parent.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
+local Art = require(HudLab:WaitForChild("Art")).midnight
+
+-- The dial art's scale (art/hud/midnight/make.py): 0 rpm at -132 degrees,
+-- 8000 at +112.
+local TACHO_FROM, TACHO_TO, TACHO_MAX = -132, 112, 8000
 
 local GLASS = Color3.fromRGB(7, 10, 13)
 local WHITE = Color3.fromRGB(242, 244, 245)
@@ -51,10 +56,13 @@ function Midnight.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	local top = inset()
 
 	-- Timing bar.
+	-- Full screen size, so its fields' RelativeYY sizes are of the screen;
+	-- on a phone it sits under the button row.
+	local barY = if touch then UDim2.new(0, 0, 0.12, top + 8) else UDim2.new(0, 0, 0, top + 6)
 	local barRow = W.frame(root, "Timing")
-	W.box(barRow, 0.9, 0.085)
+	barRow.Size = UDim2.fromScale(1, 1)
 	barRow.AnchorPoint = Vector2.new(0.5, 0)
-	barRow.Position = UDim2.new(if touch then 0.42 else 0.5, 0, 0, top + 6)
+	barRow.Position = UDim2.new(0.5, 0, 0, 0) + barY
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -81,13 +89,12 @@ function Midnight.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	local _, bestValue = field(barRow, "Best", "BEST", 3, 0.22)
 	local rule = W.frame(root, "Rule", WHITE, 0.55)
 	rule.AnchorPoint = Vector2.new(0.5, 0)
-	rule.Position = UDim2.new(if touch then 0.42 else 0.5, 0, 0, top + 6)
-	rule.Size = UDim2.new(if touch then 0.5 else 0.6, 0, 0, 1)
-	rule.Position = rule.Position + UDim2.new(0, 0, 0.09, 0)
+	rule.Position = UDim2.new(0.5, 0, 0.09, 0) + barY
+	rule.Size = UDim2.new(if touch then 0.46 else 0.6, 0, 0, 1)
 	local resultText = W.text(root, "Result", "", DIGI, CYAN)
 	W.box(resultText, 0.6, 0.05)
 	resultText.AnchorPoint = Vector2.new(0.5, 0)
-	resultText.Position = UDim2.new(if touch then 0.42 else 0.5, 0, 0.1, top + 10)
+	resultText.Position = UDim2.new(0.5, 0, 0.1, 4) + barY
 	resultText.Visible = false
 
 	-- Chevrons on each side, lit toward the slide.
@@ -109,31 +116,16 @@ function Midnight.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	W.square(tachoBox, size)
 	tachoBox.AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(1, 1)
 	tachoBox.Position = if touch then UDim2.new(1, -10, 0, top + 2) else UDim2.new(1, -28, 1, -16)
-	local tacho = W.tacho(tachoBox, "Gauge", {
-		fromDeg = -132,
-		toDeg = 112,
-		majors = 8,
-		minors = 5,
-		tick = WHITE,
-		red = RED,
-		tickWidth = 1,
-		majorLen = 0.07,
-		minorLen = 0.03,
-		radius = 0.47,
-		numerals = DIGI,
-		numeralColor = WHITE,
-		needle = RED,
-		needleWidth = 2,
-		needleLen = 0.46,
-		hub = GLASS,
-	})
+	local tacho = W.tachoImage(tachoBox, "Gauge", Art.tachoFace, Art.needle, TACHO_FROM, TACHO_TO, TACHO_MAX)
 	tacho.root.Size = UDim2.fromScale(1, 1)
 	local ring = W.frame(tachoBox, "GearRing", GLASS, 0.3)
+	ring.ZIndex = 4
 	W.at(ring, 0.5, 0.5)
 	ring.Size = UDim2.fromScale(0.26, 0.26)
 	W.corner(ring)
 	W.stroke(ring, WHITE, 1.5, 0.1)
 	local gear = W.text(ring, "Gear", "1", DIGI, WHITE)
+	gear.ZIndex = 4
 	W.at(gear, 0.5, 0.5)
 	gear.Size = UDim2.fromScale(0.62, 0.62)
 	local speed = W.text(tachoBox, "Speed", "0", DIGI, WHITE)
@@ -279,7 +271,7 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 	root.Size = UDim2.fromScale(1, 1)
 	local top = inset()
 
-	local glassPedal = {
+	local glassPedal: W.PedalSkin = {
 		plate = Color3.fromRGB(30, 38, 46),
 		plateLow = GLASS,
 		edge = WHITE,
@@ -295,26 +287,28 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		shadow = CYAN,
 		shadowTransparency = 0.82,
 		depth = 0.05,
-		fill = CYAN,
+		fill = nil,
 		minValue = 0.45,
+		image = Art.pedalGas,
 	}
 	local brakeSkin = table.clone(glassPedal)
 	brakeSkin.label = "BRAKE"
-	brakeSkin.fill = RED
 	brakeSkin.minValue = 0.5
+	brakeSkin.image = Art.pedalBrake
 	local brake = W.pedal(root, "Brake", brakeSkin, t, function(v)
 		api.brake(v)
 	end)
-	W.box(brake.root, 0.19, 0.24)
-	W.at(brake.root, 0.745, 0.81)
+	-- The art's own proportions: brake 560x520, gas 400x1000.
+	W.box(brake.root, 0.24, 0.223)
+	W.at(brake.root, 0.735, 0.81)
 	local gasSkin = table.clone(glassPedal)
 	gasSkin.label = "GAS"
 	gasSkin.slots = 5
 	local gas = W.pedal(root, "Gas", gasSkin, t, function(v)
 		api.throttle(v)
 	end)
-	W.box(gas.root, 0.15, 0.4)
-	W.at(gas.root, 0.885, 0.72)
+	W.box(gas.root, 0.18, 0.45)
+	W.at(gas.root, 0.885, 0.71)
 
 	local lever = W.lever(root, "Hand", {
 		track = GLASS,
@@ -329,6 +323,8 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		labelColor = WHITE,
 		engageAt = 0.3,
 		active = CYAN,
+		trackImage = Art.leverTrack,
+		handleImage = Art.leverHandle,
 	}, t, function(on)
 		api.handbrake(on)
 	end)
@@ -347,10 +343,13 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		markFont = DIGI,
 		left = "‹‹",
 		right = "››",
+		trackImage = Art.sliderTrack,
+		knobImage = Art.sliderKnob,
 	}, t, function(frac)
 		api.steerRaw(frac)
 	end)
-	W.box(steer.root, 0.66, 0.17)
+	-- The track art's proportions, 900x200.
+	W.box(steer.root, 0.72, 0.16)
 	W.at(steer.root, 0.22, 0.85)
 
 	local lean = W.slider(root, "Lean", {
@@ -365,6 +364,8 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		markFont = DIGI,
 		left = "‹",
 		right = "›",
+		trackImage = Art.sliderTrack,
+		knobImage = Art.sliderKnob,
 	}, t, function(frac)
 		api.lean(frac)
 	end)
@@ -384,10 +385,14 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		litText = GLASS,
 		textStroke = nil,
 	}
-	local natl = W.button(root, "Natl", "NATL", small, t, function()
+	local natlSkin: any = table.clone(small)
+	natlSkin.image = Art.natlOff
+	natlSkin.litImage = Art.natlOn
+	-- The label is in the art.
+	local natl = W.button(root, "Natl", "", natlSkin, t, function()
 		api.natl()
 	end)
-	W.square(natl.root, 0.14)
+	W.square(natl.root, 0.16)
 	W.at(natl.root, 0.065, 0.5)
 
 	local row = W.frame(root, "Buttons")
@@ -400,6 +405,9 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 	list.Parent = row
 	local pill: any = table.clone(small)
 	pill.radius = UDim.new(0.5, 0)
+	pill.image = Art.pill
+	pill.slice = Rect.new(60, 56, 240, 64)
+	pill.sliceHeight = 120
 	local buttons = {
 		W.button(row, "Exit", "EXIT", pill, t, function()
 			api.exit()

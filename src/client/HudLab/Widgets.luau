@@ -562,15 +562,23 @@ export type SliderSkin = {
 	markFont: Font?,
 	left: string?,
 	right: string?,
+	trackImage: string?, -- rendered art (Art.luau) for the track...
+	knobImage: string?, -- ...and the knob
 }
 
 export type Slider = { root: Frame, update: (dt: number) -> () }
 
 function W.slider(parent: Instance, name: string, skin: SliderSkin, t: Tracker, onMove: (number) -> ()): Slider
-	local root = W.frame(parent, name, skin.track, skin.trackTransparency)
-	W.corner(root, skin.radius)
-	W.stroke(root, skin.edge, skin.edgeThickness)
-	local marks = skin.marks
+	local trackArt, knobArt = skin.trackImage, skin.knobImage
+	local root = if trackArt then W.frame(parent, name) else W.frame(parent, name, skin.track, skin.trackTransparency)
+	if trackArt then
+		local img = W.image(root, "Track", trackArt)
+		img.ScaleType = Enum.ScaleType.Stretch
+	else
+		W.corner(root, skin.radius)
+		W.stroke(root, skin.edge, skin.edgeThickness)
+	end
+	local marks = if trackArt then nil else skin.marks
 	if marks then
 		local font = skin.markFont or W.font("BuilderSans", Enum.FontWeight.Bold)
 		for i, ch in { skin.left or "‹", skin.right or "›" } do
@@ -579,12 +587,19 @@ function W.slider(parent: Instance, name: string, skin: SliderSkin, t: Tracker, 
 			m.Size = UDim2.fromScale(0.12, 0.6)
 		end
 	end
-	local knob = W.frame(root, "Knob", skin.knob, 0)
+	local knob: GuiObject
+	if knobArt then
+		knob = W.image(root, "Knob", knobArt)
+	else
+		local f = W.frame(root, "Knob", skin.knob, 0)
+		W.corner(f, skin.radius)
+		W.stroke(f, skin.knobEdge, 2)
+		knob = f
+	end
 	knob.AnchorPoint = Vector2.new(0.5, 0.5)
 	knob.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	knob.Size = UDim2.fromScale(0.82, 0.82)
-	W.corner(knob, skin.radius)
-	W.stroke(knob, skin.knobEdge, 2)
+	knob.Size = if knobArt then UDim2.fromScale(1.05, 1.05) else UDim2.fromScale(0.82, 0.82)
+	knob.ZIndex = 2
 	local frac = 0
 	local held = false
 	local pos = Motion.spring(0, 8, 0.7)
@@ -625,23 +640,37 @@ export type PadSkin = {
 	knobEdge: Color3,
 	arrows: Color3,
 	arrowFont: Font,
+	baseImage: string?, -- rendered art (Art.luau) for the disc...
+	knobImage: string?, -- ...and the ball
 }
 
 function W.pad(parent: Instance, name: string, skin: PadSkin, t: Tracker, onMove: (number) -> ()): Slider
-	local root = W.frame(parent, name, skin.base, skin.baseTransparency)
-	W.corner(root)
-	W.stroke(root, skin.edge, skin.edgeThickness)
-	for i, ch in { "◀", "▶" } do
-		local a = W.text(root, "Arrow" .. i, ch, skin.arrowFont, skin.arrows)
-		W.at(a, if i == 1 then 0.14 else 0.86, 0.5)
-		a.Size = UDim2.fromScale(0.16, 0.2)
+	local baseArt, knobArt = skin.baseImage, skin.knobImage
+	local root = if baseArt then W.frame(parent, name) else W.frame(parent, name, skin.base, skin.baseTransparency)
+	if baseArt then
+		W.image(root, "Base", baseArt)
+	else
+		W.corner(root)
+		W.stroke(root, skin.edge, skin.edgeThickness)
+		for i, ch in { "◀", "▶" } do
+			local a = W.text(root, "Arrow" .. i, ch, skin.arrowFont, skin.arrows)
+			W.at(a, if i == 1 then 0.14 else 0.86, 0.5)
+			a.Size = UDim2.fromScale(0.16, 0.2)
+		end
 	end
-	local knob = W.frame(root, "Knob", Color3.new(1, 1, 1), 0)
+	local knob: GuiObject
+	if knobArt then
+		knob = W.image(root, "Knob", knobArt)
+	else
+		local f = W.frame(root, "Knob", Color3.new(1, 1, 1), 0)
+		W.corner(f)
+		W.gradient(f, skin.knob, skin.knobLow, 90)
+		W.stroke(f, skin.knobEdge, 3)
+		knob = f
+	end
 	knob.AnchorPoint = Vector2.new(0.5, 0.5)
 	knob.Size = UDim2.fromScale(0.46, 0.46)
-	W.corner(knob)
-	W.gradient(knob, skin.knob, skin.knobLow, 90)
-	W.stroke(knob, skin.knobEdge, 3)
+	knob.ZIndex = 2
 	local frac = 0
 	local held = false
 	local pos = Motion.spring(0, 9, 0.6)

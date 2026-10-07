@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local HudLab = script.Parent.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
+local Art = require(HudLab:WaitForChild("Art")).arcade
 
 local OUT = Color3.fromRGB(15, 20, 24)
 local PANEL = Color3.fromRGB(28, 35, 42)
@@ -54,12 +55,12 @@ function Arcade.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 
 	-- Speed: LED arc, the number, a gear pill.
 	local size = if touch then 0.3 else 0.36
-	local gauge = W.frame(root, "Speed", PANEL, 0.25)
+	local gauge = W.frame(root, "Speed")
 	W.square(gauge, size)
 	gauge.AnchorPoint = if touch then Vector2.new(0.5, 0) else Vector2.new(1, 1)
 	gauge.Position = if touch then UDim2.new(0.72, 0, 0, top + 4) else UDim2.new(1, -26, 1, -20)
-	W.corner(gauge)
-	W.stroke(gauge, OUT, 3)
+	-- The disc art under the LEDs (its rim is where the arc lights).
+	W.image(gauge, "Face", Art.gaugeFace)
 	local tacho = W.tacho(gauge, "Leds", {
 		fromDeg = -125,
 		toDeg = 125,
@@ -70,7 +71,7 @@ function Arcade.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 		tickWidth = 2,
 		majorLen = 0.1,
 		minorLen = 0.1,
-		radius = 0.44,
+		radius = 0.4,
 		numerals = nil,
 		numeralColor = WHITE,
 		needle = WHITE,
@@ -137,13 +138,12 @@ function Arcade.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	W.box(cashPill, 0.34, 0.085)
 	cashPill.AnchorPoint = if touch then Vector2.new(0, 0) else Vector2.new(0, 1)
 	cashPill.Position = if touch then UDim2.new(0, 14, 0.12, top + 12) else UDim2.new(0, 22, 1, -22)
-	local coin = W.frame(cashPill, "Coin", YELLOW, 0)
+	local coin = W.image(cashPill, "Coin", Art.coin)
 	coin.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	coin.Size = UDim2.fromScale(0.62, 0.62)
-	coin.AnchorPoint = Vector2.new(0, 0.5)
+	coin.Size = UDim2.fromScale(1.15, 1.15)
+	coin.AnchorPoint = Vector2.new(0.35, 0.5)
 	coin.Position = UDim2.fromScale(0.05, 0.5)
-	W.corner(coin)
-	W.stroke(coin, OUT, 2.5)
+	coin.ZIndex = 2
 	local cashText = outlined(cashPill, "T", "0", WHITE, 2)
 	cashText.AnchorPoint = Vector2.new(0, 0.5)
 	cashText.Position = UDim2.fromScale(0.3, 0.5)
@@ -317,13 +317,15 @@ function Arcade.buildControls(gui: ScreenGui, api: any): any
 		knobEdge = OUT,
 		arrows = WHITE,
 		arrowFont = FAT,
+		baseImage = Art.padBase,
+		knobImage = Art.padKnob,
 	}, t, function(frac)
 		api.steerRaw(frac)
 	end)
 	W.square(pad.root, 0.42)
 	W.at(pad.root, 0.15, 0.72)
 
-	local chunky = {
+	local chunky: W.PedalSkin = {
 		plate = GREEN,
 		plateLow = Color3.fromRGB(30, 160, 70),
 		edge = OUT,
@@ -341,22 +343,25 @@ function Arcade.buildControls(gui: ScreenGui, api: any): any
 		depth = 0.07,
 		fill = nil,
 		minValue = 0.45,
+		image = Art.pedalGas,
 	}
 	local gas = W.pedal(root, "Gas", chunky, t, function(v)
 		api.throttle(v)
 	end)
-	W.box(gas.root, 0.17, 0.42)
-	W.at(gas.root, 0.885, 0.71)
+	-- The art's own proportions: brake 560x520, gas 400x1000.
+	W.box(gas.root, 0.18, 0.45)
+	W.at(gas.root, 0.885, 0.7)
 	local brakeSkin = table.clone(chunky)
 	brakeSkin.plate = RED
 	brakeSkin.plateLow = Color3.fromRGB(190, 40, 40)
 	brakeSkin.label = "BRAKE"
 	brakeSkin.minValue = 0.5
+	brakeSkin.image = Art.pedalBrake
 	local brake = W.pedal(root, "Brake", brakeSkin, t, function(v)
 		api.brake(v)
 	end)
-	W.box(brake.root, 0.2, 0.25)
-	W.at(brake.root, 0.74, 0.8)
+	W.box(brake.root, 0.24, 0.223)
+	W.at(brake.root, 0.735, 0.8)
 
 	local lever = W.lever(root, "Hand", {
 		track = PANEL,
@@ -371,6 +376,8 @@ function Arcade.buildControls(gui: ScreenGui, api: any): any
 		labelColor = WHITE,
 		engageAt = 0.3,
 		active = ORANGE,
+		trackImage = Art.leverTrack,
+		handleImage = Art.leverHandle,
 	}, t, function(on)
 		api.handbrake(on)
 	end)
@@ -387,12 +394,21 @@ function Arcade.buildControls(gui: ScreenGui, api: any): any
 		font = FAT,
 		text = WHITE,
 		litText = OUT,
-		textStroke = nil,
+		textStroke = OUT,
+		image = Art.pill,
+		slice = Rect.new(60, 56, 240, 64),
+		sliceHeight = 120,
 	}
-	local natl = W.button(root, "Natl", "NATL", small, t, function()
+	local natlSkin: any = table.clone(small)
+	natlSkin.image = Art.natlOff
+	natlSkin.litImage = Art.natlOn
+	natlSkin.slice = nil -- round art, drawn whole
+	natlSkin.sliceHeight = nil
+	-- The label is in the art.
+	local natl = W.button(root, "Natl", "", natlSkin, t, function()
 		api.natl()
 	end)
-	W.square(natl.root, 0.15)
+	W.square(natl.root, 0.17)
 	W.at(natl.root, 0.33, 0.6)
 
 	local lean = W.slider(root, "Lean", {

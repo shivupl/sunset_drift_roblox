@@ -134,6 +134,24 @@ the cash down with its toast, collapse and the close button worked, no errors. O
 look itself, and a real phone (a 350 px tall screen fits the rail only at 40 px rows; checked in a
 mock, not a device).
 
+**`hud-variants` (2026-10-07, branched from `garage-ui-overhaul` at `da2cfc0`; not merged): driving
+HUD and phone-control variants to try.** The owner, on the theme mockups: "these really arent that
+good... for the phone it should be actual gas/break pedals and whatnot. i need a way more alive UI",
+then "just take refference from any of those games, make some better variants for me to try", then
+"the 'art' looks pretty bad... would benefit from some sort of image generation or higher detail".
+Three variants (`src/client/HudLab`), switched by the STYLE button on screen, U on a keyboard, or the
+`HudVariant` attribute; CLASSIC is the old HUD and controls (Hud.luau and Touch.luau hand over while a
+variant is on): PRO after CarX Drift Racing 2 (a steering wheel, brushed pedals, a pull handbrake, a
+chrome needle tacho, a drift-angle scale), MIDNIGHT after Midnight Racing: Tokyo (glass pedals and
+slider, a see-through dial with a red needle, a timing bar, chevrons toward the slide), ARCADE after
+Driving Empire (glossy toy pedals, a thumb pad, an LED speed dial, a coin cash pill the banked cash
+flies into). All three: pedals give part throttle low on the plate, the needle springs and trembles
+on the limiter, numbers roll, the screen edge glows with the chain, Arabic shouts on a 360, a natl and
+x3. The art is SVG in `art/hud/<variant>/` rendered by `art/hud/render.py` (resvg; headless Chrome
+hung on this Mac) and uploaded from Studio; ids in `HudLab/Art.luau`. Checked in Play with
+ForceTouch: every variant drew and drove, the art loaded; type check clean. Open for the owner: which
+style (or which parts of each) to keep, and a real phone.
+
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
 per-car looks saved on the server, drawn on every client), the garage workshop on the pad's left
