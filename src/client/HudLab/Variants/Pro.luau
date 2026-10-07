@@ -9,6 +9,11 @@ local GuiService = game:GetService("GuiService")
 local HudLab = script.Parent.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
+local Art = require(HudLab:WaitForChild("Art")).pro
+
+-- The dial art's scale (art/hud/pro/make_tacho.py): 0 rpm at -135 degrees,
+-- 8000 at +100.
+local TACHO_FROM, TACHO_TO, TACHO_MAX = -135, 100, 8000
 
 local INK = Color3.fromRGB(16, 17, 19)
 local GRAPHITE = Color3.fromRGB(34, 36, 40)
@@ -39,30 +44,11 @@ function Pro.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 
 	-- Tacho.
 	local tachoSize = if touch then 0.34 else 0.3
-	local tachoBox = W.frame(root, "Tacho", INK, 0.35)
+	local tachoBox = W.frame(root, "Tacho")
 	W.square(tachoBox, tachoSize)
 	tachoBox.AnchorPoint = Vector2.new(1, 0)
 	tachoBox.Position = if touch then UDim2.new(0.86, 0, 0, top + 4) else UDim2.new(1, -24, 0, top + 12)
-	W.corner(tachoBox)
-	W.stroke(tachoBox, WHITE, 1.5, 0.75)
-	local tacho = W.tacho(tachoBox, "Gauge", {
-		fromDeg = -135,
-		toDeg = 100,
-		majors = 8,
-		minors = 4,
-		tick = WHITE,
-		red = RED,
-		tickWidth = 2,
-		majorLen = 0.08,
-		minorLen = 0.04,
-		radius = 0.45,
-		numerals = NUM_SEMI,
-		numeralColor = WHITE,
-		needle = WHITE,
-		needleWidth = 3,
-		needleLen = 0.43,
-		hub = SODIUM,
-	})
+	local tacho = W.tachoImage(tachoBox, "Gauge", Art.tachoFace, Art.needle, TACHO_FROM, TACHO_TO, TACHO_MAX)
 	tacho.root.Size = UDim2.fromScale(1, 1)
 	local speed = W.text(tachoBox, "Speed", "0", NUM, WHITE)
 	speed.AnchorPoint = Vector2.new(1, 0.5)
@@ -82,9 +68,7 @@ function Pro.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	local gear = W.text(gearBox, "N", "1", NUM, INK)
 	W.at(gear, 0.5, 0.52)
 	gear.Size = UDim2.fromScale(0.8, 0.8)
-	local rpmTag = W.text(tachoBox, "Rpm", "x1000 RPM", TAG, SOFT)
-	W.at(rpmTag, 0.5, 0.36)
-	rpmTag.Size = UDim2.fromScale(0.42, 0.05)
+	speed.ZIndex, unit.ZIndex, gearBox.ZIndex, gear.ZIndex = 2, 2, 2, 2
 
 	-- Score.
 	local scoreBox = W.frame(root, "Score")
@@ -177,7 +161,8 @@ function Pro.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	local bestBox = W.frame(root, "Best")
 	W.box(bestBox, 0.4, 0.03)
 	bestBox.Position = cashBox.Position + UDim2.new(0, 0, if touch then 0.06 else 0.07, 0)
-	local best = W.text(bestBox, "T", "", TAG, SOFT)
+	local best = W.text(bestBox, "T", "", NUM_SEMI, SOFT)
+	W.stroke(best, INK, 1, 0.4)
 	best.TextXAlignment = Enum.TextXAlignment.Left
 
 	local shout = W.shout(root, "Shout", {
@@ -300,13 +285,15 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 		hubEdge = GRAPHITE,
 		marker = SODIUM,
 		maxDeg = 150,
+		image = Art.wheel,
 	}, t, function(frac)
 		api.steerRaw(frac)
 	end)
 	W.square(wheel.root, 0.5)
 	W.at(wheel.root, 0.16, 0.7)
 
-	local metal = {
+	-- The art shows the press itself (it darkens and sinks): no amount bar.
+	local metal: W.PedalSkin = {
 		plate = Color3.fromRGB(214, 216, 220),
 		plateLow = Color3.fromRGB(128, 132, 140),
 		edge = Color3.fromRGB(70, 72, 78),
@@ -322,26 +309,28 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 		shadow = Color3.new(0, 0, 0),
 		shadowTransparency = 0.55,
 		depth = 0.06,
-		fill = SODIUM,
+		fill = nil,
 		minValue = 0.45,
+		image = Art.pedalGas,
 	}
 	local brakeSkin = table.clone(metal)
 	brakeSkin.label = "BRAKE"
 	brakeSkin.slots = 4
-	brakeSkin.fill = RED
 	brakeSkin.minValue = 0.5
+	brakeSkin.image = Art.pedalBrake
 	local brake = W.pedal(root, "Brake", brakeSkin, t, function(v)
 		api.brake(v)
 	end)
-	W.box(brake.root, 0.2, 0.25)
-	W.at(brake.root, 0.745, 0.8)
+	-- The art's own proportions: brake 560x520, gas 400x1000.
+	W.box(brake.root, 0.24, 0.223)
+	W.at(brake.root, 0.735, 0.8)
 	local gasSkin = table.clone(metal)
 	gasSkin.label = "THROTTLE"
 	gasSkin.slots = 7
 	local gas = W.pedal(root, "Gas", gasSkin, t, function(v)
 		api.throttle(v)
 	end)
-	W.box(gas.root, 0.16, 0.44)
+	W.box(gas.root, 0.18, 0.45)
 	W.at(gas.root, 0.885, 0.7)
 
 	local lever = W.lever(root, "Hand", {
@@ -357,9 +346,12 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 		labelColor = WHITE,
 		engageAt = 0.3,
 		active = SODIUM,
+		trackImage = Art.leverTrack,
+		handleImage = Art.leverHandle,
 	}, t, function(on)
 		api.handbrake(on)
 	end)
+	-- The slot plate's proportions, 220x640.
 	W.box(lever.root, 0.11, 0.32)
 	W.at(lever.root, 0.935, 0.33)
 
@@ -370,15 +362,24 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 		edge = WHITE,
 		edgeThickness = 1.5,
 		radius = UDim.new(0.25, 0),
-		font = TAG,
+		font = NUM_SEMI,
 		text = WHITE,
 		litText = INK,
 		textStroke = nil,
+		image = Art.pill,
+		slice = Rect.new(60, 56, 240, 64),
+		sliceHeight = 120,
 	}
-	local natl = W.button(root, "Natl", "NATL", small, t, function()
+	local natlSkin: any = table.clone(small)
+	natlSkin.image = Art.natlOff
+	natlSkin.litImage = Art.natlOn
+	natlSkin.slice = nil -- round art, drawn whole
+	natlSkin.sliceHeight = nil
+	-- The label is in the art.
+	local natl = W.button(root, "Natl", "", natlSkin, t, function()
 		api.natl()
 	end)
-	W.square(natl.root, 0.13)
+	W.square(natl.root, 0.16)
 	W.at(natl.root, 0.335, 0.6)
 
 	local lean = W.slider(root, "Lean", {

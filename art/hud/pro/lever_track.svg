@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="640" viewBox="0 0 220 640">
+  <defs>
+    <filter id="shadow" x="-30%" y="-10%" width="160%" height="125%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/></filter>
+    <filter id="metal" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9 0.004" numOctaves="2" seed="9" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.45 0" result="s"/>
+      <feBlend in="SourceGraphic" in2="s" mode="soft-light" result="lit"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="h"/>
+      <feSpecularLighting in="h" surfaceScale="4" specularConstant="0.8" specularExponent="20" lighting-color="#fff" result="spec"><feDistantLight azimuth="225" elevation="48"/></feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="sp"/>
+      <feComposite in="lit" in2="sp" operator="arithmetic" k1="0" k2="1" k3="0.4" k4="0" result="o"/>
+      <feComposite in="o" in2="SourceAlpha" operator="in"/>
+    </filter>
+    <filter id="slot" x="-20%" y="-5%" width="140%" height="110%">
+      <feOffset in="SourceAlpha" dy="8" result="off"/><feComposite in="SourceAlpha" in2="off" operator="out" result="rim"/>
+      <feFlood flood-color="#000" flood-opacity="0.9"/><feComposite in2="rim" operator="in" result="inner"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="inner"/></feMerge>
+    </filter>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a4f57"/><stop offset="1" stop-color="#1b1d21"/></linearGradient>
+    <radialGradient id="bolt" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#fff"/><stop offset="0.45" stop-color="#a7adb5"/><stop offset="1" stop-color="#3e434a"/></radialGradient>
+  </defs>
+  <g filter="url(#shadow)"><rect x="30" y="16" width="160" height="604" rx="40" fill="url(#plate)" filter="url(#metal)"/></g>
+  <rect x="31.5" y="17.5" width="157" height="601" rx="39" fill="none" stroke="#0d0e10" stroke-width="3"/>
+  <rect x="37" y="23" width="146" height="590" rx="34" fill="none" stroke="#fff" stroke-opacity="0.18" stroke-width="2"/>
+  <rect x="92" y="70" width="36" height="500" rx="18" fill="#070809" filter="url(#slot)"/>
+  <g fill="#ffba5c" fill-opacity="0.9"><rect x="140" y="230" width="22" height="4" rx="2"/><rect x="140" y="270" width="14" height="4" rx="2"/><rect x="140" y="310" width="14" height="4" rx="2"/><rect x="140" y="350" width="22" height="4" rx="2"/></g>
+  <g><circle cx="110" cy="44" r="12" fill="url(#bolt)" stroke="#22262b" stroke-width="2"/><circle cx="110" cy="594" r="12" fill="url(#bolt)" stroke="#22262b" stroke-width="2"/></g>
+  <g stroke="#22262b" stroke-width="3.5" stroke-linecap="round"><path d="M103 44h14M110 37v14"/><path d="M103 594h14M110 587v14"/></g>
+</svg>

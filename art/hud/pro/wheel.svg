@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <!-- A round tube: blurred alpha as a height map, lit from the top left. -->
+    <filter id="tube" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14" result="h"/>
+      <feSpecularLighting in="h" surfaceScale="9" specularConstant="0.7" specularExponent="16" lighting-color="#ffffff" result="spec">
+        <feDistantLight azimuth="225" elevation="42"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="11" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.11  0 0 0 0.5 0" result="grainC"/>
+      <feComposite in="grainC" in2="SourceAlpha" operator="in" result="grainIn"/>
+      <feMerge result="base"><feMergeNode in="SourceGraphic"/><feMergeNode in="grainIn"/></feMerge>
+      <feComposite in="base" in2="specIn" operator="arithmetic" k1="0" k2="1" k3="0.35" k4="0"/>
+    </filter>
+    <filter id="metal" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.004 0.9" numOctaves="2" seed="5" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.4 0" result="streaks"/>
+      <feBlend in="SourceGraphic" in2="streaks" mode="soft-light" result="lit"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="h"/>
+      <feSpecularLighting in="h" surfaceScale="4" specularConstant="0.8" specularExponent="20" lighting-color="#ffffff" result="spec">
+        <feDistantLight azimuth="225" elevation="48"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>
+      <feComposite in="lit" in2="specIn" operator="arithmetic" k1="0" k2="1" k3="0.45" k4="0" result="out"/>
+      <feComposite in="out" in2="SourceAlpha" operator="in"/>
+    </filter>
+    <radialGradient id="leather" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#34363b"/>
+      <stop offset="1" stop-color="#121315"/>
+    </radialGradient>
+    <linearGradient id="spoke" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5c6168"/>
+      <stop offset="1" stop-color="#24272b"/>
+    </linearGradient>
+    <radialGradient id="pad" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#2e3034"/>
+      <stop offset="1" stop-color="#0f1012"/>
+    </radialGradient>
+    <linearGradient id="marker" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e08a2e"/>
+      <stop offset="0.5" stop-color="#ffd08a"/>
+      <stop offset="1" stop-color="#e08a2e"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.4" stop-color="#9aa0a8"/>
+      <stop offset="0.6" stop-color="#e6e9ec"/>
+      <stop offset="1" stop-color="#565b62"/>
+    </linearGradient>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <!-- Spokes: left, right and bottom, under the rim. -->
+    <g filter="url(#metal)" fill="url(#spoke)">
+      <path d="M95 372 Q 200 360 290 352 L 290 448 Q 200 440 95 428 Z"/>
+      <path d="M705 372 Q 600 360 510 352 L 510 448 Q 600 440 705 428 Z"/>
+      <path d="M352 505 Q 360 600 370 705 L 430 705 Q 440 600 448 505 Z"/>
+    </g>
+    <!-- Hub and horn pad. -->
+    <circle cx="400" cy="400" r="128" fill="url(#chrome)" filter="url(#metal)"/>
+    <circle cx="400" cy="400" r="112" fill="url(#pad)" filter="url(#tube)"/>
+    <!-- Rim: a leather ring. -->
+    <path d="M400 8 A392 392 0 1 1 399.9 8 Z M400 76 A324 324 0 1 0 400.1 76 Z" fill="url(#leather)" fill-rule="evenodd" filter="url(#tube)"/>
+  </g>
+  <!-- Stitching along both edges of the rim. -->
+  <g fill="none" stroke="#a9adb4" stroke-opacity="0.75" stroke-width="3" stroke-dasharray="9 8">
+    <circle cx="400" cy="400" r="380"/>
+    <circle cx="400" cy="400" r="336"/>
+  </g>
+  <!-- Twelve o'clock: the sodium marker band across the rim. -->
+  <path d="M384 10 L416 10 L414 76 L386 76 Z" fill="url(#marker)" filter="url(#tube)"/>
+  <!-- The emblem on the horn pad. -->
+  <circle cx="400" cy="400" r="70" fill="none" stroke="#ffba5c" stroke-opacity="0.85" stroke-width="3"/>
+  <text x="400" y="418" text-anchor="middle" font-family="Reem Kufi Bold" font-size="54" fill="#ffba5c" fill-opacity="0.92">هجولة</text>
+</svg>

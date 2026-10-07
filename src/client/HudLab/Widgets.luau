@@ -101,6 +101,19 @@ function W.text(parent: Instance, name: string, text: string, font: Font, color:
 	return t
 end
 
+-- An image filling its parent, transparent around it.
+function W.image(parent: Instance, name: string, image: string): ImageLabel
+	local i = Instance.new("ImageLabel")
+	i.Name = name
+	i.BackgroundTransparency = 1
+	i.BorderSizePixel = 0
+	i.Image = image
+	i.ScaleType = Enum.ScaleType.Fit
+	i.Size = UDim2.fromScale(1, 1)
+	i.Parent = parent
+	return i
+end
+
 -- Places a child at a point given as fractions of its parent, centred.
 function W.at(o: GuiObject, x: number, y: number)
 	o.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -207,30 +220,44 @@ export type PedalSkin = {
 	depth: number, -- how far it sinks, fraction of its height
 	fill: Color3?, -- the amount bar along its side, nil for none
 	minValue: number,
+	-- Rendered art instead of the drawn plate (Art.luau): its shading,
+	-- slots and label are in the image; pressing darkens and sinks it.
+	image: string?,
 }
 
 export type Pedal = {
 	root: Frame,
-	plate: Frame,
+	plate: GuiObject,
 	update: (dt: number) -> (),
 	value: () -> number,
 }
 
 function W.pedal(parent: Instance, name: string, skin: PedalSkin, t: Tracker, onValue: (number) -> ()): Pedal
 	local root = W.frame(parent, name)
-	local shadow = W.frame(root, "Shadow", skin.shadow, skin.shadowTransparency)
-	shadow.Size = UDim2.fromScale(1, 1)
-	shadow.Position = UDim2.fromScale(0.04, skin.depth)
-	W.corner(shadow, skin.radius)
-	local plate = W.frame(root, "Plate", Color3.new(1, 1, 1), 0)
-	plate.Size = UDim2.fromScale(1, 1)
-	W.corner(plate, skin.radius)
-	local grad = W.gradient(plate, skin.plate, skin.plateLow, 90)
-	W.stroke(plate, skin.edge, skin.edgeThickness)
+	local art = skin.image
+	local plate: GuiObject
+	local grad: UIGradient? = nil
+	local artImage: ImageLabel? = nil
+	if art then
+		local img = W.image(root, "Plate", art)
+		plate = img
+		artImage = img
+	else
+		local shadow = W.frame(root, "Shadow", skin.shadow, skin.shadowTransparency)
+		shadow.Size = UDim2.fromScale(1, 1)
+		shadow.Position = UDim2.fromScale(0.04, skin.depth)
+		W.corner(shadow, skin.radius)
+		local f = W.frame(root, "Plate", Color3.new(1, 1, 1), 0)
+		f.Size = UDim2.fromScale(1, 1)
+		W.corner(f, skin.radius)
+		grad = W.gradient(f, skin.plate, skin.plateLow, 90)
+		W.stroke(f, skin.edge, skin.edgeThickness)
+		plate = f
+	end
 	local scale = Instance.new("UIScale")
 	scale.Parent = plate
 	-- Grip slots: rounded bars across the plate, label in the middle gap.
-	local n = skin.slots
+	local n = if art then 0 else skin.slots
 	for i = 1, n do
 		local y = 0.12 + (i - 1) * (0.76 / math.max(n - 1, 1))
 		if math.abs(y - 0.5) < 0.07 then
@@ -242,11 +269,13 @@ function W.pedal(parent: Instance, name: string, skin: PedalSkin, t: Tracker, on
 		s.Size = UDim2.fromScale(0.62, 0.045)
 		W.corner(s)
 	end
-	local label = W.text(plate, "Label", skin.label, skin.labelFont, skin.labelColor)
-	W.at(label, 0.5, 0.5)
-	label.Size = UDim2.fromScale(0.78, 0.13)
-	if skin.labelStroke then
-		W.stroke(label, skin.labelStroke, 2)
+	if not art and skin.label ~= "" then
+		local label = W.text(plate, "Label", skin.label, skin.labelFont, skin.labelColor)
+		W.at(label, 0.5, 0.5)
+		label.Size = UDim2.fromScale(0.78, 0.13)
+		if skin.labelStroke then
+			W.stroke(label, skin.labelStroke, 2)
+		end
 	end
 	local fillBar: Frame? = nil
 	if skin.fill then
@@ -286,7 +315,15 @@ function W.pedal(parent: Instance, name: string, skin: PedalSkin, t: Tracker, on
 		local d = Motion.step(press, if target > 0 then 0.6 + 0.4 * target else 0, dt)
 		plate.Position = UDim2.fromScale(0, skin.depth * d)
 		scale.Scale = 1 - 0.05 * d
-		grad.Offset = Vector2.new(0, -0.25 * d)
+		local g = grad
+		if g then
+			g.Offset = Vector2.new(0, -0.25 * d)
+		end
+		local img = artImage
+		if img then
+			-- Pressed down out of the light.
+			img.ImageColor3 = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(150, 150, 156), d)
+		end
 		local fb = fillBar
 		if fb then
 			fb.Size = UDim2.fromScale(1, target)
@@ -315,34 +352,51 @@ export type LeverSkin = {
 	labelColor: Color3,
 	engageAt: number,
 	active: Color3, -- the slot's glow while it is on
+	trackImage: string?, -- rendered art (Art.luau) for the slot plate...
+	handleImage: string?, -- ...and the grip
 }
 
 export type Lever = { root: Frame, update: (dt: number) -> () }
 
 function W.lever(parent: Instance, name: string, skin: LeverSkin, t: Tracker, onEngaged: (boolean) -> ()): Lever
 	local root = W.frame(parent, name)
-	local track = W.frame(root, "Track", skin.track, skin.trackTransparency)
-	W.at(track, 0.5, 0.5)
-	track.Size = UDim2.fromScale(0.36, 1)
-	W.corner(track)
-	local trackStroke = W.stroke(track, skin.trackEdge, 2)
-	local handle = W.frame(root, "Handle", Color3.new(1, 1, 1), 0)
-	handle.AnchorPoint = Vector2.new(0.5, 0.5)
-	handle.Size = UDim2.fromScale(1, 0.3)
-	W.corner(handle, UDim.new(0.3, 0))
-	W.gradient(handle, skin.handle, skin.handleLow, 90)
-	W.stroke(handle, skin.handleEdge, 2)
-	for i = 1, 3 do
-		local g = W.frame(handle, "Grip" .. i, skin.grip, 0.2)
-		g.AnchorPoint = Vector2.new(0.5, 0.5)
-		g.Position = UDim2.fromScale(0.5, 0.22 + (i - 1) * 0.12)
-		g.Size = UDim2.fromScale(0.6, 0.06)
-		W.corner(g)
+	local trackStroke: UIStroke? = nil
+	local handle: GuiObject
+	local handleImage: ImageLabel? = nil
+	local trackArt, handleArt = skin.trackImage, skin.handleImage
+	if trackArt and handleArt then
+		W.image(root, "Track", trackArt)
+		local h = W.image(root, "Handle", handleArt)
+		h.AnchorPoint = Vector2.new(0.5, 0.5)
+		h.Size = UDim2.fromScale(1.45, 0.4)
+		h.ZIndex = 2
+		handle = h
+		handleImage = h
+	else
+		local track = W.frame(root, "Track", skin.track, skin.trackTransparency)
+		W.at(track, 0.5, 0.5)
+		track.Size = UDim2.fromScale(0.36, 1)
+		W.corner(track)
+		trackStroke = W.stroke(track, skin.trackEdge, 2)
+		local f = W.frame(root, "Handle", Color3.new(1, 1, 1), 0)
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Size = UDim2.fromScale(1, 0.3)
+		W.corner(f, UDim.new(0.3, 0))
+		W.gradient(f, skin.handle, skin.handleLow, 90)
+		W.stroke(f, skin.handleEdge, 2)
+		for i = 1, 3 do
+			local g = W.frame(f, "Grip" .. i, skin.grip, 0.2)
+			g.AnchorPoint = Vector2.new(0.5, 0.5)
+			g.Position = UDim2.fromScale(0.5, 0.22 + (i - 1) * 0.12)
+			g.Size = UDim2.fromScale(0.6, 0.06)
+			W.corner(g)
+		end
+		local label = W.text(f, "Label", skin.label, skin.labelFont, skin.labelColor)
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.fromScale(0.5, 0.74)
+		label.Size = UDim2.fromScale(0.86, 0.3)
+		handle = f
 	end
-	local label = W.text(handle, "Label", skin.label, skin.labelFont, skin.labelColor)
-	label.AnchorPoint = Vector2.new(0.5, 0.5)
-	label.Position = UDim2.fromScale(0.5, 0.74)
-	label.Size = UDim2.fromScale(0.86, 0.3)
 
 	local held = false
 	local want = 0
@@ -373,9 +427,16 @@ function W.lever(parent: Instance, name: string, skin: LeverSkin, t: Tracker, on
 
 	local function update(dt: number)
 		local x = Motion.step(pos, if held then want else 0, dt)
-		handle.Position = UDim2.fromScale(0.5, 0.15 + 0.7 * math.clamp(x, 0, 1))
-		trackStroke.Color = if on then skin.active else skin.trackEdge
-		trackStroke.Thickness = if on then 3 else 2
+		handle.Position = UDim2.fromScale(0.5, 0.17 + 0.64 * math.clamp(x, 0, 1))
+		local ts = trackStroke
+		if ts then
+			ts.Color = if on then skin.active else skin.trackEdge
+			ts.Thickness = if on then 3 else 2
+		end
+		local hi = handleImage
+		if hi then
+			hi.ImageColor3 = if on then Color3.fromRGB(255, 226, 186) else Color3.new(1, 1, 1)
+		end
 	end
 	return { root = root, update = update }
 end
@@ -395,6 +456,7 @@ export type WheelSkin = {
 	hubEdge: Color3,
 	marker: Color3, -- the stripe at 12 o'clock
 	maxDeg: number,
+	image: string?, -- rendered art (Art.luau) instead of the drawn wheel
 }
 
 export type Wheel = { root: Frame, update: (dt: number) -> () }
@@ -403,33 +465,39 @@ function W.wheel(parent: Instance, name: string, skin: WheelSkin, t: Tracker, on
 	local root = W.frame(parent, name)
 	local spin = W.frame(root, "Spin")
 	spin.Size = UDim2.fromScale(1, 1)
-	local rim = W.frame(spin, "Rim")
-	rim.Size = UDim2.fromScale(1, 1)
-	W.corner(rim)
-	local rimStroke = W.stroke(rim, skin.rim, 8, skin.rimTransparency)
-	local function spoke(rot: number, len: number)
-		local holder = W.frame(spin, "Spoke")
-		holder.Size = UDim2.fromScale(1, 1)
-		holder.Rotation = rot
-		local s = W.frame(holder, "Bar", skin.spoke, 0)
-		s.AnchorPoint = Vector2.new(0.5, 1)
-		s.Position = UDim2.fromScale(0.5, 0.5)
-		s.Size = UDim2.fromScale(0.09, len)
-		W.corner(s, UDim.new(0.4, 0))
+	local rimStroke: UIStroke? = nil
+	local art = skin.image
+	if art then
+		W.image(spin, "Art", art)
+	else
+		local rim = W.frame(spin, "Rim")
+		rim.Size = UDim2.fromScale(1, 1)
+		W.corner(rim)
+		rimStroke = W.stroke(rim, skin.rim, 8, skin.rimTransparency)
+		local function spoke(rot: number, len: number)
+			local holder = W.frame(spin, "Spoke")
+			holder.Size = UDim2.fromScale(1, 1)
+			holder.Rotation = rot
+			local s = W.frame(holder, "Bar", skin.spoke, 0)
+			s.AnchorPoint = Vector2.new(0.5, 1)
+			s.Position = UDim2.fromScale(0.5, 0.5)
+			s.Size = UDim2.fromScale(0.09, len)
+			W.corner(s, UDim.new(0.4, 0))
+		end
+		spoke(90, 0.47)
+		spoke(270, 0.47)
+		spoke(180, 0.47)
+		local hub = W.frame(spin, "Hub", skin.hub, 0)
+		W.at(hub, 0.5, 0.5)
+		hub.Size = UDim2.fromScale(0.3, 0.3)
+		W.corner(hub)
+		W.stroke(hub, skin.hubEdge, 2)
+		local marker = W.frame(spin, "Marker", skin.marker, 0)
+		marker.AnchorPoint = Vector2.new(0.5, 0)
+		marker.Position = UDim2.fromScale(0.5, -0.02)
+		marker.Size = UDim2.fromScale(0.06, 0.1)
+		W.corner(marker, UDim.new(0.3, 0))
 	end
-	spoke(90, 0.47)
-	spoke(270, 0.47)
-	spoke(180, 0.47)
-	local hub = W.frame(spin, "Hub", skin.hub, 0)
-	W.at(hub, 0.5, 0.5)
-	hub.Size = UDim2.fromScale(0.3, 0.3)
-	W.corner(hub)
-	W.stroke(hub, skin.hubEdge, 2)
-	local marker = W.frame(spin, "Marker", skin.marker, 0)
-	marker.AnchorPoint = Vector2.new(0.5, 0)
-	marker.Position = UDim2.fromScale(0.5, -0.02)
-	marker.Size = UDim2.fromScale(0.06, 0.1)
-	W.corner(marker, UDim.new(0.3, 0))
 
 	local turned = 0 -- degrees, + right
 	local held = false
@@ -469,7 +537,10 @@ function W.wheel(parent: Instance, name: string, skin: WheelSkin, t: Tracker, on
 			turned = Motion.step(back, 0, dt)
 		end
 		spin.Rotation = turned
-		rimStroke.Thickness = math.max(2, root.AbsoluteSize.X * skin.rimThickness)
+		local rs = rimStroke
+		if rs then
+			rs.Thickness = math.max(2, root.AbsoluteSize.X * skin.rimThickness)
+		end
 	end
 	return { root = root, update = update }
 end
@@ -613,19 +684,38 @@ export type ButtonSkin = {
 	text: Color3,
 	litText: Color3,
 	textStroke: Color3?,
+	image: string?, -- rendered art (Art.luau) behind the label...
+	litImage: string?, -- ...swapped in while lit
+	slice: Rect?, -- 9-slice centre of the image, for a pill that stretches
+	sliceHeight: number?, -- the image's height in px, so its corners scale with the button
 }
 
 export type Button = { root: Frame, setLit: (boolean) -> (), update: (dt: number) -> () }
 
 function W.button(parent: Instance, name: string, label: string, skin: ButtonSkin, t: Tracker, onTap: () -> ()): Button
-	local root = W.frame(parent, name, skin.fill, skin.fillTransparency)
-	W.corner(root, skin.radius)
-	W.stroke(root, skin.edge, skin.edgeThickness)
+	local art = skin.image
+	local root = if art then W.frame(parent, name) else W.frame(parent, name, skin.fill, skin.fillTransparency)
+	local bg: ImageLabel? = nil
+	if art then
+		local img = W.image(root, "Art", art)
+		local slice = skin.slice
+		if slice then
+			img.ScaleType = Enum.ScaleType.Slice
+			img.SliceCenter = slice
+			img.SliceScale = 0.5
+		end
+		bg = img
+	else
+		W.corner(root, skin.radius)
+		W.stroke(root, skin.edge, skin.edgeThickness)
+	end
 	local scale = Instance.new("UIScale")
 	scale.Parent = root
 	local txt = W.text(root, "Label", label, skin.font, skin.text)
 	W.at(txt, 0.5, 0.5)
-	txt.Size = UDim2.fromScale(0.78, 0.42)
+	txt.Size = UDim2.fromScale(0.72, 0.4)
+	txt.Visible = label ~= ""
+	txt.ZIndex = 2
 	if skin.textStroke then
 		W.stroke(txt, skin.textStroke, 2)
 	end
@@ -635,12 +725,22 @@ function W.button(parent: Instance, name: string, label: string, skin: ButtonSki
 		onTap()
 	end, nil, function() end)
 	local function setLit(on: boolean)
-		root.BackgroundColor3 = if on then skin.lit else skin.fill
-		root.BackgroundTransparency = if on then 0 else skin.fillTransparency
+		local img = bg
+		if img then
+			img.Image = if on and skin.litImage then skin.litImage else art or ""
+		else
+			root.BackgroundColor3 = if on then skin.lit else skin.fill
+			root.BackgroundTransparency = if on then 0 else skin.fillTransparency
+		end
 		txt.TextColor3 = if on then skin.litText else skin.text
 	end
 	local function update(dt: number)
 		scale.Scale = Motion.step(pop, 1, dt)
+		local img = bg
+		local h = skin.sliceHeight
+		if img and h then
+			img.SliceScale = math.max(root.AbsoluteSize.Y, 1) / h
+		end
 	end
 	return { root = root, setLit = setLit, update = update }
 end
@@ -768,6 +868,29 @@ function W.tacho(parent: Instance, name: string, skin: TachoSkin): Tacho
 				elseif isRed then skin.ledRed or skin.red
 				else skin.ledOn or skin.tick
 		end
+	end
+	return { root = root, set = set, update = update }
+end
+
+-- A tacho drawn as art: the dial face and a needle image, both squares
+-- with the needle's pivot at the centre, turned from fromDeg (0 rpm) to
+-- toDeg (maxRpm) as the face was drawn (art/hud/pro/make_tacho.py).
+function W.tachoImage(parent: Instance, name: string, face: string, needleArt: string, fromDeg: number, toDeg: number, maxRpm: number): Tacho
+	local root = W.frame(parent, name)
+	W.image(root, "Face", face)
+	local needle = W.image(root, "Needle", needleArt)
+	needle.ZIndex = 3
+	local rpm = 0
+	local red = maxRpm
+	local spring = Motion.spring(0, 4.2, 0.55)
+	local function set(r: number, redline: number)
+		rpm = r
+		red = redline
+	end
+	local function update(dt: number)
+		local frac = Motion.step(spring, math.clamp(rpm / maxRpm, 0, 1.03), dt)
+		local jitter = if rpm >= red - 150 then (math.random() - 0.5) * 2.5 else 0
+		needle.Rotation = fromDeg + (toDeg - fromDeg) * frac + jitter
 	end
 	return { root = root, set = set, update = update }
 end
