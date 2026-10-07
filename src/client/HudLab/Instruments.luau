@@ -65,6 +65,8 @@ export type DialSpec = {
 	jitterAbove: number?, -- trembles at and above this value (a limiter)
 	peak: string?, -- a second needle that holds the highest reading
 	peakHold: number?, -- seconds it holds before it falls back
+	shadow: string?, -- the needle's shadow: turns with it, offset down-right
+	shadowOffset: Vector2?, -- fraction of the dial's size
 }
 
 export type Dial = {
@@ -90,6 +92,14 @@ function I.dial(parent: Instance, name: string, spec: DialSpec): Dial
 	under.Size = UDim2.fromScale(1, 1)
 	under.ZIndex = 2
 	under.Parent = root
+	local shadowImg: ImageLabel? = nil
+	local shadowArt = spec.shadow
+	if shadowArt then
+		local sh = layer(root, "Shadow", shadowArt, 3)
+		local off = spec.shadowOffset or Vector2.new(0.008, 0.014)
+		sh.Position = UDim2.fromScale(off.X, off.Y)
+		shadowImg = sh
+	end
 	local peakImg: ImageLabel? = nil
 	local peakArt = spec.peak
 	if peakArt then
@@ -118,6 +128,10 @@ function I.dial(parent: Instance, name: string, spec: DialSpec): Dial
 		local jit = spec.jitterAbove
 		local jitter = if jit and value >= jit then (math.random() - 0.5) * 2.5 else 0
 		needle.Rotation = angleOf(frac) + jitter
+		local sh = shadowImg
+		if sh then
+			sh.Rotation = needle.Rotation
+		end
 		local p = peakImg
 		if p then
 			if frac >= peak then

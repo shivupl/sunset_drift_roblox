@@ -79,4 +79,69 @@ Art.kruzer = {
 	leanKnob = "rbxassetid://100245561669893", -- 200
 }
 
+-- STREET (art/hud/street/make.py): the white-face cluster and drift-car hardware.
+Art.street = {
+	tachoFace = "rbxassetid://108388805554491", -- 768, -135..135 deg for 0..9000 r/min
+	needle = "rbxassetid://132383203721023", -- 768
+	needleShadow = "rbxassetid://136445104139666", -- 768, offset down-right by the HUD
+	peak = "rbxassetid://112296814192293", -- 768, the peak-hold needle
+	tachoGlass = "rbxassetid://120154002447272", -- 768
+	shiftOff = "rbxassetid://120197415138216", -- 160
+	shiftOn = "rbxassetid://83269705529659",
+	drum = "rbxassetid://106161483060176", -- 48x792, 0..9,0
+	drumTenths = "rbxassetid://88005772887032",
+	drumShade = "rbxassetid://76896976477528", -- 48x72
+	speed = "rbxassetid://85148172590541", -- 800x150, cells of 80x150, 0..9
+	gear = "rbxassetid://79074122323209", -- 896x160, cells of 112x160, 123456RN
+	kmh = "rbxassetid://126741206893761", -- 220x80
+	tyreFace = "rbxassetid://107868653438542", -- 320, -120..120 deg for 40..140 C
+	podNeedle = "rbxassetid://72813661855970", -- 320
+	podNeedleShadow = "rbxassetid://135468852888566",
+	podGlass = "rbxassetid://73934767757603",
+	dots = "rbxassetid://85284516475366", -- 960x640, red LEDs
+	board = "rbxassetid://140552097432934", -- 960x300
+	mini = "rbxassetid://136853505388172", -- 600x200
+	pedalGas = "rbxassetid://119885551343539", -- 400x1000
+	pedalBrake = "rbxassetid://84226814032224", -- 560x520
+	padBase = "rbxassetid://138237324340001", -- 640
+	padKnob = "rbxassetid://118783042700856", -- 300
+	leverTrack = "rbxassetid://89035246851844", -- 220x640
+	leverHandle = "rbxassetid://93086231111005", -- 360x260
+	natlOff = "rbxassetid://114797356683263", -- 320
+	natlOn = "rbxassetid://74966294557411",
+	pill = "rbxassetid://127773022273857", -- 300x120, 9-slice
+	leanTrack = "rbxassetid://121856851965042", -- 900x200
+	leanKnob = "rbxassetid://96228336250197", -- 200
+}
+
+-- KABRIS (art/hud/kabris/make.py): the box sedan's cluster and Brougham trim.
+-- Its odometer drums are STREET's.
+Art.kabris = {
+	housing = "rbxassetid://116035696182002", -- 1000x320, the whole cluster
+	glass = "rbxassetid://112883777935476", -- 1000x320
+	sweep = "rbxassetid://78538098967659", -- 40x120, the speed needle
+	podNeedle = "rbxassetid://118668579965761", -- 320, pivot at the centre
+	pointer = "rbxassetid://137081451120254", -- 40x32, the gear pointer
+	lampBrake = "rbxassetid://115332371325115", -- 112x70, lit
+	lampNatl = "rbxassetid://126785118044734",
+	lampTemp = "rbxassetid://77696570787341",
+	lampShift = "rbxassetid://91441772810651",
+	seg = "rbxassetid://129830378978658", -- 960x640, 14-segment, cells of 96x128
+	vfd = "rbxassetid://94520300071106", -- 960x300
+	vfdOver = "rbxassetid://77328648797668", -- 960x300, the mesh and glass over it
+	vfdMini = "rbxassetid://106447247728108", -- 600x200
+	vfdMiniOver = "rbxassetid://79515600578328",
+	pedalGas = "rbxassetid://134602851525004", -- 400x1000
+	pedalBrake = "rbxassetid://97637079751228", -- 560x520
+	padBase = "rbxassetid://114989429953650", -- 640
+	padKnob = "rbxassetid://100013875872461", -- 300
+	leverTrack = "rbxassetid://71880176360470", -- 220x640
+	leverHandle = "rbxassetid://116432583673755", -- 360x260
+	natlOff = "rbxassetid://102072599149389", -- 320
+	natlOn = "rbxassetid://121132279941029",
+	pill = "rbxassetid://102599971543311", -- 300x120, 9-slice
+	leanTrack = "rbxassetid://109946610445924", -- 900x200
+	leanKnob = "rbxassetid://71355769245692", -- 200
+}
+
 return Art

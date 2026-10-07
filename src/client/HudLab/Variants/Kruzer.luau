@@ -19,13 +19,13 @@
 -- pedals on steel, a leather pad, a leather handbrake grip, a NATL switch.
 -- The art is art/hud/kruzer/make.py; its layout numbers are mirrored here.
 local GuiService = game:GetService("GuiService")
-local TweenService = game:GetService("TweenService")
 
 local HudLab = script.Parent.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local I = require(HudLab:WaitForChild("Instruments"))
 local Motion = require(HudLab:WaitForChild("Motion"))
 local Controls = require(HudLab:WaitForChild("ArcadeControls"))
+local Display = require(HudLab:WaitForChild("DotDisplay"))
 local Art = require(HudLab:WaitForChild("Art")).kruzer
 
 local AMBER = Color3.fromRGB(255, 173, 66)
@@ -44,8 +44,6 @@ local SPEED = { 262, 500, 192, 104 }
 local ODO = { 300, 614, 168, 40 }
 local LCD_ORDER = "0123456789 -rnP#"
 local LCD_CELL = Vector2.new(60, 96)
-local DOT_ORDER = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZx.,+-!:/° #"
-local DOT_CELL = Vector2.new(96, 128)
 
 local Kruzer = {}
 Kruzer.id = "kruzer"
@@ -54,25 +52,10 @@ Kruzer.name = "KRUZER"
 local ARABIC = W.font("BuilderSans", Enum.FontWeight.Heavy)
 local LABEL = W.font("BuilderSans", Enum.FontWeight.Bold)
 
--- A child placed by its top left in a w x h piece of art's pixels.
-local function rectIn(o: GuiObject, bw: number, bh: number, x: number, y: number, w: number, h: number)
-	o.AnchorPoint = Vector2.new(0, 0)
-	o.Position = UDim2.fromScale(x / bw, y / bh)
-	o.Size = UDim2.fromScale(w / bw, h / bh)
-end
-
 local function lcd(parent: Instance, name: string, count: number, box: { number }): I.Chars
 	local c = I.chars(parent, name, { atlas = Art.lcd, order = LCD_ORDER, cell = LCD_CELL, cols = 16, count = count })
 	I.placeTL(c.root, T, box[1], box[2], box[3], box[4])
 	return c
-end
-
-local function dots(parent: Instance, name: string, count: number, align: string?): I.Chars
-	return I.chars(parent, name, { atlas = Art.dots, order = DOT_ORDER, cell = DOT_CELL, cols = 10, count = count, align = align })
-end
-
-local function pad(s: string, n: number): string
-	return s .. string.rep(" ", math.max(n - utf8.len(s) :: number, 0))
 end
 
 function Kruzer.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
@@ -157,71 +140,18 @@ function Kruzer.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 		podAt(angle.root, 0.158, -0.04)
 	end
 
-	-- On a phone the displays line up by the buttons (EXIT / RESET / STYLE
-	-- run 0.62 of the screen's height along the top left): the cash beside
-	-- them, the drift display under them, clear of the cluster on any
-	-- screen down to 16:10. A square the screen's height tall lets them be
-	-- placed in fractions of it.
-	local byHeight = W.frame(root, "ByHeight")
-	byHeight.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	byHeight.Size = UDim2.fromScale(1, 1)
-	byHeight.Position = UDim2.fromOffset(0, top)
-
-	-- The drift display (960x300 art).
-	local mid = W.frame(if touch then byHeight else root, "Display")
-	if touch then
-		mid.Size = UDim2.fromScale(0.56, 0.56 * 300 / 960)
-		mid.Position = UDim2.new(0, 10, 0.115, 6)
-	else
-		W.box(mid, 0.6, 0.6 * 300 / 960)
-		mid.AnchorPoint = Vector2.new(0.5, 0)
-		mid.Position = UDim2.new(0.5, 0, 0, top + 4)
-	end
-	I.layer(mid, "Glass", Art.mid, 1)
-	local points = dots(mid, "Points", 8)
-	rectIn(points.root, 960, 300, 40, 24, 632, 105)
-	local mult = dots(mid, "Mult", 4)
-	rectIn(mult.root, 960, 300, 700, 50, 208, 70)
-	local info = dots(mid, "Info", 16, "left")
-	rectIn(info.root, 960, 300, 40, 150, 832, 70)
-	for _, c in { points, mult, info } do
-		c.root.ZIndex = 2
-	end
-	local leds: { Frame } = {}
-	local LEDS = 24
-	for i = 1, LEDS do
-		local f = W.frame(mid, "Led" .. i, AMBER_DIM, 0)
-		rectIn(f, 960, 300, 40 + (i - 1) * 880 / LEDS, 236, 880 / LEDS - 8, 16)
-		f.ZIndex = 2
-		W.corner(f, UDim.new(0.3, 0))
-		table.insert(leds, f)
-	end
-	local midScale = Instance.new("UIScale")
-	midScale.Parent = mid
-
-	-- The cash display (600x200 art).
-	local mini = W.frame(if touch then byHeight else root, "Cash")
-	if touch then
-		mini.Size = UDim2.fromScale(0.3, 0.1)
-		mini.Position = UDim2.new(0.62, 34, 0, 4)
-	else
-		W.box(mini, 0.34, 0.34 * 200 / 600)
-		mini.AnchorPoint = Vector2.new(0, 1)
-		mini.Position = UDim2.new(0, 22, 1, -22)
-	end
-	I.layer(mini, "Glass", Art.mini, 1)
-	local cashLabel = dots(mini, "Label", 4, "left")
-	rectIn(cashLabel.root, 600, 200, 36, 42, 136, 44)
-	cashLabel.set("CASH")
-	local cash = dots(mini, "Value", 9)
-	rectIn(cash.root, 600, 200, 178, 28, 396, 59)
-	local best = dots(mini, "Best", 16, "left")
-	rectIn(best.root, 600, 200, 36, 112, 528, 44)
-	for _, c in { cashLabel, cash, best } do
-		c.root.ZIndex = 2
-	end
-	local cashScale = Instance.new("UIScale")
-	cashScale.Parent = mini
+	local displays = Display.build(root, touch, {
+		panel = Art.mid,
+		mini = Art.mini,
+		dots = Art.dots,
+		lit = AMBER,
+		dim = AMBER_DIM,
+		hot = RED,
+		angleBar = false,
+		flyFont = ARABIC,
+		flyColor = AMBER,
+		flyStroke = INK,
+	})
 
 	local shout = W.shout(root, "Shout", {
 		font = ARABIC,
@@ -235,41 +165,12 @@ function Kruzer.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 	W.box(shout.root, 0.56, 0.22)
 	W.at(shout.root, if touch then 0.42 else 0.36, 0.46)
 
-	local roller = Motion.roller()
-	local cashRoller = Motion.roller()
-	cashRoller.shown = -1
-	local cashPop = Motion.spring(1, 5, 0.35)
-	local midPop = Motion.spring(1, 4, 0.45)
 	local glowAmt = Motion.spring(0, 2, 1)
-	local message = ""
-	local messageUntil = 0
-	local messageBlink = false
-	local held = 0 -- the points shown after a slide ends
-	local heldUntil = 0
 	local flash = AMBER
 	local flashUntil = 0
-	local clock = 0
-
-	local function fly(amount: number)
-		local t = W.text(root, "Fly", `+{Motion.comma(amount)}`, ARABIC, AMBER)
-		W.stroke(t, INK, 3)
-		W.box(t, 0.3, 0.07)
-		t.AnchorPoint = Vector2.new(0.5, 0.5)
-		local from = mid.AbsolutePosition + mid.AbsoluteSize / 2
-		local to = mini.AbsolutePosition + mini.AbsoluteSize / 2
-		t.Position = UDim2.fromOffset(from.X, from.Y)
-		local tw = TweenService:Create(t, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.fromOffset(to.X, to.Y),
-		})
-		tw.Completed:Once(function()
-			t:Destroy()
-			Motion.kick(cashPop, 8)
-		end)
-		tw:Play()
-	end
 
 	local function update(v: any, dt: number)
-		clock += dt
+
 		local now = os.clock()
 		-- Tacho and its LCD.
 		tacho.set(v.rpm)
@@ -298,44 +199,9 @@ function Kruzer.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 		angle.set(if v.speed > 5 then math.clamp(v.angle, -90, 90) else 0)
 		angle.update(dt)
 
-		-- The display.
+		displays.update(v, dt)
 		local live = v.sliding
-		if live then
-			held, heldUntil = v.points, now + 1.4
-		end
-		local shownPoints = if live then v.points elseif now < heldUntil then held else 0
-		local p = Motion.roll(roller, shownPoints, dt, 9)
-		points.set(if p > 0 then Motion.comma(p) else "")
-		mult.set(if live and v.mult > 1 then (if v.mult % 1 == 0 then string.format("x%d", v.mult) else string.format("x%.1f", v.mult)) else "")
-		local line: string
-		if now < messageUntil then
-			line = if messageBlink and (clock * 3) % 1 > 0.6 then "" else message
-		elseif v.natl then
-			local m = v.margin
-			line = pad(`NATL {math.floor(math.abs(v.roll) + 0.5)}°`, 11) .. (if m < 8 then "TIP!" elseif m < 16 then "CATCH" else "HOLD")
-		elseif live then
-			line = pad("DRIFT", 12) .. string.format("%3d°", math.floor(math.abs(v.angle) + 0.5))
-		else
-			line = string.format("TRIP %6.1f KM", v.trip)
-		end
-		info.set(line)
 		local heat = math.clamp((v.mult - 1) / math.max(v.multMax - 1, 1), 0, 1)
-		local lit = if live then math.floor(v.chain * LEDS + 0.5) else 0
-		local ledOn = AMBER:Lerp(RED, heat)
-		for i, f in leds do
-			f.BackgroundColor3 = if i <= lit then ledOn else AMBER_DIM
-		end
-		midScale.Scale = Motion.step(midPop, 1, dt)
-
-		-- Cash.
-		if cashRoller.shown < 0 then
-			cashRoller.shown = v.cash
-		end
-		cash.set(Motion.comma(Motion.roll(cashRoller, v.cash, dt, 4)))
-		cashScale.Scale = Motion.step(cashPop, 1, dt)
-		local showServer = v.serverBest > 0 and (clock % 6) > 3
-		best.set(if showServer then `SERVER {Motion.comma(v.serverBest)}` else `BEST {Motion.comma(v.best)}`)
-
 		local want = if live then 0.06 + 0.2 * heat else 0
 		local g = Motion.step(glowAmt, want, dt)
 		glow.set(if now < flashUntil then flash else AMBER, if now < flashUntil then 0.35 else g)
@@ -344,26 +210,16 @@ function Kruzer.buildHud(gui: ScreenGui, touch: boolean, _api: any): any
 
 	local function event(kind: string, a: number, b: number)
 		local now = os.clock()
-		if kind == "mult" then
-			Motion.kick(midPop, 3)
-		elseif kind == "spin" then
+		displays.event(kind, a, b)
+		if kind == "spin" then
 			shout.fire("طارت!", `{if b > 1 then b * 360 else 360}  +{Motion.comma(a)}`)
-			Motion.kick(midPop, 5)
 		elseif kind == "natl" then
 			shout.fire("نطل!", "TWO WHEELS")
 		elseif kind == "chain" then
 			shout.fire("هجولة!", string.format("x%.1f CHAIN", a))
 		elseif kind == "banked" then
-			held, heldUntil = a, now + 1.6
-			message, messageUntil, messageBlink = `BANKED +{Motion.comma(b)}`, now + 1.6, false
 			flash, flashUntil = GREEN, now + 0.3
-			Motion.kick(midPop, 5)
-			if b > 0 then
-				fly(b)
-			end
 		elseif kind == "dropped" then
-			held, heldUntil = 0, 0
-			message, messageUntil, messageBlink = "DROPPED", now + 1.2, true
 			flash, flashUntil = RED, now + 0.4
 		end
 	end

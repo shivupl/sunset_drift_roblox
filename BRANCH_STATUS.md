@@ -155,8 +155,11 @@ cluster variants on ARCADE's controls (`ArcadeControls.luau`, gauges in `Instrum
 rendered by `art/hud/kit.py` (height maps lit as materials: rubber, leather, chrome, glass) and
 `parts.py`: KRUZER (Tokyo Xtreme Racer 2025, the Land Cruiser's amber cluster: needle tacho with an LCD
 speed and odometer, gear window, telltales, an inclinometer for the natl, a drift-angle gauge, a
-dot-matrix drift display). The odometer starts at a per-car used mileage and adds the distance really
-driven. Open for the owner: which style (or which parts of each) to keep, and a real phone.
+dot-matrix drift display), STREET (Initial D Arcade Stage, CarX Street: white-face tacho, peak needle,
+shift light, odometer drums, big italic gear and speed, red LED board, drilled pedals, a missile switch)
+and KABRIS (the box Caprice's cluster: sweep speedometer, C-to-H tyre gauge, text lamps, sliding gear
+pointer, walnut, a vacuum-fluorescent score display, a spinner knob, a pull knob). The odometer starts at
+a per-car used mileage and adds the distance really driven; tyre heat is a slide's, cooling with grip. Open for the owner: which style (or which parts of each) to keep, and a real phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

@@ -155,9 +155,11 @@ def dial_glass(c: K.Canvas, cx, cy, r, strength=1.0, seed=7):
 # --------------------------------------------------------------------------
 
 def seg_atlas(chars: str, cell_w: int, cell_h: int, size: float, lit: str, ghost: str, *, family="DSEG7 Classic",
-              weight="bold", style="normal", glow: str | None = None, glow_r=3.0, glow_k=0.6, cols=None):
-    """Seven-segment characters (DSEG7), one per cell. '#' is the ghost (all
-    segments, unlit), ' ' blank. Cells run left to right, then down."""
+              weight="bold", style="normal", glow: str | None = None, glow_r=3.0, glow_k=0.6, cols=None,
+              ghost_glyph="8"):
+    """Segment characters (DSEG7, or DSEG14 for letters), one per cell. '#'
+    is the ghost (every segment, unlit: "8" in DSEG7, "~" in DSEG14), ' '
+    blank. Cells run left to right, then down."""
     cols = cols or len(chars)
     rows = math.ceil(len(chars) / cols)
     c = K.Canvas(cell_w * cols, cell_h * rows)
@@ -166,7 +168,7 @@ def seg_atlas(chars: str, cell_w: int, cell_h: int, size: float, lit: str, ghost
         x = (i % cols) * cell_w + cell_w / 2
         y = (i // cols) * cell_h + cell_h / 2 + size * 0.5
         if ch == "#":
-            parts_ghost.append(K.text_svg(x, y, "8", size, family, fill=ghost, weight=weight, style=style))
+            parts_ghost.append(K.text_svg(x, y, ghost_glyph, size, family, fill=ghost, weight=weight, style=style))
         elif ch != " ":
             parts_lit.append(K.text_svg(x, y, ch, size, family, fill=lit, weight=weight, style=style))
     rgb, a = K.svg_rgba(c, "".join(parts_ghost))
@@ -342,3 +344,86 @@ def switch_square(size, *, body="#141518", rough=0.45, radius=None, top_concave=
     dish = -top_concave * (1 - ((c.X - size / 2) ** 2 + (c.Y - size / 2) ** 2) / (size * 0.42) ** 2).clip(0, 1)
     s.paint(K.cover(d), albedo=body, metal=0, rough=rough, h=K.bevel(d, size * 0.07, size * 0.06, "round") + dish * K.cover(d + size * 0.06) + K.grain(c, seed, 0.7) * 0.05)
     return c, s, d
+
+
+# --------------------------------------------------------------------------
+# Machined parts (STREET)
+# --------------------------------------------------------------------------
+
+def knurl_bezel(c: K.Canvas, s: K.Surface, cx, cy, r_out, width, chrome_w=7, colour="#16171a", pitch=7.0, seed=13):
+    """An aftermarket gauge's bezel: black anodised, knurled round its outer
+    half, a polished ring at the face. Returns the face's radius."""
+    d = K.circle(c, cx, cy, r_out)
+    s.shape(K.cover(d))
+    rad = np.hypot(c.X - cx, c.Y - cy)
+    ang = np.arctan2(c.Y - cy, c.X - cx)
+    # Straight knurl across the rim: ridges along the radius.
+    ridges = np.abs(np.sin(ang * (2 * np.pi * r_out / pitch) / 2)) ** 0.7
+    outer = K.smooth(r_out - width * 0.55, r_out - width * 0.45, rad)
+    h = K.bevel(d, width * 0.5, width * 0.5, "round") + ridges * 2.2 * outer * K.cover(d + 3)
+    s.paint(K.cover(d), albedo=colour, metal=1, rough=0.38, h=h + K.grain(c, seed, 0.7) * 0.05)
+    r_ring = r_out - width
+    ring = K.ring(c, cx, cy, r_ring + chrome_w / 2, chrome_w)
+    s.paint(K.cover(ring), albedo="#eceef1", metal=1, rough=0.06, h=width * 0.35 + K.bevel(ring, chrome_w / 2, chrome_w * 0.5))
+    return r_ring
+
+
+def hex_screw(s: K.Surface, c: K.Canvas, cx, cy, r, colour="#c9ccd1"):
+    """A button-head hex screw: a dome with a hex socket."""
+    d = K.circle(c, cx, cy, r)
+    s.shape(K.cover(d))
+    ang = np.arctan2(c.Y - cy, c.X - cx)
+    rad = np.hypot(c.X - cx, c.Y - cy)
+    hexr = r * 0.42 / np.cos(((ang + np.pi / 6) % (np.pi / 3)) - np.pi / 6)
+    sock = K.cover(rad - hexr)
+    base = s.h + 0
+    s.paint(K.cover(d), albedo=colour, metal=1, rough=0.25, h=base + K.bevel(d, r * 0.8, r * 0.5, "dome") - sock * r * 0.4)
+
+
+def drilled_pedal(w, h, *, plate_w, plate_h, radius, slots, strips, alum="#c3c7cc", rubber="#111213", seed=7,
+                  brush_angle=90):
+    """A race pedal: brushed aluminium with slots cut through it (they show
+    what is behind) and black rubber anti-slip strips with studs. slots and
+    strips are lists of (cx, cy, w, h) rounded boxes."""
+    c = K.Canvas(w, h)
+    s = K.Surface(c)
+    plate = K.rrect(c, w / 2, h / 2 - h * 0.012, plate_w, plate_h, radius)
+    holes = K.union(*[K.rrect(c, x, y, sw, sh, min(sw, sh) / 2) for x, y, sw, sh in slots])
+    body = K.cut(plate, holes)
+    s.shape(K.cover(body))
+    alum_h = K.bevel(body, 9, 9, "round") + K.streaks(c, seed, 70, brush_angle) * 0.1
+    s.paint(K.cover(body), albedo=alum, metal=1, rough=0.26, h=alum_h)
+    for x, y, sw, sh in strips:
+        st = K.rrect(c, x, y, sw, sh, min(sw, sh) / 2)
+        studs = K.cover(np.maximum(np.abs((c.X - x) % 18 - 9), np.abs((c.Y - y) % 18 - 9)) - 5.5)
+        s.paint(K.cover(st), albedo=rubber, metal=0, rough=0.75, spec=0.4, h=9 + K.bevel(st, 4, 3) + studs * 2.5 * K.cover(st + 4))
+    K.draw(c, s, shadow=(0, 14, 12, 0.6), ao_radius=6)
+    return c
+
+
+# --------------------------------------------------------------------------
+# Brougham trim (KABRIS)
+# --------------------------------------------------------------------------
+
+def woodgrain(c: K.Canvas, seed: int, light="#7a4322", dark="#4a2412", period=26.0, angle_deg=0.0):
+    """Walnut: growth rings warped by noise, soft between light and dark,
+    with fine pores along the grain. Returns linear albedo (h, w, 3) and a
+    small height for the grain."""
+    a = np.radians(angle_deg)
+    u = c.X * np.cos(a) + c.Y * np.sin(a)
+    v = -c.X * np.sin(a) + c.Y * np.cos(a)
+    warp = (K.noise(c, 220, seed, 4) - 0.5) * 160 + (K.noise(c, 40, seed + 1, 3) - 0.5) * 18
+    t = np.sin((v + warp) / period * 2 * np.pi + u / 700.0)
+    # Rings are thin dark lines in lighter wood, not even stripes.
+    ring = np.clip(1 - np.abs(t) * 1.0, 0, 1) ** 3
+    fine = K.streaks(c, seed + 2, 50, angle_deg) * 0.12
+    tone = K.noise(c, 180, seed + 3, 3)
+    mix = np.clip(0.75 - 0.55 * ring + fine + (tone - 0.5) * 0.5, 0, 1)
+    col = K.lin(dark)[None, None, :] * (1 - mix[..., None]) + K.lin(light)[None, None, :] * mix[..., None]
+    return col.astype(np.float32), (mix * 0.3).astype(np.float32)
+
+
+def pebble(c: K.Canvas, seed: int, size=5.0, depth=0.6):
+    """Pebble-grain moulded plastic: a height to add."""
+    f1, edge = K.cells(c, size, seed)
+    return (np.clip(edge / 3, 0, 1) * depth).astype(np.float32)

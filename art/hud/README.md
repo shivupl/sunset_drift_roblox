@@ -9,9 +9,17 @@ be changed and re-rendered:
 - `midnight/` (after Midnight Racing: Tokyo) and `arcade/` (after Driving
   Empire): each written by its `make.py` (smoked glass with lit edges; glossy
   toy shapes with thick outlines). Run it in its folder, then render.
-- `kruzer/` (round two, after Tokyo Xtreme Racer 2025 and the 100-series
-  Land Cruiser's amber cluster): `make.py` draws a whole instrument cluster
-  and OEM controls with `kit.py` and `parts.py` and writes the PNGs itself.
+- Round two, ARCADE's layout with real instrument clusters; each `make.py`
+  draws its cluster and controls with `kit.py` and `parts.py` and writes the
+  PNGs itself:
+  - `kruzer/`: after Tokyo Xtreme Racer 2025 and the 100-series Land
+    Cruiser's amber cluster (an LCD, an inclinometer, OEM rubber and leather).
+  - `street/`: after Initial D Arcade Stage and CarX Street (a white-face
+    tacho, a peak needle, a shift light, odometer drums, big italic digits, a
+    red LED board, drilled pedals, a missile switch).
+  - `kabris/`: after the 1977-90 box Caprice's cluster (a sweep speedometer,
+    text lamps, a PRND-style pointer, walnut, a vacuum-fluorescent display,
+    a spinner knob, a pull knob). Its drums are STREET's.
 - `kit.py`: the render kit for parts that should look made, not drawn: an
   object is a height map with per-pixel albedo, metalness, roughness and
   emission, lit like a product shot (a soft box overhead, a strip light at
@@ -29,11 +37,12 @@ be changed and re-rendered:
   Mac, so it is not used.
 - `fonts/ttf/`: the static TTFs the art uses (Google Fonts, OFL): Oswald Bold
   and SemiBold, Reem Kufi Bold, Orbitron Bold and Fredoka Bold, cut from the variable fonts with fontTools'
-  instancer and renamed so an SVG asks for each by family name; Barlow and
-  Barlow Condensed (static), Michroma; DSEG7 Classic (keshikan/DSEG, OFL,
-  `fonts/DSEG-LICENSE.txt`) for seven-segment digits.
+  instancer and renamed so an SVG asks for each by family name; Barlow
+  Condensed Bold and Bold Italic (static), Michroma; DSEG7 and DSEG14
+  Classic Bold (keshikan/DSEG, OFL, `fonts/DSEG-LICENSE.txt`) for seven- and
+  fourteen-segment characters.
 
-An atlas (`kruzer_lcd`, `kruzer_dots`) is a row of character cells the HUD
+An atlas (`kruzer_lcd`, `*_dots`, `kabris_seg`, `street_speed`) is a grid of character cells the HUD
 cuts with ImageRectOffset (`Instruments.chars`); its cell size and order are
 in the variant's Luau. Dial layouts (where the LCD, gear window and lamps
 sit, in the face's pixels) are printed by `make.py` and mirrored in the

@@ -25,10 +25,18 @@
 --             100-series Land Cruiser's amber cluster: an LCD, an
 --             inclinometer for the natl, a dot-matrix drift display, OEM
 --             rubber pedals, a leather pad and lever.
+--   STREET    Initial D Arcade Stage's white-face tacho with the gear and
+--             speed in big italic digits, CarX Street's rolling odometer: a
+--             peak needle, a shift light, a tyre-temperature gauge, a red
+--             LED drift board, drilled pedals, a missile switch.
+--   KABRIS    the box Caprice's cluster (the hajwala classic): a sweep
+--             speedometer, a C-to-H tyre gauge, text lamps, a sliding gear
+--             pointer, a walnut band; the score on a vacuum-fluorescent
+--             display; chrome-trimmed pedals, a spinner knob, a pull knob.
 --
 -- Switching: the STYLE button on screen, U on a keyboard, or the LocalPlayer
--- attribute HudVariant ("kruzer" | "arcade" | "pro" | "midnight" |
--- "classic"). Hud.luau and Touch.luau hand over to this module while a
+-- attribute HudVariant ("kruzer" | "street" | "kabris" | "arcade" |
+-- "pro" | "midnight" | "classic"). Hud.luau and Touch.luau hand over to this module while a
 -- variant is on.
 --
 -- The variants share the motion (Motion) and the controls' behaviour
@@ -111,11 +119,13 @@ export type Variant = {
 	buildControls: (gui: ScreenGui, api: Api) -> Controls,
 }
 
-local ORDER = { "kruzer", "arcade", "pro", "midnight", "classic" }
+local ORDER = { "kruzer", "street", "kabris", "arcade", "pro", "midnight", "classic" }
 -- The trial starts on the newest style, so the owner sees it at once.
 local DEFAULT = "kruzer"
 local NAMES: { [string]: string } = {
 	kruzer = "KRUZER",
+	street = "STREET",
+	kabris = "KABRIS",
 	arcade = "ARCADE",
 	pro = "PRO",
 	midnight = "MIDNIGHT",
