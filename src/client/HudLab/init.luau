@@ -16,9 +16,20 @@
 --             bouncing multiplier badge, big coloured pedals and a thumb pad.
 -- CLASSIC is the HUD and controls from before (Hud.luau, Touch.luau).
 --
+-- Round two (2026-10-07), the owner: "all are really good but i like arcade
+-- layout. make a few more varients arcade layout but with the actual
+-- odometer and stuff, take refference from other games. as it it - feels
+-- really ai, need deep UI." So ARCADE's control layout with a real
+-- instrument cluster and rendered parts (Instruments.luau, ArcadeControls):
+--   KRUZER    Tokyo Xtreme Racer 2025's orange tacho and small gauges, the
+--             100-series Land Cruiser's amber cluster: an LCD, an
+--             inclinometer for the natl, a dot-matrix drift display, OEM
+--             rubber pedals, a leather pad and lever.
+--
 -- Switching: the STYLE button on screen, U on a keyboard, or the LocalPlayer
--- attribute HudVariant ("pro" | "midnight" | "arcade" | "classic"). Hud.luau
--- and Touch.luau hand over to this module while a variant is on.
+-- attribute HudVariant ("kruzer" | "arcade" | "pro" | "midnight" |
+-- "classic"). Hud.luau and Touch.luau hand over to this module while a
+-- variant is on.
 --
 -- The variants share the motion (Motion) and the controls' behaviour
 -- (Widgets): pedals give part throttle low on the plate, the lever and the
@@ -56,6 +67,12 @@ export type View = {
 	best: number,
 	serverBest: number,
 	holder: string,
+	-- For the instrument clusters:
+	throttle: number, -- 0..1
+	handbrake: boolean,
+	odo: number, -- km: the car's mileage when it spawned plus what it has driven
+	trip: number, -- km this drive
+	heat: number, -- 0..1 tyre heat: a slide warms them, grip cools them
 }
 
 -- What a variant's HUD and controls hand back.
@@ -94,10 +111,16 @@ export type Variant = {
 	buildControls: (gui: ScreenGui, api: Api) -> Controls,
 }
 
-local ORDER = { "pro", "midnight", "arcade", "classic" }
--- The trial starts on the first new style, so the owner sees one at once.
-local DEFAULT = "pro"
-local NAMES: { [string]: string } = { pro = "PRO", midnight = "MIDNIGHT", arcade = "ARCADE", classic = "CLASSIC" }
+local ORDER = { "kruzer", "arcade", "pro", "midnight", "classic" }
+-- The trial starts on the newest style, so the owner sees it at once.
+local DEFAULT = "kruzer"
+local NAMES: { [string]: string } = {
+	kruzer = "KRUZER",
+	arcade = "ARCADE",
+	pro = "PRO",
+	midnight = "MIDNIGHT",
+	classic = "CLASSIC",
+}
 
 local player = Players.LocalPlayer
 local variants: { [string]: Variant } = {}
@@ -118,6 +141,12 @@ local wasUp = false
 -- Events worked out between updates.
 local lastMult = 1
 local shoutedChain = false
+-- The odometer and tyres, kept across style switches.
+local odoCar: Model? = nil
+local odoKm = 0
+local tripKm = 0
+local heat = 0
+local lastState = os.clock()
 
 local function currentId(): string
 	local v = player:GetAttribute("HudVariant")
@@ -246,12 +275,37 @@ local function dropControls()
 	natlOn, wasUp = false, false
 end
 
--- The next style, from the STYLE button or U.
+-- The next style, from the STYLE button or U (skipping any not loaded).
 function HudLab.cycle()
 	local cur = currentId()
 	local i = table.find(ORDER, cur) or 0
-	local nextId = ORDER[i % #ORDER + 1]
-	player:SetAttribute("HudVariant", nextId)
+	for step = 1, #ORDER do
+		local nextId = ORDER[(i + step - 1) % #ORDER + 1]
+		if nextId == "classic" or variants[nextId] then
+			player:SetAttribute("HudVariant", nextId)
+			return
+		end
+	end
+end
+
+-- The car being driven, from the seat (the car is SeatPart.Parent.Parent).
+local function drivenCar(): Model?
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local seat = hum and hum.SeatPart
+	local car = seat and seat.Parent and seat.Parent.Parent
+	return if car and car:IsA("Model") then car else nil
+end
+
+-- A used car's mileage, the same for every car of a kind: the odometer's
+-- starting point (flavour; what it adds on is the real distance driven).
+local function mileage(car: Model): number
+	local id = tostring(car:GetAttribute("CarId") or car.Name)
+	local h = 7
+	for i = 1, #id do
+		h = (h * 31 + string.byte(id, i)) % 1000003
+	end
+	return 60000 + h % 320000 + (h % 10) / 10
 end
 
 local function onSwitch()
@@ -276,6 +330,27 @@ function HudLab.update(state: any, score: any)
 	local records = ReplicatedStorage:FindFirstChild("Records")
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
 	local grace = cfg.scoring.graceSeconds
+	local now = os.clock()
+	local sdt = math.clamp(now - lastState, 0, 0.1)
+	lastState = now
+	local car = drivenCar()
+	if car ~= odoCar then
+		odoCar = car
+		tripKm = 0
+		if car then
+			odoKm = mileage(car)
+		end
+	end
+	local km = state.speedKmh / 3600 * sdt
+	odoKm += km
+	tripKm += km
+	-- Tyre heat: a slide warms them (faster at a bigger angle), they cool
+	-- back over half a minute of grip.
+	if score.active then
+		heat = math.min(1, heat + sdt * (0.05 + 0.12 * math.clamp(math.abs(state.driftAngleDeg) / 60, 0, 1)))
+	else
+		heat = math.max(0, heat - sdt * 0.035)
+	end
 	local v: View = {
 		speed = state.speedKmh,
 		gear = state.gear,
@@ -295,6 +370,11 @@ function HudLab.update(state: any, score: any)
 		best = tonumber(player:GetAttribute("SessionBest")) or 0,
 		serverBest = if records then tonumber(records:GetAttribute("BestScore")) or 0 else 0,
 		holder = if records then tostring(records:GetAttribute("BestHolder") or "") else "",
+		throttle = state.throttle,
+		handbrake = state.handbrake,
+		odo = odoKm,
+		trip = tripKm,
+		heat = heat,
 	}
 	local prev = view
 	view = v

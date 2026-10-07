@@ -47,4 +47,36 @@ Art.arcade = {
 	coin = "rbxassetid://71668343633671", -- 256x256
 }
 
+-- KRUZER (art/hud/kruzer/make.py): the cluster and OEM controls.
+Art.kruzer = {
+	tachoFace = "rbxassetid://78743888301662", -- 768, -125..125 deg for 0..8000 r/min
+	tachoNeedle = "rbxassetid://112051987716769", -- 768, pointing up from the centre
+	tachoGlass = "rbxassetid://100351497070206", -- 768, glass and the centre cap
+	rollFace = "rbxassetid://126111534047594", -- 320, -60..60 deg
+	rollCar = "rbxassetid://124508038155819", -- 320, turns with the roll
+	rollTip = "rbxassetid://116512343928669", -- 320, the tip mark, turned to the tip angle
+	angleFace = "rbxassetid://104779528241846", -- 320, -90..90 deg
+	podNeedle = "rbxassetid://126016089093752", -- 320
+	podGlass = "rbxassetid://125379355499759", -- 320
+	lcd = "rbxassetid://134653706143959", -- 960x96, 16 cells of 60x96
+	dots = "rbxassetid://107119783118153", -- 960x640, cells of 96x128, 10 across
+	mid = "rbxassetid://85359294258406", -- 960x300, the drift display
+	mini = "rbxassetid://104592961517102", -- 600x200, the cash display
+	lampShift = "rbxassetid://85945014875248", -- 96, lit
+	lampBrake = "rbxassetid://118856957766301",
+	lampSlip = "rbxassetid://82223043341647",
+	lampNatl = "rbxassetid://99935766826306",
+	pedalGas = "rbxassetid://130935025747673", -- 400x1000
+	pedalBrake = "rbxassetid://95953172736966", -- 560x520
+	padBase = "rbxassetid://109593595077939", -- 640
+	padKnob = "rbxassetid://131731743148206", -- 300
+	leverTrack = "rbxassetid://93012359671709", -- 220x640
+	leverHandle = "rbxassetid://113256589189901", -- 360x260
+	natlOff = "rbxassetid://109755520140252", -- 320
+	natlOn = "rbxassetid://99166026440240",
+	pill = "rbxassetid://79097207635316", -- 300x120, 9-slice
+	leanTrack = "rbxassetid://122897827112719", -- 900x200
+	leanKnob = "rbxassetid://100245561669893", -- 200
+}
+
 return Art

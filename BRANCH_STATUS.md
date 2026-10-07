@@ -149,8 +149,14 @@ flies into). All three: pedals give part throttle low on the plate, the needle s
 on the limiter, numbers roll, the screen edge glows with the chain, Arabic shouts on a 360, a natl and
 x3. The art is SVG in `art/hud/<variant>/` rendered by `art/hud/render.py` (resvg; headless Chrome
 hung on this Mac) and uploaded from Studio; ids in `HudLab/Art.luau`. Checked in Play with
-ForceTouch: every variant drew and drove, the art loaded; type check clean. Open for the owner: which
-style (or which parts of each) to keep, and a real phone.
+ForceTouch: every variant drew and drove, the art loaded; type check clean. Round two: the owner liked
+ARCADE's layout but "feels really ai, need deep UI" and wanted "the actual odometer and stuff", so
+cluster variants on ARCADE's controls (`ArcadeControls.luau`, gauges in `Instruments.luau`), art
+rendered by `art/hud/kit.py` (height maps lit as materials: rubber, leather, chrome, glass) and
+`parts.py`: KRUZER (Tokyo Xtreme Racer 2025, the Land Cruiser's amber cluster: needle tacho with an LCD
+speed and odometer, gear window, telltales, an inclinometer for the natl, a drift-angle gauge, a
+dot-matrix drift display). The odometer starts at a per-car used mileage and adds the distance really
+driven. Open for the owner: which style (or which parts of each) to keep, and a real phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,
