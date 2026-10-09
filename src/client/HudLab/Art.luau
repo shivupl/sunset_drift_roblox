@@ -144,4 +144,43 @@ Art.kabris = {
 	leanKnob = "rbxassetid://71355769245692", -- 200
 }
 
+-- Layout D (art/hud/streetd/make.py): STREET's look on the owner's mobile
+-- layout, in two finishes. num (the readouts' italic digits) is shared.
+Art.streetd = {
+	btnLeft = "rbxassetid://133082246836189", -- 256
+	btnRight = "rbxassetid://73905289624720",
+	natlOff = "rbxassetid://118567959882542",
+	natlOn = "rbxassetid://83705259355697",
+	handOff = "rbxassetid://106206029263233",
+	handOn = "rbxassetid://70471969886521",
+	exit = "rbxassetid://116049898008258", -- 160
+	reset = "rbxassetid://76953069037084",
+	style = "rbxassetid://139884891730030",
+	tachoFace = "rbxassetid://136476820905479", -- 512, -135..135 deg for 0..9000 r/min
+	tachoNeedle = "rbxassetid://75483086251441",
+	tachoGlass = "rbxassetid://128679846706849",
+	pill = "rbxassetid://78874374331613", -- 300x120, 9-slice
+	board = "rbxassetid://74386076589633", -- 660x170
+	num = "rbxassetid://121313293704646", -- 640x300, cells of 80x150, 8 across: 0123456789,.x+-°
+}
+
+Art.ghost = {
+	btnLeft = "rbxassetid://96085459062674",
+	btnRight = "rbxassetid://76877804217463",
+	natlOff = "rbxassetid://120251054903038",
+	natlOn = "rbxassetid://108659487076981",
+	handOff = "rbxassetid://88346682977898",
+	handOn = "rbxassetid://87736882896588",
+	exit = "rbxassetid://90903964057689",
+	reset = "rbxassetid://97543115960678",
+	style = "rbxassetid://90317443201068",
+	tachoFace = "rbxassetid://81904586630928",
+	tachoNeedle = "rbxassetid://72056038174964",
+	tachoGlass = "rbxassetid://109992870771391",
+	pill = "rbxassetid://85733813885870",
+	board = "rbxassetid://72106456321337",
+	pedalGas = "rbxassetid://108368127865492", -- 400x1000, black anodised
+	pedalBrake = "rbxassetid://97467617054898", -- 560x520
+}
+
 return Art

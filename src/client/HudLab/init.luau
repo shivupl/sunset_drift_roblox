@@ -29,6 +29,10 @@
 --             speed in big italic digits, CarX Street's rolling odometer: a
 --             peak needle, a shift light, a tyre-temperature gauge, a red
 --             LED drift board, drilled pedals, a missile switch.
+--   STREET D, GHOST   (2026-10-08) the owner's own mobile layout from the
+--             mockups (LayoutD.luau, StreetHud.luau): round steer buttons,
+--             a HAND button, a small see-through tacho bottom middle, cash
+--             top right; machined and smoked-glass finishes.
 --   KABRIS    the box Caprice's cluster (the hajwala classic): a sweep
 --             speedometer, a C-to-H tyre gauge, text lamps, a sliding gear
 --             pointer, a walnut band; the score on a vacuum-fluorescent
@@ -120,10 +124,12 @@ export type Variant = {
 	buildControls: (gui: ScreenGui, api: Api) -> Controls,
 }
 
-local ORDER = { "kruzer", "street", "kabris", "arcade", "pro", "midnight", "classic" }
+local ORDER = { "streetd", "ghost", "kruzer", "street", "kabris", "arcade", "pro", "midnight", "classic" }
 -- The trial starts on the newest style, so the owner sees it at once.
-local DEFAULT = "kruzer"
+local DEFAULT = "streetd"
 local NAMES: { [string]: string } = {
+	streetd = "STREET D",
+	ghost = "GHOST",
 	kruzer = "KRUZER",
 	street = "STREET",
 	kabris = "KABRIS",
