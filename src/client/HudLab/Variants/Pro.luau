@@ -274,7 +274,6 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 	local t = W.tracker()
 	local root = W.frame(gui, "ProControls")
 	root.Size = UDim2.fromScale(1, 1)
-	local top = inset()
 
 	local wheel = W.wheel(root, "Wheel", {
 		rim = GRAPHITE,
@@ -401,14 +400,7 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 	W.at(lean.root, 0.16, 0.36)
 	lean.root.Visible = false
 
-	local row = W.frame(root, "Buttons")
-	row.Position = UDim2.new(0, 12, 0, top + 6)
-	-- Full screen size, so the buttons' RelativeYY sizes are of the screen.
-	row.Size = UDim2.fromScale(1, 1)
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.Padding = UDim.new(0, 8)
-	list.Parent = row
+	local row = W.buttonRow(root)
 	local buttons = {
 		W.button(row, "Exit", "EXIT", small, t, function()
 			api.exit()
@@ -416,12 +408,13 @@ function Pro.buildControls(gui: ScreenGui, api: any): any
 		W.button(row, "Reset", "RESET", small, t, function()
 			api.reset()
 		end),
-		W.button(row, "Style", api.styleName(), small, t, function()
+		W.button(row, "Style", "STYLE", small, t, function()
 			api.cycle()
 		end),
 	}
-	for _, b in buttons do
-		W.box(b.root, 0.2, 0.1)
+	for i, b in buttons do
+		W.box(b.root, 0.15, 0.075)
+		b.root.LayoutOrder = i
 	end
 
 	return {

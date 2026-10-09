@@ -8,10 +8,10 @@
 -- 14-segment (parts.seg_atlas, DSEG14) for KABRIS's vacuum-fluorescent
 -- display, which also lays its grid mesh and glass over the characters.
 --
--- On a phone they line up by the buttons (EXIT / RESET / STYLE run 0.62 of
--- the screen's height along the top left): the cash beside them, the drift
--- display under them, clear of a top-right cluster on screens down to
--- 16:10. On a monitor the drift display is top centre, the cash bottom left.
+-- On a phone they run along the top left (the buttons went bottom centre,
+-- W.buttonRow): the drift display, the cash beside it, clear of a top-right
+-- cluster on screens down to 16:10. On a monitor the drift display is top
+-- centre, the cash bottom left.
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 
@@ -82,7 +82,7 @@ function DotDisplay.build(root: Frame, touch: boolean, style: Style): Displays
 	local mid = W.frame(if touch then byHeight else root, "Display")
 	if touch then
 		mid.Size = UDim2.fromScale(0.56, 0.56 * 300 / 960)
-		mid.Position = UDim2.new(0, 10, 0.115, 6)
+		mid.Position = UDim2.new(0, 10, 0, 6)
 	else
 		W.box(mid, 0.6, 0.6 * 300 / 960)
 		mid.AnchorPoint = Vector2.new(0.5, 0)
@@ -122,7 +122,7 @@ function DotDisplay.build(root: Frame, touch: boolean, style: Style): Displays
 	local mini = W.frame(if touch then byHeight else root, "Cash")
 	if touch then
 		mini.Size = UDim2.fromScale(0.3, 0.1)
-		mini.Position = UDim2.new(0.62, 34, 0, 4)
+		mini.Position = UDim2.new(0.56, 20, 0, 6)
 	else
 		W.box(mini, 0.34, 0.34 * 200 / 600)
 		mini.AnchorPoint = Vector2.new(0, 1)

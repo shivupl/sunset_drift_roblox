@@ -85,6 +85,10 @@ local BUTTONS: { Spec } = {
 	{ name = "Reset", title = "RESET", x = 0.66, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Reload", title = "LOAD", x = 0.72, y = 0, size = 0.11, color = GREY, top = true },
 	{ name = "Debug", title = "DBG", x = 0.78, y = 0, size = 0.11, color = GREY, top = true },
+	-- Out of CLASSIC into the HUD styles on trial (HudLab): without it a phone
+	-- that cycled round to CLASSIC had no way back (the owner, 2026-10-08:
+	-- "there is no way for me to cycle UIs on the phone").
+	{ name = "Style", title = "STYLE", x = 0.84, y = 0, size = 0.11, color = GREY, top = true },
 }
 local STEER_SPEC: SliderSpec =
 	{ name = "SteerPad", x = 0.20, y = 0.86, w = 0.36, h = 0.17, color = PAD_COLOR, left = "<", right = ">" }
@@ -153,6 +157,11 @@ local handlers: { [string]: (boolean) -> () } = {
 	Reset = function(down)
 		if down then
 			Input.pulse("reset")
+		end
+	end,
+	Style = function(down)
+		if down then
+			HudLab.cycle()
 		end
 	end,
 	Reload = function(down)

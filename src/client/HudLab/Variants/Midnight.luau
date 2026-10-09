@@ -269,7 +269,6 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 	local t = W.tracker()
 	local root = W.frame(gui, "MidnightControls")
 	root.Size = UDim2.fromScale(1, 1)
-	local top = inset()
 
 	local glassPedal: W.PedalSkin = {
 		plate = Color3.fromRGB(30, 38, 46),
@@ -395,14 +394,8 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 	W.square(natl.root, 0.16)
 	W.at(natl.root, 0.065, 0.5)
 
-	local row = W.frame(root, "Buttons")
-	row.Position = UDim2.new(0, 12, 0, top + 6)
-	-- Full screen size, so the buttons' RelativeYY sizes are of the screen.
-	row.Size = UDim2.fromScale(1, 1)
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.Padding = UDim.new(0, 8)
-	list.Parent = row
+	-- Right of the steer slider (W.buttonRow says why not the top left).
+	local row = W.buttonRow(root, 0.55)
 	local pill: any = table.clone(small)
 	pill.radius = UDim.new(0.5, 0)
 	pill.image = Art.pill
@@ -415,12 +408,13 @@ function Midnight.buildControls(gui: ScreenGui, api: any): any
 		W.button(row, "Reset", "RESET", pill, t, function()
 			api.reset()
 		end),
-		W.button(row, "Style", api.styleName(), pill, t, function()
+		W.button(row, "Style", "STYLE", pill, t, function()
 			api.cycle()
 		end),
 	}
-	for _, b in buttons do
-		W.box(b.root, 0.2, 0.1)
+	for i, b in buttons do
+		W.box(b.root, 0.13, 0.07)
+		b.root.LayoutOrder = i
 	end
 
 	return {

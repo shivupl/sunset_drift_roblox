@@ -774,6 +774,29 @@ function W.button(parent: Instance, name: string, label: string, skin: ButtonSki
 	return { root = root, setLit = setLit, update = update }
 end
 
+-- The EXIT / RESET / STYLE row. Not in the top left: Roblox's chat window
+-- opens there, under the top bar, and takes the taps (the owner,
+-- 2026-10-08: "there is no way for me to cycle UIs on the phone"; Studio's
+-- chat window covered all three). Bottom centre, between the thumbs, unless
+-- `x` moves its centre (a fraction of the screen's width). Full screen
+-- size, so the buttons' RelativeYY sizes are of the screen.
+function W.buttonRow(parent: Instance, x: number?): Frame
+	local row = W.frame(parent, "Buttons")
+	row.Size = UDim2.fromScale(1, 1)
+	row.Position = UDim2.fromScale((x or 0.5) - 0.5, 0)
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, 8)
+	list.Parent = row
+	local pad = Instance.new("UIPadding")
+	pad.PaddingBottom = UDim.new(0, 14)
+	pad.Parent = row
+	return row
+end
+
 ------------------------------------------------------------------------
 -- Tacho: ticks round an arc (or LED segments), numerals, a redline, and a
 -- needle on a spring that swings past and settles like a real one.

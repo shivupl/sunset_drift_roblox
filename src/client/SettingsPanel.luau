@@ -3,6 +3,10 @@
 -- in place of the car list.
 --   * Time of day: one button per SkyConfig option (Sunset, Night). The
 --     world changes at once, on this player's screen only (Sky).
+--   * HUD style: one button per style on trial (HudLab), so a phone can pick
+--     one before driving (the owner, 2026-10-08: "there is no way for me to
+--     cycle UIs on the phone"). The STYLE button while driving and U cycle
+--     the same list.
 --
 -- Its chrome reads UITheme (UI_SYSTEM.md); re-skinned onto the tokens on
 -- 2026-09-28, replacing the Theme table SpawnMenu used to pass in.
@@ -10,8 +14,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SkyConfig = require(Shared:WaitForChild("SkyConfig"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
+local Players = game:GetService("Players")
 local Sky = require(script.Parent.Sky)
 local UIKit = require(script.Parent.UIKit)
+local HudLab = require(script.Parent:WaitForChild("HudLab"))
 
 local SettingsPanel = {}
 
@@ -21,13 +27,28 @@ local heading: TextLabel? = nil
 local row: Frame? = nil
 local note: TextLabel? = nil
 local skyButtons: { [string]: TextButton } = {}
+local hudHeading: TextLabel? = nil
+local hudGrid: Frame? = nil
+local hudGridLayout: UIGridLayout? = nil
+local hudNote: TextLabel? = nil
+local hudButtons: { [string]: TextButton } = {}
+-- Style buttons per row of the grid.
+local HUD_COLUMNS = 4
 
--- The chosen sky takes the selected state (sodiumDim, sodium stroke).
+-- The chosen sky and style take the selected state (sodiumDim, sodium stroke).
 local function paint()
 	local current = Sky.current()
 	for id, b in skyButtons do
 		UIKit.setSelected(b, id == current)
 	end
+	local style = HudLab.current()
+	for id, b in hudButtons do
+		UIKit.setSelected(b, id == style)
+	end
+end
+
+local function hudRows(): number
+	return math.max(1, math.ceil(#HudLab.styles() / HUD_COLUMNS))
 end
 
 local function text(parent: Instance, s: string, order: number): TextLabel
@@ -90,6 +111,37 @@ function SettingsPanel.build(parent: Instance, layoutOrder: number): Frame
 	n.TextColor3 = C.sandDim
 	note = n
 
+	local hh = text(f, "HUD STYLE", 4)
+	hh.FontFace = UITheme.font("title")
+	hh.TextColor3 = C.paint
+	hudHeading = hh
+	local grid = Instance.new("Frame")
+	grid.Name = "HudStyle"
+	grid.BackgroundTransparency = 1
+	grid.LayoutOrder = 5
+	local gl = Instance.new("UIGridLayout")
+	gl.SortOrder = Enum.SortOrder.LayoutOrder
+	gl.CellPadding = UDim2.fromOffset(8, 8)
+	gl.Parent = grid
+	hudGridLayout = gl
+	for i, style in HudLab.styles() do
+		local b = UIKit.chip(grid, style.name, UIKit.isTouch())
+		b.Name = "Hud_" .. style.id
+		b.AutomaticSize = Enum.AutomaticSize.None
+		b.LayoutOrder = i
+		b.Activated:Connect(function()
+			HudLab.set(style.id)
+		end)
+		hudButtons[style.id] = b
+	end
+	grid.Parent = f
+	hudGrid = grid
+	local hn = text(f, "While driving: the STYLE button, or U", 6)
+	hn.FontFace = UITheme.font("caption")
+	hn.TextColor3 = C.sandDim
+	hudNote = hn
+	Players.LocalPlayer:GetAttributeChangedSignal("HudVariant"):Connect(paint)
+
 	Sky.changed = function()
 		paint()
 	end
@@ -104,7 +156,9 @@ function SettingsPanel.height(isTouch: boolean): number
 	local headH = if isTouch then 26 else 22
 	local rowH = if isTouch then 56 else 44
 	local noteH = if isTouch then 22 else 18
-	return headH + rowH + noteH + 8 * 2
+	local rows = hudRows()
+	local gridH = rows * rowH + (rows - 1) * 8
+	return (headH + rowH + noteH) + (headH + gridH + noteH) + 8 * 5
 end
 
 -- Sizes the tab to the height the menu gives it.
@@ -122,6 +176,20 @@ function SettingsPanel.fit(height: number, isTouch: boolean)
 	end
 	n.Size = UDim2.new(1, 0, 0, if isTouch then 22 else 18)
 	n.TextSize = UITheme.textSize("caption", isTouch)
+	local hh, grid, gl, hn = hudHeading, hudGrid, hudGridLayout, hudNote
+	if hh and grid and gl and hn then
+		local rowH = if isTouch then 56 else 44
+		local rows = hudRows()
+		hh.Size = h.Size
+		hh.TextSize = h.TextSize
+		grid.Size = UDim2.new(1, 0, 0, rows * rowH + (rows - 1) * 8)
+		gl.CellSize = UDim2.new(1 / HUD_COLUMNS, -8 * (HUD_COLUMNS - 1) / HUD_COLUMNS, 0, rowH)
+		for _, b in hudButtons do
+			b.TextSize = UITheme.textSize("label", isTouch)
+		end
+		hn.Size = n.Size
+		hn.TextSize = n.TextSize
+	end
 end
 
 function SettingsPanel.setVisible(visible: boolean)

@@ -3,13 +3,12 @@
 -- arcade layout"), dressed in another variant's rendered parts
 -- (hud-variants, 2026-10-07). The thumb pad bottom left with NATL beside
 -- it, the brake and the tall gas bottom right, the handbrake lever above
--- them, EXIT / RESET / STYLE along the top left, the lean slider over the
--- pad while on two wheels.
+-- them, EXIT / RESET / STYLE bottom centre (ARCADE had them top left, under
+-- Roblox's chat window: W.buttonRow), the lean slider over the pad while on
+-- two wheels.
 --
 -- The cluster variants (KRUZER, STREET, KABRIS) pass a Skin; the behaviour
 -- is Widgets', so every style drives the car the same way.
-local GuiService = game:GetService("GuiService")
-
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 
@@ -40,7 +39,6 @@ function Controls.build(gui: ScreenGui, api: any, skin: Skin): any
 	local t = W.tracker()
 	local root = W.frame(gui, "ArcadeControls")
 	root.Size = UDim2.fromScale(1, 1)
-	local top = GuiService:GetGuiInset().Y
 	local font = skin.font
 
 	local pad = W.pad(root, "Steer", {
@@ -163,14 +161,7 @@ function Controls.build(gui: ScreenGui, api: any, skin: Skin): any
 	W.at(lean.root, 0.15, 0.36)
 	lean.root.Visible = false
 
-	local row = W.frame(root, "Buttons")
-	row.Position = UDim2.new(0, 12, 0, top + 6)
-	-- Full screen size, so the buttons' RelativeYY sizes are of the screen.
-	row.Size = UDim2.fromScale(1, 1)
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.Padding = UDim.new(0, 8)
-	list.Parent = row
+	local row = W.buttonRow(root)
 	local buttons = {
 		W.button(row, "Exit", "EXIT", small, t, function()
 			api.exit()
@@ -178,12 +169,13 @@ function Controls.build(gui: ScreenGui, api: any, skin: Skin): any
 		W.button(row, "Reset", "RESET", small, t, function()
 			api.reset()
 		end),
-		W.button(row, "Style", api.styleName(), small, t, function()
+		W.button(row, "Style", "STYLE", small, t, function()
 			api.cycle()
 		end),
 	}
-	for _, b in buttons do
-		W.box(b.root, 0.2, 0.1)
+	for i, b in buttons do
+		W.box(b.root, 0.15, 0.075)
+		b.root.LayoutOrder = i
 	end
 
 	return {

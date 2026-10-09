@@ -34,8 +34,10 @@
 --             pointer, a walnut band; the score on a vacuum-fluorescent
 --             display; chrome-trimmed pedals, a spinner knob, a pull knob.
 --
--- Switching: the STYLE button on screen, U on a keyboard, or the LocalPlayer
--- attribute HudVariant ("kruzer" | "street" | "kabris" | "arcade" |
+-- Switching: the STYLE button on screen (CLASSIC's touch controls have one
+-- too, so a phone is never stuck there), U on a keyboard, the HUD STYLE row
+-- in the menu's Settings tab (SettingsPanel, before you drive), or the
+-- LocalPlayer attribute HudVariant ("kruzer" | "street" | "kabris" | "arcade" |
 -- "pro" | "midnight" | "classic"). Hud.luau and Touch.luau hand over to this module while a
 -- variant is on.
 --
@@ -109,7 +111,6 @@ export type Api = {
 	exit: () -> (),
 	reset: () -> (),
 	cycle: () -> (), -- the next style
-	styleName: () -> string,
 }
 
 export type Variant = {
@@ -233,9 +234,6 @@ api = {
 	cycle = function()
 		HudLab.cycle()
 	end,
-	styleName = function(): string
-		return NAMES[currentId()] or "STYLE"
-	end,
 }
 
 local function newGui(name: string, order: number): ScreenGui
@@ -318,11 +316,65 @@ local function mileage(car: Model): number
 	return 60000 + h % 320000 + (h % 10) / 10
 end
 
+-- The new style's name, shown for a moment whatever switched it (on a phone
+-- the STYLE button says only STYLE).
+local toastGui: ScreenGui? = nil
+local toastToken = 0
+local function toast(text: string)
+	local g: ScreenGui = toastGui or newGui("HajwalaHudLabToast", 7)
+	toastGui = g
+	g:ClearAllChildren()
+	toastToken += 1
+	local mine = toastToken
+	local t = Widgets.text(g, "Toast", text, Widgets.font("BuilderSans", Enum.FontWeight.Heavy), Color3.fromRGB(245, 243, 238))
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(0.5, 0.3)
+	Widgets.box(t, 0.9, 0.07)
+	local stroke = Widgets.stroke(t, Color3.new(0, 0, 0), 2, 0.25)
+	task.delay(1.1, function()
+		local start = os.clock()
+		while toastToken == mine and t.Parent do
+			local k = math.clamp((os.clock() - start) / 0.4, 0, 1)
+			t.TextTransparency = k
+			stroke.Transparency = 0.25 + 0.75 * k
+			if k >= 1 then
+				t:Destroy()
+				break
+			end
+			task.wait()
+		end
+	end)
+end
+
 local function onSwitch()
 	dropHud()
+	toast(`STYLE: {NAMES[currentId()] or currentId()}`)
 	for _, f in switched do
 		task.spawn(f)
 	end
+end
+
+export type Style = { id: string, name: string }
+
+-- The styles in cycle order (the ones loaded, and CLASSIC), for a menu.
+function HudLab.styles(): { Style }
+	local out: { Style } = {}
+	for _, id in ORDER do
+		local loaded = variants[id] ~= nil
+		if loaded or id == "classic" then
+			local entry: Style = { id = tostring(id), name = tostring(NAMES[id] or id) }
+			table.insert(out, entry)
+		end
+	end
+	return out
+end
+
+function HudLab.current(): string
+	return currentId()
+end
+
+function HudLab.set(id: string)
+	player:SetAttribute("HudVariant", id)
 end
 
 -- Touch.luau listens here to rebuild its controls when the style changes
