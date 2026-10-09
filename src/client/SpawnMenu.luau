@@ -34,6 +34,7 @@
 --    sized to the screen now: the list takes what is left after the header,
 --    the footer and the margins, and scrolls when it has to.
 local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -565,11 +566,14 @@ local function fit()
 
 	local ob = openButton
 	if ob then
-		local w = if m.touch then math.clamp(vp.X * 0.2, 120, 220) else 92
-		local h = math.max(UITheme.target(m.touch), if m.touch then math.clamp(vp.Y * 0.09, 44, 64) else 38)
+		-- As tall as Roblox's own top bar buttons, just right of them.
+		local bar = GuiService.TopbarInset
+		local barH = math.max(bar.Height, 36)
+		local h = math.max(barH - 12, 32)
+		local w = if m.touch then math.clamp(vp.X * 0.12, 110, 180) else 92
 		ob.Size = UDim2.fromOffset(w, h)
 		ob.TextSize = if m.touch then math.max(UITheme.textSize("label", true), math.floor(h * 0.42)) else UITheme.textSize("label", false)
-		ob.Position = UDim2.new(0.5, 0, 1, -math.floor(h * 0.35) - (if m.touch then 10 else 0))
+		ob.Position = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + barH / 2)
 	end
 	refreshButtons()
 end
@@ -785,18 +789,18 @@ local function build()
 	status = footer
 
 	-- The CARS button, on every platform: the only way back in on a phone.
-	-- Bottom centre: the top left is the debug panel, the top centre the HUD,
-	-- the top right Roblox's own menus, and on a phone the steer pad and the
-	-- pedals leave the bottom centre free.
+	-- In the top bar, right of Roblox's own buttons (GuiService.TopbarInset):
+	-- at the bottom centre it sat over the driving HUD's tacho (the owner,
+	-- 2026-10-08: "put the cars menu at the top").
 	-- A secondary button (UIKit), see-through over the road.
 	local openGui = Instance.new("ScreenGui")
 	openGui.Name = "HajwalaSpawnButton"
 	openGui.ResetOnSpawn = false
+	openGui.IgnoreGuiInset = true
 	openGui.DisplayOrder = 7
 	local open = UIKit.button(openGui, "CARS", "secondary", isTouch())
 	open.Name = "OpenSpawnMenu"
-	open.AnchorPoint = Vector2.new(0.5, 1)
-	open.Position = UDim2.new(0.5, 0, 1, -14)
+	open.AnchorPoint = Vector2.new(0, 0.5)
 	open.Size = UDim2.fromOffset(92, 38)
 	-- It floats over the road like the HUD card: alpha.hud, not a panel's.
 	open.BackgroundTransparency = UITheme.alpha.hud
@@ -809,6 +813,7 @@ local function build()
 	g.Parent = player:WaitForChild("PlayerGui")
 	gui = g
 	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fit)
 	fit()
 end
 

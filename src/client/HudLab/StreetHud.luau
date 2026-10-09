@@ -72,7 +72,17 @@ function StreetHud.variant(id: string, name: string, finish: Finish): any
 		gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 		local root = W.frame(gui, "StreetHud")
 		root.Size = UDim2.fromScale(1, 1)
-		local glow = W.edgeGlow(root)
+		-- The edge glow fills the whole screen, notch and all: inside the
+		-- safe area it stopped in hard lines short of the sides (the owner,
+		-- 2026-10-08: "again with the boundries, whats going on? its cut off").
+		local glowGui = Instance.new("ScreenGui")
+		glowGui.Name = "HajwalaHudLabGlow"
+		glowGui.ResetOnSpawn = false
+		glowGui.IgnoreGuiInset = true
+		glowGui.ScreenInsets = Enum.ScreenInsets.None
+		glowGui.DisplayOrder = gui.DisplayOrder - 1
+		glowGui.Parent = gui.Parent
+		local glow = W.edgeGlow(glowGui)
 		local right = LayoutD.corner(root, "Right", true)
 		local ex = LayoutD.EDGE_X
 
@@ -255,6 +265,7 @@ function StreetHud.variant(id: string, name: string, finish: Finish): any
 			event = event,
 			destroy = function()
 				root:Destroy()
+				glowGui:Destroy()
 			end,
 		}
 	end

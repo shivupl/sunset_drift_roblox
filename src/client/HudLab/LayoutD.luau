@@ -140,7 +140,9 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 	local natl = W.button(left, "Natl", "", natlSkin, t, function()
 		api.natl()
 	end)
-	place(natl.root, ex + 0.356, 0.633, 0.178, 0.178)
+	-- Higher than the mockup had it, clear of the right steer button (the
+	-- owner, 2026-10-08: "this needs to be a bit higher").
+	place(natl.root, ex + 0.356, 0.55, 0.178, 0.178)
 
 	local lean = W.slider(left, "Lean", {
 		track = Color3.new(0, 0, 0),
