@@ -228,6 +228,21 @@ drawn, its name, price, your cash, cash after or `Short N` in beacon), and
 only the sheet's BUY charges. Buttons under a sheet still hear clicks
 through its scrim, so each one checks for an open sheet first.
 
+## The car picker: a deliberate exception
+
+The CARS menu's car list (`src/client/CarPicker`, 2026-10-11) does not use
+these tokens. The owner asked for a different look there, after a store car
+game's garage ("make it good and polished, like a real car game ... with the
+theme of the seccond uploaded image"), and is trying three layouts of it
+(COMPACT, SHOWROOM, STRIP; the header's layout button cycles them). Its own
+tokens live in `CarPicker/Kit.luau`: graphite panels with a dot texture,
+heavy italic Montserrat (a font Roblox ships; Gotham's stand-in), slanted
+tabs, a green SPAWN with a gradient, boxes with a lit stage and a cut corner.
+The art is `art/carmenu` (README there). PLATES and SETTINGS are still the
+spawn menu's panel on these tokens. When the owner settles on a layout,
+either the other menus follow this look or it comes back onto the tokens;
+until then, leave it on its own.
+
 ## Don'ts
 
 - No literal `Color3`, font or size in UI code: read `UITheme`.

@@ -4,6 +4,10 @@
 --
 -- It opens by itself when you join (you start on foot), and M or the CARS
 -- button at the bottom centre opens it again at any time, driving or not.
+--
+-- The car list itself is the CarPicker (2026-10-11: three garage-style
+-- layouts the owner is trying); this menu opens it for its CARS tab and
+-- keeps the PLATES and SETTINGS tabs, the spawn request and its cooldown.
 -- Spawning while driving replaces the car you are in. Every card is built
 -- from CarCatalog, so a new catalog entry shows up here with no code change.
 --
@@ -46,6 +50,7 @@ local UITheme = require(Shared:WaitForChild("UITheme"))
 local UIKit = require(script.Parent.UIKit)
 local PlatesPanel = require(script.Parent.PlatesPanel)
 local SettingsPanel = require(script.Parent.SettingsPanel)
+local CarPicker = require(script.Parent:WaitForChild("CarPicker"))
 
 local SpawnMenu = {}
 
@@ -256,7 +261,10 @@ local function requestSpawn(id: string)
 	refreshButtons()
 	;(remote :: RemoteEvent):FireServer(id)
 	SpawnMenu.close()
-	task.delay(cooldown + 0.05, refreshButtons)
+	task.delay(cooldown + 0.05, function()
+		refreshButtons()
+		CarPicker.refresh()
+	end)
 end
 
 local function specLine(entry: VehicleRig.CarEntry): string
@@ -749,6 +757,10 @@ local function build()
 			if PlatesPanel.sheetOpen() then
 				return -- under the plates confirm sheet
 			end
+			if pair[1] == "cars" then
+				SpawnMenu.openTab("cars") -- the car list is the CarPicker
+				return
+			end
 			show(pair[1] :: any)
 		end)
 	end
@@ -818,7 +830,7 @@ local function build()
 end
 
 function SpawnMenu.isOpen(): boolean
-	return gui ~= nil and (gui :: ScreenGui).Enabled
+	return (gui ~= nil and (gui :: ScreenGui).Enabled) or CarPicker.isOpen()
 end
 
 function SpawnMenu.open()
@@ -826,9 +838,21 @@ function SpawnMenu.open()
 		return
 	end
 	local g = gui :: ScreenGui
-	if not g.Enabled then
+	if not SpawnMenu.isOpen() then
 		modalBefore = UserInputService.ModalEnabled
 	end
+	if showing == "cars" then
+		-- The car list is the CarPicker; this panel stays shut.
+		g.Enabled = false
+		UserInputService.ModalEnabled = true
+		CarPicker.open()
+		local ob = openButton
+		if ob then
+			ob.Visible = false
+		end
+		return
+	end
+	CarPicker.close()
 	g.Enabled = true
 	-- Roblox's own touch controls are CoreGui and draw over any PlayerGui;
 	-- modal hides them so they cannot take taps meant for the cards.
@@ -852,6 +876,7 @@ function SpawnMenu.close()
 	if gui then
 		(gui :: ScreenGui).Enabled = false
 	end
+	CarPicker.close()
 	UserInputService.ModalEnabled = modalBefore
 	press = nil
 	for _, card in cards do
@@ -916,12 +941,23 @@ function SpawnMenu.setCurrent(carId: string?)
 	end
 	PlatesPanel.setCar(carId)
 	refreshButtons()
+	CarPicker.refresh()
 end
 
 function SpawnMenu.start(remotes: Folder)
 	remote = remotes:WaitForChild("SpawnCar") :: RemoteEvent
 	PlatesPanel.start(remotes)
 	build()
+	CarPicker.start({
+		cars = sortedCars,
+		spawn = SpawnMenu.requestCar,
+		current = function()
+			return currentCarId
+		end,
+		busy = busy,
+		openTab = SpawnMenu.openTab,
+		closed = SpawnMenu.close,
+	})
 	ContextActionService:BindAction(ACTION, function(_, state: Enum.UserInputState)
 		if state == Enum.UserInputState.Begin then
 			SpawnMenu.toggle()
