@@ -198,7 +198,6 @@ function VehicleController.setConfig(_config: ConfigLoader.Config)
 	if sim then
 		sim:setConfig(DriftStyle.configFor(carId))
 	end
-	Touch.relayout()
 end
 
 function VehicleController.stop()

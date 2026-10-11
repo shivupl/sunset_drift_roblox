@@ -23,7 +23,7 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
 | Throttle / Brake | W / S | RT / LT | GAS / BRAKE (right thumb) |
-| Steer | A / D | left stick | steer pad (left thumb, position = angle, slide to counter-steer) |
+| Steer | A / D | left stick | ◀ / ▶ buttons (left thumb; held, they ramp to full lock like the keys) |
 
 That is the whole control set: steer, throttle, brake, handbrake, two-wheel, lean, reset,
 exit, reload. There is no clutch kick and no shifter.
@@ -37,10 +37,9 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 | Two-wheel / lean left | Q (tap) | LB (tap) | NATL (tap), then lean slider left |
 | Two-wheel / lean right | E (tap) | RB (tap) | NATL (tap), then lean slider right |
 | Exit car | F | Y | EXIT |
-| Spawn menu (choose / respawn a car) | M | — | CARS (bottom centre) |
+| Spawn menu (choose / respawn a car) | M | — | CARS (top bar) |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
-| Reload CarConfig | L | — | LOAD |
-| Toggle debug panel | — | — | DBG |
+| Reload CarConfig | L | — | — |
 
 ## Two-wheel ("natl")
 Get to 90 km/h first; nothing lifts below that. Tap Q or E and the car throws itself up on
@@ -55,33 +54,30 @@ drops the car, away lifts it. With gas on the car runs straight (open diff, so t
 barely drives). If you slow to a crawl the car settles back onto four wheels by itself.
 
 Touch is the exception, because the lean control cannot be on screen before the mode exists:
-tap NATL to open it (it stays on, so the thumb is free) and the lean slider appears directly
-above the steer pad. The first direction you push it picks the side, as long as the car is
+tap NATL to open it (it stays on, so the thumb is free) and the lean slider appears above
+NATL. The first direction you push it picks the side, as long as the car is
 not up yet. NATL switches itself off when the car lands; tap it again to lift.
 
 ## Phone test in Studio
-Test → Device → pick a phone → Play. The touch HUD is our own ScreenGui, and Roblox's
-thumbstick and jump button are hidden while driving. Left half: the steer pad along the
-bottom, the lean slider directly above it, NATL above that. Right half: GAS in the corner
-with BRAKE inboard, and HAND directly above GAS so the thumb slides between throttle and
-handbrake without lifting. EXIT / RESET / LOAD / DBG sit small along the top, right of the
-speed readout.
+Test → Device → pick a phone → Play. The touch controls are our own ScreenGui
+(`src/client/HudLab/LayoutD.luau`), and Roblox's thumbstick and jump button are hidden while
+driving. Bottom left: the two round steer buttons, NATL over the right one, the lean slider
+above NATL while on two wheels. Bottom right: the tall GAS in the corner, BRAKE left of it,
+a round HAND button over the brake. Top right: EXIT and RESET, left of the cash. Everything
+is sized and spaced from the screen's height and kept inside the phone's safe area.
 
-Both sliders are positional and spring back to centre. The steer pad is analog: where the
-thumb sits is the angle, the ends are full lock, and sliding across is a counter-steer
-without lifting. The lean slider only appears once the car is in two-wheel mode, and it is
-digital past `input.touchLeanDeadzone`, because balancing wants taps rather than a held axis,
-so flick it out and let it snap back. Sizes scale with the screen height and
-`input.touchScale`. To see the touch HUD on a desktop session, set the LocalPlayer attribute
-`ForceTouch = true` before getting in.
+The pedals give part throttle low on the plate. The lean slider springs back to centre and
+is digital past `input.touchLeanDeadzone`, because balancing wants taps rather than a held
+axis, so flick it out and let it snap back. To see the touch controls on a desktop session,
+set the LocalPlayer attribute `ForceTouch = true` before getting in.
 
 ## Driver HUD
-Top centre on every platform: speed and gear, the slide in progress with its chain
-multiplier, then drift angle, SPINS while a 360 is under way, NATL roll while on two wheels,
-and a bottom line with your cash, your session best and the server best with its holder.
-A completed 360 flashes "360! +500" beside the live counter. When a slide ends the row shows
-what the server banked and what it paid, or DROPPED if you lost it. `hud.enabled` turns the
-whole thing off.
+STREET D (`src/client/HudLab`): a small see-through tacho bottom middle with the gear and
+the speed; your cash top right, with your session best and the server best; and, while you
+slide, a drift board top middle with the points, the chain multiplier and the angle as a bar.
+A 360, a natl and a big chain are shouted in Arabic, and the screen's edges glow with the
+chain. When a slide ends the board shows what the server banked, or DROPPED if you lost it.
+`hud.enabled` turns the whole thing off.
 
 ## Scoring and cash
 A slide opens past `scoring.minAngleDeg` of drift above `scoring.minSpeedKmh` and pays angle
@@ -113,8 +109,7 @@ one free engine loop told apart by EQ. Paste a matched loop pack's ids and recor
 `effects.engineAudio.layers`.
 
 ## Debug panel
-Top-left while driving on PC; hidden on phones until you tap DBG (`debug.showOnTouch` flips
-the default). Speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a SPINS
+Top-left while driving on PC; hidden on phones unless `debug.showOnTouch`. Speed, gear, rpm, inputs and available lock, drift angle, yaw rate, a SPINS
 counter for completed 360s, two-wheel mode and roll with margin to tip, per-wheel slip
 angle / load / SPIN or AIR, handbrake, assist.
 

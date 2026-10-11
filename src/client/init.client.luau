@@ -11,11 +11,10 @@ local ExitSpot = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local VehicleController = require(script.VehicleController)
 local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
--- HUD and phone-control variants on trial (hud-variants): STYLE on screen or U.
+-- The driving HUD and the phone controls (STREET D).
 local HudLab = require(script.HudLab)
 HudLab.start()
 local ScoreController = require(script.ScoreController)
-local Touch = require(script.Input.Touch)
 local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
 local CarBodies = require(script.CarBodies)
@@ -83,7 +82,6 @@ VehicleController.onState = function(state, dt)
 	Hud.update(state, ScoreController.state)
 	DebugPanel.update(state)
 end
-Touch.onDebugToggle = DebugPanel.toggle
 VehicleController.onReload = function()
 	local cfg, err = ConfigLoader.reload()
 	if err then

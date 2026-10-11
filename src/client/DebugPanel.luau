@@ -1,7 +1,7 @@
 --!strict
 -- On-screen numbers for tuning. Monospace block, top-left, 10 Hz. Hidden on
--- touch by default (debug.showOnTouch) and toggled by the DBG button; the
--- Dbg* attributes for the harness are written whether or not it is shown.
+-- touch unless debug.showOnTouch; the Dbg* attributes for the harness are
+-- written whether or not it is shown.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -17,7 +17,6 @@ local DebugPanel = {}
 
 local label: TextLabel? = nil
 local lastUpdate = 0
-local shown: boolean? = nil -- nil follows the config; set by toggle
 
 -- Frame rate, averaged over the last second. Studio throttles an unfocused
 -- window to 15 fps, so this only means something when the window is focused.
@@ -40,9 +39,6 @@ local function wantVisible(): boolean
 	local cfg = ConfigLoader.current()
 	if not cfg.debug.enabled then
 		return false
-	end
-	if shown ~= nil then
-		return shown
 	end
 	return cfg.debug.showOnTouch or not isTouch()
 end
@@ -157,14 +153,6 @@ function DebugPanel.update(state: VehicleState)
 		wheelLine(w[3]) .. "   " .. wheelLine(w[4]),
 		string.format("HB %s  ASSIST %.2f", if state.handbrake then "ON " else "off", state.driftAssist),
 	}, "\n")
-end
-
--- DBG button on touch: flips the panel regardless of the platform default.
-function DebugPanel.toggle()
-	shown = not wantVisible()
-	if not shown then
-		DebugPanel.hide()
-	end
 end
 
 function DebugPanel.hide()

@@ -1,318 +1,45 @@
 --!strict
--- Driver HUD. Top centre on every platform, clear of both thumbs, sized off
--- hud.scale so it can be read at arm's length on a phone.
---
--- On a phone it sits under the touch HUD's top row (EXIT / RESET / LOAD /
--- DBG), which runs along the top from 60% of the width: centred at the very
--- top the card ran straight into those buttons. It also scales with the
--- screen there, because a card in desktop pixels is a postage stamp on a
--- phone held at arm's length.
---
--- Four rows, and the middle two only appear when they have something to say:
---   speed, gear
---   the slide in progress: points counting up and the chain multiplier,
---     replaced for a moment by what the server banked, or by DROPPED
---   drift angle, spins, natl roll
---   cash, your session best, the server best and who holds it
+-- Driver HUD: the client's door to it. The HUD itself is HudLab (STREET D:
+-- the tacho bottom middle, the cash top right, the drift board top middle
+-- while sliding). The card this module used to draw (CLASSIC) went on
+-- 2026-10-10 with the other trial styles (the owner: "remove all the other
+-- HUD layouts we have and keep this").
 --
 -- The live number comes from the client's own copy of Scoring so it moves
 -- with the car. The banked number comes back from the server, because that
 -- is the one that was actually paid.
---
--- Colours, type and radius read UITheme (UI_SYSTEM.md); re-skinned onto the
--- tokens on 2026-09-28. Numbers are Oswald: speed and live points in
--- display, cash in price. Sizes are the desktop type sizes on every
--- platform, because the card's own UIScale already grows it on a phone.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Types = require(Shared.Types)
 local ConfigLoader = require(Shared.ConfigLoader)
 local Scoring = require(Shared.Scoring)
-local UITheme = require(Shared:WaitForChild("UITheme"))
-local UIKit = require(script.Parent.UIKit)
--- The HUD variants on trial (hud-variants): while one is on, this HUD hides
--- and hands each update and flash to it.
 local HudLab = require(script.Parent:WaitForChild("HudLab"))
 
 type VehicleState = Types.VehicleState
 
 local Hud = {}
 
-local C = UITheme.color
--- One accent (UI_SYSTEM.md): the live readouts are paint and their labels
--- sand. Cash you hold is your balance, and a balance is paint, not sodium
--- (UI_SYSTEM.md "Colour": sodium is for a price you would pay); it keeps the
--- price type role. Fix round 1 had it sodium; final review fix 2, 2026-09-28.
-local PAINT = C.paint
-local SAND = C.sand
--- A banked slide or a finished 360 is done, and done is green.
-local DONE = C.gantryBright
--- Natl balance while holding it: was a blue, and the UI has no blue. lens
--- keeps it apart from the amber "catch" and the red "TIP!" it escalates to.
-local NATL = C.lens
-local BAD = C.beacon
-
-local gui: ScreenGui? = nil
-local scaler: UIScale? = nil
-local cardFrame: Frame? = nil
-local labels: { [string]: TextLabel } = {}
-local rows: { [string]: Frame } = {}
-local flashText = ""
-local flashColor = PAINT
-local flashUntil = 0
-local flashInSlide = false -- a spin flash shows beside the live counter
-local lastUpdate = 0
-
-local function comma(n: number): string
-	local digits = tostring(math.floor(math.abs(n)))
-	local out, count = "", 0
-	for i = #digits, 1, -1 do
-		out = digits:sub(i, i) .. out
-		count += 1
-		if count % 3 == 0 and i > 1 then
-			out = "," .. out
-		end
-	end
-	return (if n < 0 then "-" else "") .. out
-end
-
-local function text(parent: Instance, name: string, role: UITheme.Role, color: Color3, order: number): TextLabel
-	local l = Instance.new("TextLabel")
-	l.Name = name
-	l.BackgroundTransparency = 1
-	l.FontFace = UITheme.font(role)
-	-- Desktop size everywhere: the card's UIScale does the phone scaling.
-	l.TextSize = UITheme.textSize(role, false)
-	l.TextColor3 = color
-	l.AutomaticSize = Enum.AutomaticSize.XY
-	l.Size = UDim2.fromOffset(0, 0)
-	l.LayoutOrder = order
-	l.Text = ""
-	l.Parent = parent
-	labels[name] = l
-	return l
-end
-
-local function row(parent: Instance, name: string, gap: number, order: number): Frame
-	local f = Instance.new("Frame")
-	f.Name = name
-	f.BackgroundTransparency = 1
-	f.AutomaticSize = Enum.AutomaticSize.XY
-	f.Size = UDim2.fromOffset(0, 0)
-	f.LayoutOrder = order
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	list.VerticalAlignment = Enum.VerticalAlignment.Center
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Padding = UDim.new(0, gap)
-	list.Parent = f
-	f.Parent = parent
-	rows[name] = f
-	return f
-end
-
-local isTouch = UIKit.isTouch
-
--- Where the card sits and how big it is, for the screen it is on. On a phone
--- it drops under the touch HUD's top row and grows with the screen; on a
--- desktop it stays at the top, at hud.scale.
-local function place()
-	local g, c, s = gui, cardFrame, scaler
-	if not g or not c or not s then
-		return
-	end
-	local cfg = ConfigLoader.current()
-	local vp = (g :: ScreenGui).AbsoluteSize
-	if vp.Y < 1 then
-		local cam = workspace.CurrentCamera
-		vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	end
-	if isTouch() then
-		-- Touch.luau puts its top row at inset + d/2 + 6, with d = 0.11 of the
-		-- viewport height; this clears the bottom of it.
-		local d = vp.Y * 0.11 * cfg.input.touchScale;
-		(c :: Frame).Position = UDim2.new(0.5, 0, 0, math.floor(d + 12));
-		-- Bigger than a desktop, not smaller: a phone is held at arm's length
-		-- and the card is read at a glance.
-		(s :: UIScale).Scale = cfg.hud.scale * math.clamp(vp.Y / 620, 1, 1.35)
-	else
-		(c :: Frame).Position = UDim2.new(0.5, 0, 0, 6);
-		(s :: UIScale).Scale = cfg.hud.scale
-	end
-end
-
-local function build(): ScreenGui
-	local g = Instance.new("ScreenGui")
-	g.Name = "HajwalaHud"
-	g.ResetOnSpawn = false
-	g.IgnoreGuiInset = false
-	g.DisplayOrder = 6
-
-	local card = Instance.new("Frame")
-	card.Name = "Card"
-	card.BackgroundColor3 = C.asphalt900
-	card.BackgroundTransparency = UITheme.alpha.hud
-	card.BorderSizePixel = 0
-	card.AnchorPoint = Vector2.new(0.5, 0)
-	card.Position = UDim2.new(0.5, 0, 0, 6)
-	card.AutomaticSize = Enum.AutomaticSize.XY
-	card.Size = UDim2.fromOffset(0, 0)
-	UIKit.corner(card, "lg")
-	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 4)
-	pad.PaddingBottom = UDim.new(0, 7)
-	pad.PaddingLeft = UDim.new(0, 16)
-	pad.PaddingRight = UDim.new(0, 16)
-	pad.Parent = card
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Vertical
-	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Parent = card
-	local s = Instance.new("UIScale")
-	s.Parent = card
-	scaler = s
-	card.Parent = g
-	cardFrame = card
-
-	local top = row(card, "Top", 6, 1)
-	text(top, "Speed", "display", PAINT, 1)
-	local unit = text(top, "Unit", "caption", SAND, 2)
-	unit.Text = "km/h"
-	local gear = text(top, "Gear", "title", PAINT, 3)
-	local gearPad = Instance.new("UIPadding")
-	gearPad.PaddingLeft = UDim.new(0, 10)
-	gearPad.Parent = gear
-
-	-- The slide row: live points and multiplier, or the result of the last one.
-	local slide = row(card, "Slide", 8, 2)
-	text(slide, "Points", "display", PAINT, 1)
-	text(slide, "Mult", "title", PAINT, 2)
-	text(slide, "Flash", "title", PAINT, 3)
-
-	local bottom = row(card, "Bottom", 14, 3)
-	text(bottom, "Drift", "label", SAND, 1)
-	text(bottom, "Spins", "label", PAINT, 2)
-	text(bottom, "Natl", "label", NATL, 3)
-
-	local records = row(card, "Records", 12, 4)
-	text(records, "Cash", "price", PAINT, 1)
-	text(records, "Best", "label", SAND, 2)
-	text(records, "Server", "label", SAND, 3)
-
-	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	gui = g
-	place()
-	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
-	return g
-end
-
 -- Called when the server reports what a finished slide was worth. points of
 -- zero means the slide was lost rather than banked.
 function Hud.flashResult(points: number, cash: number)
 	HudLab.flashResult(points, cash)
-	local cfg = ConfigLoader.current().hud
-	if points > 0 then
-		flashText = if cash > 0 then `BANKED {comma(points)}  +{comma(cash)}` else `BANKED {comma(points)}`
-		flashColor = DONE
-	else
-		flashText = "DROPPED"
-		flashColor = BAD
-	end
-	flashInSlide = false
-	flashUntil = os.clock() + cfg.flashSeconds
 end
 
--- A 360 completed inside the slide in progress: shown next to the live
--- counter, which keeps running.
+-- A 360 completed inside the slide in progress.
 function Hud.flashSpin(bonus: number, spins: number)
 	HudLab.flashSpin(bonus, spins)
-	local cfg = ConfigLoader.current().hud
-	flashText = if spins > 1 then `{spins * 360}!  +{comma(bonus)}` else `360!  +{comma(bonus)}`
-	flashColor = DONE
-	flashInSlide = true
-	flashUntil = os.clock() + cfg.flashSeconds
 end
 
 function Hud.update(state: VehicleState, score: Scoring.State)
-	local cfg = ConfigLoader.current()
-	if not cfg.hud.enabled then
+	if not ConfigLoader.current().hud.enabled then
 		Hud.hide()
 		return
 	end
-	if HudLab.active() then
-		if gui then
-			gui.Enabled = false
-		end
-		HudLab.update(state, score)
-		return
-	end
-	HudLab.hide()
-	local now = os.clock()
-	if now - lastUpdate < 1 / 30 then
-		return
-	end
-	lastUpdate = now
-	local g = gui or build()
-	g.Enabled = true
-	place()
-
-	labels.Speed.Text = comma(math.floor(state.speedKmh + 0.5))
-	labels.Gear.Text = if state.gear == -1 then "R" else tostring(state.gear)
-
-	-- Slide row: the live counter takes over from a flash as soon as the
-	-- next slide starts, so a chain never hides behind the previous result.
-	local flashing = now < flashUntil and (flashInSlide or not score.active)
-	labels.Points.Visible = score.active
-	labels.Mult.Visible = score.active and score.multiplier > 1
-	labels.Flash.Visible = flashing
-	rows.Slide.Visible = score.active or flashing
-	if score.active then
-		labels.Points.Text = comma(score.points)
-		labels.Mult.Text = string.format("x%.1f", score.multiplier)
-	end
-	if flashing then
-		labels.Flash.Text = flashText
-		labels.Flash.TextColor3 = flashColor
-	end
-
-	local angle = math.abs(state.driftAngleDeg)
-	labels.Drift.Text = `DRIFT {math.floor(angle + 0.5)}°`
-	-- Past the highlight angle the drift readout brightens from sand to paint.
-	labels.Drift.TextColor3 = if angle >= cfg.hud.driftHighlightDeg then PAINT else SAND
-	labels.Spins.Visible = state.spinCount > 0 or state.spinProgressDeg > 90
-	labels.Spins.Text = `SPINS {state.spinCount}`
-	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
-	labels.Natl.Visible = up
-	-- Balance feedback: lens (was blue) on the angle, amber when the tip margin is
-	-- getting short, red when it is nearly gone. That colour is what the
-	-- player taps against.
-	local margin = state.rollMarginDeg
-	-- "catch" keeps the amber: the HUD's one sodium, on purpose. It is
-	-- a transient warning between lens and the beacon red, and the owner
-	-- tuned the natl feel against that three-step scale.
-	labels.Natl.TextColor3 = if margin < 8 then BAD elseif margin < 16 then C.sodium else NATL
-	labels.Natl.Text = `NATL {math.floor(math.abs(state.rollDeg) + 0.5)}°  {if margin < 8 then "TIP!" elseif margin < 16 then "catch" else "hold"}`
-
-	-- Cash and the records replicate as attributes, so there is nothing to
-	-- ask for here and nothing a client can write back.
-	local player = Players.LocalPlayer
-	labels.Cash.Text = `CASH {comma(tonumber(player:GetAttribute("Cash")) or 0)}`
-	labels.Best.Text = `BEST {comma(tonumber(player:GetAttribute("SessionBest")) or 0)}`
-	local records = ReplicatedStorage:FindFirstChild("Records")
-	local serverBest = if records then tonumber(records:GetAttribute("BestScore")) or 0 else 0
-	local holder = if records then tostring(records:GetAttribute("BestHolder") or "") else ""
-	labels.Server.Visible = serverBest > 0
-	labels.Server.Text = if holder ~= "" then `SERVER {comma(serverBest)} {holder}` else `SERVER {comma(serverBest)}`
+	HudLab.update(state, score)
 end
 
 function Hud.hide()
 	HudLab.hide()
-	if gui then
-		gui.Enabled = false
-	end
 end
 
 return Hud

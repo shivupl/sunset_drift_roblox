@@ -835,19 +835,14 @@ local config = {
 	input = {
 		keyboardSteerRampPerSec = 4,
 		keyboardSteerReturnPerSec = 8,
-		-- Touch steer pad: the thumb's position across the pad is the steer
-		-- angle. Full lock at touchPadFullAt of the half-width, nothing inside
-		-- the deadzone, curve > 1 for finer control near centre, and the wheel
-		-- follows the thumb at touchSteerRatePerSec (1/s of full lock).
+		-- Touch steer buttons: the wheel follows what they ask for at
+		-- touchSteerRatePerSec (1/s of full lock). The buttons ramp their own
+		-- ask first, 4.5/s out and 8/s back (HudLab/LayoutD.luau).
 		touchSteerRatePerSec = 8,
-		touchPadDeadzone = 0.06,
-		touchPadFullAt = 0.8,
-		touchPadCurve = 1.3,
 		-- Lean slider (two-wheel only): how far it must travel from centre
 		-- before it counts as a lean, as a fraction of its half-width. The
 		-- slider springs back, so a flick out and back is one tap.
 		touchLeanDeadzone = 0.25,
-		touchScale = 1, -- overall size of the touch controls
 		gamepadDeadzone = 0.12,
 		triggerDeadzone = 0.05,
 	},
@@ -1603,18 +1598,15 @@ local config = {
 		autosaveSeconds = 120, -- cash autosave interval
 	},
 
-	-- Driver HUD: speed, gear, drift angle, spins, natl roll, live slide
-	-- score, cash and records. Top centre.
+	-- Driver HUD (HudLab, STREET D): the tacho with gear and speed, cash and
+	-- records, the live slide score while sliding.
 	hud = {
 		enabled = true,
-		driftHighlightDeg = 20, -- the drift readout lights up from here
-		scale = 1, -- overall HUD size
-		flashSeconds = 2, -- how long a banked or dropped slide stays on screen
 	},
 
 	debug = {
 		enabled = true,
-		showOnTouch = false, -- hidden on phones until the DBG button is tapped
+		showOnTouch = false, -- the panel on phones too
 		updateHz = 30, -- 10 quantised every timing measurement to a tenth of a second
 		-- A spin is counted on the drift angle, unwrapped, from the moment
 		-- the car is sideways past spinSlipDeg; straight (under it) for

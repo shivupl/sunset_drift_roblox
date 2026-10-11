@@ -328,12 +328,8 @@ key or button goes down.
 | Field | What it does |
 |---|---|
 | keyboardSteerRampPerSec / keyboardSteerReturnPerSec | Digital steer ramp. 4 = full lock in 0.25 s. |
-| touchSteerRatePerSec | How fast the wheel chases the thumb on the steer pad, in full-locks per second. 8 = a jump across the pad is a 0.25 s counter-steer. Higher = snappier, lower = calmer. |
-| touchPadDeadzone | Fraction of the pad half-width around centre that reads as straight. Raise if the car wanders while the thumb rests. |
-| touchPadFullAt | Fraction of the pad half-width where steer reaches full lock. Lower = full lock sooner, easier throws, coarser fine control. |
-| touchPadCurve | Exponent on the pad position. Above 1 = finer control near centre, full lock still at the edge. |
+| touchSteerRatePerSec | How fast the wheel chases the touch steer buttons, in full-locks per second (the buttons ramp their own ask first, 4.5/s out and 8/s back, in `HudLab/LayoutD.luau`). 8 = lock to lock in 0.25 s. Higher = snappier, lower = calmer. |
 | touchLeanDeadzone | How far the lean slider must travel from centre before it counts as a lean, as a fraction of its half-width. The slider springs back, so a flick out and back is one tap, which is what the two-wheel balance model wants. Lower = twitchier, higher = needs a deliberate push. |
-| touchScale | Overall size of every touch control. 1.2 for big thumbs, 0.85 to see more road. |
 | gamepadDeadzone / triggerDeadzone | Stick and trigger deadzones. |
 
 ## camera
@@ -507,16 +503,13 @@ scores every driven car from its own samples and never banks more than it saw.
 ## hud
 | Field | What it does |
 |---|---|
-| enabled | Show the driver HUD (speed, gear, live slide score, drift angle, spins, natl roll, cash, records) top centre. |
-| driftHighlightDeg | The DRIFT readout turns orange from this angle. |
-| scale | Overall HUD size. Raise it for a small phone screen. |
-| flashSeconds | How long a banked or dropped slide stays on screen before the row clears. |
+| enabled | Show the driver HUD (STREET D, `src/client/HudLab`: the tacho with gear and speed, cash and records, the live slide score while sliding). |
 
 ## debug
 | Field | What it does |
 |---|---|
 | enabled | Master switch for the tuning panel. |
-| showOnTouch | Show it on phones by default. Off: the DBG button toggles it. |
+| showOnTouch | Show it on phones too. |
 | updateHz | Panel refresh rate. |
 | spinSlipDeg / spinResetSeconds | The SPINS counter measures the drift angle unwrapped, from the moment the car is sideways past spinSlipDeg (seeded with the angle already built, so a full turn back to straight reads exactly 360), and keeps counting through the brief straight moment at the end of a rotation so a 720 reads as two. Straight for spinResetSeconds clears it. Display only; the scored version lives in `scoring`. |
 

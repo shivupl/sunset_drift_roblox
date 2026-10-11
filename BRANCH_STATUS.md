@@ -159,7 +159,12 @@ dot-matrix drift display), STREET (Initial D Arcade Stage, CarX Street: white-fa
 shift light, odometer drums, big italic gear and speed, red LED board, drilled pedals, a missile switch)
 and KABRIS (the box Caprice's cluster: sweep speedometer, C-to-H tyre gauge, text lamps, sliding gear
 pointer, walnut, a vacuum-fluorescent score display, a spinner knob, a pull knob). The odometer starts at
-a per-car used mileage and adds the distance really driven; tyre heat is a slide's, cooling with grip. Open for the owner: which style (or which parts of each) to keep, and a real phone.
+a per-car used mileage and adds the distance really driven; tyre heat is a slide's, cooling with grip. Round
+three (2026-10-08): the owner's own mobile layout from the mockups (`LayoutD.luau`, `StreetHud.luau`) in
+STREET's look, as STREET D (machined) and GHOST (smoked glass). On 2026-10-10 the owner kept STREET D and
+had every other style removed, CLASSIC included ("remove all the other HUD layouts we have and keep
+this"): `HudLab` is now the only HUD and phone controls, Hud.luau and Touch.luau only hand over to it,
+and there is no STYLE switch. Open for the owner: the layout's spacing on a real phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

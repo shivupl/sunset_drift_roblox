@@ -1,8 +1,8 @@
 --!strict
--- Motion for the HUD variants (hud-variants, 2026-10-07; the owner: "i need
--- a way more alive UI"). Everything on those HUDs moves through these: a
--- damped spring that chases a target (needles, pops, pedals), a rolling
--- counter that eases a number toward its value, and a shake.
+-- Motion for the HUD (hud-variants, 2026-10-07; the owner: "i need a way
+-- more alive UI"). Everything on it moves through these: a damped spring
+-- that chases a target (needles, pops, pedals) and a rolling counter that
+-- eases a number toward its value.
 local Motion = {}
 
 export type Spring = { x: number, v: number, freq: number, damp: number }
@@ -49,14 +49,6 @@ function Motion.roll(r: Roller, target: number, dt: number, rate: number): numbe
 		r.shown = math.min(target, r.shown + math.max(step, 1))
 	end
 	return r.shown
-end
-
--- A random offset in pixels, amp at most, for a shaking readout.
-function Motion.shake(amp: number): UDim2
-	if amp <= 0 then
-		return UDim2.new()
-	end
-	return UDim2.fromOffset((math.random() * 2 - 1) * amp, (math.random() * 2 - 1) * amp)
 end
 
 -- Comma-grouped integer: 12,340.

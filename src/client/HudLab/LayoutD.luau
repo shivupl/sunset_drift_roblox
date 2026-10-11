@@ -5,13 +5,13 @@
 -- see-through at the bottom middle, cash top right, "the buttons should go
 -- out a bit more".
 --
---   bottom left    two round steer buttons, NATL over the right one (the
---                  lean slider over them while on two wheels)
+--   bottom left    two round steer buttons, NATL over the right one, the
+--                  lean slider above NATL while on two wheels
 --   bottom right   the tall gas in the corner, the brake left of it, a round
 --                  HAND button over the brake
---   top right      EXIT / RESET / STYLE as round icon buttons, left of the
---                  cash (the HUD's); clear of Roblox's top bar and chat
---                  window, which are top left
+--   top right      EXIT / RESET as round icon buttons, left of the cash
+--                  (the HUD's); clear of Roblox's top bar and chat window,
+--                  which are top left
 --
 -- Positions are fractions of the screen's height, measured in from the
 -- corner each group sits in, so they keep their spacing on any phone; the
@@ -19,12 +19,20 @@
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
+local Art = require(HudLab:WaitForChild("Art"))
 
 local LayoutD = {}
 
 -- In from the screen's sides and bottom, fractions of its height.
 LayoutD.EDGE_X = 0.05
 LayoutD.EDGE_B = 0.03
+-- The steer buttons sit higher and nearer the left edge than the rest, and
+-- the pedals nearer the right edge (the owner, 2026-10-10: "move the
+-- leftright up and a bit left, move the pedals a bit to the right"; they
+-- were EDGE_X in and EDGE_B up). Fractions of the height, like EDGE_X.
+local STEER_X = 0.025
+local STEER_B = 0.1
+local PEDAL_X = 0.02
 -- Where the round menu buttons sit, so the HUD can put the cash beside them:
 -- the cash's right edge is EDGE_X in, CASH_W wide, its top CASH_Y.
 LayoutD.CASH_W = 0.463
@@ -35,22 +43,6 @@ LayoutD.CASH_Y = 0.026
 -- second, back at STEER_BACK (Input's keyboard ramp is 4 and 8).
 local STEER_OUT = 4.5
 local STEER_BACK = 8
-
-export type Skin = {
-	left: string,
-	right: string,
-	natlOff: string,
-	natlOn: string,
-	handOff: string,
-	handOn: string,
-	exit: string,
-	reset: string,
-	style: string,
-	pedalGas: string, -- 400x1000
-	pedalBrake: string, -- 560x520
-	leanTrack: string, -- 900x200
-	leanKnob: string,
-}
 
 -- A square the screen's height tall in a corner: children are placed in
 -- fractions of the height from that side.
@@ -103,7 +95,7 @@ local function hold(parent: Instance, name: string, image: string, lit: string?,
 	}
 end
 
-function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
+function LayoutD.build(gui: ScreenGui, api: any): any
 	-- Keep out of a notch and the home bar.
 	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 	local t = W.tracker()
@@ -111,15 +103,15 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 	root.Size = UDim2.fromScale(1, 1)
 	local left = LayoutD.corner(root, "Left", false)
 	local right = LayoutD.corner(root, "Right", true)
-	local ex, eb = LayoutD.EDGE_X, LayoutD.EDGE_B
+	local eb = LayoutD.EDGE_B
 
 	-- Steering.
 	local steer = 0
-	local steerL = hold(left, "SteerLeft", skin.left, nil, t, function() end)
-	local steerR = hold(left, "SteerRight", skin.right, nil, t, function() end)
+	local steerL = hold(left, "SteerLeft", Art.btnLeft, nil, t, function() end)
+	local steerR = hold(left, "SteerRight", Art.btnRight, nil, t, function() end)
 	local sb = 0.215
-	place(steerL.root, ex + sb / 2, 1 - eb - sb / 2, sb, sb)
-	place(steerR.root, ex + 0.356, 1 - eb - sb / 2, sb, sb)
+	place(steerL.root, STEER_X + sb / 2, 1 - STEER_B - sb / 2, sb, sb)
+	place(steerR.root, STEER_X + 0.356, 1 - STEER_B - sb / 2, sb, sb)
 
 	local natlSkin: W.ButtonSkin = {
 		fill = Color3.new(0, 0, 0),
@@ -132,17 +124,17 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 		text = Color3.new(1, 1, 1),
 		litText = Color3.new(1, 1, 1),
 		textStroke = nil,
-		image = skin.natlOff,
-		litImage = skin.natlOn,
+		image = Art.natlOff,
+		litImage = Art.natlOn,
 		slice = nil,
 		sliceHeight = nil,
 	}
 	local natl = W.button(left, "Natl", "", natlSkin, t, function()
 		api.natl()
 	end)
-	-- Higher than the mockup had it, clear of the right steer button (the
-	-- owner, 2026-10-08: "this needs to be a bit higher").
-	place(natl.root, ex + 0.356, 0.55, 0.178, 0.178)
+	-- Over the right steer button, higher than the mockup had it (the owner,
+	-- 2026-10-08: "this needs to be a bit higher").
+	place(natl.root, STEER_X + 0.356, 0.55, 0.178, 0.178)
 
 	local lean = W.slider(left, "Lean", {
 		track = Color3.new(0, 0, 0),
@@ -156,12 +148,13 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 		markFont = nil,
 		left = nil,
 		right = nil,
-		trackImage = skin.leanTrack,
-		knobImage = skin.leanKnob,
+		trackImage = Art.leanTrack,
+		knobImage = Art.leanKnob,
 	}, t, function(frac)
 		api.lean(frac)
 	end)
-	place(lean.root, ex + 0.24, 0.47, 0.44, 0.098)
+	-- Above NATL: at 0.47 it overlapped NATL's top once NATL went up.
+	place(lean.root, STEER_X + 0.24, 0.39, 0.44, 0.098)
 	lean.root.Visible = false
 
 	-- Pedals and HAND.
@@ -188,27 +181,27 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 			image = image,
 		}
 	end
-	local gas = W.pedal(right, "Gas", pedalSkin(skin.pedalGas, 0.45), t, function(v)
+	local gas = W.pedal(right, "Gas", pedalSkin(Art.pedalGas, 0.45), t, function(v)
 		api.throttle(v)
 	end)
-	place(gas.root, 1 - ex - 0.1185, 1 - eb - 0.25, 0.237, 0.5)
-	local brake = W.pedal(right, "Brake", pedalSkin(skin.pedalBrake, 0.5), t, function(v)
+	place(gas.root, 1 - PEDAL_X - 0.1185, 1 - eb - 0.25, 0.237, 0.5)
+	local brake = W.pedal(right, "Brake", pedalSkin(Art.pedalBrake, 0.5), t, function(v)
 		api.brake(v)
 	end)
-	place(brake.root, 1 - ex - 0.459, 1 - eb - 0.1167, 0.37, 0.233)
-	local hand = hold(right, "Hand", skin.handOff, skin.handOn, t, function(on)
+	place(brake.root, 1 - PEDAL_X - 0.459, 1 - eb - 0.1167, 0.37, 0.233)
+	-- Over the brake, so it moves with the pedals.
+	local hand = hold(right, "Hand", Art.handOff, Art.handOn, t, function(on)
 		api.handbrake(on)
 	end)
-	place(hand.root, 1 - ex - 0.376, 0.598, 0.204, 0.204)
+	place(hand.root, 1 - PEDAL_X - 0.376, 0.598, 0.204, 0.204)
 
-	-- EXIT / RESET / STYLE, left of the cash.
+	-- EXIT / RESET, left of the cash.
 	local menuSkin = table.clone(natlSkin)
 	menuSkin.litImage = nil
 	local buttons: { W.Button } = {}
 	local menu: { { name: string, image: string, fn: () -> () } } = {
-		{ name = "Exit", image = skin.exit, fn = api.exit },
-		{ name = "Reset", image = skin.reset, fn = api.reset },
-		{ name = "Style", image = skin.style, fn = api.cycle },
+		{ name = "Exit", image = Art.exit, fn = api.exit },
+		{ name = "Reset", image = Art.reset, fn = api.reset },
 	}
 	for i, spec in menu do
 		local s = table.clone(menuSkin)
@@ -217,7 +210,7 @@ function LayoutD.build(gui: ScreenGui, api: any, skin: Skin): any
 		local b = W.button(right, spec.name, "", s, t, function()
 			fn()
 		end)
-		local fromRight = ex + LayoutD.CASH_W + 0.03 + (3 - i) * 0.115 + 0.052
+		local fromRight = LayoutD.EDGE_X + LayoutD.CASH_W + 0.03 + (#menu - i) * 0.115 + 0.052
 		place(b.root, 1 - fromRight, LayoutD.CASH_Y + LayoutD.CASH_H / 2, 0.104, 0.104)
 		table.insert(buttons, b)
 	end

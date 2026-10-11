@@ -1,55 +1,17 @@
 --!strict
--- HUD variants to try (hud-variants, 2026-10-07). The owner, on the first
--- round of theme mockups: "these really arent that good... for the phone it
--- should be actual gas/break pedals and whatnot. i need a way more alive UI",
--- then "just take refference from any of those games, make some better
--- variants for me to try".
+-- The driving HUD and the phone controls: STREET D, layout D (StreetHud.luau
+-- draws the HUD, LayoutD.luau the controls). It began as a trial of HUD
+-- styles (hud-variants, 2026-10-07: PRO, MIDNIGHT, ARCADE, then KRUZER,
+-- STREET, KABRIS, then STREET D and GHOST on the owner's own mobile layout);
+-- on 2026-10-10 the owner kept STREET D and had the rest removed, the old
+-- CLASSIC HUD and controls with them ("remove all the other HUD layouts we
+-- have and keep this").
 --
--- Three variants, each a driving HUD and a set of phone controls, after
--- games the owner named:
---   PRO       CarX Drift Racing 2: a steering wheel, metal pedals, a pull
---             handbrake, a needle tacho, a drift-angle scale.
---   MIDNIGHT  Midnight Racing: Tokyo: a thin white analog tacho with a red
---             needle, a timing bar across the top, chevrons for the slide's
---             side, glass pedals and a slider.
---   ARCADE    Driving Empire: chunky outlined type, an LED speed arc, a
---             bouncing multiplier badge, big coloured pedals and a thumb pad.
--- CLASSIC is the HUD and controls from before (Hud.luau, Touch.luau).
---
--- Round two (2026-10-07), the owner: "all are really good but i like arcade
--- layout. make a few more varients arcade layout but with the actual
--- odometer and stuff, take refference from other games. as it it - feels
--- really ai, need deep UI." So ARCADE's control layout with a real
--- instrument cluster and rendered parts (Instruments.luau, ArcadeControls):
---   KRUZER    Tokyo Xtreme Racer 2025's orange tacho and small gauges, the
---             100-series Land Cruiser's amber cluster: an LCD, an
---             inclinometer for the natl, a dot-matrix drift display, OEM
---             rubber pedals, a leather pad and lever.
---   STREET    Initial D Arcade Stage's white-face tacho with the gear and
---             speed in big italic digits, CarX Street's rolling odometer: a
---             peak needle, a shift light, a tyre-temperature gauge, a red
---             LED drift board, drilled pedals, a missile switch.
---   STREET D, GHOST   (2026-10-08) the owner's own mobile layout from the
---             mockups (LayoutD.luau, StreetHud.luau): round steer buttons,
---             a HAND button, a small see-through tacho bottom middle, cash
---             top right; machined and smoked-glass finishes.
---   KABRIS    the box Caprice's cluster (the hajwala classic): a sweep
---             speedometer, a C-to-H tyre gauge, text lamps, a sliding gear
---             pointer, a walnut band; the score on a vacuum-fluorescent
---             display; chrome-trimmed pedals, a spinner knob, a pull knob.
---
--- Switching: the STYLE button on screen (CLASSIC's touch controls have one
--- too, so a phone is never stuck there), U on a keyboard, the HUD STYLE row
--- in the menu's Settings tab (SettingsPanel, before you drive), or the
--- LocalPlayer attribute HudVariant ("kruzer" | "street" | "kabris" | "arcade" |
--- "pro" | "midnight" | "classic"). Hud.luau and Touch.luau hand over to this module while a
--- variant is on.
---
--- The variants share the motion (Motion) and the controls' behaviour
--- (Widgets): pedals give part throttle low on the plate, the lever and the
--- wheel spring back, the needle overshoots, numbers roll, the edge of the
--- screen glows with the chain. Events (a 360, a natl, a big chain, banked,
--- dropped) are shouted, the Arabic as the scene says it.
+-- Hud.luau and Input/Touch.luau hand each update, flash and binding here.
+-- The motion (Motion) and the controls' behaviour (Widgets) are shared:
+-- pedals give part throttle low on the plate, the needle overshoots, numbers
+-- roll, the edge of the screen glows with the chain. Events (a 360, a natl,
+-- a big chain, banked, dropped) are shouted, the Arabic as the scene says it.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -58,7 +20,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local Input = require(script.Parent:WaitForChild("Input"))
-local Widgets = require(script:WaitForChild("Widgets"))
+local StreetHud = require(script:WaitForChild("StreetHud"))
+local LayoutD = require(script:WaitForChild("LayoutD"))
 
 local HudLab = {}
 
@@ -66,30 +29,18 @@ export type View = {
 	speed: number, -- km/h
 	gear: number, -- -1 reverse
 	rpm: number,
-	redline: number,
 	angle: number, -- degrees, signed: + velocity right of heading
 	sliding: boolean,
 	points: number,
 	mult: number,
 	multMax: number,
-	chain: number, -- 1 full .. 0 banking (time left before it banks)
 	natl: boolean,
-	roll: number, -- degrees, signed
-	margin: number, -- degrees left before it tips
-	spins: number,
 	cash: number,
 	best: number,
 	serverBest: number,
-	holder: string,
-	-- For the instrument clusters:
-	throttle: number, -- 0..1
-	handbrake: boolean,
-	odo: number, -- km: the car's mileage when it spawned plus what it has driven
-	trip: number, -- km this drive
-	heat: number, -- 0..1 tyre heat: a slide warms them, grip cools them
 }
 
--- What a variant's HUD and controls hand back.
+-- What the HUD and the controls hand back.
 export type Hud = {
 	update: (view: View, dt: number) -> (),
 	event: (kind: string, a: number, b: number) -> (),
@@ -103,80 +54,35 @@ export type Controls = {
 	destroy: () -> (),
 }
 
--- What controls write through: the same Input.raw the old controls write.
+-- What the controls write through: Input.raw, as the keyboard does.
 export type Api = {
 	throttle: (number) -> (),
 	brake: (number) -> (),
-	steer: (number) -> (), -- -1..1, already past the deadzone and curve
-	steerRaw: (number) -> (), -- -1..1 thumb offset, deadzone and curve applied here
+	steer: (number) -> (), -- -1..1
 	handbrake: (boolean) -> (),
 	lean: (number) -> (), -- -1..1
 	natl: () -> (), -- the toggle
 	exit: () -> (),
 	reset: () -> (),
-	cycle: () -> (), -- the next style
-}
-
-export type Variant = {
-	id: string,
-	name: string,
-	buildHud: (gui: ScreenGui, touch: boolean, api: Api) -> Hud,
-	buildControls: (gui: ScreenGui, api: Api) -> Controls,
-}
-
-local ORDER = { "streetd", "ghost", "kruzer", "street", "kabris", "arcade", "pro", "midnight", "classic" }
--- The trial starts on the newest style, so the owner sees it at once.
-local DEFAULT = "streetd"
-local NAMES: { [string]: string } = {
-	streetd = "STREET D",
-	ghost = "GHOST",
-	kruzer = "KRUZER",
-	street = "STREET",
-	kabris = "KABRIS",
-	arcade = "ARCADE",
-	pro = "PRO",
-	midnight = "MIDNIGHT",
-	classic = "CLASSIC",
 }
 
 local player = Players.LocalPlayer
-local variants: { [string]: Variant } = {}
-local switched: { () -> () } = {}
 
 local hudGui: ScreenGui? = nil
 local hud: Hud? = nil
-local hudFor = "" -- variant id .. touch flag the HUD was built for
+local hudFor = "" -- "touch" or "desk", what the HUD was built for
 local ctlGui: ScreenGui? = nil
 local controls: Controls? = nil
 local view: View? = nil
 local shown = false
 local lastClock = os.clock()
 
--- Two-wheel toggle, as Touch.luau keeps it: on until the car lands.
+-- The two-wheel toggle: on until the car lands.
 local natlOn = false
 local wasUp = false
 -- Events worked out between updates.
 local lastMult = 1
 local shoutedChain = false
--- The odometer and tyres, kept across style switches.
-local odoCar: Model? = nil
-local odoKm = 0
-local tripKm = 0
-local heat = 0
-local lastState = os.clock()
-
-local function currentId(): string
-	local v = player:GetAttribute("HudVariant")
-	if type(v) == "string" and (v == "classic" or variants[v] ~= nil) then
-		return v
-	end
-	return DEFAULT
-end
-
--- Whether a variant (not CLASSIC) is on.
-function HudLab.active(): boolean
-	return currentId() ~= "classic"
-end
 
 local function isTouch(): boolean
 	return UserInputService.TouchEnabled or player:GetAttribute("ForceTouch") == true
@@ -191,17 +97,7 @@ local function setNatl(on: boolean)
 	end
 end
 
-local function steerCurve(frac: number): number
-	local cfg = ConfigLoader.current().input
-	local mag = math.abs(frac) / math.max(cfg.touchPadFullAt, 1e-3)
-	if mag <= cfg.touchPadDeadzone then
-		return 0
-	end
-	return math.sign(frac) * math.min((mag - cfg.touchPadDeadzone) / (1 - cfg.touchPadDeadzone), 1) ^ cfg.touchPadCurve
-end
-
-local api: Api
-api = {
+local api: Api = {
 	throttle = function(v: number)
 		Input.raw.throttle = v
 		Input.raw.source = "touch"
@@ -212,11 +108,6 @@ api = {
 	end,
 	steer = function(v: number)
 		Input.raw.steerAnalog = math.clamp(v, -1, 1)
-		Input.raw.steerDigital = 0
-		Input.raw.source = "touch"
-	end,
-	steerRaw = function(frac: number)
-		Input.raw.steerAnalog = steerCurve(frac)
 		Input.raw.steerDigital = 0
 		Input.raw.source = "touch"
 	end,
@@ -236,9 +127,6 @@ api = {
 	end,
 	reset = function()
 		Input.pulse("reset")
-	end,
-	cycle = function()
-		HudLab.cycle()
 	end,
 }
 
@@ -289,160 +177,27 @@ local function dropControls()
 	natlOn, wasUp = false, false
 end
 
--- The next style, from the STYLE button or U (skipping any not loaded).
-function HudLab.cycle()
-	local cur = currentId()
-	local i = table.find(ORDER, cur) or 0
-	for step = 1, #ORDER do
-		local nextId = ORDER[(i + step - 1) % #ORDER + 1]
-		if nextId == "classic" or variants[nextId] then
-			player:SetAttribute("HudVariant", nextId)
-			return
-		end
-	end
-end
-
--- The car being driven, from the seat (the car is SeatPart.Parent.Parent).
-local function drivenCar(): Model?
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local seat = hum and hum.SeatPart
-	local car = seat and seat.Parent and seat.Parent.Parent
-	return if car and car:IsA("Model") then car else nil
-end
-
--- A used car's mileage, the same for every car of a kind: the odometer's
--- starting point (flavour; what it adds on is the real distance driven).
-local function mileage(car: Model): number
-	local id = tostring(car:GetAttribute("CarId") or car.Name)
-	local h = 7
-	for i = 1, #id do
-		h = (h * 31 + string.byte(id, i)) % 1000003
-	end
-	return 60000 + h % 320000 + (h % 10) / 10
-end
-
--- The new style's name, shown for a moment whatever switched it (on a phone
--- the STYLE button says only STYLE).
-local toastGui: ScreenGui? = nil
-local toastToken = 0
-local function toast(text: string)
-	local g: ScreenGui = toastGui or newGui("HajwalaHudLabToast", 7)
-	toastGui = g
-	g:ClearAllChildren()
-	toastToken += 1
-	local mine = toastToken
-	local t = Widgets.text(g, "Toast", text, Widgets.font("BuilderSans", Enum.FontWeight.Heavy), Color3.fromRGB(245, 243, 238))
-	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.3)
-	Widgets.box(t, 0.9, 0.07)
-	local stroke = Widgets.stroke(t, Color3.new(0, 0, 0), 2, 0.25)
-	task.delay(1.1, function()
-		local start = os.clock()
-		while toastToken == mine and t.Parent do
-			local k = math.clamp((os.clock() - start) / 0.4, 0, 1)
-			t.TextTransparency = k
-			stroke.Transparency = 0.25 + 0.75 * k
-			if k >= 1 then
-				t:Destroy()
-				break
-			end
-			task.wait()
-		end
-	end)
-end
-
-local function onSwitch()
-	dropHud()
-	toast(`STYLE: {NAMES[currentId()] or currentId()}`)
-	for _, f in switched do
-		task.spawn(f)
-	end
-end
-
-export type Style = { id: string, name: string }
-
--- The styles in cycle order (the ones loaded, and CLASSIC), for a menu.
-function HudLab.styles(): { Style }
-	local out: { Style } = {}
-	for _, id in ORDER do
-		local loaded = variants[id] ~= nil
-		if loaded or id == "classic" then
-			local entry: Style = { id = tostring(id), name = tostring(NAMES[id] or id) }
-			table.insert(out, entry)
-		end
-	end
-	return out
-end
-
-function HudLab.current(): string
-	return currentId()
-end
-
-function HudLab.set(id: string)
-	player:SetAttribute("HudVariant", id)
-end
-
--- Touch.luau listens here to rebuild its controls when the style changes
--- mid-drive.
-function HudLab.onSwitched(f: () -> ())
-	table.insert(switched, f)
-end
-
 ------------------------------------------------------------------------
--- The HUD side (Hud.luau delegates while a variant is on).
+-- The HUD side (Hud.luau delegates).
 ------------------------------------------------------------------------
 
 function HudLab.update(state: any, score: any)
 	local cfg = ConfigLoader.current()
 	local records = ReplicatedStorage:FindFirstChild("Records")
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
-	local grace = cfg.scoring.graceSeconds
-	local now = os.clock()
-	local sdt = math.clamp(now - lastState, 0, 0.1)
-	lastState = now
-	local car = drivenCar()
-	if car ~= odoCar then
-		odoCar = car
-		tripKm = 0
-		if car then
-			odoKm = mileage(car)
-		end
-	end
-	local km = state.speedKmh / 3600 * sdt
-	odoKm += km
-	tripKm += km
-	-- Tyre heat: a slide warms them (faster at a bigger angle), they cool
-	-- back over half a minute of grip.
-	if score.active then
-		heat = math.min(1, heat + sdt * (0.05 + 0.12 * math.clamp(math.abs(state.driftAngleDeg) / 60, 0, 1)))
-	else
-		heat = math.max(0, heat - sdt * 0.035)
-	end
 	local v: View = {
 		speed = state.speedKmh,
 		gear = state.gear,
 		rpm = state.rpm,
-		redline = cfg.drivetrain.redlineRpm,
 		angle = state.driftAngleDeg,
 		sliding = score.active,
 		points = score.points,
 		mult = score.multiplier,
 		multMax = cfg.scoring.chainMax,
-		chain = if score.active then math.clamp(1 - score.graceTime / math.max(grace, 1e-3), 0, 1) else 0,
 		natl = up,
-		roll = state.rollDeg,
-		margin = state.rollMarginDeg,
-		spins = state.spinCount,
 		cash = tonumber(player:GetAttribute("Cash")) or 0,
 		best = tonumber(player:GetAttribute("SessionBest")) or 0,
 		serverBest = if records then tonumber(records:GetAttribute("BestScore")) or 0 else 0,
-		holder = if records then tostring(records:GetAttribute("BestHolder") or "") else "",
-		throttle = state.throttle,
-		handbrake = state.handbrake,
-		odo = odoKm,
-		trip = tripKm,
-		heat = heat,
 	}
 	local prev = view
 	view = v
@@ -495,18 +250,14 @@ function HudLab.hide()
 end
 
 ------------------------------------------------------------------------
--- The controls side (Touch.luau delegates while a variant is on).
+-- The controls side (Input/Touch.luau delegates).
 ------------------------------------------------------------------------
 
 function HudLab.bindTouch()
 	dropControls()
-	local variant = variants[currentId()]
-	if not variant then
-		return
-	end
 	local g = newGui("HajwalaHudLabControls", 5)
 	ctlGui = g
-	controls = variant.buildControls(g, api)
+	controls = LayoutD.build(g, api)
 	setNatl(false)
 	local c = controls
 	if c then
@@ -539,26 +290,14 @@ local function frame()
 	local now = os.clock()
 	local dt = math.min(now - lastClock, 0.1)
 	lastClock = now
-	local id = currentId()
-	local variant = variants[id]
-	if shown and variant then
-		local key = id .. (if isTouch() then ":touch" else ":desk")
+	if shown then
+		local key = if isTouch() then "touch" else "desk"
 		if hudFor ~= key then
 			dropHud()
 			local g = newGui("HajwalaHudLab", 6)
 			hudGui = g
-			hud = variant.buildHud(g, isTouch(), api)
+			hud = StreetHud.build(g, isTouch())
 			hudFor = key
-			if not isTouch() then
-				-- The trial's one instruction on a keyboard: which style this
-				-- is and the key for the next (a phone has its STYLE button).
-				local hint = Widgets.text(g, "StyleHint", `STYLE  {NAMES[id]}   ·   U  NEXT`, Widgets.font("BuilderSans", Enum.FontWeight.Bold), Color3.fromRGB(240, 240, 236))
-				hint.AnchorPoint = Vector2.new(0.5, 1)
-				hint.Position = UDim2.new(0.5, 0, 1, -4)
-				Widgets.box(hint, 0.5, 0.026)
-				hint.TextTransparency = 0.35
-				Widgets.stroke(hint, Color3.new(0, 0, 0), 1, 0.5)
-			end
 		end
 		local h = hud
 		local v = view
@@ -573,23 +312,7 @@ local function frame()
 end
 
 function HudLab.start()
-	local folder = script:WaitForChild("Variants")
-	for _, m in folder:GetChildren() do
-		if m:IsA("ModuleScript") then
-			local v = (require :: any)(m) :: Variant
-			variants[v.id] = v
-		end
-	end
-	player:GetAttributeChangedSignal("HudVariant"):Connect(onSwitch)
-	UserInputService.InputBegan:Connect(function(io: InputObject, processed: boolean)
-		if not processed and io.KeyCode == Enum.KeyCode.U then
-			HudLab.cycle()
-		end
-	end)
 	RunService.RenderStepped:Connect(frame)
 end
-
--- Shared with the variants so they need not require the parent.
-HudLab.Widgets = Widgets
 
 return HudLab
