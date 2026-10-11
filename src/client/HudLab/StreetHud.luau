@@ -11,10 +11,12 @@
 --   Cash    top right (EXIT / RESET / STYLE are left of it, LayoutD).
 --   Board   the drift score, top middle, only while sliding (and a moment
 --           after): points, the multiplier, the angle as a bar.
---   Stamps  a 360, a natl, a big chain, each slapped down the right side
---           as it happens, in Arabic as the scene says it, the English on
---           a tag under it: طارت! ("it flew", a 360), نطل! (natl, up on two
---           wheels), هجولة! (hajwala, the scene's own word, at a x3 chain).
+--   Shout   a 360, two wheels, a big chain, stamped just left of the car in
+--           tafheet's own words, the English under it: تخميسة! (takhmisa,
+--           the car spun round), ترفيع! (tarfi', the car up on two tyres),
+--           هجولة! (hajwala, drifting itself, at a x3 chain). Researched on
+--           2026-10-10 (forum glossaries, news, Saudi videos and games); it
+--           was طارت! ("it flew"), which no source used for a 360.
 -- The art is Art.luau.
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
@@ -30,6 +32,14 @@ local NUM_ORDER = "0123456789,.x+-°"
 local NUM_CELL = Vector2.new(80, 150)
 local FROM, TO, MAX = -135, 135, 9000
 local BAR = 18 -- angle bar segments, 5 degrees each
+-- The callout: the stamp it always was, a little left of the car rather
+-- than on it, tilted, and never quite in the same place twice (the owner,
+-- 2026-10-10: "similar to before just off to the side a bit to make it look
+-- more scrappy"; it was centred at 0.5, tilted -6). Fractions of the screen.
+local SHOUT_X, SHOUT_Y = 0.43, 0.44
+local SHOUT_TILT = -8
+local SHOUT_JITTER = 0.012
+local SHOUT_JITTER_DEG = 3
 
 local SHOUT = W.font("BuilderSans", Enum.FontWeight.Heavy, true)
 local LABEL = W.font("BuilderSans", Enum.FontWeight.Bold)
@@ -142,22 +152,23 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 	local boardScale = Instance.new("UIScale")
 	boardScale.Parent = board
 
-	-- The events of a drift, stamped down the right side under the cash and
-	-- the menu buttons, above HAND (they were one shout in the middle, over
-	-- the car).
-	local shout = W.stamps(right, "Stamps", {
+	local shout = W.shout(root, "Shout", {
 		font = SHOUT,
 		color = f.print,
 		stroke = INK,
-		strokeThickness = 4,
+		strokeThickness = 5,
 		subFont = LABEL,
-		accent = f.accent,
-		ink = INK,
-		ring = Art.halo,
+		subColor = f.accent,
+		tilt = SHOUT_TILT,
 	})
-	shout.root.AnchorPoint = Vector2.new(1, 0)
-	shout.root.Position = UDim2.fromScale(1 - er, 0.15)
-	shout.root.Size = UDim2.fromScale(0.55, 0.32)
+	W.box(shout.root, 0.56, 0.2)
+	W.at(shout.root, SHOUT_X, SHOUT_Y)
+	-- Each one lands a little differently, slapped on rather than placed.
+	local function stamp(word: string, sub: string)
+		shout.root.Rotation = SHOUT_TILT + (math.random() - 0.5) * 2 * SHOUT_JITTER_DEG
+		shout.root.Position = UDim2.fromScale(SHOUT_X + (math.random() - 0.5) * 2 * SHOUT_JITTER, SHOUT_Y + (math.random() - 0.5) * 2 * SHOUT_JITTER)
+		shout.fire(word, sub)
+	end
 
 	local roller = Motion.roller()
 	local cashRoller = Motion.roller()
@@ -232,12 +243,12 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 		if kind == "mult" then
 			Motion.kick(boardPop, 3)
 		elseif kind == "spin" then
-			shout.fire("طارت!", `{if b > 1 then b * 360 else 360}  +{Motion.comma(a)}`)
+			stamp("تخميسة!", `{if b > 1 then b * 360 else 360}  +{Motion.comma(a)}`)
 			Motion.kick(boardPop, 5)
 		elseif kind == "natl" then
-			shout.fire("نطل!", "TWO WHEELS")
+			stamp("ترفيع!", "TWO WHEELS")
 		elseif kind == "chain" then
-			shout.fire("هجولة!", (if a % 1 == 0 then string.format("x%d", a) else string.format("x%.1f", a)) .. " CHAIN")
+			stamp("هجولة!", (if a % 1 == 0 then string.format("x%d", a) else string.format("x%.1f", a)) .. " CHAIN")
 		elseif kind == "banked" then
 			held, heldUntil = a, now + 1.6
 			pointsTint = f.banked

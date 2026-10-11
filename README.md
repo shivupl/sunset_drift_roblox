@@ -76,9 +76,9 @@ Layout D (`src/client/HudLab`) in one of three finishes, STREET D, SODIUM or CAR
 on a phone, U on a keyboard, or Settings > HUD STYLE): a small see-through tacho bottom middle with the gear and
 the speed; your cash top right, with your session best and the server best; and, while you
 slide, a drift board top middle with the points, the chain multiplier and the angle as a bar.
-A 360 (طارت!, "it flew"), a natl (نطل!) and a x3 chain (هجولة!, hajwala) are each stamped down
-the right side as they happen, in Arabic with the English on a tag under it, and the screen's
-edges glow with the chain. When a slide ends the board shows what the server banked, or DROPPED if you lost it.
+A 360 (تخميسة!, a spin), two wheels (ترفيع!, the Saudi word for it) and a x3 chain
+(هجولة!, drifting itself) are stamped just left of the car in tafheet's own words, the English
+under each, and the screen's edges glow with the chain. When a slide ends the board shows what the server banked, or DROPPED if you lost it.
 `hud.enabled` turns the whole thing off.
 
 ## Scoring and cash
