@@ -47,7 +47,7 @@ local carbon: FinishArt = {
 }
 
 return {
-	icons = "rbxassetid://126970977739929", -- hud_icons, 768x576: 192 px cells, 4 across: left, right, natl_l, natl_r, hand, exit, reset, style, layout
+	icons = "rbxassetid://87121052467401", -- hud_icons, 768x576: 192 px cells, 4 across: left, right, natl_l, natl_r, hand, exit, reset, style, layout, view
 	halo = "rbxassetid://133638095976591", -- hud_halo, 256, white: the lit ring
 	ring = "rbxassetid://110988161965666", -- hud_ring, 256, white: a thin ring (the badge's track and grace arc)
 	disc = "rbxassetid://80388430810332", -- hud_disc, 256, white: a disc (the badge's ground)

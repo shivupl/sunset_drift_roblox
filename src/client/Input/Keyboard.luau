@@ -1,6 +1,7 @@
 --!strict
 local ContextActionService = game:GetService("ContextActionService")
 local Input = require(script.Parent)
+local CameraViews = require(script.Parent.Parent:WaitForChild("CameraViews"))
 
 local Keyboard = {}
 
@@ -64,6 +65,12 @@ function Keyboard.bind()
 			Input.pulse("reset")
 		end
 	end, Enum.KeyCode.R)
+	-- V: the next driving view (CameraViews).
+	bind("HJ_KView", function(down)
+		if down then
+			CameraViews.cycle()
+		end
+	end, Enum.KeyCode.V)
 	bind("HJ_KReload", function(down)
 		if down then
 			Input.pulse("reload")

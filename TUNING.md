@@ -352,6 +352,21 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | baseFov / fovPerKmh / maxFov | Speed-widened field of view (vertical, degrees). Normal 70 + 0.11 per km/h up to 96 (81 at 100, 92 at 200), drift 74 + 0.1 to 98, two-wheel 72 + 0.07 to 90; it was 0.08 up to 85 (speed-feel, 2026-10-05). A wider view streams the roadside past faster at the edges; the car looks smaller. |
 | rollFollow | Fraction of the car's roll applied as horizon tilt. Two-wheel profile only, by default. |
 
+### camera.views (client `CameraViews`)
+Views to drive in, cycled with **V** or the phone's CAM button (left of STYLE); the name shows for a moment ("VIEW: CLOSE"). The choice is the LocalPlayer attribute `CamView` (a view's id) and lasts the session. The owner, 2026-10-10: "create different views for when im driving the car (at least 5 for testing purposes, feels to far and zoomed out right now)". Each view is where the **normal** profile sits and how wide it sees; drift and two-wheel keep their own difference from normal, scaled: distance and lateralOffset by the view's distance over normal's, height by its height over normal's, lookHeight and both FOVs moved by the view's, fovPerKmh scaled so each view reaches its maxFov at the same speed. FAR is normal as it was, so it drives exactly as before. The first view is where a session starts.
+
+Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fleet). Closer in at the old height and aim, the car ran off the bottom of the screen (CLOSE at 5 m, 1.7 up, aim 0.8: its tail at 1.35 of the screen's height), so each view's height and aim (lookHeight; below 0 aims under the chassis's centre) were fitted in Studio on the Krown Vik Fleet, the biggest box (6.5 m with mirrors and tips), to keep the whole car on screen with the horizon showing. Measured parked, as fractions of the screen's height from the top:
+
+| View | distance / height / lookHeight (m) | baseFov → maxFov | Car on screen | Horizon |
+|---|---|---|---|---|
+| FAR | 7.5 / 2.6 / 0.8 | 70 → 96 (as before) | 0.49-0.83 | 0.33 |
+| CHASE | 6.2 / 1.75 / 0.15 | 66 → 88 | 0.41-0.88 | 0.30 |
+| CLOSE | 5.3 / 1.35 / -0.25 | 64 → 84 | 0.34-0.96 | 0.26 |
+| LOW | 5.8 / 0.6 / 0.65 | 64 → 84: about roof height, looking level | 0.47-0.93 | 0.51 |
+| HIGH | 6.8 / 3.35 / 0.1 | 64 → 86: looking down, the slide's angle reads best | 0.40-0.86 | 0.12 |
+
+Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view, FAR included.
+
 ## speedFeel (client `SpeedFeel`)
 Speed you can feel (speed-feel, 2026-10-05). The desert highway is wide and sparse, so little streams past the camera at any speed. **Studio:** the LocalPlayer attribute `SpeedFeelKmh` forces the speed these and the camera read, so a parked car can be framed at 200 km/h.
 

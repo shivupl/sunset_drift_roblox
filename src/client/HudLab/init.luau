@@ -14,7 +14,8 @@
 -- attribute HudVariant (a finish's id). Switching version (Versions.luau:
 -- FLOW, SIDE, BOARD): the UI button, Y on a keyboard, or the attribute
 -- HudLayout. Hud.luau and Input/Touch.luau hand each update, flash and
--- binding here.
+-- binding here. The CAM button cycles the driving view (CameraViews; V on a
+-- keyboard) and the new view's name shows here too.
 --
 -- The motion (Motion) and the controls' behaviour (Widgets) are shared:
 -- pedals give part throttle low on the plate, the needle overshoots, numbers
@@ -28,6 +29,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local Input = require(script.Parent:WaitForChild("Input"))
+local CameraViews = require(script.Parent:WaitForChild("CameraViews"))
 local Widgets = require(script:WaitForChild("Widgets"))
 local Finishes = require(script:WaitForChild("Finishes"))
 local Versions = require(script:WaitForChild("Versions"))
@@ -80,6 +82,7 @@ export type Api = {
 	reset: () -> (),
 	cycle: () -> (), -- the next finish
 	layout: () -> (), -- the next version
+	view: () -> (), -- the next driving view
 }
 
 export type Style = { id: string, name: string }
@@ -155,6 +158,9 @@ local api: Api = {
 	end,
 	layout = function()
 		HudLab.cycleLayout()
+	end,
+	view = function()
+		CameraViews.cycle()
 	end,
 }
 
@@ -421,6 +427,9 @@ function HudLab.start()
 	end)
 	player:GetAttributeChangedSignal("HudLayout"):Connect(function()
 		onSwitch("layout")
+	end)
+	player:GetAttributeChangedSignal(CameraViews.ATTRIBUTE):Connect(function()
+		toast(`VIEW: {CameraViews.current().name}`)
 	end)
 	UserInputService.InputBegan:Connect(function(io: InputObject, processed: boolean)
 		if processed then

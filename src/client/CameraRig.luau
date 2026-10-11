@@ -3,6 +3,8 @@
 -- CarConfig.camera. Sits behind the car, lags, swings toward the velocity
 -- direction in a slide so the angle is visible, and on two wheels moves to
 -- the lifted side and tilts with the lean. Profile parameters cross-fade.
+-- The view (CameraViews: FAR, CHASE, CLOSE, LOW, HIGH) moves all three
+-- closer or farther, higher or lower, narrower or wider.
 -- With speed the view widens and a faint shake comes in, and the follow
 -- carries part of the car's velocity so a fast car does not shrink to a
 -- speck (speed-feel, 2026-10-05). The speed it reads is SpeedFeel.kmh, so
@@ -13,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
 local SpeedFeel = require(script.Parent.SpeedFeel)
+local CameraViews = require(script.Parent.CameraViews)
 
 type VehicleState = Types.VehicleState
 
@@ -62,6 +65,27 @@ local function lerpParams(a: Params, b: Params, t: number)
 	end
 end
 
+-- A profile as the view on now has it: the view says where the normal
+-- profile sits and how wide it sees; the others keep their difference from
+-- normal, scaled (CarConfig.camera.views). Written into `out`.
+local function viewed(camCfg: typeof(ConfigLoader.current().camera), name: string, out: Params): Params
+	local p = (camCfg.profiles :: any)[name] :: Params
+	local n = camCfg.profiles.normal
+	local v = CameraViews.current()
+	local far = v.distance / n.distance
+	local up = v.height / n.height
+	out.distance = p.distance * far
+	out.height = p.height * up
+	out.lookHeight = p.lookHeight + (v.lookHeight - n.lookHeight)
+	out.lateralOffset = p.lateralOffset * far
+	out.driftSwing = p.driftSwing
+	out.baseFov = p.baseFov + (v.baseFov - n.baseFov)
+	out.maxFov = p.maxFov + (v.maxFov - n.maxFov)
+	out.fovPerKmh = p.fovPerKmh * (v.maxFov - v.baseFov) / math.max(n.maxFov - n.baseFov, 1e-3)
+	out.rollFollow = p.rollFollow
+	return out
+end
+
 -- Called by VehicleController every physics step.
 function CameraRig.setState(state: VehicleState)
 	lastState = state
@@ -92,12 +116,13 @@ function CameraRig.start(model: Model)
 	cam.CameraType = Enum.CameraType.Scriptable
 	local cfg = ConfigLoader.current()
 	local mps = cfg.units.metersPerStud
-	current = copy(cfg.camera.profiles.normal)
+	current = viewed(cfg.camera, "normal", copy(cfg.camera.profiles.normal))
+	local target = copy(cfg.camera.profiles.normal)
 	profileName = "normal"
 	lateralSign = 0
 	smoothedDir = flat(chassis.CFrame.LookVector)
-	smoothedPos = chassis.Position - smoothedDir * (cfg.camera.profiles.normal.distance / mps)
-		+ Vector3.yAxis * (cfg.camera.profiles.normal.height / mps)
+	smoothedPos = chassis.Position - smoothedDir * ((current :: Params).distance / mps)
+		+ Vector3.yAxis * ((current :: Params).height / mps)
 
 	simDt = 0
 	stepConn = RunService.PreSimulation:Connect(function(dt: number)
@@ -113,8 +138,7 @@ function CameraRig.start(model: Model)
 
 		-- Profile selection and cross-fade.
 		profileName = pickProfile(camCfg)
-		local target = (camCfg.profiles :: any)[profileName] :: Params
-		lerpParams(params, target, 1 - math.exp(-camCfg.profileBlendRate * dt))
+		lerpParams(params, viewed(camCfg, profileName, target), 1 - math.exp(-camCfg.profileBlendRate * dt))
 
 		local pos = chassis.Position
 		local cf = chassis.CFrame
@@ -161,17 +185,18 @@ function CameraRig.start(model: Model)
 		smoothedPos = smoothedPos:Lerp(targetPos, posAlpha)
 
 		local look = pos + Vector3.yAxis * (params.lookHeight / metersPerStud)
+		local eye = smoothedPos
 		-- Horizon tilt: follow a fraction of the car's roll (two-wheel profile).
 		local upVec = Vector3.yAxis
 		if st and params.rollFollow > 0.001 then
-			local viewDir = (look - smoothedPos)
+			local viewDir = (look - eye)
 			if viewDir.Magnitude > 1e-3 then
 				local tilt = math.rad(st.rollDeg * params.rollFollow)
 				upVec = CFrame.fromAxisAngle(viewDir.Unit, -tilt) * Vector3.yAxis
 			end
 		end
 		local kmh = SpeedFeel.kmh(speedMps * 3.6)
-		local camCf = CFrame.lookAt(smoothedPos, look, upVec)
+		local camCf = CFrame.lookAt(eye, look, upVec)
 		-- The shake: low noise in pitch and yaw, faded in with speed.
 		local sh = camCfg.shake
 		local amp = sh.maxDeg * SpeedFeel.ramp(kmh, sh.fromKmh, sh.fullKmh)

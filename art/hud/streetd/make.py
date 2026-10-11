@@ -19,7 +19,7 @@ however many buttons there are), tacho_face, tacho_needle, pill (cash,
 9-slice), board (the drift score), pedal_gas, pedal_brake.
 
 Shared: icons (white, tinted by the HUD: left, right, natl_l, natl_r, hand,
-exit, reset, style, layout in 192 px cells, 4 across), halo (the lit ring,
+exit, reset, style, layout, view in 192 px cells, 4 across), halo (the lit ring,
 white, tinted), ring (a thin ring: the multiplier's grace), disc (the
 badge's ground), soft (a dark blot behind plateless text),
 coin (the cash), num (white italic digits, NUM_CHARS order in 80x150 cells,
@@ -89,8 +89,12 @@ ICONS = {
     "layout": '<rect x="5" y="11" width="38" height="26" rx="5" stroke="#fff" stroke-width="3" fill="none"/>'
               '<circle cx="13" cy="30" r="3" fill="#fff"/><circle cx="21" cy="30" r="3" fill="#fff"/>'
               '<rect x="32" y="23" width="6" height="10" rx="1.5" fill="#fff"/><rect x="17" y="15" width="14" height="4" rx="2" fill="#fff"/>',
+    # A camera: the driving view (CAM, V on a keyboard).
+    "view": '<g stroke="#fff" stroke-width="3" stroke-linejoin="round" fill="none">'
+            '<path d="M6 16 H15 L18.5 11 H29.5 L33 16 H42 V37 H6 Z"/><circle cx="24" cy="26" r="6.5"/></g>'
+            '<circle cx="36.5" cy="21" r="1.8" fill="#fff"/>',
 }
-ICON_ORDER = ["left", "right", "natl_l", "natl_r", "hand", "exit", "reset", "style", "layout"]
+ICON_ORDER = ["left", "right", "natl_l", "natl_r", "hand", "exit", "reset", "style", "layout", "view"]
 # A label under the icon, as board D had it.
 ICON_LABEL = {"natl_l": "NATL", "natl_r": "NATL", "hand": "HAND"}
 CELL = 192

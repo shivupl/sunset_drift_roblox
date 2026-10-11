@@ -907,6 +907,36 @@ local config = {
 				rollFollow = 0.35,
 			},
 		},
+		-- Views to drive in, cycled with V or the CAM button (CameraViews;
+		-- the owner, 2026-10-10: "create different views for when im driving
+		-- the car (at least 5 for testing purposes, feels to far and zoomed out
+		-- right now)"). Each one is where the normal profile sits and how wide
+		-- it sees, metres and vertical degrees; the drift and two-wheel
+		-- profiles keep their own pull-back, swing and tilt, scaled to it
+		-- (distance, height and lateralOffset by the view's distance and
+		-- height against normal's, the FOVs moved by the view's, the widening
+		-- per km/h scaled so each reaches its maxFov at the same speed). FAR
+		-- is the normal profile as it is, so it drives exactly as before. The
+		-- first is where a session starts.
+		--
+		-- Heights are from the chassis's centre (1.0 m above the road on the
+		-- Krown Vik Fleet). Closer in at the old height and aim, the car ran
+		-- off the bottom of the screen (CLOSE at 5 m: its tail at 1.35 of the
+		-- screen's height), so each view's height and aim were fitted in
+		-- Studio on the Krown Vik Fleet, the biggest box (6.5 m with mirrors
+		-- and tips), to keep the whole car on screen with the horizon showing.
+		-- Parked, top to bottom of the screen: FAR car 0.49-0.83, horizon at
+		-- 0.33; CHASE 0.41-0.88, 0.30; CLOSE 0.34-0.96, 0.26; LOW 0.47-0.93,
+		-- 0.51; HIGH 0.40-0.86, 0.12. A wider FOV with speed shrinks the car.
+		views = {
+			{ id = "far", name = "FAR", distance = 7.5, height = 2.6, lookHeight = 0.8, baseFov = 70, maxFov = 96 },
+			{ id = "chase", name = "CHASE", distance = 6.2, height = 1.75, lookHeight = 0.15, baseFov = 66, maxFov = 88 },
+			{ id = "close", name = "CLOSE", distance = 5.3, height = 1.35, lookHeight = -0.25, baseFov = 64, maxFov = 84 },
+			-- About roof height, looking level: the road rushes at the car.
+			{ id = "low", name = "LOW", distance = 5.8, height = 0.6, lookHeight = 0.65, baseFov = 64, maxFov = 84 },
+			-- Up and looking down: the slide's angle reads best from here.
+			{ id = "high", name = "HIGH", distance = 6.8, height = 3.35, lookHeight = 0.1, baseFov = 64, maxFov = 86 },
+		},
 	},
 
 	-- Speed you can feel (client SpeedFeel; speed-feel, 2026-10-05: the

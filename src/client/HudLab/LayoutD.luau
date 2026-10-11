@@ -75,7 +75,7 @@ local STEER_BACK = 8
 
 -- Cells in Art.icons, 4 across.
 local ICON_CELL = 192
-local ICON = { left = 0, right = 1, natlL = 2, natlR = 3, hand = 4, exit = 5, reset = 6, style = 7, layout = 8 }
+local ICON = { left = 0, right = 1, natlL = 2, natlR = 3, hand = 4, exit = 5, reset = 6, style = 7, layout = 8, view = 9 }
 
 -- A square the screen's height tall in a corner: children are placed in
 -- fractions of the height from that side.
@@ -267,10 +267,11 @@ function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish, versio
 	end))
 	place(hand.root, brakeX, rowY, BIG, BIG)
 
-	-- EXIT / RESET / STYLE, left of the cash.
+	-- EXIT / RESET / CAM / STYLE / UI, left of the cash.
 	local menu: { { name: string, icon: number, fn: () -> () } } = {
 		{ name = "Exit", icon = ICON.exit, fn = api.exit },
 		{ name = "Reset", icon = ICON.reset, fn = api.reset },
+		{ name = "View", icon = ICON.view, fn = api.view },
 		{ name = "Style", icon = ICON.style, fn = api.cycle },
 		{ name = "Layout", icon = ICON.layout, fn = api.layout },
 	}
