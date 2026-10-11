@@ -11,8 +11,10 @@
 --
 -- Switching finish: the STYLE button on screen, U on a keyboard, the HUD
 -- STYLE row in the menu's Settings tab (SettingsPanel), or the LocalPlayer
--- attribute HudVariant (a finish's id). Hud.luau and Input/Touch.luau hand
--- each update, flash and binding here.
+-- attribute HudVariant (a finish's id). Switching version (Versions.luau:
+-- FLOW, SIDE, BOARD): the UI button, Y on a keyboard, or the attribute
+-- HudLayout. Hud.luau and Input/Touch.luau hand each update, flash and
+-- binding here.
 --
 -- The motion (Motion) and the controls' behaviour (Widgets) are shared:
 -- pedals give part throttle low on the plate, the needle overshoots, numbers
@@ -28,6 +30,7 @@ local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local Input = require(script.Parent:WaitForChild("Input"))
 local Widgets = require(script:WaitForChild("Widgets"))
 local Finishes = require(script:WaitForChild("Finishes"))
+local Versions = require(script:WaitForChild("Versions"))
 local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
 
@@ -61,6 +64,7 @@ export type Hud = {
 export type Controls = {
 	update: (dt: number) -> (),
 	setNatl: (ready: boolean, side: number) -> (),
+	setRpm: (frac: number) -> (), -- of the redline
 	destroy: () -> (),
 }
 
@@ -76,6 +80,7 @@ export type Api = {
 	exit: () -> (),
 	reset: () -> (),
 	cycle: () -> (), -- the next finish
+	layout: () -> (), -- the next version
 }
 
 export type Style = { id: string, name: string }
@@ -84,7 +89,7 @@ local player = Players.LocalPlayer
 
 local hudGui: ScreenGui? = nil
 local hud: Hud? = nil
-local hudFor = "" -- finish id and "touch" or "desk", what the HUD was built for
+local hudFor = "" -- finish, version and "touch" or "desk": what the HUD was built for
 local ctlGui: ScreenGui? = nil
 local controls: Controls? = nil
 local bound = false -- between bindTouch and unbindTouch: the car is being driven on a phone
@@ -106,6 +111,11 @@ local CHAIN_STAMP_MIN = 3
 local function finish(): Finishes.Finish
 	local id = player:GetAttribute("HudVariant")
 	return (if type(id) == "string" then Finishes.byId[id] else nil) or Finishes.list[1]
+end
+
+local function version(): Versions.Version
+	local id = player:GetAttribute("HudLayout")
+	return (if type(id) == "string" then Versions.byId[id] else nil) or Versions.list[1]
 end
 
 local function isTouch(): boolean
@@ -143,6 +153,9 @@ local api: Api = {
 	end,
 	cycle = function()
 		HudLab.cycle()
+	end,
+	layout = function()
+		HudLab.cycleLayout()
 	end,
 }
 
@@ -195,7 +208,7 @@ local function buildControls()
 	dropControls()
 	local g = newGui("HajwalaHudLabControls", 5)
 	ctlGui = g
-	controls = LayoutD.build(g, api, finish())
+	controls = LayoutD.build(g, api, finish(), version())
 end
 
 ------------------------------------------------------------------------
@@ -231,12 +244,12 @@ local function toast(text: string)
 	end)
 end
 
-local function onSwitch()
+local function onSwitch(what: string)
 	dropHud()
 	if bound then
 		buildControls()
 	end
-	toast(`STYLE: {finish().name}`)
+	toast(if what == "layout" then `UI: {version().name}` else `STYLE: {finish().name}`)
 end
 
 -- The next finish, from the STYLE button or U.
@@ -244,6 +257,13 @@ function HudLab.cycle()
 	local cur = finish()
 	local i = table.find(Finishes.list, cur) or 0
 	player:SetAttribute("HudVariant", Finishes.list[i % #Finishes.list + 1].id)
+end
+
+-- The next version, from the UI button or Y.
+function HudLab.cycleLayout()
+	local cur = version()
+	local i = table.find(Versions.list, cur) or 0
+	player:SetAttribute("HudLayout", Versions.list[i % #Versions.list + 1].id)
 end
 
 -- The finishes in cycle order, for the Settings row.
@@ -295,6 +315,7 @@ function HudLab.update(state: any, score: any)
 	if c then
 		local ready = up or state.speedKmh >= cfg.twoWheel.minLiftSpeedKmh
 		c.setNatl(ready, if up then (if state.rollDeg < 0 then -1 else 1) else 0)
+		c.setRpm(state.rpm / math.max(cfg.drivetrain.redlineRpm, 1))
 	end
 	view = v
 	shown = true
@@ -375,12 +396,13 @@ local function frame()
 	lastClock = now
 	if shown then
 		local f = finish()
-		local key = f.id .. (if isTouch() then ":touch" else ":desk")
+		local ver = version()
+		local key = f.id .. ":" .. ver.id .. (if isTouch() then ":touch" else ":desk")
 		if hudFor ~= key then
 			dropHud()
 			local g = newGui("HajwalaHudLab", 6)
 			hudGui = g
-			hud = StreetHud.build(g, isTouch(), f)
+			hud = StreetHud.build(g, isTouch(), f, ver)
 			hudFor = key
 		end
 		local h = hud
@@ -396,10 +418,20 @@ local function frame()
 end
 
 function HudLab.start()
-	player:GetAttributeChangedSignal("HudVariant"):Connect(onSwitch)
+	player:GetAttributeChangedSignal("HudVariant"):Connect(function()
+		onSwitch("style")
+	end)
+	player:GetAttributeChangedSignal("HudLayout"):Connect(function()
+		onSwitch("layout")
+	end)
 	UserInputService.InputBegan:Connect(function(io: InputObject, processed: boolean)
-		if not processed and io.KeyCode == Enum.KeyCode.U then
+		if processed then
+			return
+		end
+		if io.KeyCode == Enum.KeyCode.U then
 			HudLab.cycle()
+		elseif io.KeyCode == Enum.KeyCode.Y then
+			HudLab.cycleLayout()
 		end
 	end)
 	RunService.RenderStepped:Connect(frame)

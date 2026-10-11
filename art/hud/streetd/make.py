@@ -19,9 +19,11 @@ however many buttons there are), tacho_face, tacho_needle, pill (cash,
 9-slice), board (the drift score), pedal_gas, pedal_brake.
 
 Shared: icons (white, tinted by the HUD: left, right, natl_l, natl_r, hand,
-exit, reset, style in 192 px cells, 4 across), halo (the lit ring, white,
-tinted), num (white italic digits, NUM_CHARS order in 80x150 cells, 8
-across). The tacho's glass and cap are streetd_tacho_glass for every finish;
+exit, reset, style, layout in 192 px cells, 4 across), halo (the lit ring,
+white, tinted), ring (a thin ring: ripples, the multiplier's grace), disc (a
+button's silhouette: its glint), soft (a dark blot behind plateless text),
+coin (the cash), num (white italic digits, NUM_CHARS order in 80x150 cells,
+8 across). The tacho's glass and cap are streetd_tacho_glass for every finish;
 the gear digits are STREET's (art/hud/street/make.py).
 
 Opacity (the owner: "button / overlay opacity find a way to reduce it
@@ -83,8 +85,12 @@ ICONS = {
              '<path d="M36 22 A12 12 0 1 0 33 33"/><path d="M37 12 V22 H27"/></g>',
     "style": '<g stroke="#fff" stroke-width="3.2" stroke-linejoin="round" fill="none"><rect x="9" y="9" width="20" height="20" rx="3"/>'
              '<rect x="19" y="19" width="20" height="20" rx="3" fill="#fff" fill-opacity="0.45"/></g>',
+    # A phone screen with its controls on it: the HUD's version (UI).
+    "layout": '<rect x="5" y="11" width="38" height="26" rx="5" stroke="#fff" stroke-width="3" fill="none"/>'
+              '<circle cx="13" cy="30" r="3" fill="#fff"/><circle cx="21" cy="30" r="3" fill="#fff"/>'
+              '<rect x="32" y="23" width="6" height="10" rx="1.5" fill="#fff"/><rect x="17" y="15" width="14" height="4" rx="2" fill="#fff"/>',
 }
-ICON_ORDER = ["left", "right", "natl_l", "natl_r", "hand", "exit", "reset", "style"]
+ICON_ORDER = ["left", "right", "natl_l", "natl_r", "hand", "exit", "reset", "style", "layout"]
 # A label under the icon, as board D had it.
 ICON_LABEL = {"natl_l": "NATL", "natl_r": "NATL", "hand": "HAND"}
 CELL = 192
@@ -132,7 +138,7 @@ def base(f, size=256):
 
 def icons():
     cols = 4
-    c = K.Canvas(CELL * cols, CELL * 2)
+    c = K.Canvas(CELL * cols, CELL * ((len(ICON_ORDER) + cols - 1) // cols))
     parts = []
     for i, name in enumerate(ICON_ORDER):
         x0, y0 = (i % cols) * CELL, (i // cols) * CELL
@@ -160,6 +166,65 @@ def halo(size=256):
     a = np.maximum(ring, glow * 0.85)
     c.over(full(c, "#ffffff"), a)
     save(c, "hud_halo")
+
+
+def ring(size=256):
+    """A thin clean ring, white for the HUD to tint: press ripples, and the
+    multiplier's grace (cut into an arc in the HUD)."""
+    c = K.Canvas(size, size)
+    a = K.cover(K.ring(c, size / 2, size / 2, size * 0.44, size * 0.05))
+    c.over(full(c, "#ffffff"), a)
+    save(c, "hud_ring")
+
+
+def disc(size=256):
+    """A round button's outline filled white (r 0.44, as base()): the glint
+    that sweeps across a button is this under a moving gradient."""
+    c = K.Canvas(size, size)
+    a = K.cover(K.circle(c, size / 2, size / 2, size * 0.44))
+    c.over(full(c, "#ffffff"), a)
+    save(c, "hud_disc")
+
+
+def soft(size=256):
+    """A soft dark blot, opaque in the middle and gone at the edge, so text
+    with no plate behind it still reads over a bright sky."""
+    c = K.Canvas(size, size)
+    r = np.hypot((c.X - size / 2) / (size / 2), (c.Y - size / 2) / (size / 2))
+    a = np.clip(1 - r, 0, 1) ** 1.6
+    c.over(full(c, "#0d0c0b"), a)
+    save(c, "hud_soft")
+
+
+# A palm on the coin (generic: no emblem, no brand).
+PALM = ('<path d="M47 86 C48 70 49 58 52 44 L56 44 C54 58 53 70 54 86 Z"/>'
+        '<path d="M54 44 C40 34 28 36 18 44 C30 38 42 40 54 47 Z"/>'
+        '<path d="M54 44 C44 26 32 22 22 24 C34 28 46 34 54 46 Z"/>'
+        '<path d="M54 44 C56 26 64 18 74 16 C66 24 60 32 55 46 Z"/>'
+        '<path d="M54 44 C68 32 80 32 88 38 C78 36 66 40 55 47 Z"/>'
+        '<path d="M54 44 C68 42 78 48 84 58 C74 50 64 48 55 47 Z"/>'
+        '<path d="M53 44 C42 44 32 50 26 60 C36 52 44 49 53 47 Z"/>')
+
+
+def coin(size=256):
+    """A gold coin: a reeded edge, a sunk field, a raised palm, polished."""
+    c = K.Canvas(size, size)
+    s = K.Surface(c)
+    cx = cy = size / 2
+    r = size * 0.44
+    d = K.circle(c, cx, cy, r)
+    s.shape(K.cover(d))
+    rad = np.hypot(c.X - cx, c.Y - cy)
+    ang = np.arctan2(c.Y - cy, c.X - cx)
+    reeds = np.abs(np.sin(ang * 60)) ** 0.6 * K.smooth(r - size * 0.05, r - size * 0.02, rad)
+    rim = K.smooth(r * 0.78, r * 0.84, rad)
+    h = K.bevel(d, size * 0.06, size * 0.05, "round") + rim * size * 0.02 + reeds * 1.5
+    s.paint(K.cover(d), albedo="#d9a441", metal=1, rough=0.32, h=h)
+    k = size * 0.62 / 106
+    emblem = K.svg_alpha(c, f'<g fill="#fff" transform="translate({cx - 53 * k:.2f} {cy - 50 * k:.2f}) scale({k:.4f})">{PALM}</g>')
+    s.paint(emblem, albedo="#f0c35c", metal=1, rough=0.18, add_h=size * 0.025)
+    K.draw(c, s, shadow=(0, size * 0.03, size * 0.03, 0.55))
+    save(c, "hud_coin")
 
 
 # --------------------------------------------------------------------------
@@ -267,6 +332,10 @@ if __name__ == "__main__":
         save(panel(f, 660, 170, 26), f"{fid}_board")
         pedals(fid, f)
     if not sys.argv[1:]:
+        ring()
+        disc()
+        soft()
+        coin()
         icons()
         glass()
         halo()

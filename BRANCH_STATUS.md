@@ -168,7 +168,11 @@ Then (same day) "make a couple variants of the same deisgn i can cycle through",
 show up one left one right" and subtler opacity: three finishes of layout D (`Finishes.luau`: STREET D,
 SODIUM on the game's own UI_SYSTEM palette, CARBON), cycled by STYLE / U / Settings; NATL◀ and NATL▶ over
 the steer buttons as the Q and E lean keys (the NATL toggle and lean slider are gone); every hit box the
-shape you see; see-through faces and slots. Open for the owner: which finish, and the layout on a phone.
+shape you see; see-through faces and slots. Then "add some life to the UI as a whole, its very plain and
+boring right now and blocky": versions of the whole HUD (`Versions.luau`, the UI button / Y): FLOW (no
+plates, a small floating score with a grace-ring badge, a coin chip the banked cash flies into), SIDE (the
+score as a combo meter down the right), BOARD (as it was); live controls in FLOW and SIDE. Open for the
+owner: which finish and which version, and the layout on a phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

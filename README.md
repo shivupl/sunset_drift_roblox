@@ -41,6 +41,7 @@ to a standstill stays in drive instead of snapping into reverse the moment the c
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | — |
 | HUD style (finish) | U | — | STYLE |
+| HUD version (FLOW / SIDE / BOARD) | Y | — | UI |
 
 ## Two-wheel ("natl")
 Get to 90 km/h first; nothing lifts below that. Tap Q or E and the car throws itself up on
@@ -63,7 +64,7 @@ Test → Device → pick a phone → Play. The touch controls are our own Screen
 (`src/client/HudLab/LayoutD.luau`), and Roblox's thumbstick and jump button are hidden while
 driving. Bottom left: the two round steer buttons, a NATL button over each (above lift
 speed). Bottom right: the tall GAS in the corner, BRAKE left of it, a round HAND button over
-the brake. Top right: EXIT, RESET and STYLE, left of the cash. Everything is sized and
+the brake. Top right: EXIT, RESET, STYLE and UI, left of the cash. Everything is sized and
 spaced from the screen's height and kept inside the phone's safe area, and every control's
 hit box is the shape you see.
 
@@ -73,7 +74,13 @@ set the LocalPlayer attribute `ForceTouch = true` before getting in.
 
 ## Driver HUD
 Layout D (`src/client/HudLab`) in one of three finishes, STREET D, SODIUM or CARBON (STYLE
-on a phone, U on a keyboard, or Settings > HUD STYLE): a small see-through tacho bottom middle with the gear and
+on a phone, U on a keyboard, or Settings > HUD STYLE), and one of three versions (UI on a
+phone, Y on a keyboard; `HudLab/Versions.luau`): FLOW floats a small score at the top
+middle with the multiplier in a badge whose ring is the chain's grace, and a coin for the
+cash that a banked slide's cash flies into; SIDE puts that score down the right under the
+cash; BOARD is the plate across the top. FLOW and SIDE have live controls: ripples, glints,
+steer buttons that glow with the steer, NATL breathing while it can lift, pedal light strips
+(the gas's blinking near the redline). BOARD as described here: a small see-through tacho bottom middle with the gear and
 the speed; your cash top right, with your session best and the server best; and, while you
 slide, a drift board top middle with the points, the chain multiplier and the angle as a bar.
 Under the board a thin bar drains while the slide is between swings: the grace left to link

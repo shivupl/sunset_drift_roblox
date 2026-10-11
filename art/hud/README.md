@@ -7,7 +7,9 @@ and writes the PNGs itself:
 - `streetd/`: layout D in its finishes (STREET D, SODIUM, CARBON; `python3
   make.py [finish ...]`): per finish a round button base, the smoked tacho,
   the cash pill and drift board, the pedals; shared, the icons (white, the
-  HUD tints them), the lit halo and the readouts' italic digits (`num`).
+  HUD tints them), the lit halo, a thin ring (ripples, the grace arc), a
+  button silhouette (its glint), a soft dark blot (behind plateless text),
+  the coin, and the readouts' italic digits (`num`).
 - `street/`: the STREET cluster from the HUD trial (after Initial D Arcade
   Stage and CarX Street). The HUD uses its gear digits; the rest of its
   parts were for the cluster.

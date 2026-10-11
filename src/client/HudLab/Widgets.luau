@@ -290,6 +290,59 @@ function W.edgeGlow(parent: Instance): EdgeGlow
 end
 
 ------------------------------------------------------------------------
+-- Arc: a ring image cut to `frac` of itself, clockwise from 12 o'clock (a
+-- timer running down). Each half of the ring is clipped to its side of the
+-- box and shows the part of itself on one side of a hard-edged gradient;
+-- turning the gradient (clockwise) sweeps the edge round.
+------------------------------------------------------------------------
+
+export type Arc = { root: Frame, set: (frac: number) -> (), paint: (color: Color3, transparency: number) -> () }
+
+local HALF = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0),
+	NumberSequenceKeypoint.new(0.5, 0),
+	NumberSequenceKeypoint.new(0.501, 1),
+	NumberSequenceKeypoint.new(1, 1),
+})
+
+function W.arc(parent: Instance, name: string, image: string): Arc
+	local root = W.frame(parent, name)
+	local imgs: { ImageLabel } = {}
+	local grads: { UIGradient } = {}
+	for i, right in { true, false } do
+		local clip = W.frame(root, if right then "Right" else "Left")
+		clip.ClipsDescendants = true
+		clip.Size = UDim2.fromScale(0.5, 1)
+		clip.Position = UDim2.fromScale(if right then 0.5 else 0, 0)
+		local img = W.image(clip, "Ring", image)
+		img.Size = UDim2.fromScale(2, 1)
+		img.Position = UDim2.fromScale(if right then -1 else 0, 0)
+		local g = Instance.new("UIGradient")
+		g.Transparency = HALF
+		g.Parent = img
+		imgs[i], grads[i] = img, g
+	end
+	local function set(frac: number)
+		local deg = math.clamp(frac, 0, 1) * 360
+		-- At 0 the gradient shows the ring's left half: none of the right
+		-- clip. Turned by deg it shows 12 o'clock round to deg; the left
+		-- clip takes over past 180.
+		grads[1].Rotation = math.min(deg, 180)
+		grads[2].Rotation = 180 + math.clamp(deg - 180, 0, 180)
+		imgs[1].Visible = deg > 0.5
+		imgs[2].Visible = deg > 180.5
+	end
+	local function paint(color: Color3, transparency: number)
+		for _, img in imgs do
+			img.ImageColor3 = color
+			img.ImageTransparency = transparency
+		end
+	end
+	set(0)
+	return { root = root, set = set, paint = paint }
+end
+
+------------------------------------------------------------------------
 -- Shout: a big word that slams in, holds and fades (a 360, a natl, a big
 -- chain), with a smaller line under it.
 ------------------------------------------------------------------------

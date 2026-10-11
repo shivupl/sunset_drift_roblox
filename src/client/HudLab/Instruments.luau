@@ -134,7 +134,7 @@ export type CharsSpec = {
 	cell: Vector2, -- one cell, px
 	cols: number,
 	count: number,
-	align: string?, -- "right" (default) or "left"
+	align: string?, -- "right" (default), "left" or "center"
 	tint: Color3?,
 }
 
@@ -188,7 +188,8 @@ function I.chars(parent: Instance, name: string, spec: CharsSpec): Chars
 		end
 		shown = text
 		local cs = codes(text)
-		local pad = if spec.align == "left" then 0 else math.max(spec.count - #cs, 0)
+		local spare = math.max(spec.count - #cs, 0)
+		local pad = if spec.align == "left" then 0 elseif spec.align == "center" then spare // 2 else spare
 		for i, img in slots do
 			local ch = cs[i - pad]
 			local idx = if ch then index[ch] else nil
