@@ -937,6 +937,24 @@ local config = {
 			-- Up and looking down: the slide's angle reads best from here.
 			{ id = "high", name = "HIGH", distance = 6.8, height = 3.35, lookHeight = 0.1, baseFov = 64, maxFov = 86 },
 		},
+		-- Free look (FreeLook; the owner, 2026-10-10: "allow me to freelook
+		-- while driving, resets after i a) on phone let go or b) on pc resets
+		-- after a seccond or 2 in the same mouse position"). The camera swings
+		-- round the car: all the way round across, minPitchDeg below to
+		-- maxPitchDeg above. A mouse turns it degPerPixel per pixel moved and
+		-- eases it back once still for holdSeconds; a thumb dragging on the
+		-- screen away from the controls turns it degPerScreen per screen
+		-- width (and per screen height up and down) and eases it back when it
+		-- lifts. returnRate: 1/s, the ease home (about 0.5 s to look ahead
+		-- again at 6).
+		freeLook = {
+			degPerPixel = 0.25,
+			degPerScreen = 180,
+			holdSeconds = 1.5,
+			returnRate = 6,
+			minPitchDeg = -10,
+			maxPitchDeg = 40,
+		},
 	},
 
 	-- Speed you can feel (client SpeedFeel; speed-feel, 2026-10-05: the

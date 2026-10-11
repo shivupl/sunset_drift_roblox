@@ -4,7 +4,8 @@
 -- direction in a slide so the angle is visible, and on two wheels moves to
 -- the lifted side and tilts with the lean. Profile parameters cross-fade.
 -- The view (CameraViews: FAR, CHASE, CLOSE, LOW, HIGH) moves all three
--- closer or farther, higher or lower, narrower or wider.
+-- closer or farther, higher or lower, narrower or wider; free look
+-- (FreeLook) swings the camera round the car on top of it all.
 -- With speed the view widens and a faint shake comes in, and the follow
 -- carries part of the car's velocity so a fast car does not shrink to a
 -- speck (speed-feel, 2026-10-05). The speed it reads is SpeedFeel.kmh, so
@@ -16,6 +17,7 @@ local ConfigLoader = require(Shared.ConfigLoader)
 local Types = require(Shared.Types)
 local SpeedFeel = require(script.Parent.SpeedFeel)
 local CameraViews = require(script.Parent.CameraViews)
+local FreeLook = require(script.Parent.FreeLook)
 
 type VehicleState = Types.VehicleState
 
@@ -123,6 +125,7 @@ function CameraRig.start(model: Model)
 	smoothedDir = flat(chassis.CFrame.LookVector)
 	smoothedPos = chassis.Position - smoothedDir * ((current :: Params).distance / mps)
 		+ Vector3.yAxis * ((current :: Params).height / mps)
+	FreeLook.start()
 
 	simDt = 0
 	stepConn = RunService.PreSimulation:Connect(function(dt: number)
@@ -185,7 +188,22 @@ function CameraRig.start(model: Model)
 		smoothedPos = smoothedPos:Lerp(targetPos, posAlpha)
 
 		local look = pos + Vector3.yAxis * (params.lookHeight / metersPerStud)
+		-- Free look: the camera swings round the car from where the follow
+		-- put it, yaw about the vertical through the look point, pitch up or
+		-- down from its height there. The follow itself carries on, so letting
+		-- go eases back to a camera that kept up.
 		local eye = smoothedPos
+		local yaw, pitch = FreeLook.step(dt)
+		if yaw ~= 0 or pitch ~= 0 then
+			local off = CFrame.Angles(0, -math.rad(yaw), 0) * (smoothedPos - look)
+			local across = Vector3.new(off.X, 0, off.Z)
+			local r = off.Magnitude
+			if across.Magnitude > 1e-3 then
+				local elev = math.clamp(math.atan2(off.Y, across.Magnitude) + math.rad(pitch), math.rad(-80), math.rad(80))
+				off = across.Unit * (r * math.cos(elev)) + Vector3.yAxis * (r * math.sin(elev))
+			end
+			eye = look + off
+		end
 		-- Horizon tilt: follow a fraction of the car's roll (two-wheel profile).
 		local upVec = Vector3.yAxis
 		if st and params.rollFollow > 0.001 then
@@ -230,6 +248,7 @@ function CameraRig.stop()
 		stepConn = nil
 	end
 	lastState = nil
+	FreeLook.stop()
 	local cam = workspace.CurrentCamera
 	if cam then
 		cam.CameraType = Enum.CameraType.Custom

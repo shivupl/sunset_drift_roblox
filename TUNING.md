@@ -367,6 +367,16 @@ Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fle
 
 Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view, FAR included.
 
+### camera.freeLook (client `FreeLook`)
+Looking around while driving (the owner, 2026-10-10: "allow me to freelook while driving, resets after i a) on phone let go or b) on pc resets after a seccond or 2 in the same mouse position"). The camera swings round the car from where the follow put it: yaw all the way round, pitch from minPitchDeg (lower, looking up) to maxPitchDeg (higher, looking down). The follow carries on underneath, so the ease home lands on a camera that kept up.
+| Field | What it does |
+|---|---|
+| degPerPixel | Mouse: degrees per pixel moved (0.25). Any movement looks; a mouse over a menu does nothing, and a jump of 250 px or more between two events (the cursor leaving the window and coming back elsewhere) turns nothing (`FreeLook.JUMP_PIXELS`). Measured in Play: 400 px right turned the view 100 degrees right; still for 1.5 s, it was back behind the car 0.7 s later. |
+| holdSeconds | Mouse: how long it must sit still before the view eases back (1.5). |
+| degPerScreen | Touch: degrees per screen width dragged, across and up/down (180). Only a drag that starts away from the controls looks (each control is Active, so its press arrives processed). Lifting the thumb eases the view back at once. |
+| returnRate | 1/s, the ease home (6: about 0.5 s). |
+| minPitchDeg / maxPitchDeg | How far the camera may swing below and above where the view puts it (-10 / 40). |
+
 ## speedFeel (client `SpeedFeel`)
 Speed you can feel (speed-feel, 2026-10-05). The desert highway is wide and sparse, so little streams past the camera at any speed. **Studio:** the LocalPlayer attribute `SpeedFeelKmh` forces the speed these and the camera read, so a parked car can be framed at 200 km/h.
 
