@@ -117,8 +117,8 @@ and pop on cards, the cash counting down, the grid sliding in. Spec
 a Blue Flame tap fired its burst from the preview's exhaust as the camera arrived, no errors. Open for
 the owner: the shots' framings and the sounds (by ear), and the phone layout (not checked).
 
-**`garage-ui-overhaul` (2026-10-06, branched from `main` at `60cdede`; not merged): the garage
-panel redrawn.** The owner (a /goal): "polish the UI of the garage, a complete overhaul to make the UI
+**`garage-ui-overhaul` (2026-10-06, branched from `main` at `60cdede`; merged into `main` on 2026-10-10,
+fast-forward, with `hud-variants` on top of it; the local branch is kept for now): the garage panel redrawn.** The owner (a /goal): "polish the UI of the garage, a complete overhaul to make the UI
 look better and more organized + appealing. try different styles". Three styles were mocked in the
 Client over the real garage (a boxed panel with a swatch grid, full-bleed paint-chip cards, and a
 box-less shade with a list) and the hybrid built: no panel box but a shade that fades into the garage
@@ -134,7 +134,9 @@ the cash down with its toast, collapse and the close button worked, no errors. O
 look itself, and a real phone (a 350 px tall screen fits the rail only at 40 px rows; checked in a
 mock, not a device).
 
-**`hud-variants` (2026-10-07, branched from `garage-ui-overhaul` at `da2cfc0`; not merged): driving
+**`hud-variants` (2026-10-07, branched from `garage-ui-overhaul` at `da2cfc0`; merged into `main` on
+2026-10-10, fast-forward at `d6733eb`; specs 12692 passed, 14 failed, the VehicleRig baseline; the local
+branch is kept for now): driving
 HUD and phone-control variants to try.** The owner, on the theme mockups: "these really arent that
 good... for the phone it should be actual gas/break pedals and whatnot. i need a way more alive UI",
 then "just take refference from any of those games, make some better variants for me to try", then
