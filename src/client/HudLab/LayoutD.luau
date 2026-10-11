@@ -96,18 +96,19 @@ end
 
 type Round = {
 	root: Frame,
-	down: () -> boolean,
 	setLit: (on: boolean) -> (),
 	setShown: (on: boolean) -> (),
+	setDown: (on: boolean) -> (), -- shown held by a control that owns the touch (the steer pad)
 	update: (dt: number) -> (),
 }
 
 -- A round button: the finish's base, the icon over it in the finish's
 -- print, the halo in its accent when lit. onPress(true) as a thumb lands,
--- onPress(false) as it lifts. Held it sinks and goes solid with a faint
+-- onPress(false) as it lifts; with no onPress it takes no touches of its own
+-- and setDown shows it held. Held it sinks and goes solid with a faint
 -- halo; lit (HAND held, the side the car is up on) the halo is full and
 -- the icon takes the accent.
-local function round(parent: Instance, name: string, finish: Finishes.Finish, icon: number, t: W.Tracker, onPress: (boolean) -> ()): Round
+local function round(parent: Instance, name: string, finish: Finishes.Finish, icon: number, t: W.Tracker, onPress: ((boolean) -> ())?): Round
 	local root = W.frame(parent, name)
 	local body = W.frame(root, "Body")
 	body.Size = UDim2.fromScale(1, 1)
@@ -130,19 +131,27 @@ local function round(parent: Instance, name: string, finish: Finishes.Finish, ic
 	local press = Motion.spring(0, 10, 0.6)
 	local glow = Motion.spring(0, 8, 1)
 	local vis = Motion.spring(1, 7, 1)
-	W.claim(t, root, function()
-		if not shown or isDown then
-			return
+	local function setDown(on: boolean)
+		if on and not isDown then
+			Motion.kick(press, 6)
 		end
-		isDown = true
-		Motion.kick(press, 6)
-		onPress(true)
-	end, nil, function()
-		if isDown then
-			isDown = false
-			onPress(false)
-		end
-	end)
+		isDown = on
+	end
+	local tap = onPress
+	if tap then
+		W.claim(t, root, function()
+			if not shown or isDown then
+				return
+			end
+			setDown(true)
+			tap(true)
+		end, nil, function()
+			if isDown then
+				setDown(false)
+				tap(false)
+			end
+		end)
+	end
 
 	local function update(dt: number)
 		local d = Motion.step(press, if isDown then 1 else 0, dt)
@@ -160,9 +169,6 @@ local function round(parent: Instance, name: string, finish: Finishes.Finish, ic
 	end
 	return {
 		root = root,
-		down = function()
-			return isDown
-		end,
 		setLit = function(on: boolean)
 			lit = on
 		end,
@@ -171,9 +177,12 @@ local function round(parent: Instance, name: string, finish: Finishes.Finish, ic
 			if not on and isDown then
 				-- A control that goes away under a thumb lets go.
 				isDown = false
-				onPress(false)
+				if tap then
+					tap(false)
+				end
 			end
 		end,
+		setDown = setDown,
 		update = update,
 	}
 end
@@ -193,15 +202,42 @@ function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish, versio
 		return r
 	end
 
-	-- Steering, and a NATL over each steer button.
+	-- Steering, and a NATL over each steer button. The two steer buttons are
+	-- one pad, a d-pad: the side of it the thumb is on now is the direction,
+	-- so a thumb rocked from one to the other without lifting steers the
+	-- other way at once, as the arrow keys do (the owner, 2026-10-10: "the
+	-- turn buttons dont work well in the mobile version... like they dont
+	-- work like the pc arrow keys", "i press and hold but it only registers
+	-- the first press"). Each button took only a touch that began on it, so
+	-- a thumb slid across to the other one went on steering the first way.
 	local steer = 0
-	local steerL = add(round(left, "SteerLeft", finish, ICON.left, t, function() end))
-	local steerR = add(round(left, "SteerRight", finish, ICON.right, t, function() end))
+	local side = 0 -- -1 left, 1 right, 0 no thumb on the pad
+	local steerL = add(round(left, "SteerLeft", finish, ICON.left, t, nil))
+	local steerR = add(round(left, "SteerRight", finish, ICON.right, t, nil))
 	local xL = STEER_X + BIG / 2
 	local xR = xL + BIG + GAP
 	local steerY = 1 - STEER_B - BIG / 2
 	place(steerL.root, xL, steerY, BIG, BIG)
 	place(steerR.root, xR, steerY, BIG, BIG)
+	-- The pad: both buttons and the gap between them, a little past their
+	-- edges, down to the bottom of the screen; the split is half way.
+	local pad = W.frame(left, "SteerPad")
+	pad.ZIndex = 6
+	local padL, padR = STEER_X - 0.02, xR + BIG / 2 + 0.03
+	local padTop = steerY - BIG / 2 - 0.02
+	pad.Position = UDim2.fromScale(padL, padTop)
+	pad.Size = UDim2.fromScale(padR - padL, 1 - padTop)
+	local function steerAt(p: Vector2)
+		local split = left.AbsolutePosition.X + left.AbsoluteSize.Y * (xL + xR) / 2
+		side = if p.X < split then -1 else 1
+		steerL.setDown(side < 0)
+		steerR.setDown(side > 0)
+	end
+	W.claim(t, pad, steerAt, steerAt, function()
+		side = 0
+		steerL.setDown(false)
+		steerR.setDown(false)
+	end)
 	local rowY = steerY - BIG / 2 - GAP - NATL / 2
 	local natlL = add(round(left, "NatlLeft", finish, ICON.natlL, t, function(down)
 		api.leanLeft(down)
@@ -251,7 +287,7 @@ function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish, versio
 
 	return {
 		update = function(dt: number)
-			local want = (if steerR.down() then 1 else 0) - (if steerL.down() then 1 else 0)
+			local want = side
 			-- Back toward centre (or across it) at the faster rate.
 			local back = want == 0 or (steer ~= 0 and math.sign(want) ~= math.sign(steer))
 			local rate = if back then STEER_BACK else STEER_OUT

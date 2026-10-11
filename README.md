@@ -23,7 +23,7 @@ Saudi hajwala drift feel on Roblox. Phase 0 is one car and one flat road.
 | Action | Keyboard | Gamepad | Touch |
 |---|---|---|---|
 | Throttle / Brake | W / S | RT / LT | GAS / BRAKE (right thumb) |
-| Steer | A / D | left stick | ◀ / ▶ buttons (left thumb; held, they ramp to full lock like the keys) |
+| Steer | A / D | left stick | ◀ / ▶ (left thumb; one pad: the side the thumb is on steers, so rocking across switches without lifting; held, it ramps to full lock like the keys) |
 
 That is the whole control set: steer, throttle, brake, handbrake, two-wheel, lean, reset,
 exit, reload. There is no clutch kick and no shifter.
