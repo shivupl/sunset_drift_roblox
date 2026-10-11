@@ -290,60 +290,151 @@ function W.edgeGlow(parent: Instance): EdgeGlow
 end
 
 ------------------------------------------------------------------------
--- Shout: a big word that slams in, holds and fades (a 360, a natl, a big
--- chain), with a smaller line under it.
+-- Stamps: each event in a drift (a 360, a natl, a big chain) slapped onto
+-- the side of the screen (the owner, 2026-10-10: "should be to the side
+-- plastered with a cool little animation each time"): the word slams in
+-- big and tilted, overshoots and settles with a shake, a shockwave ring
+-- bursts behind it, a tag in the accent wipes in under it with the English;
+-- it holds, then slides off the edge. Newer stamps push older ones down,
+-- MAX at a time. They stack against the right edge of `root`, which the
+-- caller sizes and places.
 ------------------------------------------------------------------------
 
-export type ShoutSkin = {
+export type StampSkin = {
 	font: Font,
-	color: Color3,
+	color: Color3, -- the word
 	stroke: Color3,
 	strokeThickness: number,
 	subFont: Font,
-	subColor: Color3,
-	tilt: number, -- degrees
+	accent: Color3, -- the tag and the ring
+	ink: Color3, -- the tag's text
+	ring: string, -- a white ring image, tinted
 }
 
-export type Shout = { root: Frame, fire: (word: string, sub: string) -> (), update: (dt: number) -> () }
+export type Stamps = { root: Frame, fire: (word: string, sub: string) -> (), update: (dt: number) -> () }
 
-function W.shout(parent: Instance, name: string, skin: ShoutSkin): Shout
+type Stamp = {
+	frame: Frame,
+	scale: UIScale,
+	word: TextLabel,
+	wordStroke: UIStroke,
+	tag: Frame,
+	sub: TextLabel,
+	ring: ImageLabel,
+	age: number,
+	tilt: number,
+	slot: number,
+	y: Motion.Spring,
+	pop: Motion.Spring,
+}
+
+local STAMP_MAX = 3
+local STAMP_HOLD = 2.0 -- seconds before it leaves
+local STAMP_OUT = 0.3 -- seconds to slide off
+
+function W.stamps(parent: Instance, name: string, skin: StampSkin): Stamps
 	local root = W.frame(parent, name)
-	root.Visible = false
-	root.Rotation = skin.tilt
-	local scale = Instance.new("UIScale")
-	scale.Parent = root
-	local word = W.text(root, "Word", "", skin.font, skin.color)
-	word.Size = UDim2.fromScale(1, 0.7)
-	local wordStroke = W.stroke(word, skin.stroke, skin.strokeThickness)
-	local sub = W.text(root, "Sub", "", skin.subFont, skin.subColor)
-	sub.Position = UDim2.fromScale(0, 0.7)
-	sub.Size = UDim2.fromScale(1, 0.3)
-	local subStroke = W.stroke(sub, skin.stroke, math.max(1, skin.strokeThickness - 1))
-	local age = math.huge
-	local pop = Motion.spring(1, 5, 0.45)
+	local live: { Stamp } = {}
+	local slotH = 1 / STAMP_MAX
+
 	local function fire(w: string, s: string)
-		word.Text = w
-		sub.Text = s
-		age = 0
-		pop.x, pop.v = 1.7, 0
-		root.Visible = true
+		local f = W.frame(root, "Stamp")
+		f.AnchorPoint = Vector2.new(1, 0.5)
+		f.Size = UDim2.fromScale(1, slotH)
+		f.Position = UDim2.fromScale(1, slotH / 2)
+		f.ZIndex = 4
+		local scale = Instance.new("UIScale")
+		scale.Parent = f
+		local ring = W.image(f, "Ring", skin.ring)
+		ring.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.8, 0.36)
+		ring.ImageColor3 = skin.accent
+		ring.ZIndex = 4
+		local word = W.text(f, "Word", w, skin.font, skin.accent)
+		word.Size = UDim2.fromScale(1, 0.66)
+		word.TextXAlignment = Enum.TextXAlignment.Right
+		word.ZIndex = 6
+		local wordStroke = W.stroke(word, skin.stroke, skin.strokeThickness)
+		local tag = W.frame(f, "Tag", skin.accent, 0.05)
+		tag.AnchorPoint = Vector2.new(1, 0)
+		tag.Position = UDim2.fromScale(1, 0.66)
+		tag.Size = UDim2.fromScale(0, 0.3)
+		tag.ClipsDescendants = true
+		tag.ZIndex = 5
+		W.corner(tag, UDim.new(0.18, 0))
+		local sub = W.text(tag, "Sub", s, skin.subFont, skin.ink)
+		sub.AnchorPoint = Vector2.new(1, 0)
+		sub.Position = UDim2.fromScale(1, 0.08)
+		sub.Size = UDim2.fromScale(1, 0.84)
+		sub.TextXAlignment = Enum.TextXAlignment.Right
+		sub.ZIndex = 5
+		local pad = Instance.new("UIPadding")
+		pad.PaddingRight = UDim.new(0.04, 0)
+		pad.Parent = sub
+		-- Push the others down; the oldest past MAX starts to leave.
+		for _, o in live do
+			o.slot += 1
+			if o.slot >= STAMP_MAX then
+				o.age = math.max(o.age, STAMP_HOLD)
+			end
+		end
+		local st: Stamp = {
+			frame = f,
+			scale = scale,
+			word = word,
+			wordStroke = wordStroke,
+			tag = tag,
+			sub = sub,
+			ring = ring,
+			age = 0,
+			tilt = -4 + (math.random() - 0.5) * 5,
+			slot = 0,
+			y = Motion.spring(0, 9, 0.75),
+			pop = Motion.spring(2.1, 9, 0.42),
+		}
+		table.insert(live, 1, st)
 	end
+
 	local function update(dt: number)
-		if age == math.huge then
-			return
-		end
-		age += dt
-		scale.Scale = Motion.step(pop, 1, dt)
-		local fade = math.clamp((age - 0.9) / 0.35, 0, 1)
-		word.TextTransparency = fade
-		sub.TextTransparency = fade
-		wordStroke.Transparency = fade
-		subStroke.Transparency = fade
-		if fade >= 1 then
-			root.Visible = false
-			age = math.huge
+		for i = #live, 1, -1 do
+			local st = live[i]
+			st.age += dt
+			local a = st.age
+			-- Slam: oversized and tilted further, overshoots below full size,
+			-- settles; a short shake as it lands.
+			local sc = Motion.step(st.pop, 1, dt)
+			st.scale.Scale = sc
+			local land = math.clamp(a / 0.1, 0, 1)
+			local shake = if a > 0.05 and a < 0.22 then (math.random() - 0.5) * 0.03 * (1 - (a - 0.05) / 0.17) else 0
+			local out = math.clamp((a - STAMP_HOLD) / STAMP_OUT, 0, 1)
+			local y = Motion.step(st.y, st.slot * slotH, dt)
+			st.frame.Position = UDim2.fromScale(1 + shake + 0.35 * out * out, slotH / 2 + y + shake * 0.5)
+			st.frame.Rotation = st.tilt + 10 * (1 - land) + 8 * out
+			-- The word flashes in the accent, then takes its own colour.
+			local flash = math.clamp((a - 0.08) / 0.2, 0, 1)
+			st.word.TextColor3 = skin.accent:Lerp(skin.color, flash)
+			local fade = math.max(1 - land, out)
+			st.word.TextTransparency = fade
+			st.wordStroke.Transparency = fade
+			-- The tag wipes in under the word, as wide as its line.
+			local wipe = math.clamp((a - 0.1) / 0.16, 0, 1)
+			wipe = 1 - (1 - wipe) ^ 3
+			local need = (st.sub.TextBounds.X / math.max(st.frame.AbsoluteSize.X, 1)) + 0.07
+			st.tag.Size = UDim2.fromScale(math.min(need, 1) * wipe, 0.3)
+			st.tag.BackgroundTransparency = 0.05 + 0.95 * out
+			st.sub.TextTransparency = out
+			-- The ring bursts once, behind the word.
+			local r = math.clamp(a / 0.35, 0, 1)
+			st.ring.Size = UDim2.fromScale(0.5 + 1.9 * r, 0.5 + 1.9 * r)
+			st.ring.ImageTransparency = if a < 0.35 then 0.15 + 0.85 * r else 1
+			if out >= 1 then
+				st.frame:Destroy()
+				table.remove(live, i)
+			end
 		end
 	end
+
 	return { root = root, fire = fire, update = update }
 end
 

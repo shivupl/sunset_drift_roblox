@@ -11,6 +11,10 @@
 --   Cash    top right (EXIT / RESET / STYLE are left of it, LayoutD).
 --   Board   the drift score, top middle, only while sliding (and a moment
 --           after): points, the multiplier, the angle as a bar.
+--   Stamps  a 360, a natl, a big chain, each slapped down the right side
+--           as it happens, in Arabic as the scene says it, the English on
+--           a tag under it: طارت! ("it flew", a 360), نطل! (natl, up on two
+--           wheels), هجولة! (hajwala, the scene's own word, at a x3 chain).
 -- The art is Art.luau.
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
@@ -138,17 +142,22 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 	local boardScale = Instance.new("UIScale")
 	boardScale.Parent = board
 
-	local shout = W.shout(root, "Shout", {
+	-- The events of a drift, stamped down the right side under the cash and
+	-- the menu buttons, above HAND (they were one shout in the middle, over
+	-- the car).
+	local shout = W.stamps(right, "Stamps", {
 		font = SHOUT,
 		color = f.print,
 		stroke = INK,
-		strokeThickness = 5,
+		strokeThickness = 4,
 		subFont = LABEL,
-		subColor = f.accent,
-		tilt = -6,
+		accent = f.accent,
+		ink = INK,
+		ring = Art.halo,
 	})
-	W.box(shout.root, 0.56, 0.2)
-	W.at(shout.root, 0.5, 0.46)
+	shout.root.AnchorPoint = Vector2.new(1, 0)
+	shout.root.Position = UDim2.fromScale(1 - er, 0.15)
+	shout.root.Size = UDim2.fromScale(0.55, 0.32)
 
 	local roller = Motion.roller()
 	local cashRoller = Motion.roller()
@@ -228,7 +237,7 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 		elseif kind == "natl" then
 			shout.fire("نطل!", "TWO WHEELS")
 		elseif kind == "chain" then
-			shout.fire("هجولة!", string.format("x%.1f CHAIN", a))
+			shout.fire("هجولة!", (if a % 1 == 0 then string.format("x%d", a) else string.format("x%.1f", a)) .. " CHAIN")
 		elseif kind == "banked" then
 			held, heldUntil = a, now + 1.6
 			pointsTint = f.banked
