@@ -49,8 +49,8 @@ local carbon: FinishArt = {
 return {
 	icons = "rbxassetid://126970977739929", -- hud_icons, 768x576: 192 px cells, 4 across: left, right, natl_l, natl_r, hand, exit, reset, style, layout
 	halo = "rbxassetid://133638095976591", -- hud_halo, 256, white: the lit ring
-	ring = "rbxassetid://110988161965666", -- hud_ring, 256, white: a thin ring (ripples, the grace arc)
-	disc = "rbxassetid://80388430810332", -- hud_disc, 256, white: a round button's silhouette (its glint)
+	ring = "rbxassetid://110988161965666", -- hud_ring, 256, white: a thin ring (the badge's track and grace arc)
+	disc = "rbxassetid://80388430810332", -- hud_disc, 256, white: a disc (the badge's ground)
 	soft = "rbxassetid://91186672633925", -- hud_soft, 256: a dark blot behind plateless text
 	coin = "rbxassetid://117391161025187", -- hud_coin, 256: the cash's coin
 	tachoGlass = "rbxassetid://128679846706849", -- streetd_tacho_glass, 512: the glass and cap, every finish

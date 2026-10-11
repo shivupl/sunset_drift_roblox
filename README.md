@@ -78,9 +78,7 @@ on a phone, U on a keyboard, or Settings > HUD STYLE), and one of three versions
 phone, Y on a keyboard; `HudLab/Versions.luau`): FLOW floats a small score at the top
 middle with the multiplier in a badge whose ring is the chain's grace, and a coin for the
 cash that a banked slide's cash flies into; SIDE puts that score down the right under the
-cash; BOARD is the plate across the top. FLOW and SIDE have live controls: ripples, glints,
-steer buttons that glow with the steer, NATL breathing while it can lift, pedal light strips
-(the gas's blinking near the redline). BOARD as described here: a small see-through tacho bottom middle with the gear and
+cash; BOARD is the plate across the top. BOARD as described here: a small see-through tacho bottom middle with the gear and
 the speed; your cash top right, with your session best and the server best; and, while you
 slide, a drift board top middle with the points, the chain multiplier and the angle as a bar.
 Under the board a thin bar drains while the slide is between swings: the grace left to link

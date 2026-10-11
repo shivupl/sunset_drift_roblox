@@ -13,29 +13,25 @@
 --          shadow, the multiplier in a round badge whose ring is the
 --          chain's grace running out, a thin angle line under it; the cash
 --          a coin on a short chip, a banked slide's cash flying into it.
---          Live controls.
+--          The owner, 2026-10-10: "flow looks good".
 --   SIDE   the score off the middle altogether: a combo meter down the
 --          right under the cash (badge, points, angle line), the middle
 --          left to the car and the road; the cash a coin with no plate.
---          Live controls.
 --
--- Live controls (LayoutD): a ripple on every press, a glint across a button
--- now and then, the steer buttons glowing with the steer they are giving,
--- NATL popping in and breathing while it can lift, a light strip on each
--- pedal filling with how hard it is pressed (the gas's blinking near the
--- redline).
+-- FLOW and SIDE had live controls too (ripples, glints, a steer glow, NATL
+-- breathing, pedal light strips); they went the same day ("remove all the
+-- wierd effects from all the buttons").
 export type Version = {
 	id: string,
 	name: string,
-	live: boolean, -- the live controls
 	cashW: number, -- how wide the cash is, fractions of the screen's height (the menu buttons sit left of it)
 }
 
 local list: { Version } = {
 	-- The trial opens on the newest, so the owner sees it at once.
-	{ id = "flow", name = "FLOW", live = true, cashW = 0.37 },
-	{ id = "side", name = "SIDE", live = true, cashW = 0.37 },
-	{ id = "board", name = "BOARD", live = false, cashW = 0.463 },
+	{ id = "flow", name = "FLOW", cashW = 0.37 },
+	{ id = "side", name = "SIDE", cashW = 0.37 },
+	{ id = "board", name = "BOARD", cashW = 0.463 },
 }
 
 local byId: { [string]: Version } = {}

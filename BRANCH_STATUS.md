@@ -171,8 +171,9 @@ the steer buttons as the Q and E lean keys (the NATL toggle and lean slider are 
 shape you see; see-through faces and slots. Then "add some life to the UI as a whole, its very plain and
 boring right now and blocky": versions of the whole HUD (`Versions.luau`, the UI button / Y): FLOW (no
 plates, a small floating score with a grace-ring badge, a coin chip the banked cash flies into), SIDE (the
-score as a combo meter down the right), BOARD (as it was); live controls in FLOW and SIDE. Open for the
-owner: which finish and which version, and the layout on a phone.
+score as a combo meter down the right), BOARD (as it was). The owner liked FLOW; the live controls (ripples,
+glints, glows, pedal strips) and the coin's spin and pop went ("remove all the wierd effects"). Open for the
+owner: which finish, and the layout on a phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

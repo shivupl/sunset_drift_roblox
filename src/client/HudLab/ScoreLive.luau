@@ -16,7 +16,9 @@
 --
 -- The cash is a coin and the amount: FLOW on a short chip with the coin
 -- over its end, SIDE on nothing. A banked slide's cash flies from the score
--- into the coin, which spins as the amount counts up.
+-- into the coin and the amount counts up. (The coin spun and the cash
+-- popped as it landed; the owner, 2026-10-10: "it makes a strange animation
+-- on the top right like popping in and out that i dont like".)
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
@@ -28,9 +30,8 @@ local R = require(HudLab:WaitForChild("Readouts"))
 -- The cash's box, fractions of the screen's height (Versions.cashW leaves
 -- room left of it for the coin's overhang).
 local CASH_W = 0.32
--- How long a banked slide's cash takes to fly into the coin, and a coin spin.
+-- How long a banked slide's cash takes to fly into the coin.
 local FLY_SECONDS = 0.6
-local SPIN_SECONDS = 0.7
 
 export type Score = {
 	update: (v: any, dt: number) -> (),
@@ -57,8 +58,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 	cashBox.AnchorPoint = Vector2.new(1, 0)
 	cashBox.Position = UDim2.fromScale(1 - er, LayoutD.CASH_Y)
 	cashBox.Size = UDim2.fromScale(CASH_W, LayoutD.CASH_H)
-	local cashScale = Instance.new("UIScale")
-	cashScale.Parent = cashBox
 	local chip: ImageLabel? = nil
 	if side then
 		local shade = W.image(cashBox, "Shade", Art.soft)
@@ -79,8 +78,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 	coinHolder.Position = UDim2.fromScale(if side then 0.1 else 0.05, 0.5)
 	coinHolder.ZIndex = 4
 	local coin = W.image(coinHolder, "Face", Art.coin)
-	coin.AnchorPoint = Vector2.new(0.5, 0.5)
-	coin.Position = UDim2.fromScale(0.5, 0.5)
 	coin.ZIndex = 4
 	local cash = R.nums(cashBox, "Value", 9, "left")
 	cash.tint(f.print)
@@ -189,9 +186,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 	local roller = Motion.roller()
 	local cashRoller = Motion.roller()
 	cashRoller.shown = -1
-	local lastCash = -1
-	local spinT = math.huge
-	local cashPop = Motion.spring(1, 5, 0.35)
 	local clPop = Motion.spring(1, 6, 0.5)
 	local badgePop = Motion.spring(1, 5, 0.4)
 	local meterAmt = Motion.spring(0, 8, 1)
@@ -201,11 +195,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 	local wasShowing = false
 	local clock = 0
 	local flyers: { Flyer } = {}
-
-	local function spin()
-		spinT = 0
-		Motion.kick(cashPop, 6)
-	end
 
 	-- A banked slide's cash, from the score into the coin.
 	local function fly(amount: number)
@@ -249,15 +238,7 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 		if cashRoller.shown < 0 then
 			cashRoller.shown = v.cash
 		end
-		if lastCash >= 0 and v.cash > lastCash then
-			spin()
-		end
-		lastCash = v.cash
 		cash.set(Motion.comma(Motion.roll(cashRoller, v.cash, dt, 4)))
-		cashScale.Scale = Motion.step(cashPop, 1, dt)
-		spinT += dt
-		local s = if spinT < SPIN_SECONDS then math.abs(math.cos(spinT / SPIN_SECONDS * 3 * math.pi)) else 1
-		coin.Size = UDim2.fromScale(math.max(s, 0.06), 1)
 		best.Text = if v.serverBest > 0 and (clock % 6) > 3 then `SERVER {Motion.comma(v.serverBest)}` else `BEST {Motion.comma(v.best)}`
 
 		-- Score.
@@ -316,7 +297,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 			if k >= 1 then
 				fl.frame:Destroy()
 				table.remove(flyers, i)
-				spin()
 			end
 		end
 	end

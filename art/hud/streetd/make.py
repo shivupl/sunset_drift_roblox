@@ -20,8 +20,8 @@ however many buttons there are), tacho_face, tacho_needle, pill (cash,
 
 Shared: icons (white, tinted by the HUD: left, right, natl_l, natl_r, hand,
 exit, reset, style, layout in 192 px cells, 4 across), halo (the lit ring,
-white, tinted), ring (a thin ring: ripples, the multiplier's grace), disc (a
-button's silhouette: its glint), soft (a dark blot behind plateless text),
+white, tinted), ring (a thin ring: the multiplier's grace), disc (the
+badge's ground), soft (a dark blot behind plateless text),
 coin (the cash), num (white italic digits, NUM_CHARS order in 80x150 cells,
 8 across). The tacho's glass and cap are streetd_tacho_glass for every finish;
 the gear digits are STREET's (art/hud/street/make.py).
@@ -169,8 +169,8 @@ def halo(size=256):
 
 
 def ring(size=256):
-    """A thin clean ring, white for the HUD to tint: press ripples, and the
-    multiplier's grace (cut into an arc in the HUD)."""
+    """A thin clean ring, white for the HUD to tint: the multiplier badge's
+    track, and its grace (cut into an arc in the HUD)."""
     c = K.Canvas(size, size)
     a = K.cover(K.ring(c, size / 2, size / 2, size * 0.44, size * 0.05))
     c.over(full(c, "#ffffff"), a)
@@ -178,8 +178,7 @@ def ring(size=256):
 
 
 def disc(size=256):
-    """A round button's outline filled white (r 0.44, as base()): the glint
-    that sweeps across a button is this under a moving gradient."""
+    """A white disc (r 0.44, as base()): the multiplier badge's ground."""
     c = K.Canvas(size, size)
     a = K.cover(K.circle(c, size / 2, size / 2, size * 0.44))
     c.over(full(c, "#ffffff"), a)

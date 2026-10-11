@@ -64,7 +64,6 @@ export type Hud = {
 export type Controls = {
 	update: (dt: number) -> (),
 	setNatl: (ready: boolean, side: number) -> (),
-	setRpm: (frac: number) -> (), -- of the redline
 	destroy: () -> (),
 }
 
@@ -315,7 +314,6 @@ function HudLab.update(state: any, score: any)
 	if c then
 		local ready = up or state.speedKmh >= cfg.twoWheel.minLiftSpeedKmh
 		c.setNatl(ready, if up then (if state.rollDeg < 0 then -1 else 1) else 0)
-		c.setRpm(state.rpm / math.max(cfg.drivetrain.redlineRpm, 1))
 	end
 	view = v
 	shown = true
