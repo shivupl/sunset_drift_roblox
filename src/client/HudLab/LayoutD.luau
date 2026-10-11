@@ -1,17 +1,30 @@
 --!strict
--- Layout D (hud-variants, 2026-10-08): the phone layout the owner put
+-- Layout D (hud-variants, 2026-10-08): the phone controls the owner put
 -- together from the mockups (claude.ai canvas "Hajwala mobile HUD layouts",
 -- board D): "make the handbreak a button not a slide", the tacho small and
 -- see-through at the bottom middle, cash top right, "the buttons should go
--- out a bit more".
+-- out a bit more". Reworked on 2026-10-10 (the owner: "very much is
+-- unasthetic in terms of button placement and non functional"; "make it 2
+-- natl buttons that show up one left one right"; "button / overlay opacity
+-- find a way to reduce it subtly"):
 --
---   bottom left    two round steer buttons, NATL over the right one, the
---                  lean slider above NATL while on two wheels
---   bottom right   the tall gas in the corner, the brake left of it, a round
---                  HAND button over the brake
---   top right      EXIT / RESET as round icon buttons, left of the cash
---                  (the HUD's); clear of Roblox's top bar and chat window,
---                  which are top left
+--   bottom left    ◀ ▶, a NATL button over each: NATL◀ is Q and NATL▶ is
+--                  E (a tap lifts the car onto that side's wheels, taps
+--                  keep it up, the other one catches), placed as Q and E sit
+--                  over A and D. The right thumb stays on the gas. They
+--                  show up once the car is fast enough to lift
+--                  (twoWheel.minLiftSpeedKmh) and stay while it is up; the
+--                  side it is up on is lit.
+--   bottom right   the gas in the corner, the brake left of it, HAND over
+--                  the brake, level with the NATL row and the gas's top
+--   top right      EXIT / RESET / STYLE, left of the cash (the HUD's); clear
+--                  of Roblox's top bar and chat window, which are top left
+--
+-- Every control's hit box is the shape you see: the pedals are laid out at
+-- their art's own shape (they used to sit letterboxed in boxes of another
+-- shape, the brake's half as wide again as its plate). Two round sizes, one
+-- gap. At rest the controls let a little of the road through (REST, and the
+-- art's see-through faces and drilled slots); under a thumb they are solid.
 --
 -- Positions are fractions of the screen's height, measured in from the
 -- corner each group sits in, so they keep their spacing on any phone; the
@@ -20,29 +33,42 @@ local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
 local Art = require(HudLab:WaitForChild("Art"))
+local Finishes = require(HudLab:WaitForChild("Finishes"))
 
 local LayoutD = {}
 
--- In from the screen's sides and bottom, fractions of its height.
-LayoutD.EDGE_X = 0.05
+-- In from the safe area's bottom and right edges, fractions of its height.
 LayoutD.EDGE_B = 0.03
--- The steer buttons sit higher and nearer the left edge than the rest, and
--- the pedals nearer the right edge (the owner, 2026-10-10: "move the
--- leftright up and a bit left, move the pedals a bit to the right"; they
--- were EDGE_X in and EDGE_B up). Fractions of the height, like EDGE_X.
+LayoutD.EDGE_R = 0.02
+-- The steer buttons sit higher and nearer the left edge (the owner,
+-- 2026-10-10: "move the leftright up and a bit left, move the pedals a bit
+-- to the right").
 local STEER_X = 0.025
 local STEER_B = 0.1
-local PEDAL_X = 0.02
--- Where the round menu buttons sit, so the HUD can put the cash beside them:
--- the cash's right edge is EDGE_X in, CASH_W wide, its top CASH_Y.
+-- Two round sizes, so the buttons read as one set: BIG for what a thumb
+-- lives on (steer, HAND), SMALL for the menu; NATL between them.
+local BIG = 0.21
+local NATL = 0.16
+local SMALL = 0.11
+local GAP = 0.035
+-- The pedals at their art's shape: the gas 400x1000, the brake 640x404.
+local GAS_W, GAS_H = 0.2, 0.5
+local BRAKE_W, BRAKE_H = 0.37, 0.2336
+-- The cash, top right; the menu buttons line up left of it.
 LayoutD.CASH_W = 0.463
 LayoutD.CASH_H = 0.096
 LayoutD.CASH_Y = 0.026
+-- How see-through a control is with no thumb on it.
+local REST = 0.15
 
 -- Steering from the buttons, as a keyboard steers: out at STEER_OUT a
 -- second, back at STEER_BACK (Input's keyboard ramp is 4 and 8).
 local STEER_OUT = 4.5
 local STEER_BACK = 8
+
+-- Cells in Art.icons, 4 across.
+local ICON_CELL = 192
+local ICON = { left = 0, right = 1, natlL = 2, natlR = 3, hand = 4, exit = 5, reset = 6, style = 7 }
 
 -- A square the screen's height tall in a corner: children are placed in
 -- fractions of the height from that side.
@@ -61,41 +87,91 @@ local function place(o: GuiObject, x: number, y: number, w: number, h: number)
 	o.Size = UDim2.fromScale(w, h)
 end
 
-type Hold = { root: Frame, down: () -> boolean, update: (dt: number) -> () }
+type Round = {
+	root: Frame,
+	down: () -> boolean,
+	setLit: (on: boolean) -> (),
+	setShown: (on: boolean) -> (),
+	update: (dt: number) -> (),
+}
 
--- A round button held down (steer, HAND): it sinks and darkens while held;
--- `lit`, if given, is its art while held.
-local function hold(parent: Instance, name: string, image: string, lit: string?, t: W.Tracker, onChange: (boolean) -> ()): Hold
+-- A round button: the finish's base, the icon over it in the finish's
+-- print, the halo in its accent when lit. onPress(true) as a thumb lands,
+-- onPress(false) as it lifts. Held it sinks and goes solid with a faint
+-- halo; lit (HAND held, the side the car is up on) the halo is full and
+-- the icon takes the accent.
+local function round(parent: Instance, name: string, finish: Finishes.Finish, icon: number, t: W.Tracker, onPress: (boolean) -> ()): Round
 	local root = W.frame(parent, name)
-	local img = W.image(root, "Art", image)
+	local body = W.frame(root, "Body")
+	body.Size = UDim2.fromScale(1, 1)
 	local scale = Instance.new("UIScale")
-	scale.Parent = img
-	local isDown = false
+	scale.Parent = body
+	local base = W.image(body, "Base", finish.art.base)
+	local ico = W.image(body, "Icon", Art.icons)
+	ico.ImageRectSize = Vector2.new(ICON_CELL, ICON_CELL)
+	ico.ImageRectOffset = Vector2.new((icon % 4) * ICON_CELL, (icon // 4) * ICON_CELL)
+	ico.ImageColor3 = finish.print
+	ico.Size = UDim2.fromScale(0.62, 0.62)
+	W.at(ico, 0.5, 0.5)
+	ico.ZIndex = 2
+	local halo = W.image(body, "Halo", Art.halo)
+	halo.ImageColor3 = finish.accent
+	halo.ImageTransparency = 1
+	halo.ZIndex = 3
+
+	local isDown, lit, shown = false, false, true
 	local press = Motion.spring(0, 10, 0.6)
+	local glow = Motion.spring(0, 8, 1)
+	local vis = Motion.spring(1, 7, 1)
 	W.claim(t, root, function()
+		if not shown or isDown then
+			return
+		end
 		isDown = true
 		Motion.kick(press, 6)
-		onChange(true)
+		onPress(true)
 	end, nil, function()
-		isDown = false
-		onChange(false)
+		if isDown then
+			isDown = false
+			onPress(false)
+		end
 	end)
+
 	local function update(dt: number)
 		local d = Motion.step(press, if isDown then 1 else 0, dt)
-		scale.Scale = 1 - 0.07 * d
-		img.ImageColor3 = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(170, 170, 176), 0.6 * d)
-		img.Image = if isDown and lit then lit else image
+		local g = Motion.step(glow, if lit then 1 elseif isDown then 0.45 else 0, dt)
+		local v = Motion.step(vis, if shown then 1 else 0, dt)
+		root.Visible = v > 0.02
+		scale.Scale = (1 - 0.07 * d) * (0.85 + 0.15 * v)
+		local rest = REST * (1 - math.max(d, g))
+		local alpha = rest + (1 - rest) * (1 - v)
+		base.ImageTransparency = alpha
+		base.ImageColor3 = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(170, 170, 176), 0.5 * d)
+		ico.ImageTransparency = alpha
+		ico.ImageColor3 = finish.print:Lerp(finish.accent, if lit then g else 0)
+		halo.ImageTransparency = 1 - g * v
 	end
 	return {
 		root = root,
 		down = function()
 			return isDown
 		end,
+		setLit = function(on: boolean)
+			lit = on
+		end,
+		setShown = function(on: boolean)
+			shown = on
+			if not on and isDown then
+				-- A control that goes away under a thumb lets go.
+				isDown = false
+				onPress(false)
+			end
+		end,
 		update = update,
 	}
 end
 
-function LayoutD.build(gui: ScreenGui, api: any): any
+function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish): any
 	-- Keep out of a notch and the home bar.
 	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 	local t = W.tracker()
@@ -103,116 +179,66 @@ function LayoutD.build(gui: ScreenGui, api: any): any
 	root.Size = UDim2.fromScale(1, 1)
 	local left = LayoutD.corner(root, "Left", false)
 	local right = LayoutD.corner(root, "Right", true)
-	local eb = LayoutD.EDGE_B
+	local eb, er = LayoutD.EDGE_B, LayoutD.EDGE_R
+	local rounds: { Round } = {}
+	local function add(r: Round): Round
+		table.insert(rounds, r)
+		return r
+	end
 
-	-- Steering.
+	-- Steering, and a NATL over each steer button.
 	local steer = 0
-	local steerL = hold(left, "SteerLeft", Art.btnLeft, nil, t, function() end)
-	local steerR = hold(left, "SteerRight", Art.btnRight, nil, t, function() end)
-	local sb = 0.215
-	place(steerL.root, STEER_X + sb / 2, 1 - STEER_B - sb / 2, sb, sb)
-	place(steerR.root, STEER_X + 0.356, 1 - STEER_B - sb / 2, sb, sb)
-
-	local natlSkin: W.ButtonSkin = {
-		fill = Color3.new(0, 0, 0),
-		fillTransparency = 1,
-		lit = Color3.new(1, 1, 1),
-		edge = Color3.new(1, 1, 1),
-		edgeThickness = 0,
-		radius = UDim.new(0.5, 0),
-		font = W.font("BuilderSans", Enum.FontWeight.Bold),
-		text = Color3.new(1, 1, 1),
-		litText = Color3.new(1, 1, 1),
-		textStroke = nil,
-		image = Art.natlOff,
-		litImage = Art.natlOn,
-		slice = nil,
-		sliceHeight = nil,
-	}
-	local natl = W.button(left, "Natl", "", natlSkin, t, function()
-		api.natl()
-	end)
-	-- Over the right steer button, higher than the mockup had it (the owner,
-	-- 2026-10-08: "this needs to be a bit higher").
-	place(natl.root, STEER_X + 0.356, 0.55, 0.178, 0.178)
-
-	local lean = W.slider(left, "Lean", {
-		track = Color3.new(0, 0, 0),
-		trackTransparency = 1,
-		edge = Color3.new(1, 1, 1),
-		edgeThickness = 0,
-		knob = Color3.new(1, 1, 1),
-		knobEdge = Color3.new(1, 1, 1),
-		radius = UDim.new(0.5, 0),
-		marks = nil,
-		markFont = nil,
-		left = nil,
-		right = nil,
-		trackImage = Art.leanTrack,
-		knobImage = Art.leanKnob,
-	}, t, function(frac)
-		api.lean(frac)
-	end)
-	-- Above NATL: at 0.47 it overlapped NATL's top once NATL went up.
-	place(lean.root, STEER_X + 0.24, 0.39, 0.44, 0.098)
-	lean.root.Visible = false
+	local steerL = add(round(left, "SteerLeft", finish, ICON.left, t, function() end))
+	local steerR = add(round(left, "SteerRight", finish, ICON.right, t, function() end))
+	local xL = STEER_X + BIG / 2
+	local xR = xL + BIG + GAP
+	local steerY = 1 - STEER_B - BIG / 2
+	place(steerL.root, xL, steerY, BIG, BIG)
+	place(steerR.root, xR, steerY, BIG, BIG)
+	local rowY = steerY - BIG / 2 - GAP - NATL / 2
+	local natlL = add(round(left, "NatlLeft", finish, ICON.natlL, t, function(down)
+		api.leanLeft(down)
+	end))
+	local natlR = add(round(left, "NatlRight", finish, ICON.natlR, t, function(down)
+		api.leanRight(down)
+	end))
+	place(natlL.root, xL, rowY, NATL, NATL)
+	place(natlR.root, xR, rowY, NATL, NATL)
+	natlL.setShown(false)
+	natlR.setShown(false)
 
 	-- Pedals and HAND.
-	local function pedalSkin(image: string, minValue: number): W.PedalSkin
-		local white = Color3.new(1, 1, 1)
-		return {
-			plate = white,
-			plateLow = white,
-			edge = white,
-			edgeThickness = 0,
-			radius = UDim.new(0.2, 0),
-			slots = 0,
-			slot = white,
-			slotTransparency = 1,
-			label = "",
-			labelFont = natlSkin.font,
-			labelColor = white,
-			labelStroke = nil,
-			shadow = white,
-			shadowTransparency = 1,
-			depth = 0.05,
-			fill = nil,
-			minValue = minValue,
-			image = image,
-		}
-	end
-	local gas = W.pedal(right, "Gas", pedalSkin(Art.pedalGas, 0.45), t, function(v)
+	local gas = W.pedal(right, "Gas", { image = finish.art.pedalGas, minValue = 0.45, depth = 0.05, rest = REST }, t, function(v)
 		api.throttle(v)
 	end)
-	place(gas.root, 1 - PEDAL_X - 0.1185, 1 - eb - 0.25, 0.237, 0.5)
-	local brake = W.pedal(right, "Brake", pedalSkin(Art.pedalBrake, 0.5), t, function(v)
+	place(gas.root, 1 - er - GAS_W / 2, 1 - eb - GAS_H / 2, GAS_W, GAS_H)
+	local brakeX = 1 - er - GAS_W - GAP - BRAKE_W / 2
+	local brake = W.pedal(right, "Brake", { image = finish.art.pedalBrake, minValue = 0.5, depth = 0.05, rest = REST }, t, function(v)
 		api.brake(v)
 	end)
-	place(brake.root, 1 - PEDAL_X - 0.459, 1 - eb - 0.1167, 0.37, 0.233)
-	-- Over the brake, so it moves with the pedals.
-	local hand = hold(right, "Hand", Art.handOff, Art.handOn, t, function(on)
-		api.handbrake(on)
-	end)
-	place(hand.root, 1 - PEDAL_X - 0.376, 0.598, 0.204, 0.204)
+	place(brake.root, brakeX, 1 - eb - BRAKE_H / 2, BRAKE_W, BRAKE_H)
+	local hand: Round
+	hand = add(round(right, "Hand", finish, ICON.hand, t, function(down)
+		api.handbrake(down)
+		hand.setLit(down)
+	end))
+	place(hand.root, brakeX, rowY, BIG, BIG)
 
-	-- EXIT / RESET, left of the cash.
-	local menuSkin = table.clone(natlSkin)
-	menuSkin.litImage = nil
-	local buttons: { W.Button } = {}
-	local menu: { { name: string, image: string, fn: () -> () } } = {
-		{ name = "Exit", image = Art.exit, fn = api.exit },
-		{ name = "Reset", image = Art.reset, fn = api.reset },
+	-- EXIT / RESET / STYLE, left of the cash.
+	local menu: { { name: string, icon: number, fn: () -> () } } = {
+		{ name = "Exit", icon = ICON.exit, fn = api.exit },
+		{ name = "Reset", icon = ICON.reset, fn = api.reset },
+		{ name = "Style", icon = ICON.style, fn = api.cycle },
 	}
 	for i, spec in menu do
-		local s = table.clone(menuSkin)
-		s.image = spec.image
 		local fn = spec.fn
-		local b = W.button(right, spec.name, "", s, t, function()
-			fn()
-		end)
-		local fromRight = LayoutD.EDGE_X + LayoutD.CASH_W + 0.03 + (#menu - i) * 0.115 + 0.052
-		place(b.root, 1 - fromRight, LayoutD.CASH_Y + LayoutD.CASH_H / 2, 0.104, 0.104)
-		table.insert(buttons, b)
+		local b = add(round(right, spec.name, finish, spec.icon, t, function(down)
+			if down then
+				fn()
+			end
+		end))
+		local fromRight = er + LayoutD.CASH_W + 0.02 + SMALL / 2 + (#menu - i) * (SMALL + 0.012)
+		place(b.root, 1 - fromRight, LayoutD.CASH_Y + LayoutD.CASH_H / 2, SMALL, SMALL)
 	end
 
 	return {
@@ -223,25 +249,19 @@ function LayoutD.build(gui: ScreenGui, api: any): any
 			local rate = if back then STEER_BACK else STEER_OUT
 			steer = if steer < want then math.min(want, steer + rate * dt) else math.max(want, steer - rate * dt)
 			api.steer(steer)
-			steerL.update(dt)
-			steerR.update(dt)
-			hand.update(dt)
 			gas.update(dt)
 			brake.update(dt)
-			natl.update(dt)
-			lean.update(dt)
-			for _, b in buttons do
-				b.update(dt)
+			for _, r in rounds do
+				r.update(dt)
 			end
 		end,
-		setLean = function(visible: boolean)
-			lean.root.Visible = visible
-			if not visible then
-				api.lean(0)
-			end
-		end,
-		setNatl = function(on: boolean)
-			natl.setLit(on)
+		-- ready: fast enough to lift, or up already; side: -1 up on the
+		-- left wheels, 1 the right, 0 down.
+		setNatl = function(ready: boolean, side: number)
+			natlL.setShown(ready)
+			natlR.setShown(ready)
+			natlL.setLit(side < 0)
+			natlR.setLit(side > 0)
 		end,
 		destroy = function()
 			W.release(t)

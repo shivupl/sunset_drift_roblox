@@ -839,10 +839,6 @@ local config = {
 		-- touchSteerRatePerSec (1/s of full lock). The buttons ramp their own
 		-- ask first, 4.5/s out and 8/s back (HudLab/LayoutD.luau).
 		touchSteerRatePerSec = 8,
-		-- Lean slider (two-wheel only): how far it must travel from centre
-		-- before it counts as a lean, as a fraction of its half-width. The
-		-- slider springs back, so a flick out and back is one tap.
-		touchLeanDeadzone = 0.25,
 		gamepadDeadzone = 0.12,
 		triggerDeadzone = 0.05,
 	},
@@ -1598,8 +1594,8 @@ local config = {
 		autosaveSeconds = 120, -- cash autosave interval
 	},
 
-	-- Driver HUD (HudLab, STREET D): the tacho with gear and speed, cash and
-	-- records, the live slide score while sliding.
+	-- Driver HUD (HudLab, layout D in a finish from Finishes.luau): the tacho
+	-- with gear and speed, cash and records, the live slide score.
 	hud = {
 		enabled = true,
 	},

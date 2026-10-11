@@ -329,7 +329,6 @@ key or button goes down.
 |---|---|
 | keyboardSteerRampPerSec / keyboardSteerReturnPerSec | Digital steer ramp. 4 = full lock in 0.25 s. |
 | touchSteerRatePerSec | How fast the wheel chases the touch steer buttons, in full-locks per second (the buttons ramp their own ask first, 4.5/s out and 8/s back, in `HudLab/LayoutD.luau`). 8 = lock to lock in 0.25 s. Higher = snappier, lower = calmer. |
-| touchLeanDeadzone | How far the lean slider must travel from centre before it counts as a lean, as a fraction of its half-width. The slider springs back, so a flick out and back is one tap, which is what the two-wheel balance model wants. Lower = twitchier, higher = needs a deliberate push. |
 | gamepadDeadzone / triggerDeadzone | Stick and trigger deadzones. |
 
 ## camera
@@ -503,7 +502,7 @@ scores every driven car from its own samples and never banks more than it saw.
 ## hud
 | Field | What it does |
 |---|---|
-| enabled | Show the driver HUD (STREET D, `src/client/HudLab`: the tacho with gear and speed, cash and records, the live slide score while sliding). |
+| enabled | Show the driver HUD (layout D, `src/client/HudLab`, in the finish the player picked: the tacho with gear and speed, cash and records, the live slide score while sliding). |
 
 ## debug
 | Field | What it does |

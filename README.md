@@ -34,12 +34,13 @@ either: hold the brake for `drivetrain.reverseHoldSeconds` (0.4 s) after the car
 stopped and it engages, and any throttle puts you back in drive. The hold is why braking hard
 to a standstill stays in drive instead of snapping into reverse the moment the car settles.
 | Handbrake | Space | B | HAND |
-| Two-wheel / lean left | Q (tap) | LB (tap) | NATL (tap), then lean slider left |
-| Two-wheel / lean right | E (tap) | RB (tap) | NATL (tap), then lean slider right |
+| Two-wheel / lean left | Q (tap) | LB (tap) | NATL over ◀ (tap) |
+| Two-wheel / lean right | E (tap) | RB (tap) | NATL over ▶ (tap) |
 | Exit car | F | Y | EXIT |
 | Spawn menu (choose / respawn a car) | M | — | CARS (top bar) |
 | Reset car (upright, nearest road point; back to the start if past the road) | R | Back | RESET |
 | Reload CarConfig | L | — | — |
+| HUD style (finish) | U | — | STYLE |
 
 ## Two-wheel ("natl")
 Get to 90 km/h first; nothing lifts below that. Tap Q or E and the car throws itself up on
@@ -53,26 +54,26 @@ Steering still steers, and it is the strongest lever up there: a small turn towa
 drops the car, away lifts it. With gas on the car runs straight (open diff, so the grounded rear
 barely drives). If you slow to a crawl the car settles back onto four wheels by itself.
 
-Touch is the exception, because the lean control cannot be on screen before the mode exists:
-tap NATL to open it (it stays on, so the thumb is free) and the lean slider appears above
-NATL. The first direction you push it picks the side, as long as the car is
-not up yet. NATL switches itself off when the car lands; tap it again to lift.
+On a phone the two NATL buttons are Q and E: NATL◀ over ◀, NATL▶ over ▶, the way Q and E
+sit over A and D, so the right thumb stays on the gas. They show up once the car is fast
+enough to lift and stay while it is up, and the side it is up on is lit.
 
 ## Phone test in Studio
 Test → Device → pick a phone → Play. The touch controls are our own ScreenGui
 (`src/client/HudLab/LayoutD.luau`), and Roblox's thumbstick and jump button are hidden while
-driving. Bottom left: the two round steer buttons, NATL over the right one, the lean slider
-above NATL while on two wheels. Bottom right: the tall GAS in the corner, BRAKE left of it,
-a round HAND button over the brake. Top right: EXIT and RESET, left of the cash. Everything
-is sized and spaced from the screen's height and kept inside the phone's safe area.
+driving. Bottom left: the two round steer buttons, a NATL button over each (above lift
+speed). Bottom right: the tall GAS in the corner, BRAKE left of it, a round HAND button over
+the brake. Top right: EXIT, RESET and STYLE, left of the cash. Everything is sized and
+spaced from the screen's height and kept inside the phone's safe area, and every control's
+hit box is the shape you see.
 
-The pedals give part throttle low on the plate. The lean slider springs back to centre and
-is digital past `input.touchLeanDeadzone`, because balancing wants taps rather than a held
-axis, so flick it out and let it snap back. To see the touch controls on a desktop session,
+The pedals give part throttle low on the plate. At rest the controls let a little of the
+road through; under a thumb they go solid. To see the touch controls on a desktop session,
 set the LocalPlayer attribute `ForceTouch = true` before getting in.
 
 ## Driver HUD
-STREET D (`src/client/HudLab`): a small see-through tacho bottom middle with the gear and
+Layout D (`src/client/HudLab`) in one of three finishes, STREET D, SODIUM or CARBON (STYLE
+on a phone, U on a keyboard, or Settings > HUD STYLE): a small see-through tacho bottom middle with the gear and
 the speed; your cash top right, with your session best and the server best; and, while you
 slide, a drift board top middle with the points, the chain multiplier and the angle as a bar.
 A 360, a natl and a big chain are shouted in Arabic, and the screen's edges glow with the

@@ -4,15 +4,17 @@ Image art for the driving HUD and phone controls (`src/client/HudLab`, STREET
 D on layout D). Each `make.py` draws its parts with `kit.py` and `parts.py`
 and writes the PNGs itself:
 
-- `streetd/`: layout D's round buttons (knurled black anodised), the smoked
-  tacho, the cash pill and drift board, and the readouts' italic digits
-  (`num`).
+- `streetd/`: layout D in its finishes (STREET D, SODIUM, CARBON; `python3
+  make.py [finish ...]`): per finish a round button base, the smoked tacho,
+  the cash pill and drift board, the pedals; shared, the icons (white, the
+  HUD tints them), the lit halo and the readouts' italic digits (`num`).
 - `street/`: the STREET cluster from the HUD trial (after Initial D Arcade
-  Stage and CarX Street). The HUD uses its gear digits, drilled pedals and
-  lean slider; the rest of its parts were for the cluster.
+  Stage and CarX Street). The HUD uses its gear digits; the rest of its
+  parts were for the cluster.
 
 The other trial styles (PRO, MIDNIGHT, ARCADE, KRUZER, KABRIS, GHOST) and
-their art were removed on 2026-10-10, when the owner kept STREET D.
+their art were removed on 2026-10-10, when the owner kept STREET D (then
+asked for finishes of it).
 
 - `kit.py`: the render kit for parts that should look made, not drawn: an
   object is a height map with per-pixel albedo, metalness, roughness and
@@ -33,9 +35,9 @@ their art were removed on 2026-10-10, when the owner kept STREET D.
   OFL, `fonts/DSEG-LICENSE.txt`) for `parts.py`'s seven- and
   fourteen-segment atlases.
 
-An atlas (`num`, `street_gear`) is a grid of character cells the HUD cuts
-with ImageRectOffset (`Instruments.chars`); its cell size and order are in
-`StreetHud.luau`.
+An atlas (`num`, `street_gear`, `hud_icons`) is a grid of character cells the HUD cuts
+with ImageRectOffset; its cell size and order are in `StreetHud.luau` and
+`LayoutD.luau`.
 
 To change a piece: edit make.py, run it, serve `out/` over a local http
 server, upload the PNG from Studio (the MCP upload tool), and put the new id

@@ -1,7 +1,7 @@
 --!strict
--- Driver HUD: the client's door to it. The HUD itself is HudLab (STREET D:
--- the tacho bottom middle, the cash top right, the drift board top middle
--- while sliding). The card this module used to draw (CLASSIC) went on
+-- Driver HUD: the client's door to it. The HUD itself is HudLab (layout D in
+-- a finish: the tacho bottom middle, the cash top right, the drift board top
+-- middle while sliding). The card this module used to draw (CLASSIC) went on
 -- 2026-10-10 with the other trial styles (the owner: "remove all the other
 -- HUD layouts we have and keep this").
 --

@@ -20,9 +20,6 @@ export type Raw = {
 	handbrake: boolean,
 	leanLeft: boolean,
 	leanRight: boolean,
-	-- Touch only: the NATL button. Keyboard and gamepad enter two-wheel by
-	-- holding a lean control, so they leave this false.
-	twoWheelButton: boolean,
 	source: string, -- "keyboard" | "touch" | "gamepad"
 }
 
@@ -36,7 +33,6 @@ Input.raw = {
 	handbrake = false,
 	leanLeft = false,
 	leanRight = false,
-	twoWheelButton = false,
 	source = "keyboard",
 } :: Raw
 
@@ -96,10 +92,11 @@ function Input.get(dt: number, cfg: Config): InputState
 	out.leanLeft = if raw.leanLeft then 1 else 0
 	out.leanRight = if raw.leanRight then 1 else 0
 	out.lean = out.leanRight - out.leanLeft
-	-- twoWheel is the touch NATL toggle only. On keyboard and gamepad a
-	-- tap of a lean key lifts the car and the mode latches inside the sim;
-	-- there is nothing to hold.
-	out.twoWheel = raw.twoWheelButton
+	-- twoWheel is the sim's held-toggle path, used only by the OvTwoWheel
+	-- harness now: on every platform a tap of a lean control lifts the car
+	-- and the mode latches inside the sim (the phone's NATL buttons are the
+	-- lean keys since 2026-10-10; its NATL toggle is gone).
+	out.twoWheel = false
 
 	if raw.steerAnalog ~= nil then
 		local target = raw.steerAnalog

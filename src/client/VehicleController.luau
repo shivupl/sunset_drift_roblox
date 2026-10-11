@@ -176,8 +176,6 @@ function VehicleController.start(model: Model, remotes: Folder)
 		end
 		local state = s:step(input, dt)
 		VehicleController.lastState = state
-		Touch.observe(state.twoWheelMode)
-		Touch.setLeanVisible(input.twoWheel)
 		DriftEffects.update(state)
 		TireSmoke.update(state, dt)
 		EngineAudio.update(state, dt)

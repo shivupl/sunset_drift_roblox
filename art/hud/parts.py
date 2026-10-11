@@ -350,7 +350,8 @@ def switch_square(size, *, body="#141518", rough=0.45, radius=None, top_concave=
 # Machined parts (STREET)
 # --------------------------------------------------------------------------
 
-def knurl_bezel(c: K.Canvas, s: K.Surface, cx, cy, r_out, width, chrome_w=7, colour="#16171a", pitch=7.0, seed=13):
+def knurl_bezel(c: K.Canvas, s: K.Surface, cx, cy, r_out, width, chrome_w=7, colour="#16171a", pitch=7.0, seed=13,
+                chrome="#eceef1"):
     """An aftermarket gauge's bezel: black anodised, knurled round its outer
     half, a polished ring at the face. Returns the face's radius."""
     d = K.circle(c, cx, cy, r_out)
@@ -364,8 +365,19 @@ def knurl_bezel(c: K.Canvas, s: K.Surface, cx, cy, r_out, width, chrome_w=7, col
     s.paint(K.cover(d), albedo=colour, metal=1, rough=0.38, h=h + K.grain(c, seed, 0.7) * 0.05)
     r_ring = r_out - width
     ring = K.ring(c, cx, cy, r_ring + chrome_w / 2, chrome_w)
-    s.paint(K.cover(ring), albedo="#eceef1", metal=1, rough=0.06, h=width * 0.35 + K.bevel(ring, chrome_w / 2, chrome_w * 0.5))
+    s.paint(K.cover(ring), albedo=chrome, metal=1, rough=0.06, h=width * 0.35 + K.bevel(ring, chrome_w / 2, chrome_w * 0.5))
     return r_ring
+
+
+def carbon_weave(c: K.Canvas, tow: float = 11.0):
+    """Twill carbon fibre: a height and which way each tow runs."""
+    return K.carbon(c, tow)
+
+
+def weave_albedo(over):
+    """The two tow directions catch the light differently."""
+    lo, hi = K.lin("#0d0e10"), K.lin("#202226")
+    return lo * (1 - over[..., None]) + hi * over[..., None]
 
 
 def hex_screw(s: K.Surface, c: K.Canvas, cx, cy, r, colour="#c9ccd1"):
@@ -381,18 +393,24 @@ def hex_screw(s: K.Surface, c: K.Canvas, cx, cy, r, colour="#c9ccd1"):
 
 
 def drilled_pedal(w, h, *, plate_w, plate_h, radius, slots, strips, alum="#c3c7cc", rubber="#111213", seed=7,
-                  brush_angle=90):
+                  brush_angle=90, carbon=False):
     """A race pedal: brushed aluminium with slots cut through it (they show
     what is behind) and black rubber anti-slip strips with studs. slots and
-    strips are lists of (cx, cy, w, h) rounded boxes."""
+    strips are lists of (cx, cy, w, h) rounded boxes. carbon: a clear-coated
+    carbon-fibre plate instead of the aluminium."""
     c = K.Canvas(w, h)
     s = K.Surface(c)
     plate = K.rrect(c, w / 2, h / 2 - h * 0.012, plate_w, plate_h, radius)
     holes = K.union(*[K.rrect(c, x, y, sw, sh, min(sw, sh) / 2) for x, y, sw, sh in slots])
     body = K.cut(plate, holes)
     s.shape(K.cover(body))
-    alum_h = K.bevel(body, 9, 9, "round") + K.streaks(c, seed, 70, brush_angle) * 0.1
-    s.paint(K.cover(body), albedo=alum, metal=1, rough=0.26, h=alum_h)
+    if carbon:
+        weave_h, over = carbon_weave(c)
+        s.paint(K.cover(body), albedo=weave_albedo(over), metal=0, rough=0.2, clear=1, spec=0.5,
+                h=K.bevel(body, 9, 9, "round") + weave_h * 0.5)
+    else:
+        alum_h = K.bevel(body, 9, 9, "round") + K.streaks(c, seed, 70, brush_angle) * 0.1
+        s.paint(K.cover(body), albedo=alum, metal=1, rough=0.26, h=alum_h)
     for x, y, sw, sh in strips:
         st = K.rrect(c, x, y, sw, sh, min(sw, sh) / 2)
         studs = K.cover(np.maximum(np.abs((c.X - x) % 18 - 9), np.abs((c.Y - y) % 18 - 9)) - 5.5)

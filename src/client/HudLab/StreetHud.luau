@@ -1,14 +1,14 @@
 --!strict
--- The driving HUD for layout D (hud-variants, 2026-10-08), in STREET's look
--- with the machined finish (STREET D; the only HUD since 2026-10-10, when
--- the owner had the other styles removed). From the owner's notes on the
--- STREET trial: the tacho "bottom middle, remove the white and change the
+-- The driving HUD for layout D (hud-variants, 2026-10-08), in STREET's look,
+-- in whichever finish is on (Finishes.luau; on 2026-10-10 the owner kept
+-- STREET D, had the other styles removed, then asked for finishes of it).
+-- From the owner's notes on the STREET trial: the tacho "bottom middle, remove the white and change the
 -- opacity... remove the tyre monitor", "remove the 'trip' thing and move the
 -- cash to the top right", then on the mockups "make odometer smaller".
 --
 --   Tacho   small, bottom middle, a smoked see-through face; the gear above
 --           the cap, the speed below it in big italic digits.
---   Cash    top right (EXIT / RESET are left of it, LayoutD).
+--   Cash    top right (EXIT / RESET / STYLE are left of it, LayoutD).
 --   Board   the drift score, top middle, only while sliding (and a moment
 --           after): points, the multiplier, the angle as a bar.
 -- The art is Art.luau.
@@ -18,13 +18,9 @@ local I = require(HudLab:WaitForChild("Instruments"))
 local Motion = require(HudLab:WaitForChild("Motion"))
 local LayoutD = require(HudLab:WaitForChild("LayoutD"))
 local Art = require(HudLab:WaitForChild("Art"))
+local Finishes = require(HudLab:WaitForChild("Finishes"))
 
-local RED = Color3.fromRGB(255, 50, 32)
-local AMBER = Color3.fromRGB(255, 176, 0)
-local GREEN = Color3.fromRGB(80, 230, 120)
-local WHITE = Color3.fromRGB(251, 250, 246)
 local INK = Color3.fromRGB(12, 12, 13)
-local DIM = Color3.fromRGB(70, 20, 16)
 
 local NUM_ORDER = "0123456789,.x+-°"
 local NUM_CELL = Vector2.new(80, 150)
@@ -54,7 +50,8 @@ local function label(parent: Instance, name: string, text: string, color: Color3
 	return t
 end
 
-function StreetHud.build(gui: ScreenGui, touch: boolean): any
+function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish): any
+	local f = finish
 	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 	local root = W.frame(gui, "StreetHud")
 	root.Size = UDim2.fromScale(1, 1)
@@ -70,13 +67,13 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 	glowGui.Parent = gui.Parent
 	local glow = W.edgeGlow(glowGui)
 	local right = LayoutD.corner(root, "Right", true)
-	local ex = LayoutD.EDGE_X
+	local er = LayoutD.EDGE_R
 
 	-- The tacho, bottom middle.
 	local size = if touch then 0.237 else 0.3
 	local tacho = I.dial(root, "Tacho", {
-		face = Art.tachoFace,
-		needle = Art.tachoNeedle,
+		face = f.art.tachoFace,
+		needle = f.art.tachoNeedle,
 		glass = Art.tachoGlass,
 		fromDeg = FROM,
 		toDeg = TO,
@@ -89,8 +86,9 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 	local gear = I.chars(tacho.under, "Gear", { atlas = Art.gear, order = "123456RN", cell = Vector2.new(112, 160), cols = 8, count = 1 })
 	rect(gear.root, 0.43, 0.2, 0.14, 0.2)
 	local speed = nums(tacho.under, "Speed", 3)
+	speed.tint(f.print)
 	rect(speed.root, 0.29, 0.56, 0.42, 0.24)
-	local kmh = label(tacho.under, "Kmh", "km/h", Color3.fromRGB(200, 200, 205))
+	local kmh = label(tacho.under, "Kmh", "km/h", f.label)
 	rect(kmh, 0.38, 0.79, 0.24, 0.08)
 	local gearScale = Instance.new("UIScale")
 	gearScale.Parent = gear.root
@@ -98,54 +96,55 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 	local lastGear = 0
 
 	-- Cash, top right.
-	local pill = W.image(right, "Cash", Art.pill)
+	local pill = W.image(right, "Cash", f.art.pill)
 	pill.ScaleType = Enum.ScaleType.Slice
 	pill.SliceCenter = Rect.new(40, 30, 260, 82)
 	pill.AnchorPoint = Vector2.new(1, 0)
-	pill.Position = UDim2.fromScale(1 - ex, LayoutD.CASH_Y)
+	pill.Position = UDim2.fromScale(1 - er, LayoutD.CASH_Y)
 	pill.Size = UDim2.fromScale(LayoutD.CASH_W, LayoutD.CASH_H)
-	local cashLabel = label(pill, "Label", "CASH", Color3.fromRGB(170, 170, 176))
+	local cashLabel = label(pill, "Label", "CASH", f.label)
 	rect(cashLabel, 0.04, 0.3, 0.13, 0.36)
 	local cash = nums(pill, "Value", 9, "left")
+	cash.tint(f.print)
 	rect(cash.root, 0.17, 0.14, 0.52, 0.68)
-	local best = label(pill, "Best", "", Color3.fromRGB(170, 170, 176))
+	local best = label(pill, "Best", "", f.label)
 	rect(best, 0.68, 0.32, 0.28, 0.34)
 	best.TextXAlignment = Enum.TextXAlignment.Right
 	local cashScale = Instance.new("UIScale")
 	cashScale.Parent = pill
 
 	-- The drift board, top middle (660x170 art).
-	local board = W.image(root, "Board", Art.board)
+	local board = W.image(root, "Board", f.art.board)
 	W.box(board, 0.611, 0.157)
 	board.AnchorPoint = Vector2.new(0.5, 0)
 	board.Position = UDim2.new(0.5, 0, 0.18, 0)
 	local points = nums(board, "Points", 7)
-	points.tint(RED)
+	points.tint(f.points)
 	rect(points.root, 0.05, 0.08, 0.5, 0.6)
 	local mult = nums(board, "Mult", 4)
-	mult.tint(AMBER)
+	mult.tint(f.mult)
 	rect(mult.root, 0.62, 0.14, 0.33, 0.46)
-	local info = label(board, "Info", "", RED)
+	local info = label(board, "Info", "", f.info)
 	rect(info, 0.06, 0.66, 0.36, 0.2)
 	info.TextXAlignment = Enum.TextXAlignment.Left
 	local bar: { Frame } = {}
 	for i = 1, BAR do
-		local f = W.frame(board, "Bar" .. i, DIM, 0)
-		rect(f, 0.44 + (i - 1) * 0.5 / BAR, 0.68, 0.5 / BAR - 0.006, 0.15)
-		f.ZIndex = 3
-		W.corner(f, UDim.new(0.25, 0))
-		table.insert(bar, f)
+		local seg = W.frame(board, "Bar" .. i, f.barOff, 0)
+		rect(seg, 0.44 + (i - 1) * 0.5 / BAR, 0.68, 0.5 / BAR - 0.006, 0.15)
+		seg.ZIndex = 3
+		W.corner(seg, UDim.new(0.25, 0))
+		table.insert(bar, seg)
 	end
 	local boardScale = Instance.new("UIScale")
 	boardScale.Parent = board
 
 	local shout = W.shout(root, "Shout", {
 		font = SHOUT,
-		color = WHITE,
+		color = f.print,
 		stroke = INK,
 		strokeThickness = 5,
 		subFont = LABEL,
-		subColor = RED,
+		subColor = f.accent,
 		tilt = -6,
 	})
 	W.box(shout.root, 0.56, 0.2)
@@ -158,9 +157,9 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 	local boardPop = Motion.spring(1, 4, 0.45)
 	local glowAmt = Motion.spring(0, 2, 1)
 	local held, heldUntil = 0, 0
-	local message, messageUntil, messageColor = "", 0, RED
-	local pointsTint = RED
-	local flash, flashUntil = RED, 0
+	local message, messageUntil, messageColor = "", 0, f.dropped
+	local pointsTint = f.points
+	local flash, flashUntil = f.accent, 0
 	local clock = 0
 
 	local function update(v: any, dt: number)
@@ -187,7 +186,7 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 		local live = v.sliding
 		if live then
 			held, heldUntil = v.points, now + 1.4
-			pointsTint = RED
+			pointsTint = f.points
 		end
 		local showing = live or now < heldUntil or now < messageUntil
 		board.Visible = showing
@@ -202,12 +201,12 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 				info.TextColor3 = messageColor
 			else
 				info.Text = `ANGLE {math.min(deg, 999)}°`
-				info.TextColor3 = RED
+				info.TextColor3 = f.info
 			end
 			local heat = math.clamp((v.mult - 1) / math.max(v.multMax - 1, 1), 0, 1)
-			local on = RED:Lerp(AMBER, heat)
-			for i, f in bar do
-				f.BackgroundColor3 = if live and deg >= i * 5 - 2.5 then on else DIM
+			local on = f.points:Lerp(f.mult, heat)
+			for i, seg in bar do
+				seg.BackgroundColor3 = if live and deg >= i * 5 - 2.5 then on else f.barOff
 			end
 		end
 		boardScale.Scale = Motion.step(boardPop, 1, dt)
@@ -215,7 +214,7 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 		local heat = math.clamp((v.mult - 1) / math.max(v.multMax - 1, 1), 0, 1)
 		local want = if live then 0.05 + 0.18 * heat else 0
 		local g = Motion.step(glowAmt, want, dt)
-		glow.set(if now < flashUntil then flash else RED, if now < flashUntil then 0.3 else g)
+		glow.set(if now < flashUntil then flash else f.accent, if now < flashUntil then 0.3 else g)
 		shout.update(dt)
 	end
 
@@ -232,17 +231,17 @@ function StreetHud.build(gui: ScreenGui, touch: boolean): any
 			shout.fire("هجولة!", string.format("x%.1f CHAIN", a))
 		elseif kind == "banked" then
 			held, heldUntil = a, now + 1.6
-			pointsTint = GREEN
-			message, messageUntil, messageColor = `BANKED +{Motion.comma(b)}`, now + 1.6, GREEN
-			flash, flashUntil = GREEN, now + 0.3
+			pointsTint = f.banked
+			message, messageUntil, messageColor = `BANKED +{Motion.comma(b)}`, now + 1.6, f.banked
+			flash, flashUntil = f.banked, now + 0.3
 			Motion.kick(boardPop, 5)
 			if b > 0 then
 				Motion.kick(cashPop, 8)
 			end
 		elseif kind == "dropped" then
 			held, heldUntil = 0, 0
-			message, messageUntil, messageColor = "DROPPED", now + 1.2, RED
-			flash, flashUntil = RED, now + 0.4
+			message, messageUntil, messageColor = "DROPPED", now + 1.2, f.dropped
+			flash, flashUntil = f.dropped, now + 0.4
 		end
 	end
 

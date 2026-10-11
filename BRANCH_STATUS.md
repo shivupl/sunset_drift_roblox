@@ -163,8 +163,12 @@ a per-car used mileage and adds the distance really driven; tyre heat is a slide
 three (2026-10-08): the owner's own mobile layout from the mockups (`LayoutD.luau`, `StreetHud.luau`) in
 STREET's look, as STREET D (machined) and GHOST (smoked glass). On 2026-10-10 the owner kept STREET D and
 had every other style removed, CLASSIC included ("remove all the other HUD layouts we have and keep
-this"): `HudLab` is now the only HUD and phone controls, Hud.luau and Touch.luau only hand over to it,
-and there is no STYLE switch. Open for the owner: the layout's spacing on a real phone.
+this"): `HudLab` is now the only HUD and phone controls, and Hud.luau and Touch.luau only hand over to it.
+Then (same day) "make a couple variants of the same deisgn i can cycle through", "2 natl buttons that
+show up one left one right" and subtler opacity: three finishes of layout D (`Finishes.luau`: STREET D,
+SODIUM on the game's own UI_SYSTEM palette, CARBON), cycled by STYLE / U / Settings; NATL◀ and NATL▶ over
+the steer buttons as the Q and E lean keys (the NATL toggle and lean slider are gone); every hit box the
+shape you see; see-through faces and slots. Open for the owner: which finish, and the layout on a phone.
 
 **`garage` (merged into `main` 2026-09-29 with `garage-r3`, and deleted).** The UI design system
 (UI_SYSTEM.md, UITheme, UIKit; menus and HUD moved onto it), cosmetics (CosmeticsConfig, CarLook,

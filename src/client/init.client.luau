@@ -11,7 +11,7 @@ local ExitSpot = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local VehicleController = require(script.VehicleController)
 local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
--- The driving HUD and the phone controls (STREET D).
+-- The driving HUD and the phone controls (layout D; STYLE or U cycles its finish).
 local HudLab = require(script.HudLab)
 HudLab.start()
 local ScoreController = require(script.ScoreController)
