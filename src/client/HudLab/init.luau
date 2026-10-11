@@ -43,6 +43,9 @@ export type View = {
 	mult: number,
 	multMax: number,
 	natl: boolean,
+	roll: number, -- degrees, + right side lower
+	margin: number, -- degrees left before it tips
+	chain: number, -- 1 while sliding, draining to 0 over the grace before it banks; 0 off
 	cash: number,
 	best: number,
 	serverBest: number,
@@ -88,9 +91,17 @@ local bound = false -- between bindTouch and unbindTouch: the car is being drive
 local view: View? = nil
 local shown = false
 local lastClock = os.clock()
--- Events worked out between updates.
+-- Events worked out between updates. A callout fires at the end of its
+-- move (the owner, 2026-10-10: "make sure it pops up at the right time - at
+-- the end of the move made"): a 360 as it comes round (Scoring pays it
+-- then), two wheels as the car lands, a big chain as the slide banks.
 local lastMult = 1
-local shoutedChain = false
+local peakMult = 1
+local natlFrom: number? = nil
+-- Two wheels for less than this is a wobble, not a ترفيع.
+local NATL_STAMP_MIN = 1
+-- The chain that earns its callout when it banks.
+local CHAIN_STAMP_MIN = 3
 
 local function finish(): Finishes.Finish
 	local id = player:GetAttribute("HudVariant")
@@ -260,6 +271,7 @@ function HudLab.update(state: any, score: any)
 	local cfg = ConfigLoader.current()
 	local records = ReplicatedStorage:FindFirstChild("Records")
 	local up = state.twoWheelMode == "lifting" or state.twoWheelMode == "balanced"
+	local grace = math.max(cfg.scoring.graceSeconds, 1e-3)
 	local v: View = {
 		speed = state.speedKmh,
 		gear = state.gear,
@@ -270,6 +282,9 @@ function HudLab.update(state: any, score: any)
 		mult = score.multiplier,
 		multMax = cfg.scoring.chainMax,
 		natl = up,
+		roll = state.rollDeg,
+		margin = state.rollMarginDeg,
+		chain = if score.active then math.clamp(1 - score.graceTime / grace, 0, 1) else 0,
 		cash = tonumber(player:GetAttribute("Cash")) or 0,
 		best = tonumber(player:GetAttribute("SessionBest")) or 0,
 		serverBest = if records then tonumber(records:GetAttribute("BestScore")) or 0 else 0,
@@ -281,29 +296,36 @@ function HudLab.update(state: any, score: any)
 		local ready = up or state.speedKmh >= cfg.twoWheel.minLiftSpeedKmh
 		c.setNatl(ready, if up then (if state.rollDeg < 0 then -1 else 1) else 0)
 	end
-	local prev = view
 	view = v
 	shown = true
 	local h = hud
-	if not h then
-		return
-	end
-	-- Events from what changed.
-	if v.natl and not (prev and prev.natl) then
-		h.event("natl", 0, 0)
+	-- Events from what changed, worked out whether or not the HUD is up.
+	local now = os.clock()
+	if up and not natlFrom then
+		natlFrom = now
+	elseif not up and natlFrom then
+		local seconds = now - natlFrom
+		natlFrom = nil
+		if h and seconds >= NATL_STAMP_MIN and state.twoWheelMode ~= "tipped" then
+			h.event("natl", seconds, 0)
+		end
 	end
 	if v.sliding then
-		if v.mult > lastMult + 1e-3 then
+		peakMult = math.max(peakMult, v.mult)
+		if v.mult > lastMult + 1e-3 and h then
 			h.event("mult", v.mult, 0)
-			if v.mult >= 3 and not shoutedChain then
-				shoutedChain = true
-				h.event("chain", v.mult, 0)
-			end
 		end
 		lastMult = v.mult
 	else
 		lastMult = 1
-		shoutedChain = false
+	end
+	if score.banked > 0 then
+		if h and peakMult >= CHAIN_STAMP_MIN then
+			h.event("chain", peakMult, score.banked)
+		end
+		peakMult = 1
+	elseif score.dropped then
+		peakMult = 1
 	end
 end
 

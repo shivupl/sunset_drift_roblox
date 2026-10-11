@@ -10,7 +10,10 @@
 --           the cap, the speed below it in big italic digits.
 --   Cash    top right (EXIT / RESET / STYLE are left of it, LayoutD).
 --   Board   the drift score, top middle, only while sliding (and a moment
---           after): points, the multiplier, the angle as a bar.
+--           after): points, the multiplier, the angle as a bar; on two
+--           wheels the roll instead, the bar filling toward the tip and
+--           warning as it gets close. Under it the chain's grace drains
+--           while the slide is between swings.
 --   Shout   a 360, two wheels, a big chain, stamped just left of the car in
 --           tafheet's own words, the English under it: تخميسة! (takhmisa,
 --           the car spun round), ترفيع! (tarfi', the car up on two tyres),
@@ -151,6 +154,15 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 	end
 	local boardScale = Instance.new("UIScale")
 	boardScale.Parent = board
+	-- Under the board, the chain's grace: full while sliding, draining to
+	-- the middle once the slide lets go; link the next one before it is gone
+	-- or the slide banks.
+	local graceBar = W.frame(root, "Grace", f.mult, 0.15)
+	graceBar.AnchorPoint = Vector2.new(0.5, 0)
+	graceBar.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	graceBar.Position = UDim2.new(0.5, 0, 0.18 + 0.157 + 0.006, 0)
+	W.corner(graceBar)
+	local graceShown = Motion.spring(0, 6, 1)
 
 	local shout = W.shout(root, "Shout", {
 		font = SHOUT,
@@ -216,20 +228,36 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 			points.tint(pointsTint)
 			mult.set(if live and v.mult > 1 then (if v.mult % 1 == 0 then string.format("x%d", v.mult) else string.format("x%.1f", v.mult)) else "")
 			local deg = math.floor(math.abs(v.angle) + 0.5)
+			-- On two wheels: how far over, and how close to the tip (the
+			-- warning steps are the old HUD's: under 16 degrees left, under 8).
+			local roll = math.floor(math.abs(v.roll) + 0.5)
+			local tip = if v.margin < 8 then f.dropped elseif v.margin < 16 then f.mult else f.info
 			if now < messageUntil then
 				info.Text = message
 				info.TextColor3 = messageColor
+			elseif live and v.natl then
+				info.Text = `ترفيع {roll}°`
+				info.TextColor3 = tip
 			else
 				info.Text = `ANGLE {math.min(deg, 999)}°`
 				info.TextColor3 = f.info
 			end
 			local heat = math.clamp((v.mult - 1) / math.max(v.multMax - 1, 1), 0, 1)
 			local on = f.points:Lerp(f.mult, heat)
+			local lit = if v.natl then math.floor(BAR * math.abs(v.roll) / math.max(math.abs(v.roll) + v.margin, 1) + 0.5) else 0
 			for i, seg in bar do
-				seg.BackgroundColor3 = if live and deg >= i * 5 - 2.5 then on else f.barOff
+				if live and v.natl then
+					seg.BackgroundColor3 = if i <= lit then tip else f.barOff
+				else
+					seg.BackgroundColor3 = if live and deg >= i * 5 - 2.5 then on else f.barOff
+				end
 			end
 		end
 		boardScale.Scale = Motion.step(boardPop, 1, dt)
+		local gs = Motion.step(graceShown, if live then 1 else 0, dt)
+		graceBar.Visible = showing and gs > 0.02
+		graceBar.Size = UDim2.fromScale(0.5 * v.chain, 0.007)
+		graceBar.BackgroundTransparency = 1 - 0.85 * gs
 
 		local heat = math.clamp((v.mult - 1) / math.max(v.multMax - 1, 1), 0, 1)
 		local want = if live then 0.05 + 0.18 * heat else 0
@@ -246,7 +274,7 @@ function StreetHud.build(gui: ScreenGui, touch: boolean, finish: Finishes.Finish
 			stamp("تخميسة!", `{if b > 1 then b * 360 else 360}  +{Motion.comma(a)}`)
 			Motion.kick(boardPop, 5)
 		elseif kind == "natl" then
-			stamp("ترفيع!", "TWO WHEELS")
+			stamp("ترفيع!", string.format("%.1fs", a))
 		elseif kind == "chain" then
 			stamp("هجولة!", (if a % 1 == 0 then string.format("x%d", a) else string.format("x%.1f", a)) .. " CHAIN")
 		elseif kind == "banked" then
