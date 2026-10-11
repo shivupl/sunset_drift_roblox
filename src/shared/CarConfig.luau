@@ -916,8 +916,10 @@ local config = {
 		-- (distance, height and lateralOffset by the view's distance and
 		-- height against normal's, the FOVs moved by the view's, the widening
 		-- per km/h scaled so each reaches its maxFov at the same speed). FAR
-		-- is the normal profile as it is, so it drives exactly as before. The
-		-- first is where a session starts.
+		-- is the normal profile as it is, the camera from before views. The
+		-- first is where a session starts: CHASE, with CLOSE and FAR the
+		-- other two (the owner, after trying five: "make chase defauly have
+		-- close and far be sepperate options"; LOW and HIGH went).
 		--
 		-- Heights are from the chassis's centre (1.0 m above the road on the
 		-- Krown Vik Fleet). Closer in at the old height and aim, the car ran
@@ -925,33 +927,36 @@ local config = {
 		-- screen's height), so each view's height and aim were fitted in
 		-- Studio on the Krown Vik Fleet, the biggest box (6.5 m with mirrors
 		-- and tips), to keep the whole car on screen with the horizon showing.
-		-- Parked, top to bottom of the screen: FAR car 0.49-0.83, horizon at
-		-- 0.33; CHASE 0.41-0.88, 0.30; CLOSE 0.34-0.96, 0.26; LOW 0.47-0.93,
-		-- 0.51; HIGH 0.40-0.86, 0.12. A wider FOV with speed shrinks the car.
+		-- Parked, top to bottom of the screen: CHASE car 0.41-0.88, horizon
+		-- at 0.30; CLOSE 0.34-0.96, 0.26; FAR 0.49-0.83, 0.33. A wider FOV
+		-- with speed shrinks the car.
 		views = {
-			{ id = "far", name = "FAR", distance = 7.5, height = 2.6, lookHeight = 0.8, baseFov = 70, maxFov = 96 },
 			{ id = "chase", name = "CHASE", distance = 6.2, height = 1.75, lookHeight = 0.15, baseFov = 66, maxFov = 88 },
 			{ id = "close", name = "CLOSE", distance = 5.3, height = 1.35, lookHeight = -0.25, baseFov = 64, maxFov = 84 },
-			-- About roof height, looking level: the road rushes at the car.
-			{ id = "low", name = "LOW", distance = 5.8, height = 0.6, lookHeight = 0.65, baseFov = 64, maxFov = 84 },
-			-- Up and looking down: the slide's angle reads best from here.
-			{ id = "high", name = "HIGH", distance = 6.8, height = 3.35, lookHeight = 0.1, baseFov = 64, maxFov = 86 },
+			{ id = "far", name = "FAR", distance = 7.5, height = 2.6, lookHeight = 0.8, baseFov = 70, maxFov = 96 },
 		},
 		-- Free look (FreeLook; the owner, 2026-10-10: "allow me to freelook
 		-- while driving, resets after i a) on phone let go or b) on pc resets
 		-- after a seccond or 2 in the same mouse position"). The camera swings
 		-- round the car: all the way round across, minPitchDeg below to
-		-- maxPitchDeg above. A mouse turns it degPerPixel per pixel moved and
-		-- eases it back once still for holdSeconds; a thumb dragging on the
-		-- screen away from the controls turns it degPerScreen per screen
-		-- width (and per screen height up and down) and eases it back when it
-		-- lifts. returnRate: 1/s, the ease home (about 0.5 s to look ahead
-		-- again at 6).
+		-- maxPitchDeg above.
+		--   Mouse: the right button held, degPerPixel per pixel moved (any
+		--   movement looked at first, which made buttons hard to click: the
+		--   owner, "think of an alternative"). Let go, it holds
+		--   mouseHoldSeconds, then glides home over mouseReturnSeconds.
+		--   Touch: a drag away from the controls, degPerScreen per screen
+		--   width (and up/down). Lifted, it holds touchHoldSeconds, then
+		--   glides home over touchReturnSeconds. It sprang back at once at
+		--   first (an ease at 6/s, about 0.5 s, fastest at the start; the
+		--   owner: "on mobile have it be a bit less 'eslastic'").
+		-- The glide starts and ends slowly (smoothstep), so it never snaps.
 		freeLook = {
 			degPerPixel = 0.25,
+			mouseHoldSeconds = 1.5,
+			mouseReturnSeconds = 0.6,
 			degPerScreen = 180,
-			holdSeconds = 1.5,
-			returnRate = 6,
+			touchHoldSeconds = 0.5,
+			touchReturnSeconds = 0.9,
 			minPitchDeg = -10,
 			maxPitchDeg = 40,
 		},

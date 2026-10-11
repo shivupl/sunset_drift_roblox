@@ -3,7 +3,7 @@
 -- CarConfig.camera. Sits behind the car, lags, swings toward the velocity
 -- direction in a slide so the angle is visible, and on two wheels moves to
 -- the lifted side and tilts with the lean. Profile parameters cross-fade.
--- The view (CameraViews: FAR, CHASE, CLOSE, LOW, HIGH) moves all three
+-- The view (CameraViews: CHASE, CLOSE, FAR) moves all three
 -- closer or farther, higher or lower, narrower or wider; free look
 -- (FreeLook) swings the camera round the car on top of it all.
 -- With speed the view widens and a faint shake comes in, and the follow

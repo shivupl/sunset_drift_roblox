@@ -353,28 +353,26 @@ The two-wheel profile is active while lifting or balanced; the drift profile pas
 | rollFollow | Fraction of the car's roll applied as horizon tilt. Two-wheel profile only, by default. |
 
 ### camera.views (client `CameraViews`)
-Views to drive in, cycled with **V** or the phone's CAM button (left of STYLE); the name shows for a moment ("VIEW: CLOSE"). The choice is the LocalPlayer attribute `CamView` (a view's id) and lasts the session. The owner, 2026-10-10: "create different views for when im driving the car (at least 5 for testing purposes, feels to far and zoomed out right now)". Each view is where the **normal** profile sits and how wide it sees; drift and two-wheel keep their own difference from normal, scaled: distance and lateralOffset by the view's distance over normal's, height by its height over normal's, lookHeight and both FOVs moved by the view's, fovPerKmh scaled so each view reaches its maxFov at the same speed. FAR is normal as it was, so it drives exactly as before. The first view is where a session starts.
+Views to drive in, cycled with **V** or the phone's CAM button (left of STYLE); the name shows for a moment ("VIEW: CLOSE"). The choice is the LocalPlayer attribute `CamView` (a view's id) and lasts the session. The owner, 2026-10-10: "create different views for when im driving the car (at least 5 for testing purposes, feels to far and zoomed out right now)"; after trying five (with LOW, roof height looking level, and HIGH, looking down from 3.35 m): "make chase defauly have close and far be sepperate options". Each view is where the **normal** profile sits and how wide it sees; drift and two-wheel keep their own difference from normal, scaled: distance and lateralOffset by the view's distance over normal's, height by its height over normal's, lookHeight and both FOVs moved by the view's, fovPerKmh scaled so each view reaches its maxFov at the same speed. FAR is normal as it was, the camera from before views. The first view is where a session starts.
 
 Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fleet). Closer in at the old height and aim, the car ran off the bottom of the screen (CLOSE at 5 m, 1.7 up, aim 0.8: its tail at 1.35 of the screen's height), so each view's height and aim (lookHeight; below 0 aims under the chassis's centre) were fitted in Studio on the Krown Vik Fleet, the biggest box (6.5 m with mirrors and tips), to keep the whole car on screen with the horizon showing. Measured parked, as fractions of the screen's height from the top:
 
 | View | distance / height / lookHeight (m) | baseFov → maxFov | Car on screen | Horizon |
 |---|---|---|---|---|
-| FAR | 7.5 / 2.6 / 0.8 | 70 → 96 (as before) | 0.49-0.83 | 0.33 |
-| CHASE | 6.2 / 1.75 / 0.15 | 66 → 88 | 0.41-0.88 | 0.30 |
+| CHASE (start) | 6.2 / 1.75 / 0.15 | 66 → 88 | 0.41-0.88 | 0.30 |
 | CLOSE | 5.3 / 1.35 / -0.25 | 64 → 84 | 0.34-0.96 | 0.26 |
-| LOW | 5.8 / 0.6 / 0.65 | 64 → 84: about roof height, looking level | 0.47-0.93 | 0.51 |
-| HIGH | 6.8 / 3.35 / 0.1 | 64 → 86: looking down, the slide's angle reads best | 0.40-0.86 | 0.12 |
+| FAR | 7.5 / 2.6 / 0.8 | 70 → 96 (the old camera) | 0.49-0.83 | 0.33 |
 
-Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view, FAR included.
+Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view.
 
 ### camera.freeLook (client `FreeLook`)
-Looking around while driving (the owner, 2026-10-10: "allow me to freelook while driving, resets after i a) on phone let go or b) on pc resets after a seccond or 2 in the same mouse position"). The camera swings round the car from where the follow put it: yaw all the way round, pitch from minPitchDeg (lower, looking up) to maxPitchDeg (higher, looking down). The follow carries on underneath, so the ease home lands on a camera that kept up.
+Looking around while driving (the owner, 2026-10-10: "allow me to freelook while driving, resets after i a) on phone let go or b) on pc resets after a seccond or 2 in the same mouse position"). The camera swings round the car from where the follow put it: yaw all the way round, pitch from minPitchDeg (lower, looking up) to maxPitchDeg (higher, looking down). The follow carries on underneath, so the glide home lands on a camera that kept up. The glide starts and ends slowly (smoothstep), so it never snaps.
 | Field | What it does |
 |---|---|
-| degPerPixel | Mouse: degrees per pixel moved (0.25). Any movement looks; a mouse over a menu does nothing, and a jump of 250 px or more between two events (the cursor leaving the window and coming back elsewhere) turns nothing (`FreeLook.JUMP_PIXELS`). Measured in Play: 400 px right turned the view 100 degrees right; still for 1.5 s, it was back behind the car 0.7 s later. |
-| holdSeconds | Mouse: how long it must sit still before the view eases back (1.5). |
-| degPerScreen | Touch: degrees per screen width dragged, across and up/down (180). Only a drag that starts away from the controls looks (each control is Active, so its press arrives processed). Lifting the thumb eases the view back at once. |
-| returnRate | 1/s, the ease home (6: about 0.5 s). |
+| degPerPixel | Mouse: degrees per pixel moved while the **right button** is held (0.25). The cursor stays put while it looks (MouseBehavior LockCurrentPosition), so the view turns as far as you like. Any movement looked at first, but then the cursor could not reach a button without swinging the view (the owner: "will make it hard to click buttons... thing of an alternative"). |
+| mouseHoldSeconds / mouseReturnSeconds | Mouse: after the button lets go, the view holds this long (1.5), then glides home over this long (0.6). |
+| degPerScreen | Touch: degrees per screen width dragged, across and up/down (180). Only a drag that starts away from the controls looks (each control is Active, so its press arrives processed). |
+| touchHoldSeconds / touchReturnSeconds | Touch: after the thumb lifts, the view holds this long (0.5), then glides home over this long (0.9). It sprang back at once at first, fastest at the start (6/s, about 0.5 s; the owner: "on mobile have it be a bit less 'eslastic'"). Longer = calmer. |
 | minPitchDeg / maxPitchDeg | How far the camera may swing below and above where the view puts it (-10 / 40). |
 
 ## speedFeel (client `SpeedFeel`)
