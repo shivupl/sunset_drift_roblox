@@ -130,7 +130,7 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	head.AutomaticSize = Enum.AutomaticSize.XY
 	local hl = Kit.list(head, true, 2)
 	hl.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	local title = Parts.title(head, if touch then 22 else 30)
+	local title = Parts.title(head, if touch then 22 else 30, ctx.title)
 	title.LayoutOrder = 1
 	local carLine = Kit.text(head, "Car", "", if touch then 11 else 14, Enum.FontWeight.ExtraBold, true, Kit.C.tabInk)
 	carLine.LayoutOrder = 2
@@ -227,13 +227,22 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		carLine.Text = `{ctx.carName()}, {ctx.carDrive()}`
 	end
 
+	-- Parked: no subject room and no motion (ui-flow gave those to the
+	-- layouts in the lists).
+	local stage = Kit.frame(root, "Stage")
+	stage.Visible = false
 	return {
 		root = root,
+		stage = stage,
 		fill = fill,
 		refresh = refresh,
 		pop = items.pop,
 		destroy = function()
 			root:Destroy()
+		end,
+		intro = function(_switch: boolean) end,
+		outro = function(): number
+			return 0
 		end,
 	}
 end

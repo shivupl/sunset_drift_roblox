@@ -198,8 +198,9 @@ everything else is a **list**, a row per item with its swatch at the left
 (finish, tyres, tips, flames, sun strips, plates, my cars; a car's word is
 its drivetrain, or `✓ DRIVING`).
 
-**In the spawn menu's PLATES tab**, a plate card keeps the badges: `ON CAR`
-on a sodium chip, `✓ OWNED` on a gantry chip (`UIKit.badge`).
+**In the menu's PLATES** (ui-flow, 2026-10-12), your plates are blocks
+like the garage's: the one on your car edged green with `ON CAR`, the
+others `✓ OWNED`, the session's default `THIS SESSION`.
 
 A category is named for what a player knows it as: the windscreen banner
 is `SUN STRIPS`, though the code, the slot key and the stored ids still say
@@ -223,67 +224,98 @@ Buying always goes through a confirm sheet: the item, the price, your cash
 after, and two buttons, `BUY` (primary) and `CANCEL` (secondary). Nothing
 is ever charged from a single tap. The sheet is opaque (not `alpha.panel`):
 over a panel of cards, 6% see-through let the cards show through its rows.
-Plates too: the spawn menu's PLATES tab BUY opens the same sheet (the plate
-drawn, its name, price, your cash, cash after or `Short N` in beacon), and
-only the sheet's BUY charges. Buttons under a sheet still hear clicks
+Plates too: the menu's PLATES BUY opens the same sheet (`Parts.sheet`: the
+plate drawn, its name, price, your cash, cash after or `Short N` in beacon),
+and only the sheet's BUY charges. Buttons under a sheet still hear clicks
 through its scrim, so each one checks for an open sheet first.
 
-## The car picker: a deliberate exception
+## One frame for every screen (ui-flow)
 
-The CARS menu's car list (`src/client/CarPicker`, 2026-10-11) does not use
-these tokens. The owner asked for a different look there, after a store car
-game's garage ("make it good and polished, like a real car game ... with the
-theme of the seccond uploaded image"), and is trying three layouts of it
-(COMPACT, SHOWROOM, STRIP; the header's layout button cycles them). Its own
-tokens live in `CarPicker/Kit.luau`: graphite panels with a dot texture,
-heavy italic Montserrat (a font Roblox ships; Gotham's stand-in), slanted
-tabs, a green SPAWN with a gradient, boxes with a lit stage and a cut corner.
-The art is `art/carmenu` (README there). PLATES and SETTINGS are still the
-spawn menu's panel on these tokens. When the owner settles on a layout,
-either the other menus follow this look or it comes back onto the tokens;
-until then, leave it on its own.
+The owner, 2026-10-12: "string together the entire UI from here for mobile.
+make a couple different complete layouts but just stop it from being so
+choppy and disconnected". Before, the car list was the car picker's own
+panels, PLATES and SETTINGS the old spawn menu's panel on these tokens (where
+the picker's plate and gear buttons dropped a player), the garage a third
+arrangement, the load cover a fourth, and the coins a different pill in the
+garage and missing in the menu.
 
-The owner then asked for every menu in this look, one change at a time,
-phones first (2026-10-11: "make every single menu UI coherent", boards on
-the "Hajwala Menus" canvas). The first change is **the phone's top bar**
-(`src/client/TopBar.luau`): one row right of Roblox's own buttons, GARAGE
-(the car menu) and SETTINGS always, RESET, VIEW and STYLE between them
-while driving. It replaces the CARS button and layout D's round buttons by
-the cash on a phone; EXIT and UI went (Settings has a HUD LAYOUT row now).
-Its buttons are the picker's: graphite squares with a hairline edge, the
-icon (art/topbar) over a heavy italic word, GARAGE edged in the picker's
-green. A desktop keeps the CARS button and the keys.
+Now the menu (`src/client/Menu`: CARS, PLATES, SETTINGS) and the garage
+(`Garage/GaragePanel`) are two controllers drawing through the same layouts
+(`Garage/Looks`), in the look the owner picked for the car picker
+(`CarPicker/Kit`: graphite panels with a dot texture, heavy italic
+Montserrat, slanted tabs, cut-corner boxes, green for go and yours, sodium
+for money). Every screen has the same anchors, so nothing moves going from
+one to the next:
 
-The second is **the garage panel** (2026-10-12: "implement these 3 to let
-me chose from ... for both pc and phone"): layouts from the canvas
-(`src/client/Garage/Looks`), switched with the LAYOUT button in each (the
-LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's three
-variants (2026-10-12, after several rounds: "remove other modes"): the
-category words on a shade down the left that runs to the screen's edge,
-the items as square blocks down the right, under the sub-tabs with REV or
-SHOP PLATES beside them, over a hairline and the item picked, the action
-under them: on a graphite panel (SHOWCASE), on the panel see-through
-(GLASS), or on a shade with the blocks in an outlined tray (FRAME). The
-right side lines up under the cash, its right edge and just below its
-foot (`Parts.coinAnchor`: the HUD's gui keeps out of the notch only, the
-panel's out of Roblox's margins too, so on a phone the coins sat right of
-the panel). A PC has DOCK as well; SHADE is parked; SHADES, EDGE, SHELF,
-CARD and WIDE were tried and removed. The cash
-sits where the driving HUD has it in every layout (`Parts.hudCash`, from
-HudLab/LayoutD's numbers), so the coins never move going in. DOCK
-shows every item as a square block, three across on a phone ("the
-options need to be bigger and make them blocks/squares"), and its tabs
-share the dock's free width, their icons and words following the tab's
-lean. They share
-`Looks/Parts`: the picker's panels, slanted sub-tabs and cut-corner item
-box, the chosen item edged green, ON CAR and ✓ OWNED in green, prices and
-BUY in sodium (the confirm sheet's too), the category icons from
-art/garage. A list fades into its panel (or shade) at an edge with more
-items past it; the line naming the item picked sits over the action
-(not on MY CARS, where the car's name is over the car); titles' Arabic is
-at `arabicScale`, as above. Each layout is drawn for an 844x346 phone and
-a 1280x664 PC and scaled to the screen it is on. Their confirm sheet's dim
-covers the whole screen (`UIKit.edgeToEdge`, BEHAVIOURS.md).
+| Anchor | Where | Menu | Garage |
+|---|---|---|---|
+| The words | Down the left on a shade (or the dock's tabs) | CARS, PLATES, SETTINGS | Its seven categories |
+| EXIT, LAYOUT | Bottom left (or the dock's ends) | Closes the menu | Leaves the garage |
+| The coins | Where the driving HUD has them, drawn as the HUD draws them (`HudLab.coins`) | | |
+| The title | Top, after the words: the place, small, then the subject, big | HAJWALA هجولة; the car or plate | GARAGE كراج; the car |
+| The subject | The middle | The car's photo with its weight and length; the plate, big | The 3D car |
+| The column | Under the coins: sub-tabs, a form, blocks, the item picked | Drive filters and cars; plate styles, search, your plates; the settings' rows | Sub-tabs and items |
+| The action | Bottom right, the bottom row's height | SPAWN THIS CAR / RESPAWN; BUY with the price; DONE | BUY; DRIVE THIS; ON YOUR CAR |
+
+**The layouts** are complete: one choice (`Looks/Layouts`, the LocalPlayer
+attribute `UiLayout`) for every screen, cycled by any LAYOUT button or
+picked in Settings' SCREEN LAYOUT row. SHOWCASE (the words on a shade, a
+graphite column), GLASS (the column see-through), FRAME (the column on a
+shade, the blocks in a tray) and DOCK (the words as tabs in a dock along the
+bottom with LAYOUT, the action and EXIT; the column a panel on the left, the
+subject on the right). SHADE is parked; SHADES, EDGE, SHELF, CARD and WIDE
+were tried in the garage and removed.
+
+The pieces they share (`Looks/Parts`): the column lines up under the
+coins, its right edge and just below their foot (`Parts.coinAnchor`: the
+HUD's gui keeps out of the notch only, a panel's out of Roblox's margins
+too, so on a phone the coins sat right of the panel); items are square
+blocks (two across in the column, three in DOCK's panel; the owner,
+2026-10-12: "make them blocks/squares"), the chosen one edged green; a list
+fades into its panel (or shade) at an edge with more past it; the line
+naming the item picked sits over the action (not on MY CARS or CARS, where
+the car's name is the title's subject); titles' Arabic is at
+`arabicScale`; the confirm sheet's dim covers the whole screen
+(`UIKit.edgeToEdge`, BEHAVIOURS.md).
+
+**The world behind** a menu page blurs (a `BlurEffect`, 16) and dims to 0.5;
+SETTINGS leaves it clear (dim 0.8, no blur) because what it changes (the
+time of day) is the world.
+
+**Motion** is one language (`Parts.intro`, `outro`, `settle`): positions
+only, since a fade needs a CanvasGroup, which redraws its children soft.
+- Opening, every piece comes in from out of sight past the edge it lives
+  on (the words and their shade from the left, the column and the action
+  from the right, the title from above, the subject or the dock from below),
+  a few hundredths of a second apart, over 0.42 s (Quint out), while the
+  world blurs and dims over 0.35 s.
+- Closing, they go back out the same way over 0.2 s (Quad in); what was
+  under the menu (the top bar, the HUD, the garage) comes back once they
+  are gone.
+- A page, a sub-tab or a filter swaps its content in place, and that
+  content eases up 14 px over 0.22 s; the rail's green marker slides to the
+  word chosen; the dock's chosen tab widens as the one it left narrows.
+- The garage's SHOP PLATES opens the menu's PLATES in the same frame: the
+  garage hides under it with no slide, and EXIT hands it straight back.
+
+The menu covers the HUD while driving (`HudLab.setCovered`): the pedals
+showed through its middle. Toasts are `Parts.toast` (a pill under the top
+row) everywhere in the menu and the garage.
+
+The load cover wears the same look (graphite, HAJWALA هجولة, the green
+bar), and the menu slides in under it as it fades.
+
+The phone's **top bar** (`src/client/TopBar.luau`, 2026-10-11) is one row
+right of Roblox's own buttons, GARAGE (the menu's CARS) and SETTINGS always,
+RESET, VIEW and STYLE between them while driving. Its buttons are the
+picker's: graphite squares with a hairline edge, the icon (art/topbar) over
+a heavy italic word, GARAGE edged in the picker's green. A desktop keeps the
+CARS button and the keys.
+
+Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to
+the screen it is on. In Studio the LocalPlayer attribute `ScreenSim` (a
+Vector2) lays the menu and the garage out for that screen size at the
+viewport's top left, to check a phone's proportions (`Parts.screen`).
 
 ## Don'ts
 

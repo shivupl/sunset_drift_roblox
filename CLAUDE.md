@@ -18,7 +18,7 @@ A Roblox game about Saudi hajwala: highway drifting and two-wheel ("natl") drivi
 |---|---|---|
 | `src/server` | ServerScriptService/Server | Spawning, rigs, scoring, economy |
 | `src/server/World` | ServerScriptService/Server/World | The world build: RoadNetwork, Relief (terrain dunes and the shared `Relief.border` lookup), Fence, Scatter, DuneLife, Cityscape (skyline and aura), Station, Garage (the walk-in workshop), Lighting, City (`City/`) |
-| `src/client` | StarterPlayerScripts/Client | Input, camera, HUD, menus, vehicle controller, effects, car looks (`CarCosmetics`), the garage view and panel (`Garage/`) |
+| `src/client` | StarterPlayerScripts/Client | Input, camera, HUD, the menu (`Menu/`: CARS, PLATES, SETTINGS), vehicle controller, effects, car looks (`CarCosmetics`), the garage view and panel (`Garage/`; `Garage/Looks` are the layouts both the menu and the garage draw through) |
 | `src/shared` | ReplicatedStorage/Shared | CarConfig, CarCatalog, VehicleSim, VehicleRig, UITheme, CosmeticsConfig, GarageConfig, CarLook, tests |
 
 Where the settings live:
@@ -37,7 +37,8 @@ World code works in metres; convert with `ctx.s(m)` (studs = m / 0.28). The road
 - **Studio id:** changes between sessions (it was `9a8b2d85-e643-4b20-81cd-c7a90005d565` on 2026-09-15); call `list_roblox_studios` each session.
 - **Sync with Rojo, not HTTP:** newer Studio MCP builds run executed code without the Network capability, so `HttpService:GetAsync` (the `scripts/mcp_sync.py` + loader route) and `VirtualInputManager` both fail. Run `rojo serve` and connect the Rojo plugin; Rojo syncs into the **Edit** tree, so a running Play session keeps the old modules until Play is restarted.
 - **Driving the UI:** the MCP `user_mouse_input` / `user_keyboard_input` tools send real input (`instance_path` aims at a GuiObject). Mouse drags do **not** scroll a ScrollingFrame (only touch does); use `scrollUp`/`scrollDown` to test scrolling.
-- **Phone UI without a device:** set the LocalPlayer attribute `ForceTouch = true`, then reopen the menu (M) so it re-lays out in touch metrics.
+- **Phone UI without a device:** set the LocalPlayer attribute `ForceTouch = true`; the menu and the garage re-lay out in touch metrics. To see a phone's proportions in Studio's taller viewport, also set `ScreenSim` to a Vector2 (the owner's phone under the top bar is about `724, 354`): they are drawn for that size at the viewport's top left (`Parts.screen`). Clear it after.
+- **Drive menus with real input, not `require`:** a module required from `execute_luau` is a separate instance, so `require(...SpawnMenu).openTab()` opens nothing; click with `user_mouse_input` (the top bar's buttons, the menu's words) and read the PlayerGui.
 - **Old HTTP sync (only where executed code still has Network):** `python3 scripts/mcp_sync.py --manifest` with `python3 -m http.server 8765 --bind 127.0.0.1` in the repo root, then run `scripts/studio_loader.luau` via `execute_luau` in Edit.
 - **Either way, server or world code needs Play stopped and started again.**
 - **World preview in Edit:**

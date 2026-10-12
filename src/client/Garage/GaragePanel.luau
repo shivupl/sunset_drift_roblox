@@ -12,29 +12,30 @@
 -- onLeave.
 --
 -- How it looks (2026-10-12, the owner: "now moving onto garage, implement
--- these 3 to let me chose from ... this time for both pc and phone"): one of
--- three layouts from the "Hajwala Menus" canvas, in the car picker's look
--- (Looks/Parts), so the garage matches the CARS menu:
---   DOCK      (Looks/Dock) the categories as tabs in a dock along the bottom
---             with the action and EXIT; the items in a panel on the left.
+-- these 3 to let me chose from ... this time for both pc and phone"): in
+-- the car picker's look (Looks/Parts), in the layout every screen follows
+-- (Looks/Layouts, ui-flow: the menu's CARS, PLATES and SETTINGS draw
+-- through the same layouts, so the garage and the menu are one frame):
 --   SHOWCASE  (Looks/Showcase) the car big in the middle; the categories as
 --             words down the left on a shade; the items as square blocks
 --             down the right, lined up under the cash: SHOWCASE (on a
 --             panel), GLASS (the panel see-through), FRAME (on a shade, the
 --             blocks in an outlined tray). SHADES, EDGE, SHELF, CARD and
 --             WIDE were tried and went (2026-10-12: "remove other modes").
+--   DOCK      (Looks/Dock) the categories as tabs in a dock along the bottom
+--             with the action and EXIT; the items in a panel on the left.
 --   SHADE     (Looks/Shade) the garage-ui-overhaul's shade and rail of words,
 --             the sub-tabs as words along the bottom. Parked (2026-10-12,
 --             the owner on the phone: "i liked those 2 mobile layouts the
 --             most so lets narrow it down to that for now"): out of the
 --             lists, kept to come back to.
--- A phone has SHOWCASE's variants (2026-10-12: "lets finalize on the shade
--- mode FOR mobile", then "remove other modes"); a PC has DOCK as well,
--- not settled yet. The cash is drawn
--- here, where the HUD has it, whatever the layout (Parts.hudCash). The LAYOUT button in
--- each cycles them; the choice is the LocalPlayer attribute GarageLayout
--- and lasts the session. Each puts the car where its panels leave room
--- (GarageConfig.layoutOffset).
+-- The cash is drawn here, where the HUD has it and as the HUD draws it
+-- (Parts.hudCash), whatever the layout. The LAYOUT button in each cycles
+-- the layouts for every screen; the choice is the LocalPlayer attribute
+-- UiLayout and lasts the session. Each puts the car where its panels leave
+-- room (GarageConfig.layoutOffset). The pieces slide in from their edges on
+-- entering (Parts.intro); SHOP PLATES opens the menu's PLATES over the
+-- panel in the same frame, and the panel hides under it (SpawnMenu.watch).
 --
 -- Behaviour:
 --   * A tap applies the item to the turntable car at once
@@ -56,7 +57,7 @@
 --   * MY CARS swaps the turntable car (GarageView.setCar); DRIVE THIS asks
 --     for that car the way the spawn menu does and leaves the view.
 --   * PLATES equips one of your plates on this car; SHOP PLATES opens the
---     spawn menu's plates tab, which stays the one place plates are bought.
+--     menu's PLATES, which stays the one place plates are bought.
 --   * WHEELS has the rims and the tyres, EXHAUST the tips and the flames
 --     (garage-tyres-flames, 2026-10-05). A tyre is a drift mode: the list
 --     has only the tyres for this car's drivetrain, and the note over it
@@ -138,27 +139,8 @@ local DISPLAY_ORDER = 15
 local FINISH_SHINE = 0.35
 local FINISH_SHINE_PER_REFLECTANCE = 3
 
-local Showcase = require(Looks:WaitForChild("Showcase"))
-local function variant(id: string, name: string, v: Showcase.Variant): Types.Layout
-	return {
-		id = id,
-		name = name,
-		build = function(g: ScreenGui, c: Types.Ctx): Types.View
-			return Showcase.build(g, c, v)
-		end,
-	}
-end
-local SHOWCASES: { Types.Layout } = {
-	variant("showcase", "SHOWCASE", "column"),
-	variant("glass", "GLASS", "glass"),
-	variant("frame", "FRAME", "frame"),
-}
-local PHONE_LAYOUTS: { Types.Layout } = SHOWCASES
-local PC_LAYOUTS: { Types.Layout } = { { id = "dock", name = "DOCK", build = require(Looks:WaitForChild("Dock")).build } }
-for _, l in SHOWCASES do
-	table.insert(PC_LAYOUTS, l)
-end
-local LAYOUT_ATTRIBUTE = "GarageLayout"
+-- The layout is the one every screen follows (Looks/Layouts, ui-flow).
+local Layouts = require(Looks:WaitForChild("Layouts"))
 
 -- The categories, with their Arabic for the titles (UI_SYSTEM.md "Arabic
 -- with English": section titles are bilingual) and their icon (art/garage).
@@ -1372,23 +1354,14 @@ local function doExtra()
 			revUntil = os.clock() + ExhaustPops.rev(m, draftLook())
 		end)
 	elseif tab == "plates" then
-		SpawnMenu.openTab("plates")
+		-- The menu's PLATES in the same frame: the garage hides under it
+		-- (SpawnMenu.watch) and EXIT brings it straight back.
+		SpawnMenu.openTab("plates", { switch = true })
 	end
-end
-
--- The layouts this screen cycles: a phone's or a PC's.
-local function layouts(): { Types.Layout }
-	return if touch then PHONE_LAYOUTS else PC_LAYOUTS
 end
 
 local function layout(): Types.Layout
-	local id = player:GetAttribute(LAYOUT_ATTRIBUTE)
-	for _, l in layouts() do
-		if l.id == id then
-			return l
-		end
-	end
-	return layouts()[1]
+	return Layouts.current()
 end
 
 local function setCollapsed(c: boolean)
@@ -1402,26 +1375,24 @@ local function setCollapsed(c: boolean)
 	GarageView.setPanelOpen(not c)
 end
 
-local buildView: (snap: boolean) -> ()
+local buildView: (snap: boolean, still: boolean?) -> ()
 
+-- The next layout, for every screen (the menu follows it too); the view is
+-- built again by the attribute's change (GaragePanel.start).
 local function nextLayout()
 	if sheet then
 		return
 	end
-	local cur = layout()
-	local list = layouts()
-	local i = table.find(list, cur) or 0
-	local nxt = list[i % #list + 1]
-	player:SetAttribute(LAYOUT_ATTRIBUTE, nxt.id)
+	local nxt = Layouts.advance()
 	GarageSounds.play("tab")
-	buildView(false)
-	toast(`GARAGE: {nxt.name}`, "info")
+	toast(`LAYOUT: {nxt.name}`, "info")
 end
 
 local function makeCtx(g: ScreenGui): Types.Ctx
 	return {
 		touch = touch,
-		screen = g.AbsoluteSize,
+		screen = Parts.screen(g),
+		title = { en = "GARAGE", ar = "كراج" },
 		tabs = TABS,
 		tab = function()
 			return tab
@@ -1478,8 +1449,9 @@ local function makeCtx(g: ScreenGui): Types.Ctx
 end
 
 -- The chosen layout, built again (entering, a layout switch, a new screen
--- size, Studio's phone mode).
-buildView = function(snap: boolean)
+-- size, Studio's phone mode). Its pieces slide in, unless `still` (a new
+-- screen size: the frame was up already).
+buildView = function(snap: boolean, still: boolean?)
 	local g = gui
 	if not g or not inside then
 		return
@@ -1503,7 +1475,9 @@ buildView = function(snap: boolean)
 	local cg, cp = Parts.hudCash("GarageCash", DISPLAY_ORDER + 1, player:WaitForChild("PlayerGui"))
 	cashGui, cashPill = cg, cp
 	local ctx = makeCtx(g)
-	ctx.coins = Parts.coinAnchor(g, cg)
+	-- Under a simulated screen (Parts.screen) the coins are not where the
+	-- layout is.
+	ctx.coins = if Parts.screen(g) == g.AbsoluteSize then Parts.coinAnchor(g, cg) else nil
 	ctxNow = ctx
 	local l = layout()
 	local v = l.build(g, ctx)
@@ -1519,6 +1493,7 @@ buildView = function(snap: boolean)
 	cashShown, cashTarget = nil, nil
 	fillTab()
 	refresh()
+	v.intro(still == true)
 end
 
 ------------------------------------------------------------------------
@@ -1603,7 +1578,7 @@ local function onEnter(id: string, preview: Model)
 	-- A new screen size or Studio's phone mode lays it out again.
 	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		if gui == g then
-			buildView(false)
+			buildView(false, true)
 		end
 	end)
 	focusView()
@@ -1741,10 +1716,39 @@ function GaragePanel.start(remotes: Folder)
 		platesDirty = true
 		refresh()
 	end)
-	-- Studio's phone mode lays the panel out for touch.
-	player:GetAttributeChangedSignal("ForceTouch"):Connect(function()
+	-- Studio's phone mode (and its simulated screen) lays the panel out
+	-- again.
+	for _, name in { "ForceTouch", "ScreenSim" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			if inside then
+				buildView(false, true)
+			end
+		end)
+	end
+	-- A layout picked here, in the menu or in Settings: every screen
+	-- follows it.
+	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
 		if inside then
 			buildView(false)
+		end
+	end)
+	-- The menu over the garage (SHOP PLATES, M): the panel and its coins
+	-- hide under it, so the two frames never show at once, and come back
+	-- in place as it goes.
+	SpawnMenu.watch(function(open: boolean)
+		if not inside then
+			return
+		end
+		local root, cg = viewRoot, cashGui
+		if root then
+			root.Visible = not open and not collapsed
+		end
+		if cg then
+			cg.Enabled = not open
+		end
+		local v = view
+		if not open and v and not collapsed then
+			v.intro(true)
 		end
 	end)
 end

@@ -12,6 +12,15 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`ui-flow` (2026-10-12, an experiment branched from `tweaks-2` at `b2166f3`; not merged): the
+whole phone UI as one frame.** The owner: "string together the entire UI from here for mobile. make
+a couple different complete layouts but just stop it from being so choppy and disconnected". The
+menu (`src/client/Menu`: CARS, PLATES, SETTINGS) draws through the garage's layouts, so the menu and
+the garage share the words, EXIT, the HUD's own coins, the column, the action and one motion; one
+layout choice (`UiLayout`: SHOWCASE, GLASS, FRAME, DOCK) for every screen. The car picker's layouts
+(COMPACT, SHOWROOM, STRIP) and the old PLATES and SETTINGS panels are gone on this branch (they are
+on `tweaks-2`). UI_SYSTEM.md "One frame for every screen" has the whole of it.
+
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
 axis (client and shared `AutoFlip`, `CarConfig.autoFlip`): steer and it heaves up off its edge and drops

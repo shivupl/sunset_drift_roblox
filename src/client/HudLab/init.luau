@@ -10,7 +10,7 @@
 -- deisgn i can cycle through".
 --
 -- Switching finish: the phone top bar's STYLE (TopBar), U on a keyboard,
--- the HUD STYLE row in the menu's Settings tab (SettingsPanel), or the
+-- the HUD STYLE row in the menu's SETTINGS (Menu/Settings), or the
 -- LocalPlayer attribute HudVariant (a finish's id). Switching version
 -- (Versions.luau: FLOW, SIDE, BOARD): the HUD LAYOUT row in Settings, Y on a
 -- keyboard, or the attribute HudLayout (the UI button went with the top bar,
@@ -36,6 +36,7 @@ local Finishes = require(script:WaitForChild("Finishes"))
 local Versions = require(script:WaitForChild("Versions"))
 local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
+local Coins = require(script:WaitForChild("Coins"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
 
 local HudLab = {}
@@ -146,6 +147,10 @@ local api: Api = {
 	end,
 }
 
+-- True while a menu or the garage covers the screen (HudLab.setCovered):
+-- the HUD and the phone controls hide under it.
+local covered = false
+
 local function newGui(name: string, order: number): ScreenGui
 	local g = Instance.new("ScreenGui")
 	g.Name = name
@@ -153,6 +158,7 @@ local function newGui(name: string, order: number): ScreenGui
 	g.IgnoreGuiInset = true
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = order
+	g.Enabled = not covered
 	g.Parent = player:WaitForChild("PlayerGui")
 	return g
 end
@@ -371,6 +377,25 @@ function HudLab.flashSpin(bonus: number, spins: number)
 	end
 end
 
+-- The cash as this HUD draws it, in `gui` (set up as the HUD's): the menu
+-- and the garage show it at the HUD's spot (Coins).
+function HudLab.coins(gui: ScreenGui): Coins.Coins
+	return Coins.build(gui, finish(), version().id)
+end
+
+-- A menu or the garage covers the screen: the HUD, its edge glow and the
+-- phone controls hide under it (the pedals showed through the menu's
+-- middle), and come back as it goes.
+function HudLab.setCovered(on: boolean)
+	covered = on
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	for _, g in { hudGui, ctlGui, toastGui, pg and pg:FindFirstChild("HajwalaHudLabGlow") } do
+		if g and g:IsA("ScreenGui") then
+			g.Enabled = not on
+		end
+	end
+end
+
 function HudLab.hide()
 	shown = false
 	view = nil
@@ -409,6 +434,10 @@ local function frame()
 			hudGui = g
 			hud = StreetHud.build(g, isTouch(), f, ver)
 			hudFor = key
+			if covered then
+				-- Its edge glow is a gui of its own, made enabled.
+				HudLab.setCovered(true)
+			end
 		end
 		local h = hud
 		local v = view

@@ -589,7 +589,7 @@ function UIKit.sheet(parent: Instance, touch: boolean, z: number?): (Frame, Fram
 	scrim.BorderSizePixel = 0
 	scrim.ZIndex = base
 	scrim.Parent = parent
-	-- On a gui (PlatesPanel's), the whole screen.
+	-- On a gui, the whole screen.
 	if parent:IsA("ScreenGui") then
 		UIKit.edgeToEdge(scrim, parent :: ScreenGui)
 	else

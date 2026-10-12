@@ -7,7 +7,13 @@
 -- sodium of the HUD's coin: prices, BUY and the confirm sheet's BUY; green
 -- is go and yours (DRIVE THIS, ON CAR, OWNED, what shows on the car).
 -- The category icons are art/garage.
+--
+-- The menu (CARS, PLATES, SETTINGS) draws through these layouts too
+-- (ui-flow, 2026-10-12), so this is every phone screen's kit: the same
+-- words, buttons, coins, action and motion wherever a player is.
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -18,6 +24,7 @@ local Kit = require(CarPicker:WaitForChild("Kit"))
 local Art = require(CarPicker:WaitForChild("Art"))
 local UIKit = require(Client:WaitForChild("UIKit"))
 local LayoutD = require(Client:WaitForChild("HudLab"):WaitForChild("LayoutD"))
+local HudLab = require(Client:WaitForChild("HudLab"))
 local Types = require(script.Parent:WaitForChild("Types"))
 
 local Parts = {}
@@ -26,6 +33,10 @@ local Parts = {}
 Parts.ICONS = "rbxassetid://71924428072059"
 Parts.ICON_CELL = 128
 Parts.ICON = { cars = 0, paint = 1, rims = 2, plates = 3, lights = 4, decal = 5, exhaust = 6, layout = 7 }
+-- The top bar's sheet (art/topbar, 128 px cells): GARAGE, RESET, VIEW,
+-- STYLE, SETTINGS; the menu's SETTINGS word wears its gear.
+Parts.TOPBAR_ICONS = "rbxassetid://115983636701904"
+Parts.TOPBAR_ICON = { garage = 0, reset = 1, view = 2, style = 3, settings = 4 }
 -- The HUD's cash coin (HudLab/Art).
 Parts.COIN = "rbxassetid://117391161025187"
 
@@ -66,6 +77,19 @@ function Parts.scaleFor(touch: boolean, screen: Vector2): number
 	return math.clamp(math.min(screen.X / ref.X, screen.Y / ref.Y), 0.7, 1.35)
 end
 
+-- The screen a controller lays its layout out for: the gui's size, or in
+-- Studio the LocalPlayer attribute ScreenSim (a Vector2, a phone's pixels:
+-- 844x346 is the reference phone under Roblox's top bar), so a phone's
+-- proportions can be checked in Studio's wider, taller viewport. The
+-- layout is then drawn at the gui's top left at that size.
+function Parts.screen(gui: ScreenGui): Vector2
+	local sim = Players.LocalPlayer:GetAttribute("ScreenSim")
+	if typeof(sim) == "Vector2" and RunService:IsStudio() then
+		return sim
+	end
+	return gui.AbsoluteSize
+end
+
 -- A full-screen root scaled for this screen, and the room it has in
 -- drawing pixels.
 function Parts.root(gui: ScreenGui, ctx: Types.Ctx, name: string): (Frame, Vector2)
@@ -83,9 +107,9 @@ end
 -- Small pieces.
 ------------------------------------------------------------------------
 
--- An icon from the garage sheet.
-function Parts.icon(parent: Instance, index: number, size: number, color: Color3?): ImageLabel
-	local i = Kit.image(parent, "Icon", Parts.ICONS, color or Kit.C.text)
+-- An icon from the garage sheet (or another sheet of 128 px cells).
+function Parts.icon(parent: Instance, index: number, size: number, color: Color3?, sheet: string?): ImageLabel
+	local i = Kit.image(parent, "Icon", sheet or Parts.ICONS, color or Kit.C.text)
 	i.ImageRectSize = Vector2.new(Parts.ICON_CELL, Parts.ICON_CELL)
 	i.ImageRectOffset = Vector2.new(index * Parts.ICON_CELL, 0)
 	i.Size = UDim2.fromOffset(size, size)
@@ -100,17 +124,18 @@ function Parts.arabicSize(size: number): number
 	return math.floor(size * UITheme.arabicScale + 0.5)
 end
 
--- GARAGE and its Arabic, side by side.
-function Parts.title(parent: Instance, size: number): Frame
+-- The place (GARAGE, HAJWALA) and its Arabic, side by side.
+function Parts.title(parent: Instance, size: number, title: { en: string, ar: string }?): Frame
+	local words = title or { en = "GARAGE", ar = "كراج" }
 	local f = Kit.frame(parent, "Title")
 	f.AutomaticSize = Enum.AutomaticSize.X
 	f.Size = UDim2.fromOffset(0, size + 4)
 	Kit.list(f, false, math.floor(size * 0.4), Enum.VerticalAlignment.Center)
-	local en = Kit.text(f, "English", "GARAGE", size, Enum.FontWeight.Heavy, true)
+	local en = Kit.text(f, "English", words.en, size, Enum.FontWeight.Heavy, true)
 	en.AutomaticSize = Enum.AutomaticSize.X
 	en.Size = UDim2.fromScale(0, 1)
 	en.TextTruncate = Enum.TextTruncate.None
-	local ar = Kit.text(f, "Arabic", "كراج", Parts.arabicSize(size), Enum.FontWeight.Bold, false, Parts.C.sand)
+	local ar = Kit.text(f, "Arabic", words.ar, Parts.arabicSize(size), Enum.FontWeight.Bold, false, Parts.C.sand)
 	ar.LayoutOrder = 1
 	ar.AutomaticSize = Enum.AutomaticSize.X
 	ar.Size = UDim2.fromScale(0, 1)
@@ -162,13 +187,12 @@ function Parts.cash(parent: Instance, h: number, size: number): Cash
 	}
 end
 
--- The cash where the driving HUD has it (HudLab/LayoutD: CASH_H of the
--- safe area's height tall, CASH_Y of it down, EDGE_R of it in from the
--- right, in a gui set up as the HUD's), so the coins stay put going into
--- the garage and whichever layout is up (the owner, 2026-10-12: "make sure
--- the coins thing stays in the same position as usuall"; each layout had
--- put it somewhere else). Drawn at 38 px tall, a phone's, and scaled.
-local HUD_CASH_H = 38
+-- The cash where the driving HUD has it, drawn as the HUD draws it
+-- (HudLab.coins: its coin, its chip, its digits, in its finish), in a gui
+-- set up as the HUD's, so the coins neither move nor change between
+-- driving, the menu and the garage (the owner, 2026-10-12: "make sure the
+-- coins thing stays in the same position as usuall"; ui-flow: the garage
+-- had its own Oswald pill and the menu none).
 function Parts.hudCash(name: string, displayOrder: number, parent: Instance): (ScreenGui, Cash)
 	local g = Instance.new("ScreenGui")
 	g.Name = name
@@ -177,19 +201,9 @@ function Parts.hudCash(name: string, displayOrder: number, parent: Instance): (S
 	g.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = displayOrder
-	local cash = Parts.cash(g, HUD_CASH_H, 19)
-	cash.root.AnchorPoint = Vector2.new(1, 0)
-	local scale = Instance.new("UIScale")
-	scale.Parent = cash.root
-	local function place()
-		local size = g.AbsoluteSize
-		cash.root.Position = UDim2.fromOffset(size.X - LayoutD.EDGE_R * size.Y, LayoutD.CASH_Y * size.Y)
-		scale.Scale = math.max(LayoutD.CASH_H * size.Y / HUD_CASH_H, 0.5)
-	end
-	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	local coins = HudLab.coins(g)
 	g.Parent = parent
-	place()
-	return g, cash
+	return g, { root = coins.root, set = coins.set }
 end
 
 -- Where the cash pill's right edge and foot fall in `panel`'s pixels, for
@@ -455,7 +469,15 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 	nameLabel.ZIndex = 2
 	word.ZIndex = 2
 	local ring = Kit.stroke(tile, Color3.new(1, 1, 1), 1, 0.82)
+	-- A car's photo is cut out: it stands on the box's own stage, with no
+	-- box of its own round it (ui-flow: a box in a box). A car with no
+	-- photo keeps its paint swatch.
 	e.draw(tile)
+	local bare = e.shape == "car" and tile:FindFirstChild("Photo") ~= nil
+	if bare then
+		tile.BackgroundTransparency = 1
+		ring.Enabled = false
+	end
 	if round then
 		roundChildren(tile, math.floor(tile.Size.Y.Offset / 2))
 	end
@@ -520,6 +542,50 @@ end
 -- loses before its blocks.
 Parts.LIST_PAD_X = 12
 
+-- At an end of a scrolling list with more past it, the list fades into
+-- what is under it: the panel's own colour (Kit.panel's gradient, near its
+-- top and its foot), or a shade's black, never quite solid as the shade is
+-- not. The caller shows them (`top`, `bottom`); `watch` does it from a
+-- scroll's own canvas (the settings, which have no boxes to measure).
+export type Fades = { top: Frame, bottom: Frame, watch: (scroll: ScrollingFrame) -> () }
+function Parts.fades(holder: GuiObject, touch: boolean, onShade: boolean): Fades
+	local fadeH = if touch then 18 else 24
+	local function fade(name: string, atStart: boolean): Frame
+		local color = if onShade
+			then Color3.new(0, 0, 0)
+			elseif atStart then Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.2)
+			else Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.85)
+		local solid = if onShade then 0.25 else 0
+		local f = Kit.frame(holder, name, color, 0)
+		f.AnchorPoint = Vector2.new(0, if atStart then 0 else 1)
+		f.Position = UDim2.fromScale(0, if atStart then 0 else 1)
+		f.Size = UDim2.new(1, 0, 0, fadeH)
+		f.ZIndex = 5
+		f.Visible = false
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Transparency = if atStart then NumberSequence.new(solid, 1) else NumberSequence.new(1, solid)
+		g.Parent = f
+		return f
+	end
+	local top, bottom = fade("FadeTop", true), fade("FadeBottom", false)
+	return {
+		top = top,
+		bottom = bottom,
+		watch = function(scroll: ScrollingFrame)
+			local function edges()
+				local over = scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y
+				top.Visible = scroll.CanvasPosition.Y > 1
+				bottom.Visible = over > 1 and scroll.CanvasPosition.Y < over - 1
+			end
+			scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
+			scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
+			scroll:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(edges)
+			task.defer(edges)
+		end,
+	}
+end
+
 -- The items in a scrolling grid (`cols` across) or list (cols 1), built
 -- again on every fill. Returns the boxes by key, for refresh and pop.
 -- `root` holds the scroll and goes in the layout's list.
@@ -561,31 +627,8 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	grid.CellPadding = UDim2.fromOffset(gap, gap)
 	grid.Parent = scroll
 
-	-- At an end with more past it, the list fades into what is under it:
-	-- the panel's own colour (Kit.panel's gradient, near its top and its
-	-- foot), or a shade's black, never quite solid as the shade is not.
-	local fadeH = if ctx.touch then 18 else 24
-	local onShade = m.backdrop == "shade"
-	local function fade(name: string, atStart: boolean): Frame
-		local color = if onShade
-			then Color3.new(0, 0, 0)
-			elseif atStart then Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.2)
-			else Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.85)
-		local solid = if onShade then 0.25 else 0
-		local f = Kit.frame(holder, name, color, 0)
-		f.AnchorPoint = Vector2.new(0, if atStart then 0 else 1)
-		f.Position = UDim2.fromScale(0, if atStart then 0 else 1)
-		f.Size = UDim2.new(1, 0, 0, fadeH)
-		f.ZIndex = 5
-		f.Visible = false
-		local g = Instance.new("UIGradient")
-		g.Rotation = 90
-		g.Transparency = if atStart then NumberSequence.new(solid, 1) else NumberSequence.new(1, solid)
-		g.Parent = f
-		return f
-	end
-	local topFade = fade("FadeTop", true)
-	local bottomFade = fade("FadeBottom", false)
+	local fades = Parts.fades(holder, ctx.touch, m.backdrop == "shade")
+	local topFade, bottomFade = fades.top, fades.bottom
 
 	local boxes: { { e: Types.Entry, box: Box } } = {}
 	-- Measured on the boxes themselves, in screen pixels (CanvasPosition
@@ -632,6 +675,11 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 				table.insert(boxes, { e = e, box = box })
 			end
 			scroll.CanvasPosition = Vector2.zero
+			-- A new set eases up into place (ui-flow: it had swapped in a
+			-- frame, and a tab tap read as a flicker).
+			if #entries > 0 then
+				Parts.settle(scroll, Parts.LIFT)
+			end
 			-- The grid places the new boxes on the next layout pass.
 			task.defer(edges)
 		end,
@@ -671,7 +719,7 @@ function Parts.footLine(parent: Instance, h: number, size: number, noteSize: num
 	return {
 		root = foot,
 		set = function(f: Types.Foot)
-			foot.Visible = f.name ~= "" and f.action ~= "drive"
+			foot.Visible = f.name ~= "" and f.action ~= "drive" and f.action ~= "wait"
 			name.Text = if f.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {f.name}` else f.name
 			note.Text = f.note
 		end,
@@ -684,12 +732,23 @@ end
 
 export type Picker = { root: Frame, set: (id: string) -> () }
 
--- Slanted tabs sharing `width` (or each as wide as its word).
+-- Slanted tabs sharing `width` (or each as wide as its word). Words of
+-- very different lengths share it by length (the menu's KSA beside ABU
+-- DHABI, its ALL beside the star), alike ones evenly (the garage's).
 function Parts.slants(parent: Instance, ctx: Types.Ctx, defs: { Types.ViewDef }, h: number, size: number, gap: number, width: number?): Picker
 	local tabDefs: { Kit.TabDef } = {}
+	local total, least, most = 0, math.huge, 0
 	for _, d in defs do
-		local w = if width then math.floor((width - gap * (#defs - 1)) / #defs) else math.floor(#d.label * size * 0.8 + size * 2)
-		table.insert(tabDefs, { id = d.id, label = d.label, width = w })
+		local wt = #d.label + 3
+		total += wt
+		least = math.min(least, wt)
+		most = math.max(most, wt)
+	end
+	local weighted = most >= least * 1.6
+	for _, d in defs do
+		local share = if weighted then (#d.label + 3) / total else 1 / #defs
+		local w = if width then math.floor((width - gap * (#defs - 1)) * share) else math.floor(#d.label * size * 0.8 + size * 2)
+		table.insert(tabDefs, { id = d.id, label = d.label, width = w, star = d.star })
 	end
 	local t = Kit.tabs(parent, tabDefs, h, size, gap, function(id: string)
 		if not ctx.busy() then
@@ -749,13 +808,23 @@ end
 ------------------------------------------------------------------------
 
 -- A column of words, the chosen one white and bigger with a green bar
--- beside it, its Arabic after it when `arabic`.
+-- beside it, its Arabic after it when `arabic`. The bar is one marker that
+-- slides to the word chosen (UI_SYSTEM.md: "the sodium marker beside it,
+-- which slides to a new choice"; it had jumped).
 function Parts.wordRail(parent: Instance, ctx: Types.Ctx, rowH: number, size: number, sizeOn: number, arabic: boolean): Picker
 	local col = Kit.frame(parent, "Rail")
 	col.AutomaticSize = Enum.AutomaticSize.Y
 	col.Size = UDim2.fromScale(1, 0)
-	Kit.list(col, true, 0)
-	local items: { [string]: { b: TextButton, word: TextLabel, ar: TextLabel?, bar: Frame } } = {}
+	local list = Kit.frame(col, "Words")
+	list.AutomaticSize = Enum.AutomaticSize.Y
+	list.Size = UDim2.fromScale(1, 0)
+	Kit.list(list, true, 0)
+	local barH = math.floor(rowH * 0.5)
+	local marker = Kit.frame(col, "Marker", Kit.C.green, 0)
+	marker.Size = UDim2.fromOffset(4, barH)
+	marker.Visible = false
+	Kit.corner(marker, 2)
+	local items: { [string]: { word: TextLabel, ar: TextLabel?, row: number } } = {}
 	for i, d in ctx.tabs do
 		local b = Instance.new("TextButton")
 		b.Name = "Tab_" .. d.id
@@ -764,11 +833,6 @@ function Parts.wordRail(parent: Instance, ctx: Types.Ctx, rowH: number, size: nu
 		b.Text = ""
 		b.Size = UDim2.new(1, 0, 0, rowH)
 		b.LayoutOrder = i
-		local bar = Kit.frame(b, "Bar", Kit.C.green, 0)
-		bar.AnchorPoint = Vector2.new(0, 0.5)
-		bar.Position = UDim2.fromScale(0, 0.5)
-		bar.Size = UDim2.new(0, 4, 0.5, 0)
-		Kit.corner(bar, 2)
 		local line = Kit.frame(b, "Line")
 		line.Position = UDim2.fromOffset(math.floor(size * 1.1), 0)
 		line.Size = UDim2.new(1, -math.floor(size * 1.1), 1, 0)
@@ -793,9 +857,10 @@ function Parts.wordRail(parent: Instance, ctx: Types.Ctx, rowH: number, size: nu
 				ctx.act.tab(d.id)
 			end
 		end)
-		b.Parent = col
-		items[d.id] = { b = b, word = w, ar = ar, bar = bar }
+		b.Parent = list
+		items[d.id] = { word = w, ar = ar, row = i - 1 }
 	end
+	local current: string? = nil
 	return {
 		root = col,
 		set = function(id: string)
@@ -804,12 +869,22 @@ function Parts.wordRail(parent: Instance, ctx: Types.Ctx, rowH: number, size: nu
 				it.word.FontFace = Kit.font(if on then Enum.FontWeight.Heavy else Enum.FontWeight.ExtraBold, true)
 				it.word.TextSize = if on then sizeOn else size
 				it.word.TextColor3 = if on then Kit.C.text else Kit.C.sub
-				it.bar.Visible = on
 				local a = it.ar
 				if a then
 					a.Visible = on
 				end
 			end
+			local it = items[id]
+			marker.Visible = it ~= nil
+			if it and id ~= current then
+				local to = UDim2.fromOffset(0, it.row * rowH + math.floor((rowH - barH) / 2))
+				if current == nil then
+					marker.Position = to
+				else
+					TweenService:Create(marker, Parts.SETTLE, { Position = to }):Play()
+				end
+			end
+			current = id
 		end,
 	}
 end
@@ -849,7 +924,7 @@ function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number
 		b.Size = UDim2.fromOffset(wOff, h)
 		b.LayoutOrder = i
 		local g = Kit.gradient(b, Kit.C.greenTop, Kit.C.greenBottom)
-		local icon = Parts.icon(b, d.icon, iconS)
+		local icon = Parts.icon(b, d.icon, iconS, nil, d.sheet)
 		icon.AnchorPoint = Vector2.new(0.5, 0.5)
 		local word = Kit.text(b, "Word", d.label, size, Enum.FontWeight.ExtraBold, true, Kit.C.tabInk)
 		word.TextTruncate = Enum.TextTruncate.None
@@ -863,6 +938,7 @@ function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number
 		b.Parent = row
 		items[d.id] = { b = b, g = g, icon = icon, word = word, ar = ar }
 	end
+	local first = true
 	return {
 		root = row,
 		set = function(id: string)
@@ -870,7 +946,14 @@ function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number
 				local on = key == id
 				it.g.Enabled = on
 				it.b.ImageTransparency = if on then 0 else 0.93
-				it.b.Size = UDim2.fromOffset(if on then wChosen else wOff, h)
+				-- The chosen tab widens and the one it left narrows, eased,
+				-- so the row reads as one piece moving (ui-flow).
+				local want = UDim2.fromOffset(if on then wChosen else wOff, h)
+				if first then
+					it.b.Size = want
+				elseif it.b.Size ~= want then
+					TweenService:Create(it.b, Parts.SETTLE, { Size = want }):Play()
+				end
 				it.ar.Visible = on
 				if on then
 					local x = math.floor(h * 0.5) + math.floor(iconS * 0.6)
@@ -898,6 +981,7 @@ function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number
 					it.word.TextColor3 = Kit.C.tabInk
 				end
 			end
+			first = false
 		end,
 	}
 end
@@ -937,26 +1021,153 @@ function Parts.action(parent: Instance, ctx: Types.Ctx, w: number, h: number, si
 			b.Visible = a ~= "none"
 			live = a == "buy" or a == "drive"
 			b.ImageTransparency = 0
+			t.TextTransparency = 0
 			if a == "buy" then
 				b.ImageColor3 = Parts.C.sodium
 				t.TextColor3 = Parts.C.buyInk
 				t.TextStrokeTransparency = 1
 				t.Text = `BUY  <font face="Oswald" weight="bold">{Parts.money(foot.price)}</font>`
-			elseif a == "drive" then
+			elseif a == "drive" or a == "wait" then
+				-- Green: go (DRIVE THIS, SPAWN THIS CAR); faded while a
+				-- spawn cools down.
 				b.ImageColor3 = Kit.C.greenTop
+				b.ImageTransparency = if a == "wait" then 0.45 else 0
 				t.TextColor3 = Kit.C.text
+				t.TextTransparency = if a == "wait" then 0.3 else 0
 				t.TextStrokeColor3 = Color3.fromRGB(0, 60, 30)
 				t.TextStrokeTransparency = 0.75
-				t.Text = "DRIVE THIS"
+				t.Text = foot.label or "DRIVE THIS"
 			else
 				b.ImageColor3 = Parts.C.grey
 				b.ImageTransparency = 0.55
 				t.TextColor3 = Kit.C.tabInk
 				t.TextStrokeTransparency = 1
-				t.Text = "ON YOUR CAR"
+				t.Text = foot.label or "ON YOUR CAR"
 			end
 		end,
 	}
+end
+
+------------------------------------------------------------------------
+-- Motion: one language for every screen (ui-flow, 2026-10-12, the owner:
+-- "stop it from being so choppy"). A piece comes in from the edge it lives
+-- on and settles (IN); content that changes in place eases up a few pixels
+-- (SETTLE); what goes leaves the way it came, quicker (OUT). Positions
+-- only: a fade would need a CanvasGroup, which redraws its children soft.
+------------------------------------------------------------------------
+
+Parts.IN = TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+Parts.OUT = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+Parts.SETTLE = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+-- How far content that changed in place eases up.
+Parts.LIFT = 14
+-- Past the edge a piece comes from: with no fade, it must start out of
+-- sight, or it would appear and then move.
+local CLEAR = 24
+
+-- A piece's resting place, taken the first time it moves.
+local HOME = "MotionHome"
+local function home(o: GuiObject): UDim2
+	local h = o:GetAttribute(HOME)
+	if typeof(h) == "UDim2" then
+		return h
+	end
+	o:SetAttribute(HOME, o.Position)
+	return o.Position
+end
+
+-- In from (dx, dy) away, after `delay`.
+function Parts.slideIn(o: GuiObject, dx: number, dy: number, delay: number?)
+	local h = home(o)
+	o.Position = h + UDim2.fromOffset(dx, dy)
+	local d = delay or 0
+	local info = if d > 0 then TweenInfo.new(Parts.IN.Time, Parts.IN.EasingStyle, Parts.IN.EasingDirection, 0, false, d) else Parts.IN
+	TweenService:Create(o, info, { Position = h }):Play()
+end
+
+-- Out toward (dx, dy).
+function Parts.slideOut(o: GuiObject, dx: number, dy: number)
+	local h = home(o)
+	TweenService:Create(o, Parts.OUT, { Position = h + UDim2.fromOffset(dx, dy) }):Play()
+end
+
+-- Eases up into place from `dy` below (new content in a place that stays).
+function Parts.settle(o: GuiObject, dy: number)
+	local h = home(o)
+	o.Position = h + UDim2.fromOffset(0, dy)
+	TweenService:Create(o, Parts.SETTLE, { Position = h }):Play()
+end
+
+-- A screen's pieces: `left` and `right` come from their sides, `top` from
+-- above, `bottom` from below, each from just out of sight; `content` is
+-- what a switch from a screen in the same frame settles. `room` and
+-- `scale` are the layout's (Parts.root).
+export type Pieces = {
+	room: Vector2,
+	scale: number,
+	left: { GuiObject },
+	right: { GuiObject },
+	top: { GuiObject },
+	bottom: { GuiObject },
+	content: { GuiObject },
+}
+
+-- A piece's box at rest, in the layout's drawing pixels.
+local function rest(o: GuiObject, scale: number): (number, number, number, number)
+	local h = home(o)
+	local w, ht = o.Size.X.Offset, o.Size.Y.Offset
+	if w <= 0 or ht <= 0 then
+		-- Sized by its content (AutomaticSize): what it measures now.
+		w = math.max(w, o.AbsoluteSize.X / scale)
+		ht = math.max(ht, o.AbsoluteSize.Y / scale)
+	end
+	return h.X.Offset - o.AnchorPoint.X * w, h.Y.Offset - o.AnchorPoint.Y * ht, w, ht
+end
+
+-- How far each piece goes to be out of sight past its edge.
+local function travels(p: Pieces): { { o: GuiObject, dx: number, dy: number } }
+	local out = {}
+	for _, o in p.left do
+		local x, _, w = rest(o, p.scale)
+		table.insert(out, { o = o, dx = -(x + w + CLEAR), dy = 0 })
+	end
+	for _, o in p.right do
+		local x = rest(o, p.scale)
+		table.insert(out, { o = o, dx = p.room.X - x + CLEAR, dy = 0 })
+	end
+	for _, o in p.top do
+		local _, y, _, ht = rest(o, p.scale)
+		table.insert(out, { o = o, dx = 0, dy = -(y + ht + CLEAR) })
+	end
+	for _, o in p.bottom do
+		local _, y = rest(o, p.scale)
+		table.insert(out, { o = o, dx = 0, dy = p.room.Y - y + CLEAR })
+	end
+	return out
+end
+
+-- In: every piece from out of sight past its edge, a little apart (the
+-- shades first, then the words, the title, the column, the action).
+function Parts.intro(p: Pieces, switch: boolean)
+	if switch then
+		-- The chrome is where it was on the screen before; only what
+		-- changed settles.
+		for _, o in p.content do
+			Parts.settle(o, Parts.LIFT)
+		end
+		return
+	end
+	for i, t in travels(p) do
+		Parts.slideIn(t.o, t.dx, t.dy, math.min(i - 1, 6) * 0.025)
+	end
+end
+
+-- Out: every piece back past its edge; returns how long that takes.
+function Parts.outro(p: Pieces): number
+	for _, t in travels(p) do
+		Parts.slideOut(t.o, t.dx, t.dy)
+	end
+	return Parts.OUT.Time
 end
 
 ------------------------------------------------------------------------

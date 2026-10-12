@@ -4,19 +4,25 @@
 -- FOR mobile, make the options in there also squares/blocks"; after
 -- several rounds, "remove the shades from glass ... for frame and showcase
 -- move them more to the ight and lightly higher just to align more with
--- other elements . remove other modes"). In all of them the car is the
+-- other elements . remove other modes"). In all of them the subject is the
 -- big thing in the middle under its name; the categories are words down
 -- the left on a shade, EXIT and the layout switch under them; the cash is
 -- where the HUD has it (the controller's, Parts.hudCash). The right side
 -- lines up under the cash (its right edge and just below its foot) and
--- holds the sub-tabs (REV or SHOP PLATES beside them), a note, the items
--- as square blocks two across, a hairline, the item picked, and the action
--- under them:
+-- holds the sub-tabs (REV or SHOP PLATES beside them), a note, a form
+-- (the plate search, the settings), the items as square blocks two
+-- across, a hairline, the item picked, and the action under them:
 --   SHOWCASE  ("column") on a graphite panel.
 --   GLASS     ("glass") on the panel see-through.
 --   FRAME     ("frame") on a shade, the blocks in a thin outlined tray.
 -- SHADES, EDGE, SHELF, CARD and WIDE were tried and went.
+--
+-- The menu draws through this too (ui-flow, 2026-10-12): its CARS, PLATES
+-- and SETTINGS are the words, HAJWALA the title, the picked car or plate
+-- the subject (drawn by the menu in `stage`), so the car menu and the
+-- garage are one frame and a player never sees the screen rearrange.
 local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
+local CarArt = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Art"))
 local Types = require(script.Parent:WaitForChild("Types"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
 
@@ -39,7 +45,8 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 
 	-- The words' shade, reaching the screen's edge on any phone (the owner,
 	-- 2026-10-12: on a panel instead it looked "way worse").
-	Parts.edgeShade(gui, root, room, "left", navW, if touch then 90 else 140)
+	local shadeL = Parts.edgeShade(gui, root, room, "left", navW, if touch then 90 else 140)
+	local shadesR: { GuiObject } = {}
 
 	-- The categories, EXIT and the layout switch under them.
 	local rail = Parts.wordRail(root, ctx, if touch then 38 else 46, if touch then 13 else 16, if touch then 17 else 21, true)
@@ -60,18 +67,19 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		end
 	end)
 
-	-- The car's name over it.
+	-- The place and the subject's name over it.
 	local cx = M + navW + (if touch then 14 else 24)
 	local head = Kit.frame(root, "Head")
 	head.Position = UDim2.fromOffset(cx, M)
 	head.AutomaticSize = Enum.AutomaticSize.XY
 	Kit.list(head, true, if touch then 2 else 4)
-	local title = Parts.title(head, if touch then 15 else 19)
+	local title = Parts.title(head, if touch then 15 else 19, ctx.title)
 	title.LayoutOrder = 1
+	local nameH = if touch then 34 else 46
 	local nameRow = Kit.frame(head, "NameRow")
 	nameRow.LayoutOrder = 2
 	nameRow.AutomaticSize = Enum.AutomaticSize.X
-	nameRow.Size = UDim2.fromOffset(0, if touch then 34 else 46)
+	nameRow.Size = UDim2.fromOffset(0, nameH)
 	Kit.list(nameRow, false, 10, Enum.VerticalAlignment.Center)
 	local carName = Kit.text(nameRow, "Name", "", if touch then 28 else 40, Enum.FontWeight.Heavy, true)
 	carName.AutomaticSize = Enum.AutomaticSize.X
@@ -83,6 +91,21 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	chipHolder.AutomaticSize = Enum.AutomaticSize.X
 	chipHolder.Size = UDim2.fromOffset(0, if touch then 20 else 24)
 	local chip: Frame? = nil
+	local chipText = ""
+	-- The favourite star, where a screen has one (the menu's cars).
+	local starIcon: ImageLabel? = nil
+	if ctx.starred then
+		local star = Kit.iconButton(nameRow, "Fav", CarArt.starLine, if touch then 30 else 36)
+		star.LayoutOrder = 2
+		star.BackgroundTransparency = 1
+		star.Activated:Connect(function()
+			local fn = ctx.act.star
+			if fn and not ctx.busy() then
+				fn()
+			end
+		end)
+		starIcon = star:FindFirstChild("Icon") :: ImageLabel
+	end
 
 	-- The right side, its right edge under the cash's and its top just
 	-- below it (Parts.coinAnchor; kept near the gui's corner should the
@@ -97,24 +120,29 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	local sideH = room.Y - 2 * M - actionH - sideTop
 	local cols = if touch then 2 else 3
 	local tray = variant == "frame"
+	local column: Frame -- what slides in from the right
 	local body: Frame
 	local inner: number -- the width its pieces have
 	local block: number
+	local sideLeft: number
 	if tray then
 		-- FRAME: on a shade like the words', the blocks in a tray that
 		-- adds its own padding round them.
 		block = if touch then 104 else 110
 		inner = cols * block + gap * (cols - 1) + Parts.LIST_PAD_X + 12
-		Parts.edgeShade(gui, root, room, "right", room.X - (right - inner), if touch then 70 else 110)
+		sideLeft = right - inner
+		table.insert(shadesR, Parts.edgeShade(gui, root, room, "right", room.X - sideLeft, if touch then 70 else 110))
 		local side = Kit.frame(root, "Side")
-		side.Position = UDim2.fromOffset(right - inner, sideTop)
+		side.Position = UDim2.fromOffset(sideLeft, sideTop)
 		side.Size = UDim2.fromOffset(inner, sideH)
 		body = side
+		column = side
 	else
 		local colW = if touch then 252 else 352
 		local pad = if touch then 8 else 12
 		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
-		col.Position = UDim2.fromOffset(right - colW, sideTop)
+		sideLeft = right - colW
+		col.Position = UDim2.fromOffset(sideLeft, sideTop)
 		col.Size = UDim2.fromOffset(colW, sideH)
 		if variant == "glass" then
 			-- See-through, no dots: the garage shows through it.
@@ -126,11 +154,19 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		end
 		Kit.pad(panelBody, pad, pad, pad, pad)
 		body = panelBody
+		column = col
 		inner = colW - 2 * pad
 		block = math.floor((inner - Parts.LIST_PAD_X - gap * (cols - 1)) / cols)
 	end
 	Kit.list(body, true, if touch then 7 else 10)
 	local sideW = if tray then inner else inner + 2 * (if touch then 8 else 12)
+
+	-- The room between the words and the items, under the name: the
+	-- subject's (the garage's car is the 3D one behind it).
+	local stageTop = M + (if touch then 15 else 19) + 4 + nameH + (if touch then 6 else 10)
+	local stage = Kit.frame(root, "Stage")
+	stage.Position = UDim2.fromOffset(cx, stageTop)
+	stage.Size = UDim2.fromOffset(math.max(sideLeft - (if touch then 14 else 24) - cx, 0), room.Y - M - stageTop)
 
 	-- The sub-tabs (or the category's name), REV or SHOP PLATES at the
 	-- end of their row.
@@ -173,33 +209,36 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		m.backdrop = "shade"
 	end
 	local listParent: Frame = body
+	local itemsBox: Frame -- what holds the items in the column
 	if tray then
 		-- FRAME: the blocks in a tray, a hairline round them and the
 		-- faintest fill, on the shade.
 		local t = Kit.frame(body, "Tray", Color3.new(1, 1, 1), 0.96)
-		t.LayoutOrder = 3
+		t.LayoutOrder = 4
 		t.Size = UDim2.fromScale(1, 0)
 		Kit.fill(t)
 		Kit.corner(t, if touch then 12 else 14)
 		Kit.stroke(t, Color3.new(1, 1, 1), 1, 0.82)
 		Kit.pad(t, 6, 6, 6, 6)
 		listParent = t
+		itemsBox = t
 	end
 	local items = Parts.items(listParent, ctx, cols, cols, block, block, gap, m)
 	if tray then
 		items.root.Size = UDim2.fromScale(1, 1)
 	else
-		items.root.LayoutOrder = 3
+		items.root.LayoutOrder = 4
 		items.root.Size = UDim2.fromScale(1, 0)
 		Kit.fill(items.root)
+		itemsBox = items.root
 	end
 
 	-- A hairline over the item picked, parting it from the blocks.
 	local rule = Kit.frame(body, "Rule", Color3.new(1, 1, 1), 0.9)
-	rule.LayoutOrder = 4
+	rule.LayoutOrder = 5
 	rule.Size = UDim2.new(1, 0, 0, 1)
 	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
-	foot.root.LayoutOrder = 5
+	foot.root.LayoutOrder = 6
 
 	local action = Parts.action(root, ctx, sideW, actionH, if touch then 17 else 21)
 	action.root.AnchorPoint = Vector2.new(1, 1)
@@ -207,16 +246,20 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 
 	local subs: Parts.Picker? = nil
 	local heading: Frame? = nil
+	local form: Types.Form? = nil
 
 	local function fill()
-		local s, hd = subs, heading
+		local s, hd, f = subs, heading, form
 		if s then
 			s.root:Destroy()
 		end
 		if hd then
 			hd:Destroy()
 		end
-		subs, heading = nil, nil
+		if f then
+			f.root:Destroy()
+		end
+		subs, heading, form = nil, nil, nil
 		local x = ctx.extra()
 		extra.Visible = x ~= nil
 		extra.Text = if x == "rev" then "REV" elseif x == "shop" then "SHOP PLATES" else ""
@@ -233,7 +276,21 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 				end
 			end
 		end
-		items.fill(ctx.entries())
+		-- The screen's form (the plate search, the settings), over the items
+		-- or in their place.
+		local fills = false
+		local builder = if ctx.form then ctx.form() else nil
+		if builder then
+			local made = builder(body, inner, m.backdrop == "shade")
+			made.root.LayoutOrder = 3
+			if made.fills then
+				Kit.fill(made.root)
+			end
+			fills = made.fills
+			form = made
+		end
+		itemsBox.Visible = not fills
+		items.fill(if fills then {} else ctx.entries())
 	end
 
 	local function refresh()
@@ -250,21 +307,64 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		action.set(f)
 		foot.set(f)
 		rule.Visible = foot.root.Visible
-		carName.Text = ctx.carName()
-		local old = chip
-		if old then
-			old:Destroy()
+		local name = ctx.carName()
+		carName.Text = name
+		nameRow.Visible = name ~= ""
+		local drive = ctx.carDrive()
+		if drive ~= chipText then
+			chipText = drive
+			local old = chip
+			if old then
+				old:Destroy()
+			end
+			chip = if drive ~= "" then Kit.chip(chipHolder, drive, if touch then 20 else 24, if touch then 9 else 11) else nil
 		end
-		chip = Kit.chip(chipHolder, ctx.carDrive(), if touch then 20 else 24, if touch then 9 else 11)
+		local si, st = starIcon, ctx.starred
+		if si and st then
+			-- nil: no star on this screen (the menu's PLATES, SETTINGS).
+			local v = st()
+			local holder = si.Parent :: GuiObject
+			holder.Visible = v ~= nil
+			local fav = v == true
+			si.Image = if fav then CarArt.star else CarArt.starLine
+			si.ImageColor3 = if fav then Kit.C.green else Color3.new(1, 1, 1)
+			si.ImageTransparency = if fav then 0 else 0.4
+		end
 	end
 
+	-- Coming in: the words and their shade from the left, the column and
+	-- the action from the right, the title from above, the subject up from
+	-- below (Parts.intro).
+	local left: { GuiObject } = { shadeL, rail.root, exit, layoutButton }
+	local rightSide: { GuiObject } = {}
+	for _, sh in shadesR do
+		table.insert(rightSide, sh)
+	end
+	table.insert(rightSide, column)
+	table.insert(rightSide, action.root)
+	local pieces: Parts.Pieces = {
+		room = room,
+		scale = scale,
+		left = left,
+		right = rightSide,
+		top = { head },
+		bottom = { stage },
+		content = { column, stage, head },
+	}
 	return {
 		root = root,
+		stage = stage,
 		fill = fill,
 		refresh = refresh,
 		pop = items.pop,
 		destroy = function()
 			root:Destroy()
+		end,
+		intro = function(switch: boolean)
+			Parts.intro(pieces, switch)
+		end,
+		outro = function(): number
+			return Parts.outro(pieces)
 		end,
 	}
 end
