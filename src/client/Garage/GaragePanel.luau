@@ -19,20 +19,18 @@
 --             with the action and EXIT; the items in a panel on the left.
 --   SHOWCASE  (Looks/Showcase) the car big in the middle; the categories as
 --             words down the left on a shade; the items as square blocks
---             down the right: SHOWCASE (on a panel), SHADES (on a shade),
---             and between them GLASS (a see-through panel over the shade),
---             EDGE (a panel run off the right edge) and FRAME (the shade,
---             the blocks in an outlined tray). SHELF, CARD and WIDE were
---             tried and went (2026-10-12: "remove shelf"; "showcades and
---             shade are the best delete the others").
+--             down the right, lined up under the cash: SHOWCASE (on a
+--             panel), GLASS (the panel see-through), FRAME (on a shade, the
+--             blocks in an outlined tray). SHADES, EDGE, SHELF, CARD and
+--             WIDE were tried and went (2026-10-12: "remove other modes").
 --   SHADE     (Looks/Shade) the garage-ui-overhaul's shade and rail of words,
 --             the sub-tabs as words along the bottom. Parked (2026-10-12,
 --             the owner on the phone: "i liked those 2 mobile layouts the
 --             most so lets narrow it down to that for now"): out of the
 --             lists, kept to come back to.
 -- A phone has SHOWCASE's variants (2026-10-12: "lets finalize on the shade
--- mode FOR mobile", then "make some mroe variants of showcase that are
--- more lined up with shades"); a PC has DOCK as well, not settled yet. The cash is drawn
+-- mode FOR mobile", then "remove other modes"); a PC has DOCK as well,
+-- not settled yet. The cash is drawn
 -- here, where the HUD has it, whatever the layout (Parts.hudCash). The LAYOUT button in
 -- each cycles them; the choice is the LocalPlayer attribute GarageLayout
 -- and lasts the session. Each puts the car where its panels leave room
@@ -152,9 +150,7 @@ local function variant(id: string, name: string, v: Showcase.Variant): Types.Lay
 end
 local SHOWCASES: { Types.Layout } = {
 	variant("showcase", "SHOWCASE", "column"),
-	variant("shades", "SHADES", "shades"),
 	variant("glass", "GLASS", "glass"),
-	variant("edge", "EDGE", "edge"),
 	variant("frame", "FRAME", "frame"),
 }
 local PHONE_LAYOUTS: { Types.Layout } = SHOWCASES
@@ -1497,19 +1493,22 @@ buildView = function(snap: boolean)
 	table.clear(taps)
 	press = nil
 	touch = UIKit.isTouch()
+	-- The cash first: a layout lines its right side up under it.
+	local oldCash = cashGui
+	if oldCash then
+		oldCash:Destroy()
+	end
+	-- Over the panel's gui: FRAME's right-hand shade runs up through the
+	-- corner and would dim it.
+	local cg, cp = Parts.hudCash("GarageCash", DISPLAY_ORDER + 1, player:WaitForChild("PlayerGui"))
+	cashGui, cashPill = cg, cp
 	local ctx = makeCtx(g)
+	ctx.coins = Parts.coinAnchor(g, cg)
 	ctxNow = ctx
 	local l = layout()
 	local v = l.build(g, ctx)
 	view = v
 	viewRoot = v.root
-	local oldCash = cashGui
-	if oldCash then
-		oldCash:Destroy()
-	end
-	-- Over the panel's gui: a right-hand shade (SHADES, GLASS, FRAME) or
-	-- EDGE's drawer runs up through that corner and would dim it.
-	cashGui, cashPill = Parts.hudCash("GarageCash", DISPLAY_ORDER + 1, player:WaitForChild("PlayerGui"))
 	collapsed = false
 	local r = restore
 	if r then

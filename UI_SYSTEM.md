@@ -257,19 +257,18 @@ green. A desktop keeps the CARS button and the keys.
 The second is **the garage panel** (2026-10-12: "implement these 3 to let
 me chose from ... for both pc and phone"): layouts from the canvas
 (`src/client/Garage/Looks`), switched with the LAYOUT button in each (the
-LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's four
-variants (2026-10-12: "lets finalize on the shade mode FOR mobile", then
-"overall the right side needs some work, make 4 variants"): the category
-words on a shade down the left that runs to the screen's edge, the items
-as square blocks down the right, under the sub-tabs with REV or SHOP
-PLATES beside them, over a hairline and the item picked, the action
-under them: on a graphite panel (SHOWCASE) or on a shade (SHADES), the
-two the owner kept ("showcades and shade are the best"), and between
-them ("more lined up with shades") a see-through panel over the shade
-(GLASS), a panel run off the right edge like a drawer with the action
-inside (EDGE), the shade with the blocks in an outlined tray (FRAME). A
-PC has DOCK as well; SHADE is parked; SHELF, CARD and WIDE were tried and
-removed. The cash
+LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's three
+variants (2026-10-12, after several rounds: "remove other modes"): the
+category words on a shade down the left that runs to the screen's edge,
+the items as square blocks down the right, under the sub-tabs with REV or
+SHOP PLATES beside them, over a hairline and the item picked, the action
+under them: on a graphite panel (SHOWCASE), on the panel see-through
+(GLASS), or on a shade with the blocks in an outlined tray (FRAME). The
+right side lines up under the cash, its right edge and just below its
+foot (`Parts.coinAnchor`: the HUD's gui keeps out of the notch only, the
+panel's out of Roblox's margins too, so on a phone the coins sat right of
+the panel). A PC has DOCK as well; SHADE is parked; SHADES, EDGE, SHELF,
+CARD and WIDE were tried and removed. The cash
 sits where the driving HUD has it in every layout (`Parts.hudCash`, from
 HudLab/LayoutD's numbers), so the coins never move going in. DOCK
 shows every item as a square block, three across on a phone ("the

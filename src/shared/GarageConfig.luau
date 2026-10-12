@@ -48,9 +48,7 @@ GarageConfig.screenOffset = 0.18
 GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,
-	shades = -0.06,
 	glass = -0.06,
-	edge = -0.06,
 	frame = -0.06,
 	shade = 0.22,
 } :: { [string]: number }

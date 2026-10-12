@@ -7,6 +7,7 @@
 -- sodium of the HUD's coin: prices, BUY and the confirm sheet's BUY; green
 -- is go and yours (DRIVE THIS, ON CAR, OWNED, what shows on the car).
 -- The category icons are art/garage.
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -189,6 +190,21 @@ function Parts.hudCash(name: string, displayOrder: number, parent: Instance): (S
 	g.Parent = parent
 	place()
 	return g, cash
+end
+
+-- Where the cash pill's right edge and foot fall in `panel`'s pixels, for
+-- the right side to line up under it (the owner, 2026-10-12: "move them
+-- more to the right and slightly higher just to align more with other
+-- elements"). The HUD's gui keeps out of the device's notch only, the
+-- panel's out of Roblox's own margins too, so on a phone the coins sit
+-- right of the panel's edge. X: the guis' AbsolutePositions share one
+-- space. Y: the cash's gui starts at the screen's top, the panel's under
+-- the top bar (GetGuiInset), so the foot can be above the panel's top.
+function Parts.coinAnchor(panel: ScreenGui, cash: ScreenGui): Vector2
+	local h = cash.AbsoluteSize.Y
+	local right = cash.AbsolutePosition.X + cash.AbsoluteSize.X - LayoutD.EDGE_R * h - panel.AbsolutePosition.X
+	local inset = GuiService:GetGuiInset()
+	return Vector2.new(right, (LayoutD.CASH_Y + LayoutD.CASH_H) * h - inset.Y)
 end
 
 -- A square dark button: an icon from the sheet, or a glyph, and maybe a

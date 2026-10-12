@@ -77,6 +77,9 @@ export type Ctx = {
 	tap: (gui: GuiObject, scroll: ScrollingFrame?, onTap: () -> (), onDown: ((boolean) -> ())?) -> (),
 	-- A confirm sheet is open: buttons under it ignore taps.
 	busy: () -> boolean,
+	-- The cash pill's right edge and foot, in the panel gui's pixels
+	-- (Parts.coinAnchor), for a right side to line up under it; nil: none.
+	coins: Vector2?,
 }
 
 export type View = {
