@@ -27,8 +27,7 @@ local Art = require(HudLab:WaitForChild("Art"))
 local Finishes = require(HudLab:WaitForChild("Finishes"))
 local R = require(HudLab:WaitForChild("Readouts"))
 
--- The cash's box, fractions of the screen's height (Versions.cashW leaves
--- room left of it for the coin's overhang).
+-- The cash's box, fractions of the screen's height.
 local CASH_W = 0.32
 -- How long a banked slide's cash takes to fly into the coin.
 local FLY_SECONDS = 0.6

@@ -243,6 +243,17 @@ spawn menu's panel on these tokens. When the owner settles on a layout,
 either the other menus follow this look or it comes back onto the tokens;
 until then, leave it on its own.
 
+The owner then asked for every menu in this look, one change at a time,
+phones first (2026-10-11: "make every single menu UI coherent", boards on
+the "Hajwala Menus" canvas). The first change is **the phone's top bar**
+(`src/client/TopBar.luau`): one row right of Roblox's own buttons, GARAGE
+(the car menu) and SETTINGS always, RESET, VIEW and STYLE between them
+while driving. It replaces the CARS button and layout D's round buttons by
+the cash on a phone; EXIT and UI went (Settings has a HUD LAYOUT row now).
+Its buttons are the picker's: graphite squares with a hairline edge, the
+icon (art/topbar) over a heavy italic word, GARAGE edged in the picker's
+green. A desktop keeps the CARS button and the keys.
+
 ## Don'ts
 
 - No literal `Color3`, font or size in UI code: read `UITheme`.

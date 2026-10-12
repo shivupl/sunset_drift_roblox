@@ -51,6 +51,7 @@ local UIKit = require(script.Parent.UIKit)
 local PlatesPanel = require(script.Parent.PlatesPanel)
 local SettingsPanel = require(script.Parent.SettingsPanel)
 local CarPicker = require(script.Parent:WaitForChild("CarPicker"))
+local TopBar = require(script.Parent:WaitForChild("TopBar"))
 
 local SpawnMenu = {}
 
@@ -114,6 +115,18 @@ local modalBefore = false
 local openButtonHidden = false
 
 local isTouch = UIKit.isTouch
+
+-- The way back into the menu shows while no menu is open and no garage view
+-- fills the screen: on a desktop the CARS button, on a phone the top bar
+-- (TopBar, whose GARAGE took the CARS button's place, 2026-10-11).
+local function paintOpen()
+	local free = not openButtonHidden and not SpawnMenu.isOpen()
+	local ob = openButton
+	if ob then
+		ob.Visible = free and not isTouch()
+	end
+	TopBar.setShown(free)
+end
 
 -- A fixed-size label in a type role. Not UIKit.text: these labels are sized
 -- and truncated by fit(), which AutomaticSize would fight.
@@ -800,7 +813,8 @@ local function build()
 	footer.TextXAlignment = Enum.TextXAlignment.Center
 	status = footer
 
-	-- The CARS button, on every platform: the only way back in on a phone.
+	-- The CARS button, on a desktop; a phone has the top bar's GARAGE instead
+	-- (TopBar, 2026-10-11), and paintOpen() keeps this hidden there.
 	-- In the top bar, right of Roblox's own buttons (GuiService.TopbarInset):
 	-- at the bottom centre it sat over the driving HUD's tacho (the owner,
 	-- 2026-10-08: "put the cars menu at the top").
@@ -846,10 +860,7 @@ function SpawnMenu.open()
 		g.Enabled = false
 		UserInputService.ModalEnabled = true
 		CarPicker.open()
-		local ob = openButton
-		if ob then
-			ob.Visible = false
-		end
+		paintOpen()
 		return
 	end
 	CarPicker.close()
@@ -865,8 +876,8 @@ function SpawnMenu.open()
 	local ob = openButton
 	if ob then
 		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
-		ob.Visible = false -- it sits under the backdrop; hide it while open
 	end
+	paintOpen() -- it sits under the backdrop; hidden while open
 	refreshButtons()
 end
 
@@ -885,8 +896,8 @@ function SpawnMenu.close()
 	local ob = openButton
 	if ob then
 		ob.Text = if isTouch() then "CARS" else "CARS  (M)"
-		ob.Visible = not openButtonHidden
 	end
+	paintOpen()
 end
 
 -- Handles for the garage panel (garage plan, task 7, 2026-09-28).
@@ -915,14 +926,11 @@ function SpawnMenu.cars(): { { id: string, entry: VehicleRig.CarEntry } }
 	return sortedCars()
 end
 
--- Hides the floating CARS button while the garage view fills the screen
--- (it sat over the car); M still opens the menu.
+-- Hides the floating CARS button (the top bar on a phone) while the garage
+-- view fills the screen (it sat over the car); M still opens the menu.
 function SpawnMenu.setOpenButtonHidden(hidden: boolean)
 	openButtonHidden = hidden
-	local ob = openButton
-	if ob and not SpawnMenu.isOpen() then
-		ob.Visible = not hidden
-	end
+	paintOpen()
 end
 
 function SpawnMenu.toggle()
@@ -964,6 +972,8 @@ function SpawnMenu.start(remotes: Folder)
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.M)
+	-- Studio's phone mode (ForceTouch) swaps the CARS button for the top bar.
+	Players.LocalPlayer:GetAttributeChangedSignal("ForceTouch"):Connect(paintOpen)
 	-- You start on foot: open straight away.
 	SpawnMenu.open()
 end

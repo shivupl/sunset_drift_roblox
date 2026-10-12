@@ -1,6 +1,7 @@
 --!strict
--- Versions of the whole HUD, cycled with the UI button (Y on a keyboard),
--- apart from the finish STYLE cycles (the owner, 2026-10-10: "make a couple
+-- Versions of the whole HUD, picked in Settings' HUD LAYOUT row (Y on a
+-- keyboard; the UI button went with the phone top bar, 2026-10-11), apart
+-- from the finish STYLE cycles (the owner, 2026-10-10: "make a couple
 -- versions of the whole UI that are improvements and let me chose... make a
 -- seppearate hud style button"). What was wrong with BOARD, in the owner's
 -- words: "the middle score-counting part is too big for no raeson", "the
@@ -24,14 +25,13 @@
 export type Version = {
 	id: string,
 	name: string,
-	cashW: number, -- how wide the cash is, fractions of the screen's height (the menu buttons sit left of it)
 }
 
 local list: { Version } = {
 	-- The trial opens on the newest, so the owner sees it at once.
-	{ id = "flow", name = "FLOW", cashW = 0.37 },
-	{ id = "side", name = "SIDE", cashW = 0.37 },
-	{ id = "board", name = "BOARD", cashW = 0.463 },
+	{ id = "flow", name = "FLOW" },
+	{ id = "side", name = "SIDE" },
+	{ id = "board", name = "BOARD" },
 }
 
 local byId: { [string]: Version } = {}

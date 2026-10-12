@@ -17,9 +17,10 @@
 --                  side it is up on is lit.
 --   bottom right   the gas in the corner, the brake left of it, HAND over
 --                  the brake, level with the NATL row and the gas's top
---   top right      EXIT / RESET / STYLE / UI, left of the cash (the HUD's);
---                  clear of Roblox's top bar and chat window, which are top
---                  left. STYLE cycles the finish, UI the version (Versions).
+--   top            nothing of its own: RESET, VIEW and STYLE are the top
+--                  bar's (TopBar, 2026-10-11), with GARAGE and SETTINGS,
+--                  right of Roblox's buttons. EXIT and UI went with it (the
+--                  owner kept RESET); Settings switches the version.
 --
 -- For FLOW and SIDE the controls had live effects (ripples, glints, a steer
 -- glow, NATL breathing, pedal light strips); the owner, 2026-10-10: "remove
@@ -40,7 +41,6 @@ local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
 local Art = require(HudLab:WaitForChild("Art"))
 local Finishes = require(HudLab:WaitForChild("Finishes"))
-local Versions = require(HudLab:WaitForChild("Versions"))
 
 local LayoutD = {}
 
@@ -53,16 +53,14 @@ LayoutD.EDGE_R = 0.02
 local STEER_X = 0.025
 local STEER_B = 0.1
 -- Two round sizes, so the buttons read as one set: BIG for what a thumb
--- lives on (steer, HAND), SMALL for the menu; NATL between them.
+-- lives on (steer, HAND), NATL a size down.
 local BIG = 0.21
 local NATL = 0.16
-local SMALL = 0.11
 local GAP = 0.035
 -- The pedals at their art's shape: the gas 400x1000, the brake 640x404.
 local GAS_W, GAS_H = 0.2, 0.5
 local BRAKE_W, BRAKE_H = 0.37, 0.2336
--- The cash, top right (its width is the version's, Versions.cashW); the
--- menu buttons line up left of it.
+-- The cash, top right (ScoreBoard, ScoreLive).
 LayoutD.CASH_H = 0.096
 LayoutD.CASH_Y = 0.026
 -- How see-through a control is with no thumb on it.
@@ -75,7 +73,7 @@ local STEER_BACK = 8
 
 -- Cells in Art.icons, 4 across.
 local ICON_CELL = 192
-local ICON = { left = 0, right = 1, natlL = 2, natlR = 3, hand = 4, exit = 5, reset = 6, style = 7, layout = 8, view = 9 }
+local ICON = { left = 0, right = 1, natlL = 2, natlR = 3, hand = 4 }
 
 -- A square the screen's height tall in a corner: children are placed in
 -- fractions of the height from that side.
@@ -187,7 +185,7 @@ local function round(parent: Instance, name: string, finish: Finishes.Finish, ic
 	}
 end
 
-function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish, version: Versions.Version): any
+function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish): any
 	-- Keep out of a notch and the home bar.
 	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 	local t = W.tracker()
@@ -266,25 +264,6 @@ function LayoutD.build(gui: ScreenGui, api: any, finish: Finishes.Finish, versio
 		hand.setLit(down)
 	end))
 	place(hand.root, brakeX, rowY, BIG, BIG)
-
-	-- EXIT / RESET / CAM / STYLE / UI, left of the cash.
-	local menu: { { name: string, icon: number, fn: () -> () } } = {
-		{ name = "Exit", icon = ICON.exit, fn = api.exit },
-		{ name = "Reset", icon = ICON.reset, fn = api.reset },
-		{ name = "View", icon = ICON.view, fn = api.view },
-		{ name = "Style", icon = ICON.style, fn = api.cycle },
-		{ name = "Layout", icon = ICON.layout, fn = api.layout },
-	}
-	for i, spec in menu do
-		local fn = spec.fn
-		local b = add(round(right, spec.name, finish, spec.icon, t, function(down)
-			if down then
-				fn()
-			end
-		end))
-		local fromRight = er + version.cashW + 0.02 + SMALL / 2 + (#menu - i) * (SMALL + 0.012)
-		place(b.root, 1 - fromRight, LayoutD.CASH_Y + LayoutD.CASH_H / 2, SMALL, SMALL)
-	end
 
 	return {
 		update = function(dt: number)

@@ -35,7 +35,7 @@ function ScoreBoard.build(root: Frame, right: Frame, f: Finishes.Finish): Score
 	pill.SliceCenter = Rect.new(40, 30, 260, 82)
 	pill.AnchorPoint = Vector2.new(1, 0)
 	pill.Position = UDim2.fromScale(1 - er, LayoutD.CASH_Y)
-	pill.Size = UDim2.fromScale(0.463, LayoutD.CASH_H) -- Versions: BOARD's cashW
+	pill.Size = UDim2.fromScale(0.463, LayoutD.CASH_H)
 	local cashLabel = R.label(pill, "Label", "CASH", f.label)
 	R.rect(cashLabel, 0.04, 0.3, 0.13, 0.36)
 	local cash = R.nums(pill, "Value", 9, "left")

@@ -17,6 +17,9 @@ HudLab.start()
 local ScoreController = require(script.ScoreController)
 local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
+local TopBar = require(script.TopBar)
+local Input = require(script.Input)
+local CameraViews = require(script.CameraViews)
 local CarBodies = require(script.CarBodies)
 local CarLights = require(script.CarLights)
 local CarPlates = require(script.CarPlates)
@@ -148,6 +151,22 @@ end)
 Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
+-- The phone's top bar, right of Roblox's buttons: GARAGE (the car menu) and
+-- SETTINGS always, RESET, VIEW and STYLE while driving. A desktop keeps the
+-- CARS button and the keys (M, R, V, U).
+TopBar.start({
+	garage = function()
+		SpawnMenu.openTab("cars")
+	end,
+	reset = function()
+		Input.pulse("reset")
+	end,
+	view = CameraViews.cycle,
+	style = HudLab.cycle,
+	settings = function()
+		SpawnMenu.openTab("settings")
+	end,
+})
 -- Walking into the garage opens the customisation view; the lift bay's
 -- raised car is built once the garage is here.
 GarageView.start()

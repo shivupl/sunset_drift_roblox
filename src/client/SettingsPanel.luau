@@ -8,6 +8,9 @@
 --     is no way for me to cycle UIs on the phone"; 2026-10-10: "make a
 --     couple variants of the same deisgn i can cycle through"). The STYLE
 --     button while driving and U cycle the same list.
+--   * HUD layout: one button per version of the HUD (Versions.luau: FLOW,
+--     SIDE, BOARD), the phone's only way to switch it since the UI button
+--     went with the top bar (TopBar, 2026-10-11). Y cycles the same list.
 --
 -- Its chrome reads UITheme (UI_SYSTEM.md); re-skinned onto the tokens on
 -- 2026-09-28, replacing the Theme table SpawnMenu used to pass in.
@@ -33,6 +36,10 @@ local hudGrid: Frame? = nil
 local hudGridLayout: UIGridLayout? = nil
 local hudNote: TextLabel? = nil
 local hudButtons: { [string]: TextButton } = {}
+local layoutHeading: TextLabel? = nil
+local layoutGrid: Frame? = nil
+local layoutGridLayout: UIGridLayout? = nil
+local layoutButtons: { [string]: TextButton } = {}
 -- Style buttons per row of the grid.
 local HUD_COLUMNS = 3
 
@@ -46,10 +53,18 @@ local function paint()
 	for id, b in hudButtons do
 		UIKit.setSelected(b, id == style)
 	end
+	local version = HudLab.currentVersion()
+	for id, b in layoutButtons do
+		UIKit.setSelected(b, id == version)
+	end
 end
 
 local function hudRows(): number
 	return math.max(1, math.ceil(#HudLab.styles() / HUD_COLUMNS))
+end
+
+local function layoutRows(): number
+	return math.max(1, math.ceil(#HudLab.versions() / HUD_COLUMNS))
 end
 
 local function text(parent: Instance, s: string, order: number): TextLabel
@@ -141,7 +156,34 @@ function SettingsPanel.build(parent: Instance, layoutOrder: number): Frame
 	hn.FontFace = UITheme.font("caption")
 	hn.TextColor3 = C.sandDim
 	hudNote = hn
+
+	local lh = text(f, "HUD LAYOUT", 7)
+	lh.FontFace = UITheme.font("title")
+	lh.TextColor3 = C.paint
+	layoutHeading = lh
+	local lgrid = Instance.new("Frame")
+	lgrid.Name = "HudLayout"
+	lgrid.BackgroundTransparency = 1
+	lgrid.LayoutOrder = 8
+	local lgl = Instance.new("UIGridLayout")
+	lgl.SortOrder = Enum.SortOrder.LayoutOrder
+	lgl.CellPadding = UDim2.fromOffset(8, 8)
+	lgl.Parent = lgrid
+	layoutGridLayout = lgl
+	for i, v in HudLab.versions() do
+		local b = UIKit.chip(lgrid, v.name, UIKit.isTouch())
+		b.Name = "Layout_" .. v.id
+		b.AutomaticSize = Enum.AutomaticSize.None
+		b.LayoutOrder = i
+		b.Activated:Connect(function()
+			HudLab.setVersion(v.id)
+		end)
+		layoutButtons[v.id] = b
+	end
+	lgrid.Parent = f
+	layoutGrid = lgrid
 	Players.LocalPlayer:GetAttributeChangedSignal("HudVariant"):Connect(paint)
+	Players.LocalPlayer:GetAttributeChangedSignal("HudLayout"):Connect(paint)
 
 	Sky.changed = function()
 		paint()
@@ -159,7 +201,9 @@ function SettingsPanel.height(isTouch: boolean): number
 	local noteH = if isTouch then 22 else 18
 	local rows = hudRows()
 	local gridH = rows * rowH + (rows - 1) * 8
-	return (headH + rowH + noteH) + (headH + gridH + noteH) + 8 * 5
+	local lrows = layoutRows()
+	local layoutH = lrows * rowH + (lrows - 1) * 8
+	return (headH + rowH + noteH) + (headH + gridH + noteH) + (headH + layoutH) + 8 * 7
 end
 
 -- Sizes the tab to the height the menu gives it.
@@ -190,6 +234,18 @@ function SettingsPanel.fit(height: number, isTouch: boolean)
 		end
 		hn.Size = n.Size
 		hn.TextSize = n.TextSize
+	end
+	local lh, lgrid, lgl = layoutHeading, layoutGrid, layoutGridLayout
+	if lh and lgrid and lgl then
+		local rowH = if isTouch then 56 else 44
+		local rows = layoutRows()
+		lh.Size = h.Size
+		lh.TextSize = h.TextSize
+		lgrid.Size = UDim2.new(1, 0, 0, rows * rowH + (rows - 1) * 8)
+		lgl.CellSize = UDim2.new(1 / HUD_COLUMNS, -8 * (HUD_COLUMNS - 1) / HUD_COLUMNS, 0, rowH)
+		for _, b in layoutButtons do
+			b.TextSize = UITheme.textSize("label", isTouch)
+		end
 	end
 end
 

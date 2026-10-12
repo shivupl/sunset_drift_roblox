@@ -9,13 +9,14 @@
 -- have and keep this"), then asked for "a couple variants of the same
 -- deisgn i can cycle through".
 --
--- Switching finish: the STYLE button on screen, U on a keyboard, the HUD
--- STYLE row in the menu's Settings tab (SettingsPanel), or the LocalPlayer
--- attribute HudVariant (a finish's id). Switching version (Versions.luau:
--- FLOW, SIDE, BOARD): the UI button, Y on a keyboard, or the attribute
--- HudLayout. Hud.luau and Input/Touch.luau hand each update, flash and
--- binding here. The CAM button cycles the driving view (CameraViews; V on a
--- keyboard) and the new view's name shows here too.
+-- Switching finish: the phone top bar's STYLE (TopBar), U on a keyboard,
+-- the HUD STYLE row in the menu's Settings tab (SettingsPanel), or the
+-- LocalPlayer attribute HudVariant (a finish's id). Switching version
+-- (Versions.luau: FLOW, SIDE, BOARD): the HUD LAYOUT row in Settings, Y on a
+-- keyboard, or the attribute HudLayout (the UI button went with the top bar,
+-- 2026-10-11). Hud.luau and Input/Touch.luau hand each update, flash and
+-- binding here. The top bar's VIEW cycles the driving view (CameraViews; V
+-- on a keyboard) and the new view's name shows here too.
 --
 -- The motion (Motion) and the controls' behaviour (Widgets) are shared:
 -- pedals give part throttle low on the plate, the needle overshoots, numbers
@@ -35,6 +36,7 @@ local Finishes = require(script:WaitForChild("Finishes"))
 local Versions = require(script:WaitForChild("Versions"))
 local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
+local TopBar = require(script.Parent:WaitForChild("TopBar"))
 
 local HudLab = {}
 
@@ -78,11 +80,6 @@ export type Api = {
 	handbrake: (boolean) -> (),
 	leanLeft: (boolean) -> (),
 	leanRight: (boolean) -> (),
-	exit: () -> (),
-	reset: () -> (),
-	cycle: () -> (), -- the next finish
-	layout: () -> (), -- the next version
-	view: () -> (), -- the next driving view
 }
 
 export type Style = { id: string, name: string }
@@ -147,21 +144,6 @@ local api: Api = {
 	leanRight = function(on: boolean)
 		Input.raw.leanRight = on
 	end,
-	exit = function()
-		Input.pulse("exit")
-	end,
-	reset = function()
-		Input.pulse("reset")
-	end,
-	cycle = function()
-		HudLab.cycle()
-	end,
-	layout = function()
-		HudLab.cycleLayout()
-	end,
-	view = function()
-		CameraViews.cycle()
-	end,
 }
 
 local function newGui(name: string, order: number): ScreenGui
@@ -213,7 +195,7 @@ local function buildControls()
 	dropControls()
 	local g = newGui("HajwalaHudLabControls", 5)
 	ctlGui = g
-	controls = LayoutD.build(g, api, finish(), version())
+	controls = LayoutD.build(g, api, finish())
 end
 
 ------------------------------------------------------------------------
@@ -257,14 +239,14 @@ local function onSwitch(what: string)
 	toast(if what == "layout" then `UI: {version().name}` else `STYLE: {finish().name}`)
 end
 
--- The next finish, from the STYLE button or U.
+-- The next finish, from the top bar's STYLE or U.
 function HudLab.cycle()
 	local cur = finish()
 	local i = table.find(Finishes.list, cur) or 0
 	player:SetAttribute("HudVariant", Finishes.list[i % #Finishes.list + 1].id)
 end
 
--- The next version, from the UI button or Y.
+-- The next version, from Y.
 function HudLab.cycleLayout()
 	local cur = version()
 	local i = table.find(Versions.list, cur) or 0
@@ -286,6 +268,23 @@ end
 
 function HudLab.set(id: string)
 	player:SetAttribute("HudVariant", id)
+end
+
+-- The versions in cycle order, for the Settings row.
+function HudLab.versions(): { Style }
+	local out: { Style } = {}
+	for _, v in Versions.list do
+		table.insert(out, { id = v.id, name = v.name })
+	end
+	return out
+end
+
+function HudLab.currentVersion(): string
+	return version().id
+end
+
+function HudLab.setVersion(id: string)
+	player:SetAttribute("HudLayout", id)
 end
 
 ------------------------------------------------------------------------
@@ -385,11 +384,13 @@ end
 function HudLab.bindTouch()
 	bound = true
 	buildControls()
+	TopBar.setDriving(true)
 end
 
 function HudLab.unbindTouch()
 	bound = false
 	dropControls()
+	TopBar.setDriving(false)
 end
 
 ------------------------------------------------------------------------
