@@ -714,14 +714,27 @@ end
 
 -- The dock's tabs (Dock): slanted, the chosen one green and wide with its
 -- word and Arabic beside the icon, the rest the icon over a small word.
-function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number, wOff: number, size: number, gap: number): Picker
+-- They share `width` between them, the chosen one `wOn` of it, so the dock
+-- has no hole between them and its buttons on a wide phone (the owner,
+-- 2026-10-12: "the bottom dock needs some centering work").
+function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number, width: number, size: number, gap: number): Picker
 	local row = Kit.frame(parent, "Tabs")
-	row.AutomaticSize = Enum.AutomaticSize.X
-	row.Size = UDim2.fromOffset(0, h)
+	row.Size = UDim2.fromOffset(width, h)
 	Kit.list(row, false, gap, Enum.VerticalAlignment.Center)
 	type Item = { b: ImageButton, g: UIGradient, icon: ImageLabel, word: TextLabel, ar: TextLabel }
 	local items: { [string]: Item } = {}
+	local n = #ctx.tabs
+	local wOff = math.floor((width - wOn - gap * (n - 1)) / (n - 1))
+	-- The rounding's few pixels go to the chosen tab, so the row ends flush.
+	local wChosen = width - gap * (n - 1) - wOff * (n - 1)
 	local iconS = math.floor(h * 0.56)
+	-- The tab leans (Art.tab, 16 degrees): a thing at height fraction `f`
+	-- sits this far right of the box's middle to sit in the middle of the
+	-- slanted shape (an icon centred on the box read as left of it).
+	local lean = math.tan(math.rad(16)) * h
+	local function along(f: number): number
+		return math.floor((0.5 - f) * lean + 0.5)
+	end
 	for i, d in ctx.tabs do
 		local b = Instance.new("ImageButton")
 		b.Name = "Tab_" .. d.id
@@ -755,26 +768,27 @@ function Parts.dockTabs(parent: Instance, ctx: Types.Ctx, h: number, wOn: number
 				local on = key == id
 				it.g.Enabled = on
 				it.b.ImageTransparency = if on then 0 else 0.93
-				it.b.Size = UDim2.fromOffset(if on then wOn else wOff, h)
+				it.b.Size = UDim2.fromOffset(if on then wChosen else wOff, h)
 				it.ar.Visible = on
 				if on then
+					local x = math.floor(h * 0.5) + math.floor(iconS * 0.6)
 					it.icon.Position = UDim2.new(0, math.floor(h * 0.5), 0.5, 0)
 					it.icon.ImageColor3 = Kit.C.text
 					it.word.AnchorPoint = Vector2.new(0, 1)
-					it.word.Position = UDim2.new(0, math.floor(h * 0.5) + math.floor(iconS * 0.6), 0.5, 2)
-					it.word.Size = UDim2.new(1, -(math.floor(h * 0.5) + math.floor(iconS * 0.6) + 6), 0, size + 6)
+					it.word.Position = UDim2.new(0, x + along(0.36), 0.5, 2)
+					it.word.Size = UDim2.new(1, -(x + 6), 0, size + 6)
 					it.word.TextXAlignment = Enum.TextXAlignment.Left
 					it.word.TextSize = math.floor(size * 1.45)
 					it.word.FontFace = Kit.font(Enum.FontWeight.Heavy, true)
 					it.word.TextColor3 = Kit.C.text
-					it.ar.Position = UDim2.new(0, math.floor(h * 0.5) + math.floor(iconS * 0.6), 0.5, 2)
-					it.ar.Size = UDim2.new(1, -(math.floor(h * 0.5) + math.floor(iconS * 0.6) + 6), 0, size + 8)
+					it.ar.Position = UDim2.new(0, x + along(0.68), 0.5, 2)
+					it.ar.Size = UDim2.new(1, -(x + 6), 0, size + 8)
 					it.ar.TextColor3 = Kit.C.text
 				else
-					it.icon.Position = UDim2.fromScale(0.5, 0.4)
+					it.icon.Position = UDim2.new(0.5, along(0.4), 0.4, 0)
 					it.icon.ImageColor3 = Kit.C.tabInk
 					it.word.AnchorPoint = Vector2.new(0.5, 0.5)
-					it.word.Position = UDim2.fromScale(0.5, 0.78)
+					it.word.Position = UDim2.new(0.5, along(0.78), 0.78, 0)
 					it.word.Size = UDim2.new(1, -4, 0, size + 2)
 					it.word.TextXAlignment = Enum.TextXAlignment.Center
 					it.word.TextSize = size

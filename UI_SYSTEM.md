@@ -261,8 +261,10 @@ LocalPlayer attribute `GarageLayout`). Two are in play, DOCK and SHOWCASE
 (2026-10-12: "i liked those 2 mobile layouts the most so lets narrow it
 down to that for now"); SHADE is parked out of the list. DOCK shows every
 item as a square block, three across on a phone ("the options need to be
-bigger and make them blocks/squares"); SHOWCASE keeps a list, and its
-category words sit on a panel like the list's, not on a shade. They share
+bigger and make them blocks/squares"), and its tabs share the dock's
+free width, their icons and words following the tab's lean; SHOWCASE
+keeps a list, its category words on a shade that runs to the screen's
+edge. They share
 `Looks/Parts`: the picker's panels, slanted sub-tabs and cut-corner item
 box, the chosen item edged green, ON CAR and ✓ OWNED in green, prices and
 BUY in sodium (the confirm sheet's too), the category icons from

@@ -105,13 +105,15 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	dock.Size = UDim2.fromOffset(room.X - 2 * M, dockH)
 	Kit.pad(dockBody, 4, 4, 4, 4)
 	Kit.list(dockBody, false, 6, Enum.VerticalAlignment.Center)
+	-- The tabs take what the buttons leave, so the dock has no hole on a
+	-- wide phone (the owner, 2026-10-12: "the bottom dock needs some
+	-- centering work").
 	local h = dockH - 8
-	local tabs = Parts.dockTabs(dockBody, ctx, h, if touch then 100 else 150, if touch then 58 else 82, if touch then 8 else 10, if touch then 4 else 6)
+	local actionW = if touch then 170 else 240
+	local exitW = if touch then 54 else 66
+	local tabsW = (room.X - 2 * M) - 8 - h - actionW - exitW - 3 * 6
+	local tabs = Parts.dockTabs(dockBody, ctx, h, if touch then 100 else 150, tabsW, if touch then 8 else 10, if touch then 4 else 6)
 	tabs.root.LayoutOrder = 1
-	local gap = Kit.frame(dockBody, "Spacer")
-	gap.LayoutOrder = 2
-	gap.Size = UDim2.fromOffset(0, 1)
-	Kit.fill(gap)
 	local layoutButton = Parts.square(dockBody, "Layout", h, h, Parts.ICON.layout, nil, "LAYOUT")
 	layoutButton.LayoutOrder = 3
 	layoutButton.Activated:Connect(function()
@@ -119,9 +121,9 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 			ctx.act.nextLayout()
 		end
 	end)
-	local action = Parts.action(dockBody, ctx, if touch then 170 else 240, h, if touch then 15 else 19)
+	local action = Parts.action(dockBody, ctx, actionW, h, if touch then 15 else 19)
 	action.root.LayoutOrder = 4
-	local exit = Parts.square(dockBody, "Exit", if touch then 54 else 66, h, nil, "×", "EXIT")
+	local exit = Parts.square(dockBody, "Exit", exitW, h, nil, "×", "EXIT")
 	exit.LayoutOrder = 5
 	exit.Activated:Connect(function()
 		if not ctx.busy() then
