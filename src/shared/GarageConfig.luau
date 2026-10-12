@@ -42,16 +42,16 @@ GarageConfig.framingMargin = 1.15
 -- middle, so the panel on the left does not cover it.
 GarageConfig.screenOffset = 0.18
 -- The same per garage layout (GaragePanel, 2026-10-12: a phone has
--- SHOWCASE's four variants, a PC DOCK as well; SHADE is parked): DOCK and
+-- SHOWCASE's variants, a PC DOCK as well; SHADE is parked): DOCK and
 -- SHADE keep their panels on the left; SHOWCASE's variants put the car in
--- the middle between the words and the blocks down the right, WIDE's
--- wider side pushing it further left.
+-- the middle between the words and the blocks down the right.
 GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,
 	shades = -0.06,
-	card = -0.07,
-	wide = -0.1,
+	glass = -0.06,
+	edge = -0.06,
+	frame = -0.06,
 	shade = 0.22,
 } :: { [string]: number }
 

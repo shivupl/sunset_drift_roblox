@@ -1,19 +1,23 @@
 --!strict
 -- SHOWCASE (C. Garage on the "Hajwala Menus" canvas) and its variants, the
 -- phone's garage (the owner, 2026-10-12: "lets finalize on the shade mode
--- FOR mobile, make the options in there also squares/blocks", then "remove
--- shelf, continue to polish the other 2 better ... overall the right side
--- needs some work, make 4 variants"). In all four the car is the big thing
--- in the middle under its name; the categories are words down the left on
--- a shade, EXIT and the layout switch under them; the cash is where the
--- HUD has it (the controller's, Parts.hudCash). The right side holds the
--- sub-tabs (REV or SHOP PLATES beside them), a note, the items as square
--- blocks, the item picked and the action:
---   SHOWCASE  ("column") a panel, two across, the action under it.
+-- FOR mobile, make the options in there also squares/blocks"; of four right
+-- sides, "showcades and shade are the best delete the others. make some
+-- mroe variants of showcase that are more lined up with shades"). In all
+-- of them the car is the big thing in the middle under its name; the
+-- categories are words down the left on a shade, EXIT and the layout
+-- switch under them; the cash is where the HUD has it (the controller's,
+-- Parts.hudCash). The right side holds the sub-tabs (REV or SHOP PLATES
+-- beside them), a note, the items as square blocks two across, a hairline,
+-- the item picked, and the action under them:
+--   SHOWCASE  ("column") on a graphite panel.
 --   SHADES    ("shades") straight on a shade like the words', no panel.
---   CARD      ("card") one tall panel with the action inside at its foot,
---             the sub-tabs as words with a green underline.
---   WIDE      ("wide") a wider panel, three across, the car further left.
+-- And SHOWCASE leaning toward SHADES:
+--   GLASS     ("glass") the panel see-through, over SHADES' shade.
+--   EDGE      ("edge") a panel run off the screen's right edge like a
+--             drawer, its inner edge fading into the garage, the action
+--             inside at its foot.
+--   FRAME     ("frame") SHADES with the blocks in a thin outlined tray.
 -- EXIT, the layout switch and the action share one bottom line.
 local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Types = require(script.Parent:WaitForChild("Types"))
@@ -21,31 +25,21 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 
 local Showcase = {}
 
-export type Variant = "column" | "shades" | "card" | "wide"
+export type Variant = "column" | "shades" | "glass" | "edge" | "frame"
 
-type Metrics = {
-	panel: boolean, -- on a panel, or straight on a shade
-	colW: number, -- the panel's width (a shade's side is its blocks')
-	cols: number, -- blocks across
-	block: number?, -- a shade's block size (a panel's fills its width)
-	actionInside: boolean, -- the action at the panel's foot, not under it
-	words: boolean, -- sub-tabs as underlined words, not slanted tabs
-}
-
-local function metrics(variant: Variant, touch: boolean): Metrics
-	if variant == "shades" then
-		return { panel = false, colW = 0, cols = if touch then 2 else 3, block = if touch then 104 else 110, actionInside = false, words = false }
-	elseif variant == "card" then
-		return { panel = true, colW = if touch then 264 else 364, cols = if touch then 2 else 3, block = nil, actionInside = true, words = true }
-	elseif variant == "wide" then
-		return { panel = true, colW = if touch then 316 else 440, cols = if touch then 3 else 4, block = nil, actionInside = false, words = false }
+-- The right side's width: a panel's (its blocks fill it), or on a bare
+-- shade its blocks' (two across at `block`).
+local function sideWidth(variant: Variant, touch: boolean): (number?, number?)
+	if variant == "shades" or variant == "frame" then
+		return nil, if touch then 104 else 110
+	elseif variant == "edge" then
+		return if touch then 264 else 368, nil
 	end
-	return { panel = true, colW = if touch then 252 else 352, cols = if touch then 2 else 3, block = nil, actionInside = false, words = false }
+	return if touch then 252 else 352, nil
 end
 
 function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types.View
 	local touch = ctx.touch
-	local v = metrics(variant, touch)
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	local M = 8
 	local navW = if touch then 132 else 190
@@ -104,24 +98,71 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	chipHolder.Size = UDim2.fromOffset(0, if touch then 20 else 24)
 	local chip: Frame? = nil
 
-	-- The right side: a panel, or a shade's bare side as wide as its
-	-- blocks. Full height when the action is inside; else over the action.
-	local sideH = if v.actionInside then room.Y - 2 * M else room.Y - 3 * M - actionH
+	-- The right side.
+	local cols = if touch then 2 else 3
+	local colW, shadeBlock = sideWidth(variant, touch)
+	local edge = variant == "edge"
+	local tray = variant == "frame"
+	local onShade = variant ~= "column"
+	-- Over the action, or (EDGE) down to the bottom line with it inside.
+	local sideH = if edge then room.Y - 2 * M else room.Y - 3 * M - actionH
 	local body: Frame
 	local inner: number -- the width its pieces have
 	local block: number
-	if v.panel then
+	if colW then
 		local pad = if touch then 8 else 12
-		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
-		col.Position = UDim2.fromOffset(room.X - M - v.colW, M)
-		col.Size = UDim2.fromOffset(v.colW, sideH)
-		Kit.pad(panelBody, pad, pad, pad, pad)
-		body = panelBody
-		inner = v.colW - 2 * pad
-		block = math.floor((inner - Parts.LIST_PAD_X - gap * (v.cols - 1)) / v.cols)
+		if variant == "glass" then
+			-- SHADES' shade behind, the panel over it see-through: the
+			-- garage shows through both, the blocks still sit on a card.
+			Parts.edgeShade(gui, root, room, "right", colW, if touch then 70 else 110)
+		end
+		if edge then
+			-- A drawer: graphite from half a screen past the right edge to
+			-- colW in from it (no gap beside a notch: UIKit.edgeToEdge), its
+			-- inner edge fading out over `soft` like a shade's.
+			gui.ClipToDeviceSafeArea = false
+			local bleed = math.floor(room.X * 0.5)
+			local soft = if touch then 28 else 40
+			-- One graphite, the panel's middle: a UIGradient's colour can't
+			-- run top to bottom while its fade runs across.
+			local drawer = Kit.frame(root, "Drawer", Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.5), 0)
+			drawer.Position = UDim2.fromOffset(room.X - colW - soft, -math.floor(room.Y * 0.5))
+			drawer.Size = UDim2.fromOffset(colW + soft + bleed, room.Y * 2)
+			local fade = Instance.new("UIGradient")
+			fade.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(soft / (colW + soft + bleed), 0.04),
+				NumberSequenceKeypoint.new(1, 0.04),
+			})
+			fade.Parent = drawer
+			drawer.Active = true
+			local holder = Kit.frame(root, "Side")
+			holder.Position = UDim2.fromOffset(room.X - colW, M)
+			holder.Size = UDim2.fromOffset(colW - M, sideH)
+			Kit.pad(holder, 0, 0, 0, pad)
+			body = holder
+			inner = colW - M - pad
+		else
+			local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
+			col.Position = UDim2.fromOffset(room.X - M - colW, M)
+			col.Size = UDim2.fromOffset(colW, sideH)
+			if variant == "glass" then
+				col.BackgroundTransparency = 0.42
+				local dots = col:FindFirstChild("Dots")
+				if dots and dots:IsA("GuiObject") then
+					dots.Visible = false
+				end
+			end
+			Kit.pad(panelBody, pad, pad, pad, pad)
+			body = panelBody
+			inner = colW - 2 * pad
+		end
+		block = math.floor((inner - Parts.LIST_PAD_X - gap * (cols - 1)) / cols)
 	else
-		block = v.block or 104
-		inner = v.cols * block + gap * (v.cols - 1) + Parts.LIST_PAD_X
+		block = shadeBlock or 104
+		-- FRAME's tray adds its own padding round the blocks.
+		local trayPad = if tray then 6 else 0
+		inner = cols * block + gap * (cols - 1) + Parts.LIST_PAD_X + 2 * trayPad
 		Parts.edgeShade(gui, root, room, "right", inner, if touch then 70 else 110)
 		local side = Kit.frame(root, "Side")
 		side.Position = UDim2.fromOffset(room.X - M - inner, M)
@@ -129,7 +170,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		body = side
 	end
 	Kit.list(body, true, if touch then 7 else 10)
-	local sideW = if v.panel then v.colW else inner
+	local sideW = colW or inner
 
 	-- The sub-tabs (or the category's name), REV or SHOP PLATES at the
 	-- end of their row.
@@ -168,13 +209,30 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
 		else { name = 13, word = 11, swatch = 60, rows = false, inline = false, block = block }
-	if not v.panel then
+	if onShade and variant ~= "edge" then
 		m.backdrop = "shade"
 	end
-	local items = Parts.items(body, ctx, v.cols, v.cols, block, block, gap, m)
-	items.root.LayoutOrder = 3
-	items.root.Size = UDim2.fromScale(1, 0)
-	Kit.fill(items.root)
+	local listParent: Frame = body
+	if tray then
+		-- FRAME: the blocks in a tray, a hairline round them and the
+		-- faintest fill, on the shade.
+		local t = Kit.frame(body, "Tray", Color3.new(1, 1, 1), 0.96)
+		t.LayoutOrder = 3
+		t.Size = UDim2.fromScale(1, 0)
+		Kit.fill(t)
+		Kit.corner(t, if touch then 12 else 14)
+		Kit.stroke(t, Color3.new(1, 1, 1), 1, 0.82)
+		Kit.pad(t, 6, 6, 6, 6)
+		listParent = t
+	end
+	local items = Parts.items(listParent, ctx, cols, cols, block, block, gap, m)
+	if tray then
+		items.root.Size = UDim2.fromScale(1, 1)
+	else
+		items.root.LayoutOrder = 3
+		items.root.Size = UDim2.fromScale(1, 0)
+		Kit.fill(items.root)
+	end
 
 	-- A hairline over the item picked, parting it from the blocks.
 	local rule = Kit.frame(body, "Rule", Color3.new(1, 1, 1), 0.9)
@@ -184,7 +242,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	foot.root.LayoutOrder = 5
 
 	local action: Parts.ActionButton
-	if v.actionInside then
+	if edge then
 		action = Parts.action(body, ctx, inner, actionH, if touch then 17 else 21)
 		action.root.LayoutOrder = 6
 	else
@@ -212,12 +270,8 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		extra.Size = UDim2.fromOffset(extraW, subH)
 		local defs = ctx.views()
 		if #defs > 1 then
-			if v.words then
-				subs = Parts.words(subHolder, ctx, defs, subH, if touch then 12 else 14, if touch then 15 else 18, if touch then 14 else 18)
-			else
-				local slantW = inner - 9 - (if extraW > 0 then extraW + 6 else 0)
-				subs = Parts.slants(subHolder, ctx, defs, subH, if touch then 10 else 12, 4, slantW)
-			end
+			local slantW = inner - 9 - (if extraW > 0 then extraW + 6 else 0)
+			subs = Parts.slants(subHolder, ctx, defs, subH, if touch then 10 else 12, 4, slantW)
 		else
 			for _, d in ctx.tabs do
 				if d.id == ctx.tab() then
