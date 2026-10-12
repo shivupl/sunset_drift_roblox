@@ -148,6 +148,10 @@ local flashToken = 0
 local panelOpen = true
 local openOffset = GarageConfig.screenOffset
 local offsetFrom, offsetTo, offsetAt = 0, 0, -math.huge
+-- The same upward (fraction of the screen height), for a layout with its
+-- items along the bottom (GarageConfig.layoutLift); eased with the offset.
+local openLift = 0
+local liftFrom, liftTo = 0, 0
 
 local gui: ScreenGui? = nil
 local fadeFrame: Frame? = nil
@@ -765,10 +769,24 @@ end
 -- Framing and the spin, every frame while in the view.
 ------------------------------------------------------------------------
 
-local function currentOffset(now: number): number
+local function eased(now: number): number
 	local info = UITheme.motion.panel
 	local a = math.clamp((now - offsetAt) / info.Time, 0, 1)
-	return offsetFrom + (offsetTo - offsetFrom) * TweenService:GetValue(a, info.EasingStyle, info.EasingDirection)
+	return TweenService:GetValue(a, info.EasingStyle, info.EasingDirection)
+end
+
+local function currentOffset(now: number): number
+	return offsetFrom + (offsetTo - offsetFrom) * eased(now)
+end
+
+local function currentLift(now: number): number
+	return liftFrom + (liftTo - liftFrom) * eased(now)
+end
+
+-- Turns a framing so the aim sits `offset` of the screen width right of
+-- centre and `lift` of its height above it.
+local function shifted(cf: CFrame, now: number, tanV: number, tanH: number): CFrame
+	return cf * CFrame.Angles(0, math.atan(currentOffset(now) * 2 * tanH), 0) * CFrame.Angles(-math.atan(currentLift(now) * 2 * tanV), 0, 0)
 end
 
 local function cameraCFrame(g: Garage, p: Preview?, now: number): CFrame
@@ -795,7 +813,7 @@ local function cameraCFrame(g: Garage, p: Preview?, now: number): CFrame
 	-- panel on the left does not cover it.
 	local vp = if cam then cam.ViewportSize else Vector2.new(16, 9)
 	local tanH = tanV * vp.X / math.max(vp.Y, 1)
-	return cf * CFrame.Angles(0, math.atan(currentOffset(now) * 2 * tanH), 0)
+	return shifted(cf, now, tanV, tanH)
 end
 
 -- Where a close shot looks, in the world: the named hub, the exhaust
@@ -838,7 +856,7 @@ local function closeCFrame(g: Garage, p: Preview, sh: GarageConfig.Shot, now: nu
 	local tanV = math.tan(math.rad((sh.fovDeg or GarageConfig.fovDeg) / 2))
 	local vp = if cam then cam.ViewportSize else Vector2.new(16, 9)
 	local tanH = tanV * vp.X / math.max(vp.Y, 1)
-	return cf * CFrame.Angles(0, math.atan(currentOffset(now) * 2 * tanH), 0)
+	return shifted(cf, now, tanV, tanH)
 end
 
 -- The turntable angle that shows the camera a shot's side: angle 0 has the
@@ -1270,6 +1288,7 @@ local function enter(g: Garage, carIdArg: string?)
 		releaseVel, releaseAt, lastDrag = 0, -math.huge, -math.huge
 		panelOpen = true
 		offsetFrom, offsetTo, offsetAt = openOffset, openOffset, -math.huge
+		liftFrom, liftTo = openLift, openLift
 		p = buildPreview(g, carId)
 		state = "inside"
 		RunService:BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + 1, step)
@@ -1550,22 +1569,28 @@ function GarageView.setPanelOpen(open: boolean)
 	local now = os.clock()
 	offsetFrom = currentOffset(now)
 	offsetTo = if open then openOffset else 0
+	liftFrom = currentLift(now)
+	liftTo = if open then openLift else 0
 	offsetAt = now
 end
 
--- Where the car sits with the panel open, for the panel's layout: eased
--- there, or at once with `snap` (the view just opened).
-function GarageView.setPanelOffset(offset: number, snap: boolean?)
-	if offset == openOffset then
+-- Where the car sits with the panel open, for the panel's layout (sideways
+-- and up): eased there, or at once with `snap` (the view just opened).
+function GarageView.setPanelOffset(offset: number, snap: boolean?, lift: number?)
+	local up = lift or 0
+	if offset == openOffset and up == openLift then
 		return
 	end
 	openOffset = offset
+	openLift = up
 	if not panelOpen then
 		return
 	end
 	local now = os.clock()
 	offsetFrom = if snap then offset else currentOffset(now)
 	offsetTo = offset
+	liftFrom = if snap then up else currentLift(now)
+	liftTo = up
 	offsetAt = if snap then -math.huge else now
 end
 

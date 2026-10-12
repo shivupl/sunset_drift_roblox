@@ -217,6 +217,45 @@ function Parts.exit(parent: Instance, w: number, h: number, size: number): TextB
 	return b
 end
 
+-- A shade from one edge of the screen (left, right or bottom) for words or
+-- items to sit on: dark at the edge, clear `tail` past `reach` into the
+-- gui. It starts half a screen out and the gui stops clipping to the safe
+-- area, so it meets the screen's edge beside any notch (UIKit.edgeToEdge;
+-- the owner, 2026-10-12: "no wierd gap for any device"). Its fade is
+-- SHOWCASE's first shade's: solid to 60 px outside the gui, 0.45 a little
+-- past `reach`, clear at the end. Drags pass through it (PassThrough).
+export type Edge = "left" | "right" | "bottom"
+function Parts.edgeShade(gui: ScreenGui, root: Frame, room: Vector2, side: Edge, reach: number, tail: number): Frame
+	gui.ClipToDeviceSafeArea = false
+	local bleed = math.floor((if side == "bottom" then room.Y else room.X) * 0.5)
+	local total = bleed + reach + tail
+	local fadeW = reach + 60 + tail
+	local shade = Kit.frame(root, "Shade_" .. side, Color3.new(0, 0, 0), 0)
+	if side == "left" then
+		shade.Position = UDim2.fromOffset(-bleed, -math.floor(room.Y * 0.5))
+		shade.Size = UDim2.fromOffset(total, room.Y * 2)
+	elseif side == "right" then
+		shade.Position = UDim2.fromOffset(room.X - reach - tail, -math.floor(room.Y * 0.5))
+		shade.Size = UDim2.fromOffset(total, room.Y * 2)
+	else
+		shade.Position = UDim2.fromOffset(-math.floor(room.X * 0.5), room.Y - reach - tail)
+		shade.Size = UDim2.fromOffset(room.X * 2, total)
+	end
+	shade:SetAttribute("PassThrough", true)
+	local solid = (bleed - 60) / total
+	local g = Instance.new("UIGradient")
+	-- Keypoint 0 at the screen's edge: left, right, or the bottom.
+	g.Rotation = if side == "left" then 0 elseif side == "right" then 180 else 270
+	g.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(solid, 0.15),
+		NumberSequenceKeypoint.new(solid + 0.55 * fadeW / total, 0.45),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	g.Parent = shade
+	return shade
+end
+
 -- A line under the sub-tabs: how the tyres drive, or why a set can't go on.
 function Parts.note(parent: Instance, size: number): TextLabel
 	local n = Kit.text(parent, "Note", "", size, Enum.FontWeight.SemiBold, false, Kit.C.tabInk)
@@ -241,8 +280,13 @@ export type BoxMetrics = {
 	rows: boolean, -- draw a palette's swatches as rows too
 	inline: boolean, -- a row's word at its right end, not under the name
 	-- Every item a square block this big, its picture over its name and
-	-- word, whatever its shape (DOCK).
+	-- word, whatever its shape (DOCK, the SHOWCASE variants).
 	block: number?,
+	-- The blocks in one row scrolling sideways (SHELF).
+	sideways: boolean?,
+	-- What is under the list, for the fades at its ends: a panel (the
+	-- default) or a shade (the SHOWCASE variants without a panel).
+	backdrop: ("panel" | "shade")?,
 }
 
 export type Box = {
@@ -445,6 +489,7 @@ export type Items = {
 	pop: (key: string) -> (),
 }
 function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCols: number, tileH: number, rowH: number, gap: number, m: BoxMetrics): Items
+	local sideways = m.sideways == true
 	local holder = Kit.frame(parent, "Items")
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "Scroll"
@@ -454,36 +499,57 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	scroll.ScrollBarThickness = 4
 	scroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
 	scroll.ScrollBarImageTransparency = 0.8
-	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.ScrollingDirection = if sideways then Enum.ScrollingDirection.X else Enum.ScrollingDirection.Y
+	scroll.AutomaticCanvasSize = if sideways then Enum.AutomaticSize.X else Enum.AutomaticSize.Y
 	scroll.CanvasSize = UDim2.new()
 	scroll.Active = true
 	scroll.Parent = holder
-	Kit.pad(scroll, 3, 8, 6, 3)
+	if sideways then
+		Kit.pad(scroll, 3, 6, 8, 3)
+	else
+		Kit.pad(scroll, 3, 8, 6, 3)
+	end
 	local grid = Instance.new("UIGridLayout")
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.CellPadding = UDim2.fromOffset(gap, gap)
+	if sideways then
+		-- Down one cell, then the next column: one row going right.
+		grid.FillDirection = Enum.FillDirection.Vertical
+		grid.FillDirectionMaxCells = 1
+	end
 	grid.Parent = scroll
 
-	-- The panel's own colour where the list starts and ends (Kit.panel's
-	-- gradient, near its top and its foot).
+	-- At an end with more past it, the list fades into what is under it:
+	-- the panel's own colour (Kit.panel's gradient, near its top and its
+	-- foot), or a shade's black, never quite solid as the shade is not.
 	local fadeH = if ctx.touch then 18 else 24
-	local function fade(name: string, atTop: boolean): Frame
-		local color = if atTop then Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.2) else Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.85)
+	local onShade = m.backdrop == "shade"
+	local function fade(name: string, atStart: boolean): Frame
+		local color = if onShade
+			then Color3.new(0, 0, 0)
+			elseif atStart then Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.2)
+			else Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.85)
+		local solid = if onShade then 0.25 else 0
 		local f = Kit.frame(holder, name, color, 0)
-		f.AnchorPoint = Vector2.new(0, if atTop then 0 else 1)
-		f.Position = UDim2.fromScale(0, if atTop then 0 else 1)
-		f.Size = UDim2.new(1, 0, 0, fadeH)
+		if sideways then
+			f.AnchorPoint = Vector2.new(if atStart then 0 else 1, 0)
+			f.Position = UDim2.fromScale(if atStart then 0 else 1, 0)
+			f.Size = UDim2.new(0, fadeH, 1, 0)
+		else
+			f.AnchorPoint = Vector2.new(0, if atStart then 0 else 1)
+			f.Position = UDim2.fromScale(0, if atStart then 0 else 1)
+			f.Size = UDim2.new(1, 0, 0, fadeH)
+		end
 		f.ZIndex = 5
 		f.Visible = false
 		local g = Instance.new("UIGradient")
-		g.Rotation = 90
-		g.Transparency = if atTop then NumberSequence.new(0, 1) else NumberSequence.new(1, 0)
+		g.Rotation = if sideways then 0 else 90
+		g.Transparency = if atStart then NumberSequence.new(solid, 1) else NumberSequence.new(1, solid)
 		g.Parent = f
 		return f
 	end
-	local topFade = fade("FadeTop", true)
-	local bottomFade = fade("FadeBottom", false)
+	local topFade = fade("FadeStart", true)
+	local bottomFade = fade("FadeEnd", false)
 
 	local boxes: { { e: Types.Entry, box: Box } } = {}
 	-- Measured on the boxes themselves, in screen pixels (CanvasPosition
@@ -495,11 +561,14 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 			bottomFade.Visible = false
 			return
 		end
-		local y0 = scroll.AbsolutePosition.Y
-		local y1 = y0 + scroll.AbsoluteSize.Y
-		local l = last.box.root
-		topFade.Visible = first.box.root.AbsolutePosition.Y < y0 - 1
-		bottomFade.Visible = l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
+		local a = if sideways then 1 else 2 -- the axis it scrolls along
+		local p0 = if a == 1 then scroll.AbsolutePosition.X else scroll.AbsolutePosition.Y
+		local p1 = p0 + (if a == 1 then scroll.AbsoluteSize.X else scroll.AbsoluteSize.Y)
+		local f, l = first.box.root, last.box.root
+		local fStart = if a == 1 then f.AbsolutePosition.X else f.AbsolutePosition.Y
+		local lEnd = if a == 1 then l.AbsolutePosition.X + l.AbsoluteSize.X else l.AbsolutePosition.Y + l.AbsoluteSize.Y
+		topFade.Visible = fStart < p0 - 1
+		bottomFade.Visible = lEnd > p1 + 1
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)

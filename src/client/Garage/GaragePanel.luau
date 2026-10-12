@@ -18,16 +18,20 @@
 --   DOCK      (Looks/Dock) the categories as tabs in a dock along the bottom
 --             with the action and EXIT; the items in a panel on the left.
 --   SHOWCASE  (Looks/Showcase) the car big in the middle; the categories as
---             words down the left; the items as a list on the right with
---             the action under it.
+--             words down the left on a shade; the items as square blocks,
+--             in three variants: SHOWCASE (a panel down the right), SHADES
+--             (a shade down the right), SHELF (a row along the bottom).
 --   SHADE     (Looks/Shade) the garage-ui-overhaul's shade and rail of words,
 --             the sub-tabs as words along the bottom. Parked (2026-10-12,
 --             the owner on the phone: "i liked those 2 mobile layouts the
---             most so lets narrow it down to that for now"): out of LAYOUTS,
---             kept to come back to.
--- The LAYOUT button in each cycles them; the choice is the LocalPlayer
--- attribute GarageLayout and lasts the session. Each puts the car where its
--- panels leave room (GarageConfig.layoutOffset).
+--             most so lets narrow it down to that for now"): out of the
+--             lists, kept to come back to.
+-- A phone has SHOWCASE's three variants (2026-10-12: "lets finalize on the
+-- shade mode FOR mobile ... make 3 variants again for me to shift
+-- though"); a PC has DOCK as well, not settled yet. The LAYOUT button in
+-- each cycles them; the choice is the LocalPlayer attribute GarageLayout
+-- and lasts the session. Each puts the car where its panels leave room
+-- (GarageConfig.layoutOffset, layoutLift).
 --
 -- Behaviour:
 --   * A tap applies the item to the turntable car at once
@@ -131,9 +135,27 @@ local DISPLAY_ORDER = 15
 local FINISH_SHINE = 0.35
 local FINISH_SHINE_PER_REFLECTANCE = 3
 
-local LAYOUTS: { Types.Layout } = {
+local Showcase = require(Looks:WaitForChild("Showcase"))
+local function variant(id: string, name: string, v: Showcase.Variant): Types.Layout
+	return {
+		id = id,
+		name = name,
+		build = function(g: ScreenGui, c: Types.Ctx): Types.View
+			return Showcase.build(g, c, v)
+		end,
+	}
+end
+local SHOWCASES: { Types.Layout } = {
+	variant("showcase", "SHOWCASE", "column"),
+	variant("shades", "SHADES", "shades"),
+	variant("shelf", "SHELF", "shelf"),
+}
+local PHONE_LAYOUTS: { Types.Layout } = SHOWCASES
+local PC_LAYOUTS: { Types.Layout } = {
 	{ id = "dock", name = "DOCK", build = require(Looks:WaitForChild("Dock")).build },
-	{ id = "showcase", name = "SHOWCASE", build = require(Looks:WaitForChild("Showcase")).build },
+	SHOWCASES[1],
+	SHOWCASES[2],
+	SHOWCASES[3],
 }
 local LAYOUT_ATTRIBUTE = "GarageLayout"
 
@@ -1346,14 +1368,19 @@ local function doExtra()
 	end
 end
 
+-- The layouts this screen cycles: a phone's or a PC's.
+local function layouts(): { Types.Layout }
+	return if touch then PHONE_LAYOUTS else PC_LAYOUTS
+end
+
 local function layout(): Types.Layout
 	local id = player:GetAttribute(LAYOUT_ATTRIBUTE)
-	for _, l in LAYOUTS do
+	for _, l in layouts() do
 		if l.id == id then
 			return l
 		end
 	end
-	return LAYOUTS[1]
+	return layouts()[1]
 end
 
 local function setCollapsed(c: boolean)
@@ -1374,8 +1401,9 @@ local function nextLayout()
 		return
 	end
 	local cur = layout()
-	local i = table.find(LAYOUTS, cur) or 0
-	local nxt = LAYOUTS[i % #LAYOUTS + 1]
+	local list = layouts()
+	local i = table.find(list, cur) or 0
+	local nxt = list[i % #list + 1]
 	player:SetAttribute(LAYOUT_ATTRIBUTE, nxt.id)
 	GarageSounds.play("tab")
 	buildView(false)
@@ -1469,7 +1497,7 @@ buildView = function(snap: boolean)
 		r.Visible = false
 	end
 	GarageView.setPanelOpen(true)
-	GarageView.setPanelOffset(GarageConfig.layoutOffset[l.id] or GarageConfig.screenOffset, snap)
+	GarageView.setPanelOffset(GarageConfig.layoutOffset[l.id] or GarageConfig.screenOffset, snap, GarageConfig.layoutLift[l.id])
 	cashShown, cashTarget = nil, nil
 	fillTab()
 	refresh()

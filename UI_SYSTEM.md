@@ -257,19 +257,22 @@ green. A desktop keeps the CARS button and the keys.
 The second is **the garage panel** (2026-10-12: "implement these 3 to let
 me chose from ... for both pc and phone"): layouts from the canvas
 (`src/client/Garage/Looks`), switched with the LAYOUT button in each (the
-LocalPlayer attribute `GarageLayout`). Two are in play, DOCK and SHOWCASE
-(2026-10-12: "i liked those 2 mobile layouts the most so lets narrow it
-down to that for now"); SHADE is parked out of the list. DOCK shows every
-item as a square block, three across on a phone ("the options need to be
-bigger and make them blocks/squares"), and its tabs share the dock's
-free width, their icons and words following the tab's lean; SHOWCASE
-keeps a list, its category words on a shade that runs to the screen's
-edge. They share
+LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's three
+variants (2026-10-12: "lets finalize on the shade mode FOR mobile ...
+make 3 variants again for me to shift though"): the category words on a
+shade down the left that runs to the screen's edge, the items as square
+blocks in a panel down the right (SHOWCASE), on a shade down the right
+(SHADES), or in one row along the bottom on a shade (SHELF, the car
+tilted up clear of it). A PC has DOCK as well; SHADE is parked. DOCK
+shows every item as a square block, three across on a phone ("the
+options need to be bigger and make them blocks/squares"), and its tabs
+share the dock's free width, their icons and words following the tab's
+lean. They share
 `Looks/Parts`: the picker's panels, slanted sub-tabs and cut-corner item
 box, the chosen item edged green, ON CAR and ✓ OWNED in green, prices and
 BUY in sodium (the confirm sheet's too), the category icons from
-art/garage. A list fades into its panel at an edge with more items past
-it; the line naming the item picked sits in the panel over the action
+art/garage. A list fades into its panel (or shade) at an edge with more
+items past it; the line naming the item picked sits over the action
 (not on MY CARS, where the car's name is over the car); titles' Arabic is
 at `arabicScale`, as above. Each layout is drawn for an 844x346 phone and
 a 1280x664 PC and scaled to the screen it is on. Their confirm sheet's dim
