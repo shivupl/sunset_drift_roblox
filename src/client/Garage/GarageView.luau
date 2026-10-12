@@ -143,7 +143,10 @@ local lastFov = GarageConfig.fovDeg
 local flashToken = 0
 
 -- The framing's sideways offset (fraction of the screen width), eased.
+-- openOffset: where the car sits with the panel open, the panel's layout's
+-- (GaragePanel, GarageConfig.layoutOffset).
 local panelOpen = true
+local openOffset = GarageConfig.screenOffset
 local offsetFrom, offsetTo, offsetAt = 0, 0, -math.huge
 
 local gui: ScreenGui? = nil
@@ -1266,7 +1269,7 @@ local function enter(g: Garage, carIdArg: string?)
 		fovFrom = GarageConfig.fovDeg
 		releaseVel, releaseAt, lastDrag = 0, -math.huge, -math.huge
 		panelOpen = true
-		offsetFrom, offsetTo, offsetAt = GarageConfig.screenOffset, GarageConfig.screenOffset, -math.huge
+		offsetFrom, offsetTo, offsetAt = openOffset, openOffset, -math.huge
 		p = buildPreview(g, carId)
 		state = "inside"
 		RunService:BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + 1, step)
@@ -1546,8 +1549,24 @@ function GarageView.setPanelOpen(open: boolean)
 	panelOpen = open
 	local now = os.clock()
 	offsetFrom = currentOffset(now)
-	offsetTo = if open then GarageConfig.screenOffset else 0
+	offsetTo = if open then openOffset else 0
 	offsetAt = now
+end
+
+-- Where the car sits with the panel open, for the panel's layout: eased
+-- there, or at once with `snap` (the view just opened).
+function GarageView.setPanelOffset(offset: number, snap: boolean?)
+	if offset == openOffset then
+		return
+	end
+	openOffset = offset
+	if not panelOpen then
+		return
+	end
+	local now = os.clock()
+	offsetFrom = if snap then offset else currentOffset(now)
+	offsetTo = offset
+	offsetAt = if snap then -math.huge else now
 end
 
 -- The fallback LEAVE button; the panel hides it when it has its own.

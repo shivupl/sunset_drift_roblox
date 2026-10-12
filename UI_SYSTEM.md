@@ -254,6 +254,18 @@ Its buttons are the picker's: graphite squares with a hairline edge, the
 icon (art/topbar) over a heavy italic word, GARAGE edged in the picker's
 green. A desktop keeps the CARS button and the keys.
 
+The second is **the garage panel** (2026-10-12: "implement these 3 to let
+me chose from ... for both pc and phone"): three layouts from the canvas
+(`src/client/Garage/Looks`: DOCK, SHOWCASE, SHADE), switched with the
+LAYOUT button in each (the LocalPlayer attribute `GarageLayout`). They
+share `Looks/Parts`: the picker's panels, slanted sub-tabs and cut-corner
+item box, the chosen item edged green, ON CAR and ✓ OWNED in green, prices
+and BUY in sodium (the confirm sheet's too), the category icons from
+art/garage. Each layout is drawn for an 844x346 phone and a 1280x664 PC
+and scaled to the screen it is on. Until the owner picks one, the garage's
+old token rules above (the shade, the sodium marker and underline) apply
+only to SHADE's shape, not its colours.
+
 ## Don'ts
 
 - No literal `Color3`, font or size in UI code: read `UITheme`.

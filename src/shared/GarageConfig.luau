@@ -41,6 +41,14 @@ GarageConfig.framingMargin = 1.15
 -- The car's centre sits this fraction of the screen width right of the
 -- middle, so the panel on the left does not cover it.
 GarageConfig.screenOffset = 0.18
+-- The same per garage layout (GaragePanel, 2026-10-12: the owner is
+-- choosing between three): DOCK and SHADE keep their panels on the left,
+-- SHOWCASE puts the car in the middle between the words and the list.
+GarageConfig.layoutOffset = {
+	dock = 0.2,
+	showcase = -0.06,
+	shade = 0.22,
+} :: { [string]: number }
 
 -- Entering and leaving (spec section 2).
 -- The threshold is only watched while the character's root is this close
