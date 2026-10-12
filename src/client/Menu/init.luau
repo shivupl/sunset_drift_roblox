@@ -113,14 +113,31 @@ end
 -- The world behind: dimmed and blurred to the page's measure.
 ------------------------------------------------------------------------
 
+-- The tweens running on them, so a newer one (or the close's reset) can
+-- stop them: a page's blur still easing in after the menu had gone left
+-- the world blurred while driving (review, ui-flow).
+local sceneTweens: { Tween } = {}
+
+local function stopScene()
+	for _, t in sceneTweens do
+		t:Cancel()
+	end
+	table.clear(sceneTweens)
+end
+
 local function scene(on: boolean, info: TweenInfo)
+	stopScene()
 	local p = page()
 	local d, b = dim, blur
 	if d then
-		TweenService:Create(d, info, { BackgroundTransparency = if on then p.dim else 1 }):Play()
+		local t = TweenService:Create(d, info, { BackgroundTransparency = if on then p.dim else 1 })
+		table.insert(sceneTweens, t)
+		t:Play()
 	end
 	if b then
-		TweenService:Create(b, info, { Size = if on then p.blur else 0 }):Play()
+		local t = TweenService:Create(b, info, { Size = if on then p.blur else 0 })
+		table.insert(sceneTweens, t)
+		t:Play()
 	end
 end
 
@@ -159,13 +176,22 @@ local function closeSheet(which: Sheet?)
 	end
 end
 
+-- A fill asked for while the confirm sheet was up (a plate bought lands
+-- in the Plates attribute before the buy returns): done once it closes,
+-- so the sheet is not torn down mid-purchase.
+local fillPending = false
+
 -- The column built again for the page showing.
 local function fill()
 	local v = view
 	if not v or not isOpen then
 		return
 	end
-	closeSheet()
+	if sheet then
+		fillPending = true
+		return
+	end
+	fillPending = false
 	press = nil
 	table.clear(taps)
 	v.fill()
@@ -196,15 +222,19 @@ end
 
 local function openSheet(info: Parts.SheetInfo, buy: () -> ())
 	local g, ctx = gui, ctxNow
-	if sheet or not g or not ctx then
+	if sheet or not isOpen or not g or not ctx then
 		return
 	end
 	local working = false
 	local mine: Sheet
-	local ui = Parts.sheet(g, ctx, info, function()
+	local function done()
 		closeSheet(mine)
+		if fillPending then
+			fill()
+		end
 		refresh()
-	end, function()
+	end
+	local ui = Parts.sheet(g, ctx, info, done, function()
 		if working or cashNow() < info.price then
 			return
 		end
@@ -212,8 +242,7 @@ local function openSheet(info: Parts.SheetInfo, buy: () -> ())
 		mine.update()
 		buy()
 		working = false
-		closeSheet(mine)
-		refresh()
+		done()
 	end)
 	mine = {
 		ui = ui,
@@ -230,9 +259,14 @@ end
 ------------------------------------------------------------------------
 
 local build: (switch: boolean) -> ()
+-- The gui's size the screen was last built for, and when the menu last
+-- opened: a size that settles just after opening (a gui enabled for the
+-- first time) builds again with the opening's slide, not a settle.
+local builtFor = Vector2.zero
+local openedAt = 0
 
 local function choosePage(id: string)
-	if sheet or not pages[id] then
+	if sheet or not isOpen or not pages[id] then
 		return
 	end
 	if id == pageId then
@@ -251,13 +285,19 @@ local function choosePage(id: string)
 	end
 end
 
+-- Said by the next build's toast (the build the layout's change starts
+-- would drop a toast shown now).
+local pendingToast: string? = nil
+
 local function nextLayout()
-	if sheet then
+	if sheet or not isOpen then
 		return
 	end
-	local l = Layouts.advance()
 	GarageSounds.play("tab")
-	toast(`LAYOUT: {l.name}`, "info")
+	local list = Layouts.list
+	local nxt = list[(table.find(list, Layouts.current()) or 0) % #list + 1]
+	pendingToast = `LAYOUT: {nxt.name}`
+	Layouts.set(nxt.id)
 end
 
 local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
@@ -341,8 +381,9 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 		tap = function(target: GuiObject, scroll: ScrollingFrame?, onTap: () -> (), onDown: ((boolean) -> ())?)
 			table.insert(taps, { gui = target, scroll = scroll, onTap = onTap, onDown = onDown })
 		end,
+		-- A sheet is up, or the menu is going out: its buttons are dead.
 		busy = function()
-			return sheet ~= nil
+			return sheet ~= nil or not isOpen
 		end,
 		-- Under a simulated screen the coins are not where the layout is.
 		coins = if Parts.screen(g) == g.AbsoluteSize then Parts.coinAnchor(g, cash) else nil,
@@ -396,14 +437,20 @@ build = function(switch: boolean)
 	local cg = makeCash()
 	local ctx = makeCtx(g, cg)
 	ctxNow = ctx
-	toastFn = Parts.toast(g, ctx)
+	local t = Parts.toast(g, ctx)
+	toastFn = t
 	local v = Layouts.current().build(g, ctx)
 	view = v
-	page().shown()
+	builtFor = g.AbsoluteSize
 	v.fill()
 	drawStage()
 	refresh()
 	v.intro(switch)
+	local said = pendingToast
+	pendingToast = nil
+	if said then
+		t(said, "info")
+	end
 end
 
 ------------------------------------------------------------------------
@@ -533,13 +580,16 @@ function Menu.open(id: string?, opts: OpenOptions?)
 	isOpen = true
 	leaving = false
 	switched = o.switch == true
+	openedAt = os.clock()
 	g.Enabled = true
 	HudLab.setCovered(true)
+	page().shown()
 	build(switched)
 	tell(true)
 	if o.switch then
 		-- The frame was on screen already: the world behind goes straight
 		-- to this page's measure.
+		stopScene()
 		local p = page()
 		local d, b = dim, blur
 		if d then
@@ -577,6 +627,7 @@ function Menu.close()
 		if g then
 			g.Enabled = false
 		end
+		stopScene()
 		local d, b = dim, blur
 		if d then
 			d.BackgroundTransparency = 1
@@ -642,9 +693,12 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 		fill = fill,
 		toast = toast,
 		sound = GarageSounds.play,
+		tap = function(target: GuiObject, scroll: ScrollingFrame?, onTap: () -> (), onDown: ((boolean) -> ())?)
+			table.insert(taps, { gui = target, scroll = scroll, onTap = onTap, onDown = onDown })
+		end,
 		sheet = openSheet,
 		busy = function()
-			return sheet ~= nil
+			return sheet ~= nil or not isOpen
 		end,
 		showing = function()
 			return if isOpen then pageId else nil
@@ -666,8 +720,8 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	-- A new screen size, Studio's phone mode or a new layout lays it out
 	-- again; a new HUD finish or version redraws the coins to match it.
 	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		if isOpen then
-			build(true)
+		if isOpen and g.AbsoluteSize ~= builtFor then
+			build(not (os.clock() - openedAt < 0.3 and not switched))
 		end
 	end)
 	for _, name in { "ForceTouch", "ScreenSim" } do

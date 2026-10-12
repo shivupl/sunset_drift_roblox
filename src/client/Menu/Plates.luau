@@ -351,17 +351,22 @@ function Plates.new(shell: Page.Shell, remotes: Folder): Page.Page
 				price = price,
 				entry = plateEntry(key, shown(key)),
 			}, function()
+				-- The search this buy is for: a reply that comes back after
+				-- a new one was typed leaves that one alone.
+				local mine = asked
 				local s = act("buy", key)
 				if s == "done" then
-					typed.free = false
 					shell.sound("buy")
 					shell.toast(`Bought {shown(key)}`, "done")
 					-- A plate bought goes on the car you are in.
 					act("equip", key)
-					setStatus("owned", "✓ Yours already")
+					if mine == asked then
+						typed.free = false
+						setStatus("owned", "✓ Yours already")
+					end
 				else
 					shell.toast(MESSAGES[s] or MESSAGES.unavailable, "error")
-					if s == "taken" then
+					if s == "taken" and mine == asked then
 						typed.free = false
 						setStatus("taken", MESSAGES.taken)
 					end

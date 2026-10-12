@@ -31,7 +31,11 @@ export type Shell = {
 	-- The confirm sheet; `buy` runs on its BUY (it may yield) and the sheet
 	-- closes after it.
 	sheet: (info: Parts.SheetInfo, buy: () -> ()) -> (),
-	busy: () -> boolean, -- a sheet is open
+	-- A press and tap on `target`, tracked by the menu (a button in a
+	-- phone's ScrollingFrame loses Activated and blocks the scroll), for
+	-- things built in a form; registered again on every fill.
+	tap: (target: GuiObject, scroll: ScrollingFrame?, onTap: () -> (), onDown: ((boolean) -> ())?) -> (),
+	busy: () -> boolean, -- a sheet is open, or the menu is going out
 	showing: () -> string?, -- the page up (its tab id), nil while closed
 	-- The layout changed (Settings' SCREENS row): build the screen again.
 	relayout: () -> (),

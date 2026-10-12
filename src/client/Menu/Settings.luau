@@ -95,7 +95,7 @@ local ROWS: { Row } = {
 
 function Settings.new(shell: Page.Shell): Page.Page
 	-- The choices drawn by the last fill, to paint.
-	local drawn: { { row: Row, id: string, b: ImageButton, g: UIGradient, t: TextLabel } } = {}
+	local drawn: { { row: Row, id: string, b: ImageLabel, g: UIGradient, t: TextLabel } } = {}
 
 	local function paint()
 		for _, d in drawn do
@@ -192,10 +192,13 @@ function Settings.new(shell: Page.Shell): Page.Page
 					layout.CellSize = UDim2.fromOffset(math.floor((inner - gap * (per - 1)) / per), h)
 					layout.Parent = grid
 					for j, o in options do
-						local b = Instance.new("ImageButton")
+						-- An image, not a button: the menu follows the press
+						-- (shell.tap), as it does the blocks, so a tap that
+						-- moves a little still counts and the rows still
+						-- scroll under a thumb.
+						local b = Instance.new("ImageLabel")
 						b.Name = "Choice_" .. o.id
 						b.LayoutOrder = j
-						b.AutoButtonColor = false
 						b.BackgroundTransparency = 1
 						b.Image = Art.tab
 						b.ScaleType = Enum.ScaleType.Slice
@@ -206,13 +209,18 @@ function Settings.new(shell: Page.Shell): Page.Page
 						t.Size = UDim2.fromScale(1, 1)
 						t.TextXAlignment = Enum.TextXAlignment.Center
 						t.TextTruncate = Enum.TextTruncate.None
-						b.Activated:Connect(function()
+						local press = Instance.new("UIScale")
+						press.Parent = b
+						b.Parent = grid
+						shell.tap(b, scroll, function()
 							if not shell.busy() and row.current() ~= o.id then
+								shell.sound("tab")
 								row.pick(o.id)
 								paint()
 							end
+						end, function(down: boolean)
+							press.Scale = if down then 0.96 else 1
 						end)
-						b.Parent = grid
 						table.insert(drawn, { row = row, id = o.id, b = b, g = g, t = t })
 					end
 					local hint = row.hint

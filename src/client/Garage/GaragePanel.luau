@@ -1366,7 +1366,8 @@ end
 
 local function setCollapsed(c: boolean)
 	local root, r = viewRoot, restore
-	if not inside or sheet or c == collapsed or not root or not r then
+	-- Not under the menu: the panel stays hidden while it is up.
+	if not inside or sheet or c == collapsed or not root or not r or SpawnMenu.isOpen() then
 		return
 	end
 	collapsed = c
@@ -1592,6 +1593,12 @@ local function onEnter(id: string, preview: Model)
 end
 
 local function onLeave()
+	-- The menu opened over the garage (SHOP PLATES, M) goes with it, before
+	-- the modal is handed back: closed later it would put back the
+	-- garage's (review, ui-flow).
+	if SpawnMenu.isOpen() then
+		SpawnMenu.close()
+	end
 	inside = false
 	teardown()
 	previewModel = nil
@@ -1642,8 +1649,9 @@ local function bindInput()
 		if not inside or not view then
 			return
 		end
-		-- H / gamepad Y fold the panel away and back (not while typing).
-		if (io.KeyCode == Enum.KeyCode.H and not processed) or io.KeyCode == Enum.KeyCode.ButtonY then
+		-- H / gamepad Y fold the panel away and back (not while typing, nor
+		-- under the menu).
+		if ((io.KeyCode == Enum.KeyCode.H and not processed) or io.KeyCode == Enum.KeyCode.ButtonY) and not SpawnMenu.isOpen() then
 			setCollapsed(not collapsed)
 			return
 		end
@@ -1746,12 +1754,20 @@ function GaragePanel.start(remotes: Folder)
 		if not inside then
 			return
 		end
-		local root, cg = viewRoot, cashGui
+		-- A confirm sheet of the garage's goes (it sits on the gui, not the
+		-- panel); the fold's pill hides with the panel.
+		if open then
+			closeSheet()
+		end
+		local root, cg, r = viewRoot, cashGui, restore
 		if root then
 			root.Visible = not open and not collapsed
 		end
 		if cg then
 			cg.Enabled = not open
+		end
+		if r then
+			r.Visible = not open and collapsed
 		end
 		local v = view
 		if not open and v and not collapsed then
