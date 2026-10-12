@@ -2,8 +2,9 @@
 -- SHOWCASE (C. Garage on the "Hajwala Menus" canvas): the car is the big
 -- thing in the middle under its name; the categories are words down the
 -- left on a shade, EXIT and the layout switch under them; on the right a
--- slim panel with the cash, the sub-tabs and the items as a list, the
--- action under it where the right thumb is.
+-- slim panel with the cash, the sub-tabs, the items as a list and the one
+-- picked, the action under it where the right thumb is. EXIT, the layout
+-- switch and the action share one bottom line.
 local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Types = require(script.Parent:WaitForChild("Types"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
@@ -35,7 +36,9 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local rail = Parts.wordRail(root, ctx, if touch then 38 else 46, if touch then 13 else 16, if touch then 17 else 21, true)
 	rail.root.Position = UDim2.fromOffset(M, M)
 	rail.root.Size = UDim2.fromOffset(navW, 0)
-	local btnH = if touch then 44 else 52
+	-- The action's height, so the bottom row lines up (the owner's phone,
+	-- 2026-10-12: 44 beside 52 read as two rows).
+	local btnH = actionH
 	local exit = Parts.exit(root, if touch then 84 else 104, btnH, if touch then 12 else 14)
 	exit.Position = UDim2.fromOffset(M, room.Y - M - btnH)
 	exit.Activated:Connect(function()
@@ -51,7 +54,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		end
 	end)
 
-	-- The car's name over it, and the item picked under it.
+	-- The car's name over it.
 	local cx = M + navW + (if touch then 14 else 24)
 	local head = Kit.frame(root, "Head")
 	head.Position = UDim2.fromOffset(cx, M)
@@ -75,28 +78,9 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	chipHolder.Size = UDim2.fromOffset(0, if touch then 20 else 24)
 	local chip: Frame? = nil
 
-	local pick = Kit.frame(root, "Picked", Kit.C.chip, 0.2)
-	pick.AnchorPoint = Vector2.new(0, 1)
-	pick.Position = UDim2.fromOffset(cx, room.Y - M)
-	pick.AutomaticSize = Enum.AutomaticSize.X
-	pick.Size = UDim2.fromOffset(0, if touch then 28 else 34)
-	Kit.corner(pick, 8)
-	Kit.stroke(pick, Color3.new(1, 1, 1), 1, 0.9)
-	Kit.pad(pick, 0, 12, 0, 12)
-	Kit.list(pick, false, 8, Enum.VerticalAlignment.Center)
-	local pickName = Kit.text(pick, "Name", "", if touch then 12 else 15, Enum.FontWeight.Heavy, true)
-	pickName.RichText = true
-	pickName.AutomaticSize = Enum.AutomaticSize.X
-	pickName.Size = UDim2.fromScale(0, 1)
-	pickName.TextTruncate = Enum.TextTruncate.None
-	local pickNote = Kit.text(pick, "Note", "", if touch then 10 else 12, Enum.FontWeight.SemiBold, false, Kit.C.sub)
-	pickNote.LayoutOrder = 1
-	pickNote.AutomaticSize = Enum.AutomaticSize.X
-	pickNote.Size = UDim2.fromScale(0, 1)
-	pickNote.TextTruncate = Enum.TextTruncate.None
-
 	-- The column: the cash and REV / SHOP PLATES, the sub-tabs, a note, the
-	-- items as a list.
+	-- items as a list, and the item picked at its foot, right over the
+	-- action that buys it (it was a chip across the screen from BUY).
 	local col, body = Kit.panel(root, "Column", if touch then 14 else 16)
 	col.Position = UDim2.fromOffset(room.X - M - colW, M)
 	col.Size = UDim2.fromOffset(colW, room.Y - 3 * M - actionH)
@@ -147,9 +131,11 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		then { name = 11, word = 9, swatch = 28, rows = true, inline = true }
 		else { name = 13, word = 11, swatch = 34, rows = true, inline = true }
 	local items = Parts.items(body, ctx, 1, 1, if touch then 44 else 54, if touch then 44 else 54, if touch then 5 else 7, m)
-	items.scroll.LayoutOrder = 4
-	items.scroll.Size = UDim2.fromScale(1, 0)
-	Kit.fill(items.scroll)
+	items.root.LayoutOrder = 4
+	items.root.Size = UDim2.fromScale(1, 0)
+	Kit.fill(items.root)
+	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
+	foot.root.LayoutOrder = 5
 
 	local action = Parts.action(root, ctx, colW, actionH, if touch then 17 else 21)
 	action.root.Position = UDim2.fromOffset(room.X - M - colW, room.Y - M - actionH)
@@ -194,9 +180,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		items.refresh()
 		local f = ctx.foot()
 		action.set(f)
-		pick.Visible = f.name ~= ""
-		pickName.Text = if f.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {f.name}` else f.name
-		pickNote.Text = f.note
+		foot.set(f)
 		carName.Text = ctx.carName()
 		local old = chip
 		if old then

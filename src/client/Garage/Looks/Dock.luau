@@ -68,23 +68,12 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		then { name = 10, word = 9, swatch = 30, rows = false, inline = false }
 		else { name = 12, word = 11, swatch = 42, rows = false, inline = false }
 	local items = Parts.items(body, ctx, if touch then 4 else 5, if touch then 1 else 2, if touch then 80 else 104, if touch then 46 else 56, if touch then 7 else 9, m)
-	items.scroll.LayoutOrder = 3
-	items.scroll.Size = UDim2.fromScale(1, 0)
-	Kit.fill(items.scroll)
+	items.root.LayoutOrder = 3
+	items.root.Size = UDim2.fromScale(1, 0)
+	Kit.fill(items.root)
 
-	local foot = Kit.frame(body, "Foot")
-	foot.LayoutOrder = 4
-	foot.Size = UDim2.new(1, 0, 0, if touch then 22 else 28)
-	Kit.list(foot, false, 8, Enum.VerticalAlignment.Center)
-	local footName = Kit.text(foot, "Name", "", if touch then 13 else 16, Enum.FontWeight.Heavy, true)
-	footName.RichText = true
-	footName.AutomaticSize = Enum.AutomaticSize.X
-	footName.Size = UDim2.fromScale(0, 1)
-	footName.TextTruncate = Enum.TextTruncate.None
-	local footNote = Kit.text(foot, "Note", "", if touch then 10 else 12, Enum.FontWeight.SemiBold, false, Kit.C.sub)
-	footNote.LayoutOrder = 1
-	footNote.Size = UDim2.fromScale(0, 1)
-	Kit.fill(footNote)
+	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
+	foot.root.LayoutOrder = 4
 
 	-- GARAGE and the car over the car, the cash in the corner.
 	local head = Kit.frame(root, "Head")
@@ -172,9 +161,7 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		items.refresh()
 		local f = ctx.foot()
 		action.set(f)
-		foot.Visible = f.name ~= ""
-		footName.Text = if f.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {f.name}` else f.name
-		footNote.Text = f.note
+		foot.set(f)
 		carLine.Text = `{ctx.carName()}, {ctx.carDrive()}`
 	end
 

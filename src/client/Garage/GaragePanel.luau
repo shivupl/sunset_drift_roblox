@@ -21,7 +21,10 @@
 --             words down the left; the items as a list on the right with
 --             the action under it.
 --   SHADE     (Looks/Shade) the garage-ui-overhaul's shade and rail of words,
---             the sub-tabs as words along the bottom.
+--             the sub-tabs as words along the bottom. Parked (2026-10-12,
+--             the owner on the phone: "i liked those 2 mobile layouts the
+--             most so lets narrow it down to that for now"): out of LAYOUTS,
+--             kept to come back to.
 -- The LAYOUT button in each cycles them; the choice is the LocalPlayer
 -- attribute GarageLayout and lasts the session. Each puts the car where its
 -- panels leave room (GarageConfig.layoutOffset).
@@ -131,7 +134,6 @@ local FINISH_SHINE_PER_REFLECTANCE = 3
 local LAYOUTS: { Types.Layout } = {
 	{ id = "dock", name = "DOCK", build = require(Looks:WaitForChild("Dock")).build },
 	{ id = "showcase", name = "SHOWCASE", build = require(Looks:WaitForChild("Showcase")).build },
-	{ id = "shade", name = "SHADE", build = require(Looks:WaitForChild("Shade")).build },
 }
 local LAYOUT_ATTRIBUTE = "GarageLayout"
 
@@ -1484,6 +1486,10 @@ local function buildGui(): ScreenGui
 	-- Not IgnoreGuiInset: the panel runs under Roblox's top bar, never
 	-- beneath its buttons (a layout's shade alone bleeds up under it).
 	g.IgnoreGuiInset = false
+	-- The layouts sit inside the safe area all the same (ScreenInsets);
+	-- this lets a shade run on into a notch's strip rather than stop in a
+	-- hard edge there (the owner's phone, 2026-10-12: SHOWCASE's shade).
+	g.ClipToDeviceSafeArea = false
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = DISPLAY_ORDER
 	g.Parent = player:WaitForChild("PlayerGui")

@@ -42,8 +42,9 @@ GarageConfig.framingMargin = 1.15
 -- middle, so the panel on the left does not cover it.
 GarageConfig.screenOffset = 0.18
 -- The same per garage layout (GaragePanel, 2026-10-12: the owner is
--- choosing between three): DOCK and SHADE keep their panels on the left,
--- SHOWCASE puts the car in the middle between the words and the list.
+-- choosing between DOCK and SHOWCASE; SHADE is parked): DOCK and SHADE keep
+-- their panels on the left, SHOWCASE puts the car in the middle between the
+-- words and the list.
 GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,

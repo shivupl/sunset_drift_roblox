@@ -71,9 +71,9 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		then { name = 9.5, word = 8.5, swatch = 34, rows = false, inline = false }
 		else { name = 12, word = 11, swatch = 46, rows = false, inline = false }
 	local items = Parts.items(content, ctx, if touch then 3 else 4, if touch then 1 else 2, if touch then 84 else 110, if touch then 46 else 56, if touch then 7 else 9, m)
-	items.scroll.LayoutOrder = 3
-	items.scroll.Size = UDim2.fromScale(1, 0)
-	Kit.fill(items.scroll)
+	items.root.LayoutOrder = 3
+	items.root.Size = UDim2.fromScale(1, 0)
+	Kit.fill(items.root)
 
 	-- Along the bottom: EXIT and the layout switch under the rail, the
 	-- sub-tabs as words.

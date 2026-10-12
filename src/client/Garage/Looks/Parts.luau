@@ -7,8 +7,10 @@
 -- sodium of the HUD's coin: prices, BUY and the confirm sheet's BUY; green
 -- is go and yours (DRIVE THIS, ON CAR, OWNED, what shows on the car).
 -- The category icons are art/garage.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local UITheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UITheme"))
 local Client = script.Parent.Parent.Parent
 local CarPicker = Client:WaitForChild("CarPicker")
 local Kit = require(CarPicker:WaitForChild("Kit"))
@@ -87,6 +89,14 @@ function Parts.icon(parent: Instance, index: number, size: number, color: Color3
 	return i
 end
 
+-- A title's Arabic beside it: UITheme.arabicScale the English's size
+-- (UI_SYSTEM.md "Arabic with English"). Roblox's Arabic face draws small,
+-- so this reads as the same size; at 0.6 it was a smudge on a phone (the
+-- owner's screenshots, 2026-10-12).
+function Parts.arabicSize(size: number): number
+	return math.floor(size * UITheme.arabicScale + 0.5)
+end
+
 -- GARAGE and its Arabic, side by side.
 function Parts.title(parent: Instance, size: number): Frame
 	local f = Kit.frame(parent, "Title")
@@ -97,7 +107,7 @@ function Parts.title(parent: Instance, size: number): Frame
 	en.AutomaticSize = Enum.AutomaticSize.X
 	en.Size = UDim2.fromScale(0, 1)
 	en.TextTruncate = Enum.TextTruncate.None
-	local ar = Kit.text(f, "Arabic", "كراج", math.floor(size * 0.6), Enum.FontWeight.Bold, false, Parts.C.sand)
+	local ar = Kit.text(f, "Arabic", "كراج", Parts.arabicSize(size), Enum.FontWeight.Bold, false, Parts.C.sand)
 	ar.LayoutOrder = 1
 	ar.AutomaticSize = Enum.AutomaticSize.X
 	ar.Size = UDim2.fromScale(0, 1)
@@ -115,7 +125,7 @@ function Parts.heading(parent: Instance, def: Types.TabDef, size: number): Frame
 	en.AutomaticSize = Enum.AutomaticSize.X
 	en.Size = UDim2.fromScale(0, 1)
 	en.TextTruncate = Enum.TextTruncate.None
-	local ar = Kit.text(f, "Arabic", def.arabic, math.floor(size * 0.6), Enum.FontWeight.Bold, false, Parts.C.sand)
+	local ar = Kit.text(f, "Arabic", def.arabic, Parts.arabicSize(size), Enum.FontWeight.Bold, false, Parts.C.sand)
 	ar.LayoutOrder = 1
 	ar.AutomaticSize = Enum.AutomaticSize.X
 	ar.Size = UDim2.fromScale(0, 1)
@@ -379,32 +389,81 @@ end
 
 -- The items in a scrolling grid (`cols` across) or list (cols 1), built
 -- again on every fill. Returns the boxes by key, for refresh and pop.
+-- `root` holds the scroll and goes in the layout's list.
+--
+-- Where more items are past an edge, that edge fades into the panel, so a
+-- row cut by the edge reads as "more this way" rather than a broken box
+-- (the owner's phone, 2026-10-12: MY CARS showed a sliver of a fifth car).
 export type Items = {
+	root: Frame,
 	scroll: ScrollingFrame,
 	fill: (entries: { Types.Entry }) -> (),
 	refresh: () -> (),
 	pop: (key: string) -> (),
 }
 function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCols: number, tileH: number, rowH: number, gap: number, m: BoxMetrics): Items
+	local holder = Kit.frame(parent, "Items")
 	local scroll = Instance.new("ScrollingFrame")
-	scroll.Name = "Items"
+	scroll.Name = "Scroll"
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
-	scroll.ScrollBarThickness = if ctx.touch then 4 else 4
+	scroll.Size = UDim2.fromScale(1, 1)
+	scroll.ScrollBarThickness = 4
 	scroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
 	scroll.ScrollBarImageTransparency = 0.8
 	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.CanvasSize = UDim2.new()
 	scroll.Active = true
-	scroll.Parent = parent
+	scroll.Parent = holder
 	Kit.pad(scroll, 3, 8, 6, 3)
 	local grid = Instance.new("UIGridLayout")
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.CellPadding = UDim2.fromOffset(gap, gap)
 	grid.Parent = scroll
+
+	-- The panel's own colour where the list starts and ends (Kit.panel's
+	-- gradient, near its top and its foot).
+	local fadeH = if ctx.touch then 18 else 24
+	local function fade(name: string, atTop: boolean): Frame
+		local color = if atTop then Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.2) else Kit.C.panelTop:Lerp(Kit.C.panelBottom, 0.85)
+		local f = Kit.frame(holder, name, color, 0)
+		f.AnchorPoint = Vector2.new(0, if atTop then 0 else 1)
+		f.Position = UDim2.fromScale(0, if atTop then 0 else 1)
+		f.Size = UDim2.new(1, 0, 0, fadeH)
+		f.ZIndex = 5
+		f.Visible = false
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Transparency = if atTop then NumberSequence.new(0, 1) else NumberSequence.new(1, 0)
+		g.Parent = f
+		return f
+	end
+	local topFade = fade("FadeTop", true)
+	local bottomFade = fade("FadeBottom", false)
+
 	local boxes: { { e: Types.Entry, box: Box } } = {}
+	-- Measured on the boxes themselves, in screen pixels (CanvasPosition
+	-- and AbsoluteCanvasSize disagree under the layout's UIScale).
+	local function edges()
+		local first, last = boxes[1], boxes[#boxes]
+		if not first or not last then
+			topFade.Visible = false
+			bottomFade.Visible = false
+			return
+		end
+		local y0 = scroll.AbsolutePosition.Y
+		local y1 = y0 + scroll.AbsoluteSize.Y
+		local l = last.box.root
+		topFade.Visible = first.box.root.AbsolutePosition.Y < y0 - 1
+		bottomFade.Visible = l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
+	end
+	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
+	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
+	scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(edges)
+
 	return {
+		root = holder,
 		scroll = scroll,
 		fill = function(entries: { Types.Entry })
 			for _, b in boxes do
@@ -423,6 +482,8 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 				table.insert(boxes, { e = e, box = box })
 			end
 			scroll.CanvasPosition = Vector2.zero
+			-- The grid places the new boxes on the next layout pass.
+			task.defer(edges)
 		end,
 		refresh = function()
 			for _, b in boxes do
@@ -435,6 +496,34 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 					b.box.pop()
 				end
 			end
+		end,
+	}
+end
+
+-- The line naming what the action is for: the item picked and how it
+-- stands (Previewing, On your Kamri), over or beside the action. Not on
+-- MY CARS: the car's name is over the car already (the owner's phone,
+-- 2026-10-12: Kamri three times on one screen).
+export type FootLine = { root: Frame, set: (foot: Types.Foot) -> () }
+function Parts.footLine(parent: Instance, h: number, size: number, noteSize: number): FootLine
+	local foot = Kit.frame(parent, "Foot")
+	foot.Size = UDim2.new(1, 0, 0, h)
+	Kit.list(foot, false, 8, Enum.VerticalAlignment.Center)
+	local name = Kit.text(foot, "Name", "", size, Enum.FontWeight.Heavy, true)
+	name.RichText = true
+	name.AutomaticSize = Enum.AutomaticSize.X
+	name.Size = UDim2.fromScale(0, 1)
+	name.TextTruncate = Enum.TextTruncate.None
+	local note = Kit.text(foot, "Note", "", noteSize, Enum.FontWeight.SemiBold, false, Kit.C.sub)
+	note.LayoutOrder = 1
+	note.Size = UDim2.fromScale(0, 1)
+	Kit.fill(note)
+	return {
+		root = foot,
+		set = function(f: Types.Foot)
+			foot.Visible = f.name ~= "" and f.action ~= "drive"
+			name.Text = if f.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {f.name}` else f.name
+			note.Text = f.note
 		end,
 	}
 end
@@ -540,7 +629,9 @@ function Parts.wordRail(parent: Instance, ctx: Types.Ctx, rowH: number, size: nu
 		w.TextTruncate = Enum.TextTruncate.None
 		local ar: TextLabel? = nil
 		if arabic then
-			local a = Kit.text(line, "Arabic", d.arabic, math.floor(sizeOn * 0.62), Enum.FontWeight.Bold, false, Parts.C.sand)
+			-- As big as the word, like the dock's chosen tab (a title's
+			-- 1.15 runs SUN STRIPS out of the rail).
+			local a = Kit.text(line, "Arabic", d.arabic, sizeOn, Enum.FontWeight.Bold, false, Parts.C.sand)
 			a.LayoutOrder = 1
 			a.AutomaticSize = Enum.AutomaticSize.X
 			a.Size = UDim2.fromScale(0, 1)
@@ -751,7 +842,7 @@ function Parts.sheet(gui: ScreenGui, ctx: Types.Ctx, info: SheetInfo, onCancel: 
 	t.AutomaticSize = Enum.AutomaticSize.X
 	t.Size = UDim2.fromScale(0, 1)
 	t.TextTruncate = Enum.TextTruncate.None
-	local ar = Kit.text(head, "Arabic", "شراء", math.floor(12 * size), Enum.FontWeight.Bold, false, Parts.C.sand)
+	local ar = Kit.text(head, "Arabic", "شراء", Parts.arabicSize(math.floor(17 * size)), Enum.FontWeight.Bold, false, Parts.C.sand)
 	ar.LayoutOrder = 1
 	ar.AutomaticSize = Enum.AutomaticSize.X
 	ar.Size = UDim2.fromScale(0, 1)
