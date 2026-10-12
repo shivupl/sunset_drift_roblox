@@ -24,18 +24,20 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 
 	-- The shade: dark under the panel (it counts as the panel: a drag there
 	-- is not the turntable's), then a tail fading to clear that lets drags
-	-- through (GarageView.overUi skips PassThrough).
+	-- through (GarageView.overUi skips PassThrough). Both run half a screen
+	-- past the gui's edges, into a notch's strip on any phone (UIKit.edgeToEdge).
+	gui.ClipToDeviceSafeArea = false
 	local tail = if touch then 110 else 200
 	local shade = Kit.frame(root, "Shade", Color3.fromHex("#0A0A0C"), 0)
-	shade.Position = UDim2.fromOffset(-80, -120)
-	shade.Size = UDim2.new(0, edge + 80, 1, 240)
+	shade.Position = UDim2.fromScale(-0.5, -0.5)
+	shade.Size = UDim2.new(0.5, edge, 2, 0)
 	shade.Active = true
 	local g = Instance.new("UIGradient")
 	g.Transparency = NumberSequence.new(0.06, 0.14)
 	g.Parent = shade
 	local fadeOut = Kit.frame(root, "ShadeTail", Color3.fromHex("#0A0A0C"), 0)
-	fadeOut.Position = UDim2.fromOffset(edge, -120)
-	fadeOut.Size = UDim2.new(0, tail, 1, 240)
+	fadeOut.Position = UDim2.new(0, edge, -0.5, 0)
+	fadeOut.Size = UDim2.new(0, tail, 2, 0)
 	fadeOut:SetAttribute("PassThrough", true)
 	local g2 = Instance.new("UIGradient")
 	g2.Transparency = NumberSequence.new(0.14, 1)

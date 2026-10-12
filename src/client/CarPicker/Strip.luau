@@ -21,14 +21,21 @@ function Strip.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	root.Size = UDim2.fromOffset(room.X, bandH)
 	local _ = scale
 
+	-- The band's shade runs half a screen past the sides and a band's
+	-- height below, so no notch or home bar leaves a strip of world beside
+	-- it on any phone (UIKit.edgeToEdge; the gui does not clip to the safe
+	-- area). The band itself is its top half: the fade's stops are halved.
+	gui.ClipToDeviceSafeArea = false
 	local shade = Kit.frame(root, "Shade", Color3.fromHex("#0A0A0C"), 0)
-	shade.Size = UDim2.fromScale(1, 1)
+	shade.Position = UDim2.fromScale(-0.5, 0)
+	shade.Size = UDim2.fromScale(2, 2)
 	shade.ZIndex = 0
 	local fade = Instance.new("UIGradient")
 	fade.Rotation = 90
 	fade.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.3, 0.18),
+		NumberSequenceKeypoint.new(0.15, 0.18),
+		NumberSequenceKeypoint.new(0.5, 0.06),
 		NumberSequenceKeypoint.new(1, 0.06),
 	})
 	fade.Parent = shade

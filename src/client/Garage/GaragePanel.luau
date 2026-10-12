@@ -1486,10 +1486,6 @@ local function buildGui(): ScreenGui
 	-- Not IgnoreGuiInset: the panel runs under Roblox's top bar, never
 	-- beneath its buttons (a layout's shade alone bleeds up under it).
 	g.IgnoreGuiInset = false
-	-- The layouts sit inside the safe area all the same (ScreenInsets);
-	-- this lets a shade run on into a notch's strip rather than stop in a
-	-- hard edge there (the owner's phone, 2026-10-12: SHOWCASE's shade).
-	g.ClipToDeviceSafeArea = false
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = DISPLAY_ORDER
 	g.Parent = player:WaitForChild("PlayerGui")

@@ -259,7 +259,10 @@ me chose from ... for both pc and phone"): layouts from the canvas
 (`src/client/Garage/Looks`), switched with the LAYOUT button in each (the
 LocalPlayer attribute `GarageLayout`). Two are in play, DOCK and SHOWCASE
 (2026-10-12: "i liked those 2 mobile layouts the most so lets narrow it
-down to that for now"); SHADE is parked out of the list. They share
+down to that for now"); SHADE is parked out of the list. DOCK shows every
+item as a square block, three across on a phone ("the options need to be
+bigger and make them blocks/squares"); SHOWCASE keeps a list, and its
+category words sit on a panel like the list's, not on a shade. They share
 `Looks/Parts`: the picker's panels, slanted sub-tabs and cut-corner item
 box, the chosen item edged green, ON CAR and ✓ OWNED in green, prices and
 BUY in sodium (the confirm sheet's too), the category icons from
@@ -267,8 +270,8 @@ art/garage. A list fades into its panel at an edge with more items past
 it; the line naming the item picked sits in the panel over the action
 (not on MY CARS, where the car's name is over the car); titles' Arabic is
 at `arabicScale`, as above. Each layout is drawn for an 844x346 phone and
-a 1280x664 PC and scaled to the screen it is on. The gui does not clip to
-the device's safe area, so a shade runs into a notch's strip.
+a 1280x664 PC and scaled to the screen it is on. Their confirm sheet's dim
+covers the whole screen (`UIKit.edgeToEdge`, BEHAVIOURS.md).
 
 ## Don'ts
 

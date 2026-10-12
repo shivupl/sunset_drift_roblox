@@ -103,6 +103,11 @@ function SpeedFeel.start(model: Model)
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "SpeedLines"
 	sg.IgnoreGuiInset = true
+	-- The whole screen: the lines are placed in the viewport's pixels
+	-- (WorldToViewportPoint), which a notch's inset would shift, and they
+	-- run to the screen's edges (UIKit.edgeToEdge).
+	sg.ScreenInsets = Enum.ScreenInsets.None
+	sg.ClipToDeviceSafeArea = false
 	sg.ResetOnSpawn = false
 	sg.DisplayOrder = -1 -- under the HUD
 	sg.Parent = playerGui

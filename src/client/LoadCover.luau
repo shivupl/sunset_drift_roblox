@@ -46,6 +46,11 @@ function LoadCover.start()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HajwalaLoadCover"
 	gui.IgnoreGuiInset = true
+	-- The whole screen, notch and home bar too: inside the safe area the
+	-- world showed in a strip down the side (UIKit.edgeToEdge). Its words
+	-- are in the middle.
+	gui.ScreenInsets = Enum.ScreenInsets.None
+	gui.ClipToDeviceSafeArea = false
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 100 -- over the HUD and the cars menu
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling

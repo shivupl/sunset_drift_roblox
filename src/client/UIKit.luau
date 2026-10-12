@@ -115,6 +115,25 @@ local TITLE_STACK_WIDTH = 280
 -- A tiny padlock's box, before touch scaling. Decorative only.
 local PADLOCK_SIZE = 10
 
+-- EDGE TO EDGE ----------------------------------------------------------------
+
+-- A backdrop (a scrim, a fade, a shade) that reaches every edge of the
+-- screen on every device. A ScreenGui's area stops short of a notch and a
+-- home bar (and of Roblox's top bar without IgnoreGuiInset), and clips its
+-- contents there by default; a backdrop sized to the gui, or bled past it
+-- by a fixed number of pixels, leaves a strip of world showing on some
+-- phone (the owner, 2026-10-08: "again with the boundries"; 2026-10-12: "i
+-- want it fixed so that there is no wierd gap for any device"). This runs
+-- `f` half a screen past each side of its parent, which must span the gui,
+-- and lets the gui draw outside the safe area. Everything else in the gui
+-- still lays out inside it (ScreenInsets).
+function UIKit.edgeToEdge(f: GuiObject, gui: ScreenGui)
+	f.AnchorPoint = Vector2.zero
+	f.Position = UDim2.fromScale(-0.5, -0.5)
+	f.Size = UDim2.fromScale(2, 2)
+	gui.ClipToDeviceSafeArea = false
+end
+
 -- WHO IS PLAYING -------------------------------------------------------------
 
 function UIKit.isTouch(): boolean
@@ -568,10 +587,14 @@ function UIKit.sheet(parent: Instance, touch: boolean, z: number?): (Frame, Fram
 	scrim.BackgroundColor3 = UITheme.color.asphalt950
 	scrim.BackgroundTransparency = UITheme.alpha.scrim
 	scrim.BorderSizePixel = 0
-	scrim.Size = UDim2.fromScale(1, 1)
-	scrim.Position = UDim2.fromScale(0, 0)
 	scrim.ZIndex = base
 	scrim.Parent = parent
+	-- On a gui (PlatesPanel's), the whole screen.
+	if parent:IsA("ScreenGui") then
+		UIKit.edgeToEdge(scrim, parent :: ScreenGui)
+	else
+		scrim.Size = UDim2.fromScale(1, 1)
+	end
 
 	local sheet = UIKit.panel(parent, touch, base + 2)
 	sheet.Name = "Sheet"

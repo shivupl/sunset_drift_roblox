@@ -1,7 +1,7 @@
 --!strict
 -- SHOWCASE (C. Garage on the "Hajwala Menus" canvas): the car is the big
 -- thing in the middle under its name; the categories are words down the
--- left on a shade, EXIT and the layout switch under them; on the right a
+-- left on a panel, EXIT and the layout switch under them; on the right a
 -- slim panel with the cash, the sub-tabs, the items as a list and the one
 -- picked, the action under it where the right thumb is. EXIT, the layout
 -- switch and the action share one bottom line.
@@ -15,31 +15,31 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local touch = ctx.touch
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	local M = 8
-	local navW = if touch then 132 else 190
+	local navW = if touch then 150 else 200
 	local colW = if touch then 252 else 352
 	local actionH = if touch then 52 else 60
 
-	-- A shade behind the words, so they read over the garage.
-	local shade = Kit.frame(root, "Shade", Color3.new(0, 0, 0), 0)
-	shade.Position = UDim2.fromOffset(-60, -80)
-	shade.Size = UDim2.new(0, navW + 60 + (if touch then 90 else 140), 1, 160)
-	shade:SetAttribute("PassThrough", true)
-	local fade = Instance.new("UIGradient")
-	fade.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.15),
-		NumberSequenceKeypoint.new(0.55, 0.45),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	fade.Parent = shade
-
-	-- The categories, EXIT and the layout switch under them.
-	local rail = Parts.wordRail(root, ctx, if touch then 38 else 46, if touch then 13 else 16, if touch then 17 else 21, true)
-	rail.root.Position = UDim2.fromOffset(M, M)
-	rail.root.Size = UDim2.fromOffset(navW, 0)
+	-- The categories on a panel like the list's, EXIT and the layout switch
+	-- under it as wide as it. They were on a shade fading into the garage,
+	-- which stopped short of the screen's edge beside a notch (the owner,
+	-- 2026-10-12: "i want it fixed so that there is no wierd gap for any
+	-- device. maybe find a way to make it look nice without the wierd
+	-- shading effect"). The rows share the panel's height, up to a tap's
+	-- comfortable 40.
 	-- The action's height, so the bottom row lines up (the owner's phone,
 	-- 2026-10-12: 44 beside 52 read as two rows).
 	local btnH = actionH
-	local exit = Parts.exit(root, if touch then 84 else 104, btnH, if touch then 12 else 14)
+	local navH = room.Y - 3 * M - btnH
+	local nav, navBody = Kit.panel(root, "Nav", if touch then 14 else 16)
+	nav.Position = UDim2.fromOffset(M, M)
+	nav.Size = UDim2.fromOffset(navW, navH)
+	local navPad = if touch then 6 else 10
+	Kit.pad(navBody, navPad, 6, navPad, 0)
+	Kit.list(navBody, true, 0, Enum.VerticalAlignment.Center)
+	local navRowH = math.min(if touch then 40 else 48, math.floor((navH - 2 * navPad) / #ctx.tabs))
+	local rail = Parts.wordRail(navBody, ctx, navRowH, if touch then 13 else 16, if touch then 17 else 21, true)
+	local exitW = navW - btnH - 6
+	local exit = Parts.exit(root, exitW, btnH, if touch then 12 else 14)
 	exit.Position = UDim2.fromOffset(M, room.Y - M - btnH)
 	exit.Activated:Connect(function()
 		if not ctx.busy() then
@@ -47,7 +47,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		end
 	end)
 	local layoutButton = Parts.square(root, "Layout", btnH, btnH, Parts.ICON.layout)
-	layoutButton.Position = UDim2.fromOffset(M + (if touch then 84 else 104) + 6, room.Y - M - btnH)
+	layoutButton.Position = UDim2.fromOffset(M + exitW + 6, room.Y - M - btnH)
 	layoutButton.Activated:Connect(function()
 		if not ctx.busy() then
 			ctx.act.nextLayout()

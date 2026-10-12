@@ -706,7 +706,7 @@ local function ensureGui(): (ScreenGui, Frame)
 	screen.DisplayOrder = 50 -- over the panel, so the fade covers it too
 	local fade = Instance.new("Frame")
 	fade.Name = "Fade"
-	fade.Size = UDim2.fromScale(1, 1)
+	UIKit.edgeToEdge(fade, screen)
 	fade.BorderSizePixel = 0
 	fade.BackgroundColor3 = UITheme.color.asphalt950
 	fade.BackgroundTransparency = 1

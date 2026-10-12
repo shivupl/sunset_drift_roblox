@@ -15,6 +15,7 @@ local Client = script.Parent.Parent.Parent
 local CarPicker = Client:WaitForChild("CarPicker")
 local Kit = require(CarPicker:WaitForChild("Kit"))
 local Art = require(CarPicker:WaitForChild("Art"))
+local UIKit = require(Client:WaitForChild("UIKit"))
 local Types = require(script.Parent:WaitForChild("Types"))
 
 local Parts = {}
@@ -229,7 +230,8 @@ end
 
 ------------------------------------------------------------------------
 -- Items: the picker's cut-corner box. A tile (a swatch over the name and
--- its word) or a row (the swatch at the left).
+-- its word), a row (the swatch at the left) or a square block (a big
+-- picture over the name and its word).
 ------------------------------------------------------------------------
 
 export type BoxMetrics = {
@@ -238,6 +240,9 @@ export type BoxMetrics = {
 	swatch: number, -- a tile's round swatch; a row's swatch height
 	rows: boolean, -- draw a palette's swatches as rows too
 	inline: boolean, -- a row's word at its right end, not under the name
+	-- Every item a square block this big, its picture over its name and
+	-- word, whatever its shape (DOCK).
+	block: number?,
 }
 
 export type Box = {
@@ -270,7 +275,8 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 	local scale = Instance.new("UIScale")
 	scale.Parent = root
 
-	local asRow = e.shape ~= "swatch" or m.rows
+	local block = m.block
+	local asRow = block == nil and (e.shape ~= "swatch" or m.rows)
 	local round = e.shape == "swatch"
 	local tile = Kit.frame(root, "Swatch", Color3.new(1, 1, 1), 0)
 	tile.ClipsDescendants = true
@@ -278,7 +284,44 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 	nameLabel.RichText = true
 	nameLabel.Text = if e.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {e.name}` else e.name
 	local word = Kit.text(root, "Word", "", m.word, Enum.FontWeight.ExtraBold, true, Parts.C.sodium)
-	if asRow then
+	if block then
+		-- The picture fills the room over the words: a palette's colour
+		-- as a disc up to `swatch` across, anything else at its own aspect
+		-- as wide as the block lets it.
+		local textH = m.name + m.word + 16
+		local artTop = 8
+		local artRoom = block - textH - artTop - 4
+		local w, h = 0, 0
+		if round then
+			local d = math.min(m.swatch, artRoom)
+			w, h = d, d
+		else
+			local aspect = ASPECT[e.shape] or 1.6
+			w = block - 16
+			h = math.floor(w / aspect + 0.5)
+			if h > artRoom then
+				h = artRoom
+				w = math.floor(h * aspect + 0.5)
+			end
+		end
+		tile.AnchorPoint = Vector2.new(0.5, 0.5)
+		tile.Position = UDim2.new(0.5, 0, 0, artTop + math.floor(artRoom / 2))
+		tile.Size = UDim2.fromOffset(w, h)
+		Kit.corner(tile, if round then math.floor(h / 2) else 8)
+		nameLabel.AnchorPoint = Vector2.new(0.5, 1)
+		nameLabel.Position = UDim2.new(0.5, 0, 1, -(m.word + 12))
+		nameLabel.Size = UDim2.new(1, -12, 0, m.name + 3)
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+		nameLabel.TextScaled = true
+		local limit = Instance.new("UITextSizeConstraint")
+		limit.MaxTextSize = math.floor(m.name)
+		limit.MinTextSize = math.floor(m.name * 0.72)
+		limit.Parent = nameLabel
+		word.AnchorPoint = Vector2.new(0.5, 1)
+		word.Position = UDim2.new(0.5, 0, 1, -8)
+		word.Size = UDim2.new(1, -16, 0, m.word + 4)
+		word.TextXAlignment = Enum.TextXAlignment.Center
+	elseif asRow then
 		local h = m.swatch
 		local w = if round then h else math.floor(h * (ASPECT[e.shape] or 1.6) + 0.5)
 		tile.AnchorPoint = Vector2.new(0, 0.5)
@@ -470,9 +513,14 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 				b.box.root:Destroy()
 			end
 			table.clear(boxes)
-			local tiles = #entries > 0 and entries[1].shape == "swatch" and not m.rows
-			local cols = if tiles then swatchCols else rowCols
-			grid.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, if tiles then tileH else rowH)
+			local block = m.block
+			if block then
+				grid.CellSize = UDim2.fromOffset(block, block)
+			else
+				local tiles = #entries > 0 and entries[1].shape == "swatch" and not m.rows
+				local cols = if tiles then swatchCols else rowCols
+				grid.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, if tiles then tileH else rowH)
+			end
 			for i, e in entries do
 				local box = Parts.box(scroll, e, m)
 				box.root.LayoutOrder = i
@@ -807,10 +855,10 @@ function Parts.sheet(gui: ScreenGui, ctx: Types.Ctx, info: SheetInfo, onCancel: 
 	local holder = Kit.frame(gui, "ConfirmSheet")
 	holder.Size = UDim2.fromScale(1, 1)
 	holder.ZIndex = 20
-	-- The dim runs past the gui's edges, under Roblox's top bar.
+	-- The dim covers the whole screen, under Roblox's top bar and into a
+	-- notch's strip.
 	local scrim = Kit.frame(holder, "Scrim", Color3.new(0, 0, 0), 0.45)
-	scrim.Position = UDim2.fromOffset(-80, -120)
-	scrim.Size = UDim2.new(1, 160, 1, 240)
+	UIKit.edgeToEdge(scrim, gui)
 	scrim.Active = true
 	scrim.ZIndex = 20
 	local s = Parts.scaleFor(ctx.touch, ctx.screen)

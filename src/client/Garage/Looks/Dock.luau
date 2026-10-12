@@ -64,10 +64,18 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local note = Parts.note(body, if touch then 11 else 13)
 	note.LayoutOrder = 2
 
+	-- Every item a square block, three across on a phone (the owner,
+	-- 2026-10-12: "the options need to be bigger and make them
+	-- blocks/squares"; they were 80-tall tiles four across and full-width
+	-- rows). A block is what the panel's width leaves after its padding,
+	-- the list's (3 + 8) and the gaps.
+	local cols = if touch then 3 else 4
+	local gapB = if touch then 8 else 10
+	local block = math.floor((panelW - 2 * pad - 11 - gapB * (cols - 1)) / cols)
 	local m: Parts.BoxMetrics = if touch
-		then { name = 10, word = 9, swatch = 30, rows = false, inline = false }
-		else { name = 12, word = 11, swatch = 42, rows = false, inline = false }
-	local items = Parts.items(body, ctx, if touch then 4 else 5, if touch then 1 else 2, if touch then 80 else 104, if touch then 46 else 56, if touch then 7 else 9, m)
+		then { name = 11, word = 10, swatch = 56, rows = false, inline = false, block = block }
+		else { name = 13, word = 11, swatch = 64, rows = false, inline = false, block = block }
+	local items = Parts.items(body, ctx, cols, cols, block, block, gapB, m)
 	items.root.LayoutOrder = 3
 	items.root.Size = UDim2.fromScale(1, 0)
 	Kit.fill(items.root)
