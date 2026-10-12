@@ -1493,7 +1493,14 @@ buildView = function(snap: boolean, still: boolean?)
 	cashShown, cashTarget = nil, nil
 	fillTab()
 	refresh()
-	v.intro(still == true)
+	if SpawnMenu.isOpen() then
+		-- Built again under the menu (a layout picked in its SETTINGS): it
+		-- stays hidden until the menu hands the screen back.
+		v.root.Visible = false
+		cg.Enabled = false
+	else
+		v.intro(still == true)
+	end
 end
 
 ------------------------------------------------------------------------
