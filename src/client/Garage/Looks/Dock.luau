@@ -68,10 +68,10 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	-- 2026-10-12: "the options need to be bigger and make them
 	-- blocks/squares"; they were 80-tall tiles four across and full-width
 	-- rows). A block is what the panel's width leaves after its padding,
-	-- the list's (3 + 8) and the gaps.
+	-- the list's (Parts.LIST_PAD_X) and the gaps.
 	local cols = if touch then 3 else 4
 	local gapB = if touch then 8 else 10
-	local block = math.floor((panelW - 2 * pad - 11 - gapB * (cols - 1)) / cols)
+	local block = math.floor((panelW - 2 * pad - Parts.LIST_PAD_X - gapB * (cols - 1)) / cols)
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 56, rows = false, inline = false, block = block }
 		else { name = 13, word = 11, swatch = 64, rows = false, inline = false, block = block }
@@ -83,7 +83,8 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
 	foot.root.LayoutOrder = 4
 
-	-- GARAGE and the car over the car, the cash in the corner.
+	-- GARAGE and the car over the car (the cash is the controller's, where
+	-- the HUD has it: Parts.hudCash).
 	local head = Kit.frame(root, "Head")
 	head.Position = UDim2.fromOffset(M + panelW + (if touch then 24 else 40), M)
 	head.AutomaticSize = Enum.AutomaticSize.XY
@@ -95,9 +96,6 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	carLine.AutomaticSize = Enum.AutomaticSize.X
 	carLine.Size = UDim2.fromOffset(0, if touch then 14 else 18)
 	carLine.TextTruncate = Enum.TextTruncate.None
-	local cash = Parts.cash(root, if touch then 30 else 36, if touch then 16 else 20)
-	cash.root.AnchorPoint = Vector2.new(1, 0)
-	cash.root.Position = UDim2.new(0, room.X - M, 0, M)
 
 	-- The dock: the categories, the layout switch, the action, EXIT.
 	local dock, dockBody = Kit.panel(root, "Dock", if touch then 14 else 16)
@@ -179,7 +177,6 @@ function Dock.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		root = root,
 		fill = fill,
 		refresh = refresh,
-		setCash = cash.set,
 		pop = items.pop,
 		destroy = function()
 			root:Destroy()

@@ -42,24 +42,17 @@ GarageConfig.framingMargin = 1.15
 -- middle, so the panel on the left does not cover it.
 GarageConfig.screenOffset = 0.18
 -- The same per garage layout (GaragePanel, 2026-10-12: a phone has
--- SHOWCASE's three variants, a PC DOCK as well; SHADE is parked): DOCK and
--- SHADE keep their panels on the left; SHOWCASE and SHADES put the car in
--- the middle between the words and the blocks down the right; SHELF has
--- nothing down the right but the cash and sub-tabs, so the car sits a
--- little right of the middle.
+-- SHOWCASE's four variants, a PC DOCK as well; SHADE is parked): DOCK and
+-- SHADE keep their panels on the left; SHOWCASE's variants put the car in
+-- the middle between the words and the blocks down the right, WIDE's
+-- wider side pushing it further left.
 GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,
 	shades = -0.06,
-	shelf = 0.06,
+	card = -0.07,
+	wide = -0.1,
 	shade = 0.22,
-} :: { [string]: number }
--- How far the car's middle sits above the screen's, as a fraction of its
--- height, per layout: SHELF's row of blocks along the bottom covers about
--- the lowest 30 per cent, so the car goes up clear of it (a camera tilt,
--- like the sideways turn). Others 0.
-GarageConfig.layoutLift = {
-	shelf = 0.08,
 } :: { [string]: number }
 
 -- Entering and leaving (spec section 2).

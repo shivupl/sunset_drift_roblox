@@ -18,20 +18,23 @@
 --   DOCK      (Looks/Dock) the categories as tabs in a dock along the bottom
 --             with the action and EXIT; the items in a panel on the left.
 --   SHOWCASE  (Looks/Showcase) the car big in the middle; the categories as
---             words down the left on a shade; the items as square blocks,
---             in three variants: SHOWCASE (a panel down the right), SHADES
---             (a shade down the right), SHELF (a row along the bottom).
+--             words down the left on a shade; the items as square blocks
+--             down the right, in four variants: SHOWCASE (a panel, the
+--             action under it), SHADES (on a shade), CARD (one tall panel,
+--             the action inside), WIDE (three across). SHELF (a row along
+--             the bottom) went (2026-10-12: "remove shelf").
 --   SHADE     (Looks/Shade) the garage-ui-overhaul's shade and rail of words,
 --             the sub-tabs as words along the bottom. Parked (2026-10-12,
 --             the owner on the phone: "i liked those 2 mobile layouts the
 --             most so lets narrow it down to that for now"): out of the
 --             lists, kept to come back to.
--- A phone has SHOWCASE's three variants (2026-10-12: "lets finalize on the
--- shade mode FOR mobile ... make 3 variants again for me to shift
--- though"); a PC has DOCK as well, not settled yet. The LAYOUT button in
+-- A phone has SHOWCASE's variants (2026-10-12: "lets finalize on the shade
+-- mode FOR mobile", then "overall the right side needs some work, make 4
+-- variants"); a PC has DOCK as well, not settled yet. The cash is drawn
+-- here, where the HUD has it, whatever the layout (Parts.hudCash). The LAYOUT button in
 -- each cycles them; the choice is the LocalPlayer attribute GarageLayout
 -- and lasts the session. Each puts the car where its panels leave room
--- (GarageConfig.layoutOffset, layoutLift).
+-- (GarageConfig.layoutOffset).
 --
 -- Behaviour:
 --   * A tap applies the item to the turntable car at once
@@ -148,15 +151,14 @@ end
 local SHOWCASES: { Types.Layout } = {
 	variant("showcase", "SHOWCASE", "column"),
 	variant("shades", "SHADES", "shades"),
-	variant("shelf", "SHELF", "shelf"),
+	variant("card", "CARD", "card"),
+	variant("wide", "WIDE", "wide"),
 }
 local PHONE_LAYOUTS: { Types.Layout } = SHOWCASES
-local PC_LAYOUTS: { Types.Layout } = {
-	{ id = "dock", name = "DOCK", build = require(Looks:WaitForChild("Dock")).build },
-	SHOWCASES[1],
-	SHOWCASES[2],
-	SHOWCASES[3],
-}
+local PC_LAYOUTS: { Types.Layout } = { { id = "dock", name = "DOCK", build = require(Looks:WaitForChild("Dock")).build } }
+for _, l in SHOWCASES do
+	table.insert(PC_LAYOUTS, l)
+end
 local LAYOUT_ATTRIBUTE = "GarageLayout"
 
 -- The categories, with their Arabic for the titles (UI_SYSTEM.md "Arabic
@@ -236,6 +238,9 @@ local remote: RemoteFunction? = nil
 local gui: ScreenGui? = nil
 local view: Types.View? = nil
 local viewRoot: GuiObject? = nil
+-- The cash, where the driving HUD has it whatever the layout (Parts.hudCash).
+local cashGui: ScreenGui? = nil
+local cashPill: Parts.Cash? = nil
 local restore: TextButton? = nil
 local toastFn: Parts.Toast? = nil
 local touch = false
@@ -942,9 +947,13 @@ local function showCash()
 	cashTarget = target
 	cashToken += 1
 	local mine = cashToken
+	local pill = cashPill
+	if not pill then
+		return
+	end
 	if from == nil or target >= from then
 		cashShown = target
-		v.setCash(money(target))
+		pill.set(money(target))
 		return
 	end
 	local info = UITheme.motion.panel
@@ -955,7 +964,7 @@ local function showCash()
 			local a = math.clamp((os.clock() - t0) / seconds, 0, 1)
 			local shown = from + (target - from) * TweenService:GetValue(a, info.EasingStyle, info.EasingDirection)
 			cashShown = shown
-			v.setCash(money(shown))
+			pill.set(money(shown))
 			if a >= 1 then
 				break
 			end
@@ -1491,13 +1500,19 @@ buildView = function(snap: boolean)
 	local v = l.build(g, ctx)
 	view = v
 	viewRoot = v.root
+	local oldCash = cashGui
+	if oldCash then
+		oldCash:Destroy()
+	end
+	-- Under the panel's gui, so a confirm sheet's dim covers it.
+	cashGui, cashPill = Parts.hudCash("GarageCash", DISPLAY_ORDER - 1, player:WaitForChild("PlayerGui"))
 	collapsed = false
 	local r = restore
 	if r then
 		r.Visible = false
 	end
 	GarageView.setPanelOpen(true)
-	GarageView.setPanelOffset(GarageConfig.layoutOffset[l.id] or GarageConfig.screenOffset, snap, GarageConfig.layoutLift[l.id])
+	GarageView.setPanelOffset(GarageConfig.layoutOffset[l.id] or GarageConfig.screenOffset, snap)
 	cashShown, cashTarget = nil, nil
 	fillTab()
 	refresh()
@@ -1544,6 +1559,11 @@ local function teardown()
 	gui = nil
 	if g then
 		g:Destroy()
+	end
+	local cg = cashGui
+	cashGui, cashPill = nil, nil
+	if cg then
+		cg:Destroy()
 	end
 	viewRoot, restore, toastFn, ctxNow = nil, nil, nil, nil
 	table.clear(taps)

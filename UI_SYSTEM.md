@@ -257,13 +257,18 @@ green. A desktop keeps the CARS button and the keys.
 The second is **the garage panel** (2026-10-12: "implement these 3 to let
 me chose from ... for both pc and phone"): layouts from the canvas
 (`src/client/Garage/Looks`), switched with the LAYOUT button in each (the
-LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's three
-variants (2026-10-12: "lets finalize on the shade mode FOR mobile ...
-make 3 variants again for me to shift though"): the category words on a
-shade down the left that runs to the screen's edge, the items as square
-blocks in a panel down the right (SHOWCASE), on a shade down the right
-(SHADES), or in one row along the bottom on a shade (SHELF, the car
-tilted up clear of it). A PC has DOCK as well; SHADE is parked. DOCK
+LocalPlayer attribute `GarageLayout`). A phone has SHOWCASE's four
+variants (2026-10-12: "lets finalize on the shade mode FOR mobile", then
+"overall the right side needs some work, make 4 variants"): the category
+words on a shade down the left that runs to the screen's edge, the items
+as square blocks down the right, under the sub-tabs with REV or SHOP
+PLATES beside them, over a hairline and the item picked: in a panel with
+the action under it (SHOWCASE), on a shade (SHADES), in one tall panel
+with the action inside and the sub-tabs as underlined words (CARD), or
+three across in a wider panel (WIDE). A PC has DOCK as well; SHADE is
+parked; SHELF (a row along the bottom) was tried and removed. The cash
+sits where the driving HUD has it in every layout (`Parts.hudCash`, from
+HudLab/LayoutD's numbers), so the coins never move going in. DOCK
 shows every item as a square block, three across on a phone ("the
 options need to be bigger and make them blocks/squares"), and its tabs
 share the dock's free width, their icons and words following the tab's

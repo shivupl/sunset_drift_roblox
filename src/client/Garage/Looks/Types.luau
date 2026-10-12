@@ -83,7 +83,6 @@ export type View = {
 	root: GuiObject, -- hidden while the panel is folded away
 	fill: () -> (), -- the tab's sub-tabs, note and items, built again
 	refresh: () -> (), -- every state painted again
-	setCash: (text: string) -> (),
 	pop: (key: string) -> (),
 	destroy: () -> (),
 }

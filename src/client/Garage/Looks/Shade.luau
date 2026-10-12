@@ -2,7 +2,7 @@
 -- SHADE (D. Garage on the "Hajwala Menus" canvas): the garage as it was
 -- (garage-ui-overhaul: no panel box, a shade that melts into the garage, a
 -- rail of category words) in the car picker's look. The rail down the
--- left, the category's name, the cash and the items right of it; along the
+-- left, the category's name and the items right of it; along the
 -- bottom EXIT and the sub-tabs as words with a green underline; the car on
 -- the right under GARAGE, the item picked and the action under it, REV or
 -- SHOP PLATES in the corner. The pill on the shade's edge folds it away.
@@ -48,7 +48,8 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	rail.root.Position = UDim2.fromOffset(M, M)
 	rail.root.Size = UDim2.fromOffset(railW, 0)
 
-	-- The category's name and the cash, the note, the items.
+	-- The category's name, the note, the items (the cash is the
+	-- controller's, where the HUD has it: Parts.hudCash).
 	local content = Kit.frame(root, "Content")
 	content.Position = UDim2.fromOffset(contentX, M)
 	content.Size = UDim2.fromOffset(contentW, room.Y - 3 * M - bottomH)
@@ -65,8 +66,6 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	spacer.LayoutOrder = 2
 	spacer.Size = UDim2.fromOffset(0, 1)
 	Kit.fill(spacer)
-	local cash = Parts.cash(top, if touch then 26 else 32, if touch then 15 else 18)
-	cash.root.LayoutOrder = 3
 	local note = Parts.note(content, if touch then 11 else 13)
 	note.LayoutOrder = 2
 	local m: Parts.BoxMetrics = if touch
@@ -232,7 +231,6 @@ function Shade.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		root = root,
 		fill = fill,
 		refresh = refresh,
-		setCash = cash.set,
 		pop = items.pop,
 		destroy = function()
 			root:Destroy()

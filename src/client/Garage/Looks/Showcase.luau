@@ -1,19 +1,19 @@
 --!strict
 -- SHOWCASE (C. Garage on the "Hajwala Menus" canvas) and its variants, the
 -- phone's garage (the owner, 2026-10-12: "lets finalize on the shade mode
--- FOR mobile, make the options in there also squares/blocks. make 3
--- variants again for me to shift though"). In all three the car is the big
--- thing in the middle under its name; the categories are words down the
--- left on a shade, EXIT and the layout switch under them; the items are
--- square blocks (they were a list):
---   SHOWCASE  ("column") in a panel down the right, with the cash, the
---             sub-tabs and the item picked; the action under it.
---   SHADES    ("shades") the same down the right on a shade like the
---             words', no panel.
---   SHELF     ("shelf") in one row along the bottom on a shade, scrolling
---             sideways, the action at its right end; the cash and the
---             sub-tabs top right. The car is lifted clear of the row
---             (GarageConfig.layoutLift).
+-- FOR mobile, make the options in there also squares/blocks", then "remove
+-- shelf, continue to polish the other 2 better ... overall the right side
+-- needs some work, make 4 variants"). In all four the car is the big thing
+-- in the middle under its name; the categories are words down the left on
+-- a shade, EXIT and the layout switch under them; the cash is where the
+-- HUD has it (the controller's, Parts.hudCash). The right side holds the
+-- sub-tabs (REV or SHOP PLATES beside them), a note, the items as square
+-- blocks, the item picked and the action:
+--   SHOWCASE  ("column") a panel, two across, the action under it.
+--   SHADES    ("shades") straight on a shade like the words', no panel.
+--   CARD      ("card") one tall panel with the action inside at its foot,
+--             the sub-tabs as words with a green underline.
+--   WIDE      ("wide") a wider panel, three across, the car further left.
 -- EXIT, the layout switch and the action share one bottom line.
 local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Types = require(script.Parent:WaitForChild("Types"))
@@ -21,35 +21,31 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 
 local Showcase = {}
 
-export type Variant = "column" | "shades" | "shelf"
+export type Variant = "column" | "shades" | "card" | "wide"
 
--- REV or SHOP PLATES: a small dark button with its word.
-local function extraButton(parent: Instance, ctx: Types.Ctx, h: number, size: number): TextButton
-	local b = Instance.new("TextButton")
-	b.Name = "Extra"
-	b.AutoButtonColor = false
-	b.BorderSizePixel = 0
-	b.BackgroundColor3 = Color3.new(1, 1, 1)
-	b.BackgroundTransparency = 0.92
-	b.AutomaticSize = Enum.AutomaticSize.X
-	b.Size = UDim2.fromOffset(0, h)
-	b.TextSize = size
-	b.TextColor3 = Kit.C.text
-	b.FontFace = Kit.font(Enum.FontWeight.ExtraBold, true)
-	Kit.corner(b, 8)
-	Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.88)
-	Kit.pad(b, 0, 12, 0, 12)
-	b.Parent = parent
-	b.Activated:Connect(function()
-		if not ctx.busy() then
-			ctx.act.extra()
-		end
-	end)
-	return b
+type Metrics = {
+	panel: boolean, -- on a panel, or straight on a shade
+	colW: number, -- the panel's width (a shade's side is its blocks')
+	cols: number, -- blocks across
+	block: number?, -- a shade's block size (a panel's fills its width)
+	actionInside: boolean, -- the action at the panel's foot, not under it
+	words: boolean, -- sub-tabs as underlined words, not slanted tabs
+}
+
+local function metrics(variant: Variant, touch: boolean): Metrics
+	if variant == "shades" then
+		return { panel = false, colW = 0, cols = if touch then 2 else 3, block = if touch then 104 else 110, actionInside = false, words = false }
+	elseif variant == "card" then
+		return { panel = true, colW = if touch then 264 else 364, cols = if touch then 2 else 3, block = nil, actionInside = true, words = true }
+	elseif variant == "wide" then
+		return { panel = true, colW = if touch then 316 else 440, cols = if touch then 3 else 4, block = nil, actionInside = false, words = false }
+	end
+	return { panel = true, colW = if touch then 252 else 352, cols = if touch then 2 else 3, block = nil, actionInside = false, words = false }
 end
 
 function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types.View
 	local touch = ctx.touch
+	local v = metrics(variant, touch)
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	local M = 8
 	local navW = if touch then 132 else 190
@@ -59,20 +55,11 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	local btnH = actionH
 	local exitW = if touch then 84 else 104
 	local gap = if touch then 8 else 10
-	local rowH = if touch then 28 else 34
 	local subH = if touch then 30 else 36
 
 	-- The words' shade, reaching the screen's edge on any phone (the owner,
 	-- 2026-10-12: on a panel instead it looked "way worse").
 	Parts.edgeShade(gui, root, room, "left", navW, if touch then 90 else 140)
-
-	-- SHELF's row along the bottom, on its own shade; its blocks set how
-	-- tall that is.
-	local shelfBlock = if touch then 88 else 108
-	local shelfH = shelfBlock + 11 -- the list's padding (3 over, 8 under)
-	if variant == "shelf" then
-		Parts.edgeShade(gui, root, room, "bottom", shelfH, if touch then 50 else 80)
-	end
 
 	-- The categories, EXIT and the layout switch under them.
 	local rail = Parts.wordRail(root, ctx, if touch then 38 else 46, if touch then 13 else 16, if touch then 17 else 21, true)
@@ -117,127 +104,93 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	chipHolder.Size = UDim2.fromOffset(0, if touch then 20 else 24)
 	local chip: Frame? = nil
 
-	-- The items' side: the cash and REV / SHOP PLATES, the sub-tabs (or
-	-- the category's name), a note, the blocks, the item picked, the
-	-- action. Where they go is the variant's.
-	local m: Parts.BoxMetrics = if touch
-		then { name = 11, word = 10, swatch = 54, rows = false, inline = false }
-		else { name = 13, word = 11, swatch = 60, rows = false, inline = false }
+	-- The right side: a panel, or a shade's bare side as wide as its
+	-- blocks. Full height when the action is inside; else over the action.
+	local sideH = if v.actionInside then room.Y - 2 * M else room.Y - 3 * M - actionH
 	local body: Frame
-	local top: Frame
-	local subHolder: Frame
-	local subW: number? -- the slants share this width; nil: each its word's
-	local actionW: number
-
-	if variant == "shelf" then
-		-- Top right: the cash in the corner, REV / SHOP PLATES left of it,
-		-- the sub-tabs and the note under them.
-		actionW = if touch then 190 else 240
+	local inner: number -- the width its pieces have
+	local block: number
+	if v.panel then
+		local pad = if touch then 8 else 12
+		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
+		col.Position = UDim2.fromOffset(room.X - M - v.colW, M)
+		col.Size = UDim2.fromOffset(v.colW, sideH)
+		Kit.pad(panelBody, pad, pad, pad, pad)
+		body = panelBody
+		inner = v.colW - 2 * pad
+		block = math.floor((inner - Parts.LIST_PAD_X - gap * (v.cols - 1)) / v.cols)
+	else
+		block = v.block or 104
+		inner = v.cols * block + gap * (v.cols - 1) + Parts.LIST_PAD_X
+		Parts.edgeShade(gui, root, room, "right", inner, if touch then 70 else 110)
 		local side = Kit.frame(root, "Side")
-		side.AnchorPoint = Vector2.new(1, 0)
-		side.Position = UDim2.fromOffset(room.X - M, M)
-		side.Size = UDim2.fromOffset(if touch then 300 else 420, 0)
-		side.AutomaticSize = Enum.AutomaticSize.Y
-		local sl = Kit.list(side, true, if touch then 6 else 8)
-		sl.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		side.Position = UDim2.fromOffset(room.X - M - inner, M)
+		side.Size = UDim2.fromOffset(inner, sideH)
 		body = side
-		top = Kit.frame(side, "Top")
-		top.LayoutOrder = 1
-		top.Size = UDim2.new(1, 0, 0, rowH)
-		local tl = Kit.list(top, false, 6, Enum.VerticalAlignment.Center)
-		tl.HorizontalAlignment = Enum.HorizontalAlignment.Right
-		subHolder = Kit.frame(side, "Subs")
-		subHolder.LayoutOrder = 2
-		subHolder.AutomaticSize = Enum.AutomaticSize.X
-		subHolder.Size = UDim2.fromOffset(0, subH)
-		subW = nil
-		m.block = shelfBlock
-		m.sideways = true
-		m.backdrop = "shade"
-	else
-		-- Down the right: a panel (SHOWCASE) or straight on a shade (SHADES).
-		local cols = if touch then 2 else 3
-		local sideW: number
-		if variant == "column" then
-			local colW = if touch then 252 else 352
-			local pad = if touch then 8 else 12
-			local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
-			col.Position = UDim2.fromOffset(room.X - M - colW, M)
-			col.Size = UDim2.fromOffset(colW, room.Y - 3 * M - actionH)
-			Kit.pad(panelBody, pad, pad, pad, pad)
-			body = panelBody
-			sideW = colW - 2 * pad
-			m.block = math.floor((sideW - 11 - gap * (cols - 1)) / cols)
-			actionW = colW
-		else
-			local block = if touch then 104 else 110
-			sideW = cols * block + gap * (cols - 1) + 11
-			Parts.edgeShade(gui, root, room, "right", sideW, if touch then 70 else 110)
-			local side = Kit.frame(root, "Side")
-			side.Position = UDim2.fromOffset(room.X - M - sideW, M)
-			side.Size = UDim2.fromOffset(sideW, room.Y - 3 * M - actionH)
-			body = side
-			m.block = block
-			m.backdrop = "shade"
-			actionW = sideW
-		end
-		Kit.list(body, true, if touch then 7 else 10)
-		top = Kit.frame(body, "Top")
-		top.LayoutOrder = 1
-		top.Size = UDim2.new(1, 0, 0, rowH)
-		Kit.list(top, false, 6, Enum.VerticalAlignment.Center)
-		subHolder = Kit.frame(body, "Subs")
-		subHolder.LayoutOrder = 2
-		subHolder.Size = UDim2.new(1, 0, 0, subH)
-		Kit.pad(subHolder, 0, 0, 0, 5)
-		subW = sideW - 9
 	end
+	Kit.list(body, true, if touch then 7 else 10)
+	local sideW = if v.panel then v.colW else inner
 
-	-- The cash and REV / SHOP PLATES: the cash first down the right, in
-	-- the corner along the top (SHELF).
-	local cash = Parts.cash(top, rowH, if touch then 15 else 18)
-	local extra = extraButton(top, ctx, rowH, if touch then 11 else 13)
-	if variant == "shelf" then
-		cash.root.LayoutOrder = 3
-		extra.LayoutOrder = 1
-	else
-		cash.root.LayoutOrder = 1
-		local spacer = Kit.frame(top, "Spacer")
-		spacer.LayoutOrder = 2
-		spacer.Size = UDim2.fromOffset(0, 1)
-		Kit.fill(spacer)
-		extra.LayoutOrder = 3
-	end
+	-- The sub-tabs (or the category's name), REV or SHOP PLATES at the
+	-- end of their row.
+	local top = Kit.frame(body, "Top")
+	top.LayoutOrder = 1
+	top.Size = UDim2.new(1, 0, 0, subH)
+	Kit.list(top, false, 6, Enum.VerticalAlignment.Center)
+	local subHolder = Kit.frame(top, "Subs")
+	subHolder.Size = UDim2.fromScale(0, 1)
+	Kit.fill(subHolder)
+	Kit.pad(subHolder, 0, 0, 0, 5)
+	local extra = Instance.new("TextButton")
+	extra.Name = "Extra"
+	extra.LayoutOrder = 2
+	extra.AutoButtonColor = false
+	extra.BorderSizePixel = 0
+	extra.BackgroundColor3 = Color3.new(1, 1, 1)
+	extra.BackgroundTransparency = 0.92
+	extra.TextSize = if touch then 11 else 13
+	extra.TextColor3 = Kit.C.text
+	extra.FontFace = Kit.font(Enum.FontWeight.ExtraBold, true)
+	Kit.corner(extra, 8)
+	Kit.stroke(extra, Color3.new(1, 1, 1), 1, 0.88)
+	extra.Parent = top
+	extra.Activated:Connect(function()
+		if not ctx.busy() then
+			ctx.act.extra()
+		end
+	end)
+	local revW = if touch then 58 else 70
+	local shopW = if touch then 112 else 132
 
 	local note = Parts.note(body, if touch then 10 else 12)
-	note.LayoutOrder = 3
+	note.LayoutOrder = 2
 
-	local blocks = m.block or 0
-	local items = Parts.items(if variant == "shelf" then root else body, ctx, 1, 1, blocks, blocks, gap, m)
-	local action = Parts.action(root, ctx, actionW, actionH, if touch then 17 else 21)
-	action.root.AnchorPoint = Vector2.new(1, 1)
-	action.root.Position = UDim2.fromOffset(room.X - M, room.Y - M)
-	local footH = if touch then 22 else 28
-	local foot: Parts.FootLine
-	if variant == "shelf" then
-		-- The row runs between the layout switch and the action, its
-		-- blocks' feet on the bottom line (the scroll bar under them); the
-		-- item picked sits over the action.
-		local x0 = M + exitW + 6 + btnH + (if touch then 10 else 14)
-		local x1 = room.X - M - actionW - (if touch then 10 else 14)
-		items.root.Position = UDim2.fromOffset(x0, room.Y - M - shelfH + 8)
-		items.root.Size = UDim2.fromOffset(x1 - x0, shelfH)
-		foot = Parts.footLine(root, footH, if touch then 13 else 16, if touch then 10 else 12)
-		foot.root.AnchorPoint = Vector2.new(1, 1)
-		foot.root.Position = UDim2.fromOffset(room.X - M, room.Y - M - actionH - 6)
-		foot.root.Size = UDim2.fromOffset(actionW, footH)
-		note.TextXAlignment = Enum.TextXAlignment.Right
+	local m: Parts.BoxMetrics = if touch
+		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
+		else { name = 13, word = 11, swatch = 60, rows = false, inline = false, block = block }
+	if not v.panel then
+		m.backdrop = "shade"
+	end
+	local items = Parts.items(body, ctx, v.cols, v.cols, block, block, gap, m)
+	items.root.LayoutOrder = 3
+	items.root.Size = UDim2.fromScale(1, 0)
+	Kit.fill(items.root)
+
+	-- A hairline over the item picked, parting it from the blocks.
+	local rule = Kit.frame(body, "Rule", Color3.new(1, 1, 1), 0.9)
+	rule.LayoutOrder = 4
+	rule.Size = UDim2.new(1, 0, 0, 1)
+	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
+	foot.root.LayoutOrder = 5
+
+	local action: Parts.ActionButton
+	if v.actionInside then
+		action = Parts.action(body, ctx, inner, actionH, if touch then 17 else 21)
+		action.root.LayoutOrder = 6
 	else
-		items.root.LayoutOrder = 4
-		items.root.Size = UDim2.fromScale(1, 0)
-		Kit.fill(items.root)
-		foot = Parts.footLine(body, footH, if touch then 13 else 16, if touch then 10 else 12)
-		foot.root.LayoutOrder = 5
+		action = Parts.action(root, ctx, sideW, actionH, if touch then 17 else 21)
+		action.root.AnchorPoint = Vector2.new(1, 1)
+		action.root.Position = UDim2.fromOffset(room.X - M, room.Y - M)
 	end
 
 	local subs: Parts.Picker? = nil
@@ -252,9 +205,19 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 			hd:Destroy()
 		end
 		subs, heading = nil, nil
+		local x = ctx.extra()
+		extra.Visible = x ~= nil
+		extra.Text = if x == "rev" then "REV" elseif x == "shop" then "SHOP PLATES" else ""
+		local extraW = if x == "rev" then revW elseif x == "shop" then shopW else 0
+		extra.Size = UDim2.fromOffset(extraW, subH)
 		local defs = ctx.views()
 		if #defs > 1 then
-			subs = Parts.slants(subHolder, ctx, defs, subH, if touch then 10 else 12, 4, subW)
+			if v.words then
+				subs = Parts.words(subHolder, ctx, defs, subH, if touch then 12 else 14, if touch then 15 else 18, if touch then 14 else 18)
+			else
+				local slantW = inner - 9 - (if extraW > 0 then extraW + 6 else 0)
+				subs = Parts.slants(subHolder, ctx, defs, subH, if touch then 10 else 12, 4, slantW)
+			end
 		else
 			for _, d in ctx.tabs do
 				if d.id == ctx.tab() then
@@ -262,9 +225,6 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 				end
 			end
 		end
-		local x = ctx.extra()
-		extra.Visible = x ~= nil
-		extra.Text = if x == "rev" then "REV" elseif x == "shop" then "SHOP PLATES" else ""
 		items.fill(ctx.entries())
 	end
 
@@ -281,6 +241,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		local f = ctx.foot()
 		action.set(f)
 		foot.set(f)
+		rule.Visible = foot.root.Visible
 		carName.Text = ctx.carName()
 		local old = chip
 		if old then
@@ -293,7 +254,6 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		root = root,
 		fill = fill,
 		refresh = refresh,
-		setCash = cash.set,
 		pop = items.pop,
 		destroy = function()
 			root:Destroy()
