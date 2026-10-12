@@ -291,7 +291,7 @@ only, since a fade needs a CanvasGroup, which redraws its children soft.
   world blurs and dims over 0.35 s.
 - Closing, they go back out the same way over 0.2 s (Quad in); what was
   under the menu (the top bar, the HUD, the garage) comes back once they
-  are gone.
+  are gone, the top bar sliding down from above the screen.
 - A page, a sub-tab or a filter swaps its content in place, and that
   content eases up 14 px over 0.22 s; the rail's green marker slides to the
   word chosen; the dock's chosen tab widens as the one it left narrows.
@@ -299,8 +299,14 @@ only, since a fade needs a CanvasGroup, which redraws its children soft.
   garage hides under it with no slide, and EXIT hands it straight back.
 
 The menu covers the HUD while driving (`HudLab.setCovered`): the pedals
-showed through its middle. Toasts are `Parts.toast` (a pill under the top
-row) everywhere in the menu and the garage.
+showed through its middle. A toast is the same graphite pill everywhere
+(`Parts.toast` in the menu and the garage, the HUD's own for STYLE and VIEW),
+and the menu and the garage play the same sounds (`GarageSounds`: a tab, a
+tap, a fit, a purchase, an error).
+
+The action slot is never empty: where there is nothing to do it says why,
+in grey (ON YOUR CAR, TAKEN, CHECKING…), and SETTINGS has a green DONE, so
+no layout shows a hole at the bottom right or in the dock.
 
 The load cover wears the same look (graphite, HAJWALA هجولة, the green
 bar), and the menu slides in under it as it fades.

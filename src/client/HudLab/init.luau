@@ -23,7 +23,9 @@
 -- roll, the edge of the screen glows with the chain. Events (a 360, a natl,
 -- a big chain, banked, dropped) are shouted, the Arabic as the scene says it.
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -31,13 +33,13 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local Input = require(script.Parent:WaitForChild("Input"))
 local CameraViews = require(script.Parent:WaitForChild("CameraViews"))
-local Widgets = require(script:WaitForChild("Widgets"))
 local Finishes = require(script:WaitForChild("Finishes"))
 local Versions = require(script:WaitForChild("Versions"))
 local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
 local Coins = require(script:WaitForChild("Coins"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
+local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 
 local HudLab = {}
 
@@ -208,7 +210,10 @@ end
 -- Finishes.
 ------------------------------------------------------------------------
 
--- The new finish's name, shown for a moment whatever switched it.
+-- The new finish's name, shown for a moment whatever switched it: the
+-- menu's and the garage's toast (Parts.toast), a graphite pill with the
+-- word in heavy italic, under the top bar (ui-flow, 2026-10-12: it was
+-- outlined Builder Sans across the middle, a fourth look).
 local toastGui: ScreenGui? = nil
 local toastToken = 0
 local function toast(text: string)
@@ -217,23 +222,31 @@ local function toast(text: string)
 	g:ClearAllChildren()
 	toastToken += 1
 	local mine = toastToken
-	local t = Widgets.text(g, "Toast", text, Widgets.font("BuilderSans", Enum.FontWeight.Heavy), Color3.fromRGB(245, 243, 238))
-	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.3)
-	Widgets.box(t, 0.9, 0.07)
-	local stroke = Widgets.stroke(t, Color3.new(0, 0, 0), 2, 0.25)
+	local touch = isTouch()
+	local pill = Kit.frame(g, "Toast", Kit.C.panelTop, 0.05)
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.Position = UDim2.new(0.5, 0, 0, GuiService.TopbarInset.Max.Y + (if touch then 10 else 14))
+	pill.AutomaticSize = Enum.AutomaticSize.XY
+	Kit.corner(pill, 10)
+	local edge = Kit.stroke(pill, Color3.new(1, 1, 1), 1, 0.88)
+	Kit.pad(pill, 8, 14, 8, 14)
+	local label = Kit.text(pill, "Label", text, if touch then 15 else 17, Enum.FontWeight.ExtraBold, true, Color3.fromHex("#C6AC84"))
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Size = UDim2.new()
+	label.TextTruncate = Enum.TextTruncate.None
 	task.delay(1.1, function()
-		local start = os.clock()
-		while toastToken == mine and t.Parent do
-			local k = math.clamp((os.clock() - start) / 0.4, 0, 1)
-			t.TextTransparency = k
-			stroke.Transparency = 0.25 + 0.75 * k
-			if k >= 1 then
-				t:Destroy()
-				break
-			end
-			task.wait()
+		if toastToken ~= mine or not pill.Parent then
+			return
 		end
+		local info = TweenInfo.new(0.4)
+		TweenService:Create(pill, info, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(label, info, { TextTransparency = 1 }):Play()
+		TweenService:Create(edge, info, { Transparency = 1 }):Play()
+		task.delay(0.4, function()
+			if toastToken == mine then
+				pill:Destroy()
+			end
+		end)
 	end)
 end
 

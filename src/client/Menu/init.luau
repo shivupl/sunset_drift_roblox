@@ -34,6 +34,7 @@ local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 local Layouts = require(Looks:WaitForChild("Layouts"))
+local GarageSounds = require(Client:WaitForChild("Garage"):WaitForChild("GarageSounds"))
 local Page = require(script:WaitForChild("Page"))
 local Cars = require(script:WaitForChild("Cars"))
 local Plates = require(script:WaitForChild("Plates"))
@@ -184,6 +185,9 @@ local function drawStage()
 end
 
 local function toast(text: string, kind: string)
+	if kind == "error" then
+		GarageSounds.play("error")
+	end
 	local t = toastFn
 	if t then
 		t(text, kind)
@@ -234,6 +238,7 @@ local function choosePage(id: string)
 	if id == pageId then
 		return
 	end
+	GarageSounds.play("tab")
 	pageId = id
 	page().shown()
 	fill()
@@ -251,6 +256,7 @@ local function nextLayout()
 		return
 	end
 	local l = Layouts.advance()
+	GarageSounds.play("tab")
 	toast(`LAYOUT: {l.name}`, "info")
 end
 
@@ -302,16 +308,19 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 			tab = choosePage,
 			view = function(id: string)
 				if not sheet then
+					GarageSounds.play("tab")
 					page().setView(id)
 				end
 			end,
 			entry = function(e: Types.Entry)
 				if not sheet then
+					GarageSounds.play("tap")
 					page().tap(e)
 				end
 			end,
 			action = function()
 				if not sheet then
+					GarageSounds.play("tap")
 					page().action()
 				end
 			end,
@@ -325,6 +334,7 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 			nextLayout = nextLayout,
 			collapse = function() end,
 			star = function()
+				GarageSounds.play("tap")
 				page().star()
 			end,
 		},
@@ -600,6 +610,7 @@ end
 
 function Menu.start(h: Page.Hooks, remotes: Folder)
 	hooks = h
+	GarageSounds.start()
 	local g = Instance.new("ScreenGui")
 	g.Name = "HajwalaMenu"
 	g.ResetOnSpawn = false
@@ -630,6 +641,7 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 		refresh = refresh,
 		fill = fill,
 		toast = toast,
+		sound = GarageSounds.play,
 		sheet = openSheet,
 		busy = function()
 			return sheet ~= nil

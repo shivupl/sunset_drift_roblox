@@ -307,7 +307,9 @@ function Plates.new(shell: Page.Shell, remotes: Folder): Page.Page
 			end
 			task.spawn(function()
 				local s = act(if e.key == "" then "unequip" else "equip", e.key)
-				if s ~= "done" then
+				if s == "done" then
+					shell.sound("fit")
+				else
 					shell.toast(MESSAGES[s] or MESSAGES.unavailable, "error")
 				end
 				shell.refresh()
@@ -318,13 +320,22 @@ function Plates.new(shell: Page.Shell, remotes: Folder): Page.Page
 			if key and price and typed.free and not owns(key) then
 				return { name = shown(key), rare = false, note = "Yours alone", action = "buy", price = price }
 			end
+			-- Nothing to buy: the action stays, grey, saying why (the
+			-- garage's ON YOUR CAR), so no layout shows a hole there.
 			local fitted = onCar()
+			local why = if status == "checking"
+				then "CHECKING…"
+				elseif status == "taken" then "TAKEN"
+				elseif status == "owned" then "YOURS"
+				elseif status == "error" then "CAN'T BUY"
+				else "ON YOUR CAR"
 			return {
 				name = if fitted then shown(fitted) else "",
 				rare = false,
 				note = "On your car",
-				action = "none",
+				action = "oncar",
 				price = 0,
+				label = why,
 			}
 		end,
 		action = function()
@@ -343,6 +354,7 @@ function Plates.new(shell: Page.Shell, remotes: Folder): Page.Page
 				local s = act("buy", key)
 				if s == "done" then
 					typed.free = false
+					shell.sound("buy")
 					shell.toast(`Bought {shown(key)}`, "done")
 					-- A plate bought goes on the car you are in.
 					act("equip", key)

@@ -25,6 +25,9 @@ export type Shell = {
 	-- The column built again (a sub-tab, a filter, a new list).
 	fill: () -> (),
 	toast: (text: string, kind: string) -> (),
+	-- One of the garage's sounds (GarageSounds: tab, tap, fit, buy, error),
+	-- so the menu sounds as the garage does.
+	sound: (kind: string) -> (),
 	-- The confirm sheet; `buy` runs on its BUY (it may yield) and the sheet
 	-- closes after it.
 	sheet: (info: Parts.SheetInfo, buy: () -> ()) -> (),

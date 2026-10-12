@@ -58,12 +58,24 @@ local buttons: { [string]: TextButton } = {}
 local shown = true -- no menu open and no garage view
 local driving = false
 
+-- Where the row rests (fit), so it can come back down to it.
+local rest = UDim2.new()
+local SLIDE = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
 local function paint()
 	local g = gui
 	if not g then
 		return
 	end
+	local was = g.Enabled
 	g.Enabled = Kit.isTouch() and shown
+	local r = row
+	if r and g.Enabled and not was then
+		-- Back after a menu or the garage: down from above the screen, as
+		-- the menu's pieces come in from their edges (ui-flow).
+		r.Position = rest - UDim2.fromOffset(0, r.AbsoluteSize.Y + 24)
+		TweenService:Create(r, SLIDE, { Position = rest }):Play()
+	end
 	for _, spec in SPECS do
 		local b = buttons[spec.id]
 		if b then
@@ -79,7 +91,8 @@ local function fit()
 	end
 	local bar = GuiService.TopbarInset
 	local h = math.clamp(bar.Height - INSET, MIN_H, MAX_H)
-	r.Position = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.max(bar.Height, h) / 2)
+	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.max(bar.Height, h) / 2)
+	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
 	for _, b in buttons do
 		b.Size = UDim2.fromOffset(math.floor(h * WIDTH), h)
