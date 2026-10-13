@@ -79,6 +79,7 @@ export type Actions = {
 	collapse: () -> (),
 	star: (() -> ())?, -- the favourite star tapped
 	starEntry: ((e: Entry) -> ())?, -- a card's own star tapped
+	customize: (() -> ())?, -- CUSTOMIZE on the picked car (the menu)
 }
 
 export type Ctx = {
@@ -104,7 +105,7 @@ export type Ctx = {
 	-- The form for the tab showing (Form), or nil.
 	form: (() -> FormBuilder?)?,
 	-- A search over the items (the menu's cars), for a layout with a box.
-	search: { get: () -> string, set: (q: string) -> () }?,
+	search: { get: () -> string, set: (q: string) -> (), has: () -> boolean }?,
 	act: Actions,
 	-- An item's press and tap, tracked through UserInputService (a button in
 	-- a phone's ScrollingFrame never sees Activated).

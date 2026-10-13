@@ -34,7 +34,7 @@ local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 local Layouts = require(Looks:WaitForChild("Layouts"))
-local Showroom = require(script:WaitForChild("Looks"):WaitForChild("Showroom"))
+local CarsLayouts = require(script:WaitForChild("CarsLayouts"))
 local GarageSounds = require(Client:WaitForChild("Garage"):WaitForChild("GarageSounds"))
 local Page = require(script:WaitForChild("Page"))
 local Cars = require(script:WaitForChild("Cars"))
@@ -266,12 +266,12 @@ local build: (switch: boolean) -> ()
 local builtFor = Vector2.zero
 local openedAt = 0
 
--- The layout a page is drawn in: CARS is the car picker's SHOWROOM (the
--- owner, 2026-10-12, of PICKER, SHOWROOM and FRAME tried: "lets go with
--- showroom for the cars menu"), the rest the screen's.
-local CARS_LOOK: Types.Layout = { id = "showroom", name = "SHOWROOM", build = Showroom.build }
+-- The layout a page is drawn in: CARS and PLATES the car picker's
+-- SHOWROOM in the version chosen (CarsLayouts; the owner, 2026-10-12, of
+-- PICKER, SHOWROOM and FRAME tried: "lets go with showroom for the cars
+-- menu"), SETTINGS the screen's (kept apart).
 local function layoutFor(id: string): Types.Layout
-	return if id == "cars" then CARS_LOOK else Layouts.current()
+	return if id == "settings" then Layouts.current() else CarsLayouts.current()
 end
 
 local function choosePage(id: string)
@@ -310,6 +310,12 @@ local function nextLayout()
 		return
 	end
 	GarageSounds.play("tab")
+	if pageId ~= "settings" then
+		local nxt = CarsLayouts.after()
+		pendingToast = `SHOWROOM: {nxt.name}`
+		CarsLayouts.set(nxt.id)
+		return
+	end
 	local nxt = Layouts.after()
 	pendingToast = `LAYOUT: {nxt.name}`
 	Layouts.set(nxt.id)
@@ -399,6 +405,14 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 					fn(e.key)
 				end
 			end,
+			-- CUSTOMIZE: the garage, once the menu can take you there; a
+			-- toast for now (the showroom's versions, 2026-10-12).
+			customize = function()
+				if not sheet then
+					GarageSounds.play("tap")
+					toast("CUSTOMIZE: the garage, soon", "info")
+				end
+			end,
 		},
 		search = {
 			get = function()
@@ -410,6 +424,9 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 				if s then
 					s.set(q)
 				end
+			end,
+			has = function()
+				return page().search ~= nil
 			end,
 		},
 		tap = function(target: GuiObject, scroll: ScrollingFrame?, onTap: () -> (), onDown: ((boolean) -> ())?)
@@ -765,11 +782,13 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 			end
 		end)
 	end
-	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
-		if isOpen then
-			build(false)
-		end
-	end)
+	for _, name in { Layouts.ATTRIBUTE, CarsLayouts.ATTRIBUTE } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			if isOpen then
+				build(false)
+			end
+		end)
+	end
 	for _, name in { "HudVariant", "HudLayout" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			if isOpen then

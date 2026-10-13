@@ -285,11 +285,11 @@ function Cars.new(shell: Page.Shell): Page.Page
 				cell.Size = UDim2.new(0.5, -(if touch then 7 else 10), 1, 0)
 				local l = Kit.text(cell, "Label", label, if touch then 10 else 12, Enum.FontWeight.Bold, false, Kit.C.sub)
 				l.Position = UDim2.fromOffset(0, if touch then 6 else 8)
-				l.Size = UDim2.new(0.5, 0, 0, if touch then 14 else 16)
+				l.Size = UDim2.new(0.38, 0, 0, if touch then 14 else 16)
 				local v = Kit.text(cell, "Value", "", if touch then 15 else 18, Enum.FontWeight.ExtraBold, true)
 				v.AnchorPoint = Vector2.new(1, 0)
 				v.Position = UDim2.new(1, 0, 0, if touch then 3 else 5)
-				v.Size = UDim2.new(0.5, 0, 0, if touch then 19 else 23)
+				v.Size = UDim2.new(0.62, 0, 0, if touch then 19 else 23)
 				v.TextXAlignment = Enum.TextXAlignment.Right
 				local barH = if touch then 8 else 10
 				local track = Kit.frame(cell, "Track", Color3.new(0, 0, 0), 0.45)

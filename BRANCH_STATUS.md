@@ -19,8 +19,9 @@ menu (`src/client/Menu`: CARS, PLATES, SETTINGS) draws through the garage's layo
 the garage share the words, EXIT, the HUD's own coins, the column, the action and one motion; one
 layout choice (`UiLayout`: SHOWCASE, GLASS, FRAME, DOCK) for every screen. The car picker's layouts
 (COMPACT, SHOWROOM, STRIP) and the old PLATES and SETTINGS panels are gone on this branch (they are
-on `tweaks-2`). The CARS page is then the old picker's SHOWROOM (two panels, its wide cards; PICKER and
-FRAME were tried and went). UI_SYSTEM.md "One frame for every screen" has
+on `tweaks-2`). CARS and PLATES are then the old picker's SHOWROOM (two panels, its wide cards; PICKER and
+FRAME were tried and went), in four versions to try (a RAIL or a SEGMENT to the pages, CUSTOMIZE
+on the STAGE or as a BUTTON; `Menu/CarsLayouts`, a temporary LAYOUT button cycles them). UI_SYSTEM.md "One frame for every screen" has
 the whole of it.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
