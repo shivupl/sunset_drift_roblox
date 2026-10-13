@@ -1,18 +1,17 @@
 --!strict
 -- SHOWROOM: the car picker's two panels (the owner's favourite of its
 -- looks), the menu's CARS and PLATES (2026-10-12; of PICKER, SHOWROOM and
--- FRAME tried, "lets go with showroom for the cars menu"). On the left the
--- subject: its name, chip and star over it, on a lit stage (the page draws
--- the car with its stats, or the plate), IN USE when you are in the car,
--- and the action (SPAWN, BUY). On the right the page: its title or the
--- CARS | PLATES switch, the sub-tabs with a search beside them, its form
--- (the plates' field) and its items: the picker's wide cards for cars, the
--- blocks for plates.
---
--- Its versions (CarsLayouts, cycled by the header's temporary LAYOUT
--- button): the way to PLATES and SETTINGS is a rail of icons left of the
--- panels or a CARS | PLATES switch in the header (`nav`); CUSTOMIZE is a
--- pill on the stage or a button beside the action (`customize`).
+-- FRAME tried, "lets go with showroom for the cars menu"; of the RAIL and
+-- SEGMENT ways to the pages and the STAGE and BUTTON CUSTOMIZE tried,
+-- "go with showroom segment stage"). On the left the subject: its name,
+-- chip and star over it, on a lit stage (the page draws the car with its
+-- stats, or the plate), IN USE when you are in the car, CUSTOMIZE as a
+-- dark pill with a green ring at the stage's bottom right, and the action
+-- (SPAWN, BUY). On the right the page: a CARS | PLATES switch in the
+-- header with the count and close beside it, the sub-tabs with a search
+-- beside them, the page's form (the plates' field) and its items: the
+-- picker's wide cards for cars, the blocks for plates. SETTINGS keeps the
+-- screen's layout.
 local Client = script.Parent.Parent.Parent
 local Kit = require(Client:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local CarArt = require(Client:WaitForChild("CarPicker"):WaitForChild("Art"))
@@ -21,10 +20,6 @@ local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 
 local Showroom = {}
-
-export type Nav = "rail" | "segment"
-export type Customize = "stage" | "button"
-export type Options = { nav: Nav, customize: Customize }
 
 local function tabOf(ctx: Types.Ctx, id: string): Types.TabDef?
 	for _, t in ctx.tabs do
@@ -52,102 +47,20 @@ local function customizeInner(parent: GuiObject, size: number, iconSize: number)
 	t.ZIndex = row.ZIndex
 end
 
-function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Types.View
-	local opts: Options = options or { nav = "segment", customize = "stage" }
+function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local touch = ctx.touch
 	local root, room = Parts.root(gui, ctx, "Showroom")
 	local scale = Parts.scaleFor(touch, ctx.screen)
 	local w = if touch then math.min(748, room.X - 16) else math.min(1060, room.X - 40)
 	local h = if touch then room.Y - 16 else math.min(604, room.Y - 24)
 	local gap = if touch then 8 else 10
-	local rail = opts.nav == "rail"
-	local railW = if rail then (if touch then 58 else 72) else 0
-	local leftW = if touch then (if rail then 232 else 262) else (if rail then 330 else 360)
+	local leftW = if touch then 262 else 360
 	local x0 = math.floor((room.X - w) / 2)
 	local y0 = if touch then 8 else 12
 	local pad = if touch then 10 else 16
 	local actionH = if touch then 44 else 52
 
-	------------------------------------------------------------------
-	-- The rail: the pages as icons over words, CLOSE at its foot.
-	local railFrame: Frame? = nil
-	type RailItem = { b: TextButton, bar: Frame, icon: ImageLabel, word: TextLabel }
-	local railItems: { [string]: RailItem } = {}
-	if rail then
-		local rf, rb = Kit.panel(root, "Rail", if touch then 14 else 16)
-		rf.Position = UDim2.fromOffset(x0, y0)
-		rf.Size = UDim2.fromOffset(railW, h)
-		Kit.pad(rb, 8, 0, 8, 0)
-		Kit.list(rb, true, 2)
-		local itemH = if touch then 54 else 64
-		for i, d in ctx.tabs do
-			local b = Instance.new("TextButton")
-			b.Name = "Tab_" .. d.id
-			b.LayoutOrder = i
-			b.AutoButtonColor = false
-			b.BackgroundColor3 = Kit.C.green
-			b.BackgroundTransparency = 1
-			b.BorderSizePixel = 0
-			b.Text = ""
-			b.Size = UDim2.new(1, 0, 0, itemH)
-			local bar = Kit.frame(b, "Bar", Kit.C.green, 0)
-			bar.Position = UDim2.fromOffset(0, 10)
-			bar.Size = UDim2.new(0, 3, 1, -20)
-			bar.Visible = false
-			Kit.corner(bar, 2)
-			-- The sheets' drawings fill three fifths of a cell, so a cell
-			-- this big reads as a 20 px icon.
-			local icon = Parts.icon(b, d.icon, if touch then 34 else 40, Kit.C.tabInk, d.sheet)
-			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Position = UDim2.fromScale(0.5, 0.38)
-			local word = Kit.text(b, "Word", d.label, if touch then 8 else 9, Enum.FontWeight.ExtraBold, true, Kit.C.tabInk)
-			word.AnchorPoint = Vector2.new(0.5, 0.5)
-			word.Position = UDim2.fromScale(0.5, 0.74)
-			word.Size = UDim2.new(1, -2, 0, 12)
-			word.TextXAlignment = Enum.TextXAlignment.Center
-			word.TextTruncate = Enum.TextTruncate.None
-			b.Activated:Connect(function()
-				if not ctx.busy() then
-					ctx.act.tab(d.id)
-				end
-			end)
-			b.Parent = rb
-			railItems[d.id] = { b = b, bar = bar, icon = icon, word = word }
-		end
-		local spacer = Kit.frame(rb, "Spacer")
-		spacer.LayoutOrder = 8
-		spacer.Size = UDim2.fromOffset(0, 1)
-		Kit.fill(spacer)
-		local line = Kit.frame(rb, "Line", Color3.new(1, 1, 1), 0.92)
-		line.LayoutOrder = 9
-		line.Size = UDim2.new(1, -24, 0, 1)
-		line.Position = UDim2.fromOffset(12, 0)
-		local close = Instance.new("TextButton")
-		close.Name = "Close"
-		close.LayoutOrder = 10
-		close.AutoButtonColor = false
-		close.BackgroundTransparency = 1
-		close.Text = ""
-		close.Size = UDim2.new(1, 0, 0, if touch then 50 else 58)
-		local x = Kit.text(close, "Cross", "×", if touch then 22 else 26, Enum.FontWeight.Bold, false)
-		x.AnchorPoint = Vector2.new(0.5, 0.5)
-		x.Position = UDim2.fromScale(0.5, 0.36)
-		x.Size = UDim2.new(1, 0, 0, 24)
-		x.TextXAlignment = Enum.TextXAlignment.Center
-		local cw = Kit.text(close, "Word", "CLOSE", if touch then 8 else 9, Enum.FontWeight.ExtraBold, true, Kit.C.tabInk)
-		cw.AnchorPoint = Vector2.new(0.5, 0.5)
-		cw.Position = UDim2.fromScale(0.5, 0.74)
-		cw.Size = UDim2.new(1, -2, 0, 12)
-		cw.TextXAlignment = Enum.TextXAlignment.Center
-		close.Activated:Connect(function()
-			if not ctx.busy() then
-				ctx.act.leave()
-			end
-		end)
-		close.Parent = rb
-		railFrame = rf
-	end
-	local px = x0 + (if rail then railW + gap else 0)
+	local px = x0
 
 	------------------------------------------------------------------
 	-- The subject.
@@ -191,64 +104,34 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 	inUse.Position = UDim2.fromOffset(6, 6)
 	inUse.ZIndex = 5
 	inUse.Visible = false
-	local customize: GuiButton? = nil
-	if opts.customize == "stage" then
-		local pill = Instance.new("TextButton")
-		pill.Name = "Customize"
-		pill.AutoButtonColor = false
-		pill.Text = ""
-		pill.BorderSizePixel = 0
-		pill.BackgroundColor3 = Kit.C.chip
-		pill.BackgroundTransparency = 0.14
-		pill.AnchorPoint = Vector2.new(1, 1)
-		pill.Position = UDim2.new(1, -6, 1, -(if touch then 58 else 68))
-		pill.Size = UDim2.fromOffset(if touch then 108 else 128, if touch then 26 else 30)
-		pill.ZIndex = 5
-		Kit.corner(pill, if touch then 13 else 15)
-		Kit.stroke(pill, Kit.C.green, 1, 0.3)
-		customizeInner(pill, if touch then 9 else 11, if touch then 22 else 26)
-		pill.Parent = stage
-		customize = pill
-	end
+	local pill = Instance.new("TextButton")
+	pill.Name = "Customize"
+	pill.AutoButtonColor = false
+	pill.Text = ""
+	pill.BorderSizePixel = 0
+	pill.BackgroundColor3 = Kit.C.chip
+	pill.BackgroundTransparency = 0.14
+	pill.AnchorPoint = Vector2.new(1, 1)
+	pill.Position = UDim2.new(1, -6, 1, -(if touch then 58 else 68))
+	pill.Size = UDim2.fromOffset(if touch then 108 else 128, if touch then 26 else 30)
+	pill.ZIndex = 5
+	Kit.corner(pill, if touch then 13 else 15)
+	Kit.stroke(pill, Kit.C.green, 1, 0.3)
+	customizeInner(pill, if touch then 9 else 11, if touch then 22 else 26)
+	pill.Parent = stage
+	pill.Visible = ctx.act.customize ~= nil
+	pill.Activated:Connect(function()
+		local fn = ctx.act.customize
+		if fn and not ctx.busy() then
+			fn()
+		end
+	end)
 
-	-- The action, and beside it CUSTOMIZE as a button.
+	-- The action.
 	local foot = Kit.frame(left, "Foot")
 	foot.LayoutOrder = 3
 	foot.Size = UDim2.new(1, 0, 0, actionH)
-	Kit.list(foot, false, 6, Enum.VerticalAlignment.Center)
-	local innerW = leftW - 2 * pad
-	local actionW = innerW
-	if opts.customize == "button" then
-		local bw = if touch then 92 else 112
-		actionW = innerW - bw - 6
-		local b = Instance.new("ImageButton")
-		b.Name = "Customize"
-		b.LayoutOrder = 1
-		b.AutoButtonColor = false
-		b.BackgroundTransparency = 1
-		b.Image = CarArt.button
-		b.ScaleType = Enum.ScaleType.Slice
-		b.SliceCenter = CarArt.buttonSlice
-		b.SliceScale = actionH / CarArt.buttonH
-		b.ImageColor3 = Parts.C.graphite
-		b.Size = UDim2.fromOffset(bw, actionH)
-		customizeInner(b, if touch then 9 else 11, if touch then 22 else 26)
-		b.Parent = foot
-		customize = b
-	end
-	local beside = opts.customize == "button"
-	local action = Parts.action(foot, ctx, actionW, actionH, if touch then (if beside then 12 else 15) else (if beside then 16 else 19))
-	action.root.LayoutOrder = 2
-	local c = customize
-	if c then
-		c.Visible = ctx.act.customize ~= nil
-		c.Activated:Connect(function()
-			local fn = ctx.act.customize
-			if fn and not ctx.busy() then
-				fn()
-			end
-		end)
-	end
+	local action = Parts.action(foot, ctx, leftW - 2 * pad, actionH, if touch then 15 else 19)
 
 	------------------------------------------------------------------
 	-- The page.
@@ -270,15 +153,14 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 	header.LayoutOrder = 1
 	header.Size = UDim2.new(1, 0, 0, headH)
 	Kit.list(header, false, 8, Enum.VerticalAlignment.Center)
-	-- The title (the rail says where you are) or the CARS | PLATES switch.
+	-- The CARS | PLATES switch.
 	local titleHolder = Kit.frame(header, "TitleHolder")
 	titleHolder.LayoutOrder = 1
 	titleHolder.AutomaticSize = Enum.AutomaticSize.X
 	titleHolder.Size = UDim2.fromOffset(0, headH)
-	local title: Frame? = nil
 	type Half = { b: TextButton, word: TextLabel, ar: TextLabel }
 	local halves: { [string]: Half } = {}
-	if not rail then
+	do
 		local track = Kit.frame(titleHolder, "Switch", Color3.new(0, 0, 0), 0.55)
 		track.AutomaticSize = Enum.AutomaticSize.X
 		track.Size = UDim2.fromOffset(0, if touch then 34 else 40)
@@ -332,23 +214,13 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 	count.AutomaticSize = Enum.AutomaticSize.X
 	count.Size = UDim2.fromScale(0, 1)
 	count.TextTruncate = Enum.TextTruncate.None
-	-- Temporary: the next version (CarsLayouts).
-	local switch = Kit.iconButton(header, "Layout", CarArt.layout, if touch then 32 else 36)
-	switch.LayoutOrder = 4
-	switch.Activated:Connect(function()
+	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
+	close.LayoutOrder = 5
+	close.Activated:Connect(function()
 		if not ctx.busy() then
-			ctx.act.nextLayout()
+			ctx.act.leave()
 		end
 	end)
-	if not rail then
-		local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
-		close.LayoutOrder = 5
-		close.Activated:Connect(function()
-			if not ctx.busy() then
-				ctx.act.leave()
-			end
-		end)
-	end
 
 	local subH = if touch then 30 else 34
 	local filter = Kit.frame(right, "Filter")
@@ -392,13 +264,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 
 	local function paintNav()
 		local id = ctx.tab()
-		for key, it in railItems do
-			local on = key == id
-			it.bar.Visible = on
-			it.b.BackgroundTransparency = if on then 0.9 else 1
-			it.icon.ImageColor3 = if on then Kit.C.text else Kit.C.tabInk
-			it.word.TextColor3 = if on then Kit.C.text else Kit.C.tabInk
-		end
 		for key, hf in halves do
 			local on = key == id
 			hf.b.BackgroundTransparency = if on then 0 else 1
@@ -411,14 +276,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 			end
 			hf.word.TextColor3 = if on then Kit.C.inUseInk else Kit.C.tabInk
 			hf.ar.TextColor3 = if on then Kit.C.inUseInk else Parts.C.sand
-		end
-		if rail then
-			local t = title
-			if t then
-				t:Destroy()
-			end
-			local d = tabOf(ctx, id)
-			title = Parts.title(titleHolder, if touch then 24 else 30, if d then { en = d.label, ar = d.arabic } else ctx.title)
 		end
 	end
 
@@ -497,22 +354,13 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx, options: Options?): Type
 		starIcon.Image = if fav then CarArt.star else CarArt.starLine
 		starIcon.ImageColor3 = if fav then Kit.C.green else Color3.new(1, 1, 1)
 		starIcon.ImageTransparency = if fav then 0 else 0.4
-		local cb = customize
-		if cb then
-			cb.Visible = ctx.act.customize ~= nil and ctx.tab() == "cars"
-		end
+		pill.Visible = ctx.act.customize ~= nil and ctx.tab() == "cars"
 	end
 
-	local leftPieces: { GuiObject } = {}
-	local rf = railFrame
-	if rf then
-		table.insert(leftPieces, rf)
-	end
-	table.insert(leftPieces, leftFrame)
 	local pieces: Parts.Pieces = {
 		room = room,
 		scale = scale,
-		left = leftPieces,
+		left = { leftFrame },
 		right = { rightFrame },
 		top = {},
 		bottom = {},

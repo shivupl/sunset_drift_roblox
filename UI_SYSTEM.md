@@ -301,34 +301,24 @@ behind the coins and read as their shadow.
 
 **CARS and PLATES are the car picker's SHOWROOM** (`Menu/Looks/Showroom`;
 the owner, 2026-10-12: "the old layouts were internally a bit better the
-rhs boxes, the overall styling" and, of PICKER, SHOWROOM and FRAME tried,
-"lets go with showroom for the cars menu"). Two panels: the subject on the
-left (its name, chip and star, the page's stage: the car with IN USE and
-its weight and length, or the plate; the action, SPAWN or BUY), the page
-on the right: the sub-tabs, a search beside them where the page has one,
-the page's form (the plates' field) and its items, the picker's wide cards
-for cars (`Parts.cards`: `Kit.tile`, the name, its own star, the photo on
-a lit stage, the drive chip, the picked one edged green) or the blocks for
+rhs boxes, the overall styling"; of PICKER, SHOWROOM and FRAME tried,
+"lets go with showroom for the cars menu"; of a RAIL or a SEGMENT to the
+pages and CUSTOMIZE on the STAGE or as a BUTTON tried from the canvas's
+row E, "go with showroom segment stage"). Two panels: the subject on the
+left (its name, chip and star; the page's stage: the car with IN USE and
+its weight and length, or the plate; CUSTOMIZE as a dark pill with a green
+ring at the stage's bottom right, a toast until the menu can take you to
+the garage, `Actions.customize`; the action, SPAWN or BUY), the page on
+the right: a CARS | PLATES switch in the header with the count and close
+beside it, the sub-tabs, a search beside them where the page has one, the
+page's form (the plates' field) and its items, the picker's wide cards for
+cars (`Parts.cards`: `Kit.tile`, the name, its own star, the photo on a
+lit stage, the drive chip, the picked one edged green) or the blocks for
 plates, with the rail and the finger's scrolling. SETTINGS keeps the
-screen's layout and is left as it is; moving to it builds the screen
-again, coming in from its edges. A page says what the cards need
-(`Entry.image`, `Entry.chip`, `EntryState.starred`, `Actions.starEntry`,
-`Ctx.search` with `has`).
-
-Its versions to try (`Menu/CarsLayouts`, the attribute `CarsLayout`,
-cycled by the temporary LAYOUT button in the header; from the canvas's
-row E, the owner: "implement one version with a side panel like this and
-one like this. for the customize button, something like this, make a
-couple options"), every pairing of:
-- the way to the pages: RAIL, a narrow panel left of the two with CARS,
-  PLATES and SETTINGS as icons over words and CLOSE at its foot (the
-  right panel shows the page's title and count); or SEGMENT, a CARS |
-  PLATES switch in the right panel's header with the count and close
-  beside it.
-- CUSTOMIZE: STAGE, a dark pill with a green ring on the car's stage,
-  bottom right; or BUTTON, a graphite slanted button beside the action.
-  It is a toast for now (`Actions.customize`): the menu cannot take you
-  to the garage yet.
+screen's layout and is left as it is (the phone's top bar reaches it once
+the menu is closed); moving to it builds the screen again, coming in from
+its edges. A page says what the cards need (`Entry.image`, `Entry.chip`,
+`EntryState.starred`, `Actions.starEntry`, `Ctx.search` with `has`).
 
 The pieces they share (`Looks/Parts`): the column lines up under the
 coins, its right edge and just below their foot (`Parts.coinAnchor`: the
