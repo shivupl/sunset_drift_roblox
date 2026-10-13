@@ -85,7 +85,8 @@ export type Api = {
 	leanRight: (boolean) -> (),
 }
 
-export type Style = { id: string, name: string }
+-- `blurb`: a version's word, for Settings' HUD LAYOUT row.
+export type Style = { id: string, name: string, blurb: string? }
 
 local player = Players.LocalPlayer
 
@@ -293,7 +294,7 @@ end
 function HudLab.versions(): { Style }
 	local out: { Style } = {}
 	for _, v in Versions.list do
-		table.insert(out, { id = v.id, name = v.name })
+		table.insert(out, { id = v.id, name = v.name, blurb = v.blurb })
 	end
 	return out
 end

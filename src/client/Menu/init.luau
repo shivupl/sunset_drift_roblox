@@ -35,6 +35,7 @@ local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 local Layouts = require(Looks:WaitForChild("Layouts"))
 local Showroom = require(script:WaitForChild("Looks"):WaitForChild("Showroom"))
+local Board = require(script:WaitForChild("Looks"):WaitForChild("Board"))
 local GarageSounds = require(Client:WaitForChild("Garage"):WaitForChild("GarageSounds"))
 local Page = require(script:WaitForChild("Page"))
 local Cars = require(script:WaitForChild("Cars"))
@@ -268,11 +269,14 @@ local openedAt = 0
 
 -- The layout a page is drawn in: CARS and PLATES the car picker's
 -- SHOWROOM (the owner, 2026-10-12, of PICKER, SHOWROOM and FRAME tried:
--- "lets go with showroom for the cars menu"), SETTINGS the screen's
--- (kept apart).
+-- "lets go with showroom for the cars menu"), SETTINGS the BOARD (the
+-- canvas's "B. Settings": "implement this version that we had planned but
+-- remove the buttons at the bottom"). The screen's layout (Layouts) is
+-- the garage's now.
 local SHOWROOM: Types.Layout = { id = "showroom", name = "SHOWROOM", build = Showroom.build }
+local BOARD: Types.Layout = { id = "board", name = "BOARD", build = Board.build }
 local function layoutFor(id: string): Types.Layout
-	return if id == "settings" then Layouts.current() else SHOWROOM
+	return if id == "settings" then BOARD else SHOWROOM
 end
 
 local function choosePage(id: string)

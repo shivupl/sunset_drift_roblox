@@ -25,13 +25,14 @@
 export type Version = {
 	id: string,
 	name: string,
+	blurb: string, -- the word beside its name in Settings' HUD LAYOUT row
 }
 
 local list: { Version } = {
 	-- The trial opens on the newest, so the owner sees it at once.
-	{ id = "flow", name = "FLOW" },
-	{ id = "side", name = "SIDE" },
-	{ id = "board", name = "BOARD" },
+	{ id = "flow", name = "FLOW", blurb = "Score floats at the top" },
+	{ id = "side", name = "SIDE", blurb = "Meter down the right" },
+	{ id = "board", name = "BOARD", blurb = "Score on a plate" },
 }
 
 local byId: { [string]: Version } = {}

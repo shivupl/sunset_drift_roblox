@@ -318,11 +318,29 @@ beside it, the sub-tabs, a search beside them where the page has one, the
 page's form (the plates' field) and its items, the picker's wide cards for
 cars (`Parts.cards`: `Kit.tile`, the name, its own star, the photo on a
 lit stage, the drive chip, the picked one edged green) or the blocks for
-plates, with the rail and the finger's scrolling. SETTINGS keeps the
-screen's layout and is left as it is (the phone's top bar reaches it once
-the menu is closed); moving to it builds the screen again, coming in from
-its edges. A page says what the cards need (`Entry.image`, `Entry.chip`,
-`EntryState.starred`, `Actions.starEntry`, `Ctx.search` with `has`).
+plates, with the rail and the finger's scrolling. A page says what the
+cards need (`Entry.image`, `Entry.chip`, `EntryState.starred`,
+`Actions.starEntry`, `Ctx.search` with `has`).
+
+**SETTINGS is the BOARD** (`Menu/Looks/Board`, the canvas's "B. Settings";
+the owner, 2026-10-12: "implement this version that we had planned but
+remove the buttons at the bottom"): one panel in the showroom's frame, a
+header (SETTINGS إعدادات, "Time of day saves to your account", the
+close) and three columns the page draws (`Menu/Settings`). TIME OF DAY
+down the left as art tiles (the sunset's band, the night's stars and a
+lamp), the chosen one edged green with a tick; HUD STYLE across the
+middle as cards, each a mock readout in the finish's own colours (the
+slide score and its multiplier, a speed dial with the needle low on the
+left); CAMERA on the right as slanted choices (CHASE, CLOSE, FAR:
+`CameraViews.set`); HUD LAYOUT under it as rows, a word on each
+(`Versions.blurb`); SCREEN LAYOUT (the garage's layout) last, only where
+there is more than one (a PC). The canvas's bottom bar (CARS, PLATES,
+SETTINGS, the note, the close) went: the words are the showroom's switch
+and the phone's top bar (which reaches SETTINGS once the menu is closed),
+and the note and the close moved into the header. No action: what is
+picked is in force at once. Moving between the showroom and the board
+builds the screen again, coming in from its edges. The screen's layout
+(`Looks/Layouts`) is the garage's alone now.
 
 The pieces they share (`Looks/Parts`): the column lines up under the
 coins, its right edge and just below their foot (`Parts.coinAnchor`: the
@@ -363,8 +381,9 @@ and the menu and the garage play the same sounds (`GarageSounds`: a tab, a
 tap, a fit, a purchase, an error).
 
 The action slot is never empty: where there is nothing to do it says why,
-in grey (ON YOUR CAR, TAKEN, CHECKING…), and SETTINGS has a green DONE, so
-no layout shows a hole at the bottom right or in the dock.
+in grey (ON YOUR CAR, TAKEN, CHECKING…), so no layout shows a hole at the
+bottom right or in the dock (the settings board has no action slot; its
+page still answers DONE for a layout with one).
 
 The load cover wears the same look (graphite, HAJWALA هجولة, the green
 bar), and the menu slides in under it as it fades.

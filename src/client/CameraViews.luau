@@ -39,6 +39,11 @@ function CameraViews.current(): View
 	return views[1]
 end
 
+-- This view, from the menu's SETTINGS (its CAMERA row).
+function CameraViews.set(id: string)
+	Players.LocalPlayer:SetAttribute(ATTRIBUTE, id)
+end
+
 -- The next view, from V or the CAM button.
 function CameraViews.cycle()
 	local views = CameraViews.list()

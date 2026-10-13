@@ -21,8 +21,8 @@ layout choice (`UiLayout`: SHOWCASE, GLASS, FRAME, DOCK) for every screen. The c
 (COMPACT, SHOWROOM, STRIP) and the old PLATES and SETTINGS panels are gone on this branch (they are
 on `tweaks-2`). CARS and PLATES are then the old picker's SHOWROOM (two panels, its wide cards, a CARS | PLATES
 switch, CUSTOMIZE on the car's stage; PICKER, FRAME, a side RAIL and a CUSTOMIZE button were tried
-and went). UI_SYSTEM.md "One frame for every screen" has
-the whole of it.
+and went), and SETTINGS the BOARD (one panel: time-of-day tiles, HUD finish cards, the camera and
+HUD layout as slanted choices). UI_SYSTEM.md "One frame for every screen" has the whole of it.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
