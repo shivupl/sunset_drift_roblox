@@ -49,9 +49,6 @@ GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,
 	glass = -0.06,
-	-- A phone's GLASS versions (2026-10-12): the car where GLASS has it.
-	glassrail = -0.06,
-	glassmore = -0.06,
 	frame = -0.06,
 	shade = 0.22,
 } :: { [string]: number }

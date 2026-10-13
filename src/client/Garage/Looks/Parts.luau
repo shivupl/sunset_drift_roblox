@@ -362,8 +362,8 @@ export type BoxMetrics = {
 	-- What is under the list, for the fades at its ends: a panel (the
 	-- default) or a shade (the SHOWCASE variants without a panel).
 	backdrop: ("panel" | "shade")?,
-	-- An up/down control in place of the fades (GLASS on a phone; the
-	-- owner, 2026-10-12: "remove the scroll shaddow ... add an obvious
+	-- The rail in place of the fades (GLASS on a phone; the owner,
+	-- 2026-10-12: "remove the scroll shaddow ... add an obvious
 	-- scroll/updown for the options"): Parts.scroller.
 	scroller: ScrollKind?,
 	-- Blocks sized so the list shows whole rows, never a sliver of the next
@@ -615,20 +615,14 @@ function Parts.fades(holder: GuiObject, touch: boolean, onShade: boolean): Fades
 end
 
 -- An obvious way up and down a list (the owner, 2026-10-12: "add an
--- obvious scroll/updown for the options (make a couple versions)"), in
--- place of the fades; the list still scrolls under a thumb as well.
---   arrows  round white buttons with a chevron centred on the list's top
---           and foot, on the corners of the rows there, each only while there is
---           more that way; a row a tap. The down one nods once when a set
---           opens with more below it.
---   rail    a track down the list's right edge with a green thumb as tall
---           as the share showing, dragged to scroll; chevrons at its ends
---           step a row.
---   more    a pager row under the list, in its own room: a small up and a
---           wide "4 MORE" with chevrons, faded at either end; a page a tap.
+-- obvious scroll/updown for the options (make a couple versions)"; of
+-- ARROWS, RAIL and MORE tried, they picked RAIL from their phone), in
+-- place of the fades; the list still scrolls under a thumb as well: a
+-- track down the list's right edge with a green thumb as tall as the share
+-- showing, dragged to scroll; chevrons at its ends step a row.
 -- `step` is a row in screen pixels (CanvasPosition's units under the
--- layout's UIScale); `hidden` counts the items wholly above and below.
-export type ScrollKind = "arrows" | "rail" | "more"
+-- layout's UIScale).
+export type ScrollKind = "rail"
 export type Scroller = { update: () -> (), shown: () -> () }
 
 -- The margin right of the blocks a control takes: the rail's, so its
@@ -636,12 +630,6 @@ export type Scroller = { update: () -> (), shown: () -> () }
 -- blocks' width (else the grid would wrap to one across).
 function Parts.railRoom(kind: ScrollKind?): number
 	return if kind == "rail" then 18 else 0
-end
-
--- The pager row's height and the gap over it (`more`): what the list gives
--- up while there is more than it shows.
-local function pagerSize(touch: boolean): (number, number)
-	return (if touch then 26 else 30), (if touch then 6 else 8)
 end
 
 local CHEVRON = "›"
@@ -659,7 +647,7 @@ local function chevron(parent: Instance, size: number, up: boolean, color: Color
 	return c
 end
 
-function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, step: () -> number, touch: boolean, hidden: (() -> (number, number))?): Scroller
+function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, step: () -> number, touch: boolean): Scroller
 	-- The list's own bar would be a second one. Thickness 0 alone still
 	-- left a hairline thumb by the blocks (Studio's phone view, 2026-10-12).
 	scroll.ScrollBarThickness = 0
@@ -678,56 +666,8 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 		tween = nt
 		nt:Play()
 	end
-	local function page(): number
-		return math.max(step(), scroll.AbsoluteWindowSize.Y - step())
-	end
-
 	local update: () -> ()
-	-- What a new set opening does: paint, and for the arrows a nod.
-	local shown: (() -> ())? = nil
-
-	if kind == "arrows" then
-		local d = if touch then 30 else 34
-		local function arrow(up: boolean): TextButton
-			local b = Instance.new("TextButton")
-			b.Name = if up then "Up" else "Down"
-			b.AutoButtonColor = false
-			b.Text = ""
-			b.BorderSizePixel = 0
-			b.BackgroundColor3 = Color3.new(1, 1, 1)
-			b.BackgroundTransparency = 0.04
-			-- Centred on the list's top or foot, in the gap between the
-			-- blocks: never past the screen's edge.
-			b.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
-			b.Position = UDim2.new(0.5, 0, if up then 0 else 1, if up then 2 else -2)
-			b.Size = UDim2.fromOffset(d, d)
-			b.ZIndex = 6
-			Kit.corner(b, math.floor(d / 2))
-			local c = chevron(b, math.floor(d * 0.8), up, Kit.C.chip)
-			c.ZIndex = 7
-			b.Visible = false
-			b.Activated:Connect(function()
-				go(if up then -step() else step())
-			end)
-			b.Parent = holder
-			return b
-		end
-		local upB, downB = arrow(true), arrow(false)
-		update = function()
-			local pos, lim = scroll.CanvasPosition.Y, limit()
-			upB.Visible = pos > 1
-			downB.Visible = pos < lim - 1
-		end
-		shown = function()
-			update()
-			if downB.Visible then
-				-- One nod down, so a player sees there is more.
-				local home = UDim2.new(0.5, 0, 1, -2)
-				downB.Position = home
-				TweenService:Create(downB, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 1, true, 0.35), { Position = home + UDim2.fromOffset(0, 6) }):Play()
-			end
-		end
-	elseif kind == "rail" then
+	do
 		local w = if touch then 8 else 9
 		local cap = if touch then 24 else 26
 		local rail = Kit.frame(holder, "Rail")
@@ -824,84 +764,6 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 				drag = nil
 			end
 		end)
-	else
-		-- A pager row under the list, in its own room (the list gives up
-		-- that height while there is more than it shows): a small BACK UP
-		-- and a wide "4 MORE", each faded when there is nothing that way.
-		local h, gapR = pagerSize(touch)
-		local row = Kit.frame(holder, "Pager")
-		row.AnchorPoint = Vector2.new(0, 1)
-		row.Position = UDim2.fromScale(0, 1)
-		row.Size = UDim2.new(1, 0, 0, h)
-		row.ZIndex = 6
-		row.Visible = false
-		Kit.list(row, false, gapR, Enum.VerticalAlignment.Center)
-		local function pill(name: string, up: boolean, order: number): (TextButton, TextLabel?, TextLabel)
-			local b = Instance.new("TextButton")
-			b.Name = name
-			b.LayoutOrder = order
-			b.AutoButtonColor = false
-			b.Text = ""
-			b.BorderSizePixel = 0
-			b.BackgroundColor3 = Color3.new(1, 1, 1)
-			b.BackgroundTransparency = 0.9
-			b.Size = UDim2.new(0, math.floor(h * 1.6), 1, 0)
-			b.ZIndex = 6
-			Kit.corner(b, math.floor(h / 2))
-			Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.8)
-			local inner = Kit.frame(b, "Row")
-			inner.Size = UDim2.fromScale(1, 1)
-			inner.ZIndex = 7
-			local l = Kit.list(inner, false, 4, Enum.VerticalAlignment.Center)
-			l.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			local word: TextLabel? = nil
-			if not up then
-				local wd = Kit.text(inner, "Word", "", if touch then 11 else 13, Enum.FontWeight.ExtraBold, true)
-				wd.AutomaticSize = Enum.AutomaticSize.X
-				wd.Size = UDim2.fromScale(0, 1)
-				wd.TextTruncate = Enum.TextTruncate.None
-				wd.ZIndex = 7
-				word = wd
-			end
-			local ic = Kit.frame(inner, "Icon")
-			ic.LayoutOrder = 1
-			ic.Size = UDim2.fromOffset(h - 6, h)
-			local c = chevron(ic, h - 2, up, Kit.C.green)
-			c.ZIndex = 7
-			b.Activated:Connect(function()
-				go(if up then -page() else page())
-			end)
-			b.Parent = row
-			return b, word, c
-		end
-		local upB, _, upC = pill("BackUp", true, 1)
-		local downB, downWord, downC = pill("More", false, 2)
-		downB.Size = UDim2.fromScale(0, 1)
-		Kit.fill(downB)
-		local full = true
-		update = function()
-			local more = scroll.AbsoluteCanvasSize.Y > holder.AbsoluteSize.Y + 1
-			if more == full then
-				-- The list makes room for the row, or takes it back.
-				full = not more
-				scroll.Size = if more then UDim2.new(1, 0, 1, -(h + gapR)) else UDim2.fromScale(1, 1)
-			end
-			row.Visible = more
-			local pos, lim = scroll.CanvasPosition.Y, limit()
-			local canUp, canDown = pos > 1, pos < lim - 1
-			upC.TextTransparency = if canUp then 0 else 0.75
-			upB.BackgroundTransparency = if canUp then 0.9 else 0.96
-			downC.TextTransparency = if canDown then 0 else 0.75
-			downB.BackgroundTransparency = if canDown then 0.9 else 0.96
-			local below = 0
-			if hidden then
-				local _, b = hidden()
-				below = b
-			end
-			local w = downWord :: TextLabel
-			w.Text = if not canDown then "THE END" elseif below > 0 then `{below} MORE` else "MORE"
-			w.TextTransparency = if canDown then 0 else 0.5
-		end
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(update)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(update)
@@ -909,7 +771,7 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 	task.defer(update)
 	return {
 		update = update,
-		shown = shown or update,
+		shown = update,
 	}
 end
 
@@ -980,8 +842,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		topFade.Visible = kind == nil and first.box.root.AbsolutePosition.Y < y0 - 1
 		bottomFade.Visible = kind == nil and l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
 	end
-	-- The up/down control: a row (a cell and the gap) a step; it counts
-	-- the items wholly past either end.
+	-- The up/down control: a row (a cell and the gap) a step.
 	local control: Scroller? = nil
 	if kind then
 		control = Parts.scroller(holder, scroll, kind, function(): number
@@ -990,20 +851,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 			local cell = grid.AbsoluteCellSize.Y
 			local drawn = grid.CellSize.Y.Offset
 			return cell + gap * (if drawn > 0 then cell / drawn else 1)
-		end, ctx.touch, function(): (number, number)
-			local y0 = scroll.AbsolutePosition.Y
-			local y1 = y0 + scroll.AbsoluteSize.Y
-			local above, below = 0, 0
-			for _, b in boxes do
-				local r = b.box.root
-				if r.AbsolutePosition.Y + r.AbsoluteSize.Y <= y0 + 1 then
-					above += 1
-				elseif r.AbsolutePosition.Y >= y1 - 1 then
-					below += 1
-				end
-			end
-			return above, below
-		end)
+		end, ctx.touch)
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
@@ -1015,12 +863,11 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	-- become one more row, each smaller, if that keeps them to three
 	-- quarters of `block`; else the rows stay at `block` and the list ends
 	-- under them, the remainder left empty below (`spare`, a padding on
-	-- the holder, so MORE's pager follows the rows up). MORE's pager takes
-	-- its room first when the set needs it.
+	-- the holder).
 	local scale = Parts.scaleFor(ctx.touch, ctx.screen)
 	local spare = Instance.new("UIPadding")
 	spare.Parent = holder
-	local function blockFor(count: number): (number?, number)
+	local function blockFor(): (number?, number)
 		local want = m.block
 		if not want or not m.fitRows then
 			return want, 0
@@ -1029,26 +876,18 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		if total < want then
 			return want, 0
 		end
-		local function fit(avail: number): (number, number, number)
-			-- The rows and the padding round them fill the window, so a
-			-- set that fits does not scroll; with more, the next row starts
-			-- a gap after the last, past the bottom padding, out of sight.
-			local h = avail - padTop - padBottom
-			local r = math.max(1, math.ceil((h + gap) / (want + gap) - 0.001))
-			local b = math.floor((h - (r - 1) * gap) / r)
-			if r > 1 and b < want * 0.75 then
-				r -= 1
-				b = want
-			end
-			b = math.min(b, want)
-			return b, math.max(0, math.floor(avail - (padTop + r * b + (r - 1) * gap + padBottom))), r
+		-- The rows and the padding round them fill the window, so a set
+		-- that fits does not scroll; with more, the next row starts a gap
+		-- after the last, past the bottom padding, out of sight.
+		local h = total - padTop - padBottom
+		local r = math.max(1, math.ceil((h + gap) / (want + gap) - 0.001))
+		local b = math.floor((h - (r - 1) * gap) / r)
+		if r > 1 and b < want * 0.75 then
+			r -= 1
+			b = want
 		end
-		local b, left, rows = fit(total)
-		if kind == "more" and count > rows * swatchCols then
-			local ph, pg = pagerSize(ctx.touch)
-			b, left = fit(total - ph - pg)
-		end
-		return b, left
+		b = math.min(b, want)
+		return b, math.max(0, math.floor(total - (padTop + r * b + (r - 1) * gap + padBottom)))
 	end
 
 	local shown: { Types.Entry } = {}
@@ -1059,7 +898,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		end
 		table.clear(boxes)
 		shown = entries
-		local block, left = blockFor(#entries)
+		local block, left = blockFor()
 		drawnAt = block
 		spare.PaddingBottom = UDim.new(0, left)
 		local bm = m
@@ -1099,7 +938,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		-- The list's height is known only once it is laid out (and changes
 		-- with a note over it): the set is drawn again at its new size.
 		holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-			local block, left = blockFor(#shown)
+			local block, left = blockFor()
 			spare.PaddingBottom = UDim.new(0, left)
 			if #shown > 0 and block ~= drawnAt then
 				build(shown, false)

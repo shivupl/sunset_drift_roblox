@@ -166,11 +166,11 @@ function Settings.new(shell: Page.Shell): Page.Page
 				scroll.Parent = holder
 				-- The layout's up/down control (GLASS on a phone), or the
 				-- fades.
-				local kind: Parts.ScrollKind? = if scroller == "arrows" or scroller == "rail" or scroller == "more" then scroller else nil
+				local kind: Parts.ScrollKind? = if scroller == "rail" then "rail" else nil
 				if kind then
 					Parts.scroller(holder, scroll, kind, function(): number
 						return scroll.AbsoluteWindowSize.Y * 0.5
-					end, touch, nil)
+					end, touch)
 				else
 					Parts.fades(holder, touch, shade).watch(scroll)
 				end

@@ -39,15 +39,13 @@ local function variant(id: string, name: string, v: Showcase.Variant, opts: Show
 end
 
 -- A phone has GLASS (the owner, 2026-10-12: "lets go with 'glass' for
--- Mobile view garage"), its column a little past the coins and its fades
--- gone, in three versions of the up/down control to choose between
--- ("add an obvious scroll/updown for the options (make a couple
--- versions)"). SHOWCASE, FRAME and DOCK stay on a PC.
+-- Mobile view garage"), its column a little past the coins, its fades
+-- gone and a rail down the list's right edge in their place: of the three
+-- up/down controls tried (ARROWS, RAIL, MORE) they picked RAIL from their
+-- phone. SHOWCASE, FRAME and DOCK stay on a PC.
 local REACH = 24
 Layouts.phone = {
-	variant("glass", "GLASS ARROWS", "glass", { reach = REACH, scroller = "arrows" }),
-	variant("glassrail", "GLASS RAIL", "glass", { reach = REACH, scroller = "rail" }),
-	variant("glassmore", "GLASS MORE", "glass", { reach = REACH, scroller = "more" }),
+	variant("glass", "GLASS", "glass", { reach = REACH, scroller = "rail" }),
 } :: { Types.Layout }
 
 Layouts.pc = {
