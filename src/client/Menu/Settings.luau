@@ -167,12 +167,13 @@ function Settings.new(shell: Page.Shell): Page.Page
 				-- The layout's up/down control (GLASS on a phone), or the
 				-- fades.
 				local kind: Parts.ScrollKind? = if scroller == "rail" then "rail" else nil
+				-- The padding first: the rail reads it to span the rows.
+				Kit.pad(scroll, 2, 6 + Parts.railRoom(kind), 6, 2)
 				if kind then
 					Parts.scroller(holder, scroll, kind, touch)
 				else
 					Parts.fades(holder, touch, shade).watch(scroll)
 				end
-				Kit.pad(scroll, 2, 6 + Parts.railRoom(kind), 6, 2)
 				Kit.list(scroll, true, if touch then 12 else 16)
 				local h = if touch then 30 else 36
 				local size = if touch then 10 else 12

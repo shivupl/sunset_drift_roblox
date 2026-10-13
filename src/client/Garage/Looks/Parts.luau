@@ -643,10 +643,16 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 	local hit = if touch then 24 else 26
 	local rail = Kit.frame(holder, "Rail")
 	-- In the margin the layout leaves right of the blocks for it
-	-- (Parts.railRoom), centred on it.
+	-- (Parts.railRoom), centred on it; as tall as the room the list's
+	-- padding leaves its rows, so its top is the first row's (the owner's
+	-- phone, 2026-10-12: "line up the top of the bar with the top of the
+	-- boxes").
+	local pad = scroll:FindFirstChildOfClass("UIPadding")
+	local padTop = if pad then pad.PaddingTop.Offset else 0
+	local padBottom = if pad then pad.PaddingBottom.Offset else 0
 	rail.AnchorPoint = Vector2.new(0.5, 0)
-	rail.Position = UDim2.new(1, -math.floor(Parts.railRoom(kind) / 2) + 2, 0, 0)
-	rail.Size = UDim2.new(0, hit, 1, 0)
+	rail.Position = UDim2.new(1, -math.floor(Parts.railRoom(kind) / 2) + 2, 0, padTop)
+	rail.Size = UDim2.new(0, hit, 1, -(padTop + padBottom))
 	rail.ZIndex = 6
 	local track = Kit.frame(rail, "Track", Color3.new(1, 1, 1), 0.8)
 	track.AnchorPoint = Vector2.new(0.5, 0)
