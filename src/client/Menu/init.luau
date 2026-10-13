@@ -183,6 +183,7 @@ local function closeSheet(which: Sheet?)
 	local s = which or sheet
 	if s and sheet == s then
 		sheet = nil
+		TopBar.setBusy(false)
 	end
 	if s then
 		s.ui.holder:Destroy()
@@ -264,6 +265,7 @@ local function openSheet(info: Parts.SheetInfo, buy: () -> ())
 		end,
 	}
 	sheet = mine
+	TopBar.setBusy(true)
 	mine.update()
 end
 
@@ -759,6 +761,25 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	d.ZIndex = 0
 	d:SetAttribute("PassThrough", true)
 	dim = d
+	-- A tap outside the panels closes the menu (the owner, 2026-10-13: "i
+	-- should also be able to leave the menu by clicking outside"): a clear
+	-- button under everything the layout draws.
+	local outside = Instance.new("TextButton")
+	outside.Name = "Outside"
+	outside.AutoButtonColor = false
+	outside.BackgroundTransparency = 1
+	outside.BorderSizePixel = 0
+	outside.Text = ""
+	UIKit.edgeToEdge(outside, g)
+	outside.ZIndex = 0
+	outside.Activated:Connect(function()
+		local hk = hooks
+		if isOpen and not sheet and hk then
+			GarageSounds.play("tap")
+			hk.close()
+		end
+	end)
+	outside.Parent = g
 	g.Parent = player:WaitForChild("PlayerGui")
 	gui = g
 	local b = Instance.new("BlurEffect")

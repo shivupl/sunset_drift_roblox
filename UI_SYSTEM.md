@@ -406,14 +406,21 @@ bar), and the menu slides in under it as it fades.
 The phone's **top bar** (`src/client/TopBar.luau`, 2026-10-11) is one row
 right of Roblox's own buttons, GARAGE (the menu's CARS) and SETTINGS always,
 RESET, VIEW and STYLE while driving. A desktop keeps the CARS button and
-the keys. The row stays up while the menu is open, which hangs under it,
-and the button of the page showing is lit; tapping it again closes the
-menu, so the menu's panels draw no close while the row is there (`Ctx.top`
-is a number: the drawing pixels to leave clear under the row, mostly 0
-since the row ends above the menu's gui; nil with no row, so the garage
-and a desktop keep their close). The owner, 2026-10-13: "when clicking
-settings or garage the options should stay there and the tabs/menu should
-just show below". Two rows to try from the canvas's row H (the attribute
+the keys. The row stays up while the menu is open, which hangs under it
+(`Ctx.top`: the drawing pixels to leave clear under the row, mostly 0
+since the row ends above the menu's gui; nil with no row), and the button
+of the page showing is lit; tapping it again closes the menu. The owner,
+2026-10-13: "when clicking settings or garage the options should stay
+there and the tabs/menu should just show below". The row draws over the
+menu's dim (DisplayOrder 22), so the lit button stays crisp, and shades
+its other buttons itself while the menu is open ("it should darken the
+other buttons on top"), all of them under a confirm sheet
+(`TopBar.setBusy`); Roblox's own pill is not ours to shade. Three ways
+out of the menu: the × at the top left of every page (the picked car's
+head, the settings header; "there should always be a like x button top
+left"), the row's lit button, and a tap anywhere outside the panels (the
+menu's `Outside` button under everything it draws; "i should also be able
+to leave the menu by clicking outside"). Two rows to try from the canvas's row H (the attribute
 `TopRow`, cycled by the temporary ROW button at the row's end): DISCS,
 round graphite icons with no words, GARAGE ringed green, the open one
 widened into a green capsule with its word; TABS, GARAGE, PLATES and

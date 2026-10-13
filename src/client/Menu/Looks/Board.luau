@@ -34,7 +34,6 @@ function Board.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	-- The showroom's frame, so SETTINGS sits where CARS and PLATES do.
 	local w = if touch then math.min(748, room.X - 16) else math.min(1060, room.X - 40)
 	-- Under the phone's top row, which stays up (ctx.top).
-	local rowUp = ctx.top ~= nil
 	local y0 = (if touch then 8 else 12) + math.ceil(ctx.top or 0)
 	local h = if touch then room.Y - y0 - 8 else math.min(604, room.Y - y0 - 12)
 	local x0 = math.floor((room.X - w) / 2)
@@ -48,12 +47,20 @@ function Board.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	Kit.list(body, true, if touch then 8 else 12)
 	local inner = w - 2 * padX
 
-	-- The header: the page's words, the note, the close.
+	-- The header: the close (always, top left: the owner, 2026-10-13), the
+	-- page's words, the note.
 	local headH = if touch then 36 else 44
 	local header = Kit.frame(body, "Header")
 	header.LayoutOrder = 1
 	header.Size = UDim2.new(1, 0, 0, headH)
 	Kit.list(header, false, 8, Enum.VerticalAlignment.Center)
+	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
+	close.LayoutOrder = 0
+	close.Activated:Connect(function()
+		if not ctx.busy() then
+			ctx.act.leave()
+		end
+	end)
 	local def = tabOf(ctx, ctx.tab()) or { id = ctx.tab(), label = string.upper(ctx.tab()), arabic = "", icon = 0 }
 	local heading = Parts.heading(header, def, if touch then 17 else 22)
 	heading.LayoutOrder = 1
@@ -68,15 +75,6 @@ function Board.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	note.AutomaticSize = Enum.AutomaticSize.X
 	note.Size = UDim2.fromScale(0, 1)
 	note.TextTruncate = Enum.TextTruncate.None
-	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
-	close.LayoutOrder = 4
-	-- With the top row up, its lit button is the way out.
-	close.Visible = not rowUp
-	close.Activated:Connect(function()
-		if not ctx.busy() then
-			ctx.act.leave()
-		end
-	end)
 
 	-- The stage: nothing is drawn in it (the world is the subject), but a
 	-- controller expects one.

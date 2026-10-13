@@ -10,7 +10,10 @@
 -- The row stays up while the menu is open, which hangs under it, and the
 -- button of the page showing is lit; tapping it again closes the menu
 -- (the owner, 2026-10-13: "when clicking settings or garage the options
--- should stay there and the tabs/menu should just show below"). Two rows
+-- should stay there and the tabs/menu should just show below"). The row
+-- draws over the menu's dim, so the lit button stays crisp, and shades its
+-- other buttons itself while the menu is open ("it should darken the
+-- other buttons on top"), all of them while a confirm sheet is up. Two rows
 -- to try from the canvas's row H, the LocalPlayer attribute TopRow, cycled
 -- by the small ROW button at the row's end (temporary):
 --   DISCS  (H3) round graphite icons with no words, GARAGE ringed green;
@@ -84,13 +87,14 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local row: Frame? = nil
 local actions: Actions? = nil
-type Button = { spec: Spec, b: GuiButton, icon: ImageLabel, label: TextLabel?, gradient: UIGradient?, stroke: UIStroke?, space: Frame? }
+type Button = { spec: Spec, b: GuiButton, icon: ImageLabel, label: TextLabel?, gradient: UIGradient?, stroke: UIStroke?, space: Frame?, shade: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
 local switch: TextButton? = nil
 local shown = true -- no garage view up
 local driving = false
 local openPage: string? = nil -- the menu page showing, or nil
+local busy = false -- a confirm sheet is up over the menu
 local h = MAX_H
 
 -- Where the row rests (fit), so it can come back down to it.
@@ -139,6 +143,17 @@ local function paint()
 			sp.Visible = it.b.Visible
 		end
 		local on = litBy(spec)
+		-- Behind the menu: every button but the lit one, all under a sheet.
+		local off = busy or (openPage ~= nil and not on)
+		local sh = it.shade
+		if sh then
+			sh.Visible = off
+		end
+		it.icon.ImageTransparency = if off then 0.45 else 0
+		local lb = it.label
+		if lb then
+			lb.TextTransparency = if off then 0.45 else 0
+		end
 		local accent = spec.id == "garage"
 		if discs then
 			-- A disc, or the open one a capsule with its word.
@@ -165,7 +180,7 @@ local function paint()
 				gr.Enabled = on
 			end
 			ib.ImageColor3 = Color3.new(1, 1, 1)
-			ib.ImageTransparency = if on then 0 else 0.92
+			ib.ImageTransparency = if on and not off then 0 elseif on then 0.5 elseif off then 0.97 else 0.92
 			it.icon.ImageColor3 = if on then Kit.C.inUseInk else Kit.C.text
 			local l = it.label
 			if l then
@@ -180,7 +195,21 @@ local function paint()
 	local sw = switch
 	if sw then
 		sw.Visible = not clear
+		local sh = sw:FindFirstChild("Shade")
+		if sh and sh:IsA("Frame") then
+			sh.Visible = openPage ~= nil
+		end
 	end
+end
+
+-- A dark shade over a round or square button while it is behind the menu.
+local function shadeOf(b: GuiButton, radius: number): Frame
+	local f = Kit.frame(b, "Shade", Color3.new(0, 0, 0), 0.5)
+	f.Size = UDim2.fromScale(1, 1)
+	f.ZIndex = 5
+	f.Visible = false
+	Kit.corner(f, radius)
+	return f
 end
 
 local function pressable(b: GuiButton)
@@ -223,6 +252,7 @@ local function disc(parent: Frame, spec: Spec?, name: string, order: number, d: 
 	local gradient = Kit.gradient(b, Kit.C.panelTop, Kit.C.panelBottom)
 	Kit.corner(b, math.floor(d / 2))
 	local stroke = Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.85)
+	local shade = shadeOf(b, math.floor(d / 2))
 	pressable(b)
 	b.Activated:Connect(fn)
 	b.Parent = parent
@@ -244,7 +274,7 @@ local function disc(parent: Frame, spec: Spec?, name: string, order: number, d: 
 		t.Visible = false
 		label = t
 	end
-	local it: Button = { spec = spec, b = b, icon = icon, label = label, gradient = gradient, stroke = stroke }
+	local it: Button = { spec = spec, b = b, icon = icon, label = label, gradient = gradient, stroke = stroke, shade = shade }
 	return b, it
 end
 
@@ -295,10 +325,11 @@ local function square(parent: Frame, spec: Spec, order: number, fn: () -> ()): B
 	local icon = iconOf(b, spec, math.floor(d * 0.5))
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
+	local shade = shadeOf(b, math.floor(d * 0.26))
 	pressable(b)
 	b.Activated:Connect(fn)
 	b.Parent = parent
-	return { spec = spec, b = b, icon = icon }
+	return { spec = spec, b = b, icon = icon, shade = shade }
 end
 
 local function spacer(parent: Frame, order: number, w: number): Frame
@@ -412,6 +443,12 @@ function TopBar.setOpen(page: string?)
 	paint()
 end
 
+-- A confirm sheet is up over the menu: the whole row shades.
+function TopBar.setBusy(on: boolean)
+	busy = on
+	paint()
+end
+
 -- The row's foot at rest, in AbsolutePosition's pixels (from Roblox's
 -- inset, as every gui reports them; this gui ignores the inset, so its
 -- own AbsolutePosition is minus the inset), while the row is up; nil when
@@ -435,7 +472,9 @@ function TopBar.start(a: Actions)
 	-- Placed by GuiService.TopbarInset, in the top bar itself.
 	g.IgnoreGuiInset = true
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	g.DisplayOrder = 7
+	-- Over the menu (Menu's DISPLAY_ORDER 20 and its cash at 21): its dim
+	-- would cover the row.
+	g.DisplayOrder = 22
 	local r = Kit.frame(g, "Row")
 	r.AnchorPoint = Vector2.new(0, 0.5)
 	r.AutomaticSize = Enum.AutomaticSize.X

@@ -53,7 +53,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local scale = Parts.scaleFor(touch, ctx.screen)
 	local w = if touch then math.min(748, room.X - 16) else math.min(1060, room.X - 40)
 	-- Under the phone's top row, which stays up (ctx.top).
-	local rowUp = ctx.top ~= nil
 	local y0 = (if touch then 8 else 12) + math.ceil(ctx.top or 0)
 	local h = if touch then room.Y - y0 - 8 else math.min(604, room.Y - y0 - 12)
 	local gap = if touch then 8 else 10
@@ -79,11 +78,21 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local rowH = if touch then 52 else 60
 	local under = rowH + 6
 
-	-- The name, chip and star in a row over the box.
+	-- The close, the name, chip and star in a row over the box. The close
+	-- is always here, top left (the owner, 2026-10-13: "when im in the menu
+	-- there should always be a like x button top left"), beside the top
+	-- row's lit button and a tap outside.
 	local head = Kit.frame(left, "Head")
 	head.LayoutOrder = 1
 	head.Size = UDim2.new(1, 0, 0, if touch then 32 else 36)
 	Kit.list(head, false, 8, Enum.VerticalAlignment.Center)
+	local close = Kit.iconButton(head, "Close", nil, if touch then 32 else 36, "×")
+	close.LayoutOrder = 0
+	close.Activated:Connect(function()
+		if not ctx.busy() then
+			ctx.act.leave()
+		end
+	end)
 	local name = Kit.text(head, "Name", "", if touch then 17 else 22, Enum.FontWeight.Heavy, true)
 	name.LayoutOrder = 1
 	name.Size = UDim2.fromScale(0, 1)
@@ -234,15 +243,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	count.AutomaticSize = Enum.AutomaticSize.X
 	count.Size = UDim2.fromScale(0, 1)
 	count.TextTruncate = Enum.TextTruncate.None
-	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
-	close.LayoutOrder = 5
-	-- With the top row up, its lit button is the way out.
-	close.Visible = not rowUp
-	close.Activated:Connect(function()
-		if not ctx.busy() then
-			ctx.act.leave()
-		end
-	end)
 
 	local subH = if touch then 30 else 34
 	local filter = Kit.frame(right, "Filter")

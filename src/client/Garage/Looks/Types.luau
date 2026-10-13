@@ -117,9 +117,8 @@ export type Ctx = {
 	coins: Vector2?,
 	-- The phone's top row stays up over the menu with its panels hanging
 	-- under it (2026-10-13): the drawing pixels to leave clear at the top
-	-- for it (mostly 0: it ends above the gui), and the row's lit button
-	-- is the way out, so the layout draws no close. nil: no row (the
-	-- garage, a desktop), so the layout's own close shows.
+	-- for it (mostly 0: it ends above the gui); nil: no row (the garage, a
+	-- desktop).
 	top: number?,
 }
 
