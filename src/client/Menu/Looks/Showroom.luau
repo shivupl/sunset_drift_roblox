@@ -37,12 +37,18 @@ local Showroom = {}
 --          horizon line, the car standing on it.
 --   glass  see-through to the road, a brighter hairline and a green bar
 --          down the left edge.
-export type Picked = "spot" | "floor" | "glass"
-local LOOKS: { Picked } = { "spot", "floor", "glass" }
+--   carbon the panels' dot weave across the box under a teal pool of
+--          light (the canvas's G4); carbonlight the same on lighter grey.
+--   band   a green diagonal sweep low behind the car with a thin white
+--          echo, the drive letters huge and outlined top left (G5);
+--          bandlight the same on lighter grey.
+export type Picked = "spot" | "floor" | "glass" | "carbon" | "carbonlight" | "band" | "bandlight"
+local LOOKS: { Picked } = { "spot", "floor", "glass", "carbon", "carbonlight", "band", "bandlight" }
 Showroom.PICKED = "ShowroomPicked"
 function Showroom.picked(): Picked
 	local v = Players.LocalPlayer:GetAttribute(Showroom.PICKED)
-	return if v == "floor" then "floor" elseif v == "glass" then "glass" else "spot"
+	local i = if typeof(v) == "string" then table.find(LOOKS, (v :: any) :: Picked) else nil
+	return if i then LOOKS[i] else "spot"
 end
 function Showroom.nextPicked(): Picked
 	return LOOKS[(table.find(LOOKS, Showroom.picked()) or 0) % #LOOKS + 1]
@@ -137,7 +143,11 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	stage.LayoutOrder = 2
 	stage.Size = UDim2.fromScale(1, 0)
 	Kit.fill(stage)
-	local box = Kit.frame(stage, "Box", Kit.C.tileBottom, 0.1)
+	local bandLetters: TextLabel? = nil
+	-- White under the gradients: a gradient multiplies the colour it is
+	-- on (Kit.panel does the same), so a dark base would crush the lighter
+	-- looks to one shade.
+	local box = Kit.frame(stage, "Box", Color3.new(1, 1, 1), 0.1)
 	box.Size = UDim2.new(1, 0, 1, -under)
 	box.ZIndex = 0
 	box.ClipsDescendants = true
@@ -162,6 +172,63 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		horizon.AnchorPoint = Vector2.new(0, 1)
 		horizon.Position = UDim2.fromScale(0, 0.6)
 		horizon.Size = UDim2.new(1, 0, 0, 1)
+	elseif look == "carbon" or look == "carbonlight" then
+		local light = look == "carbonlight"
+		Kit.stroke(box, Color3.new(1, 1, 1), 1, if light then 0.8 else 0.88)
+		if light then
+			Kit.gradient(box, Color3.fromHex("#4E525A"), Color3.fromHex("#34373D"))
+		else
+			Kit.gradient(box, Color3.fromHex("#1A1B1F"), Color3.fromHex("#111214"))
+		end
+		-- The weave: the panels' dots tiled over the box, fading out to its
+		-- edges (a vignette drawn over them in the box's own colour).
+		local dots = Kit.image(box, "Dots", CarArt.dots, if light then Color3.new(0, 0, 0) else Color3.new(1, 1, 1), if light then 0.7 else 0.84)
+		dots.ScaleType = Enum.ScaleType.Tile
+		dots.TileSize = UDim2.fromOffset(9, 9)
+		dots.Size = UDim2.fromScale(1, 1)
+		local pool = Kit.image(box, "Pool", CarArt.spot, Kit.C.teal, if light then 0.82 else 0.84)
+		pool.AnchorPoint = Vector2.new(0.5, 0.5)
+		pool.Position = UDim2.fromScale(0.5, 0.4)
+		pool.Size = UDim2.fromScale(1.4, 1.5)
+	elseif look == "band" or look == "bandlight" then
+		local light = look == "bandlight"
+		Kit.stroke(box, Color3.new(1, 1, 1), 1, if light then 0.8 else 0.88)
+		if light then
+			Kit.gradient(box, Color3.fromHex("#4C5058"), Color3.fromHex("#33363C"))
+		else
+			Kit.gradient(box, Color3.fromHex("#1B1D21"), Color3.fromHex("#101114"))
+		end
+		-- The drive letters, outlined only, big at the top left; the word
+		-- comes with the car (refresh).
+		local letters = Kit.text(box, "Letters", "", if touch then 72 else 90, Enum.FontWeight.Heavy, true)
+		letters.TextTransparency = 1
+		letters.TextStrokeColor3 = Color3.new(1, 1, 1)
+		letters.TextStrokeTransparency = if light then 0.86 else 0.9
+		letters.Position = UDim2.fromOffset(4, if touch then 10 else 14)
+		letters.Size = UDim2.new(1, -8, 0, if touch then 76 else 96)
+		letters.TextXAlignment = Enum.TextXAlignment.Left
+		letters.TextTruncate = Enum.TextTruncate.None
+		bandLetters = letters
+		-- The sweep: a wide green band leaning up to the right, clear at
+		-- both ends, and a thin white echo under it.
+		local function sweep(name: string, color: Color3, h: number, dy: number, strength: number): Frame
+			local f = Kit.frame(box, name, color, 0)
+			f.AnchorPoint = Vector2.new(0.5, 0.5)
+			f.Position = UDim2.new(0.5, 0, 0.66, dy)
+			f.Size = UDim2.new(1.3, 0, 0, h)
+			f.Rotation = -8
+			local g = Instance.new("UIGradient")
+			g.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.35, strength + 0.15),
+				NumberSequenceKeypoint.new(0.6, strength),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			g.Parent = f
+			return f
+		end
+		sweep("Sweep", Kit.C.green, if touch then 34 else 42, 0, if light then 0.3 else 0.35)
+		sweep("Echo", Color3.new(1, 1, 1), 2, if touch then 36 else 44, 0.88)
 	else
 		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.88)
 		Kit.gradient(box, Kit.C.tileTop, Kit.C.tileBottom)
@@ -424,6 +491,10 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		name.Text = ctx.carName()
 		inUse.Visible = f.label == "RESPAWN"
 		local drive = ctx.carDrive()
+		local bl = bandLetters
+		if bl then
+			bl.Text = drive
+		end
 		if drive ~= chipText then
 			chipText = drive
 			local old = chip
