@@ -333,14 +333,29 @@ middle as cards, each a mock readout in the finish's own colours (the
 slide score and its multiplier, a speed dial with the needle low on the
 left); CAMERA on the right as slanted choices (CHASE, CLOSE, FAR:
 `CameraViews.set`); HUD LAYOUT under it as rows, a word on each
-(`Versions.blurb`); SCREEN LAYOUT (the garage's layout) last, only where
-there is more than one (a PC). The canvas's bottom bar (CARS, PLATES,
+(`Versions.blurb`); CLEAR UI under them, one row that switches; SCREEN
+LAYOUT (the garage's layout) last, only where there is more than one (a
+PC). The canvas's bottom bar (CARS, PLATES,
 SETTINGS, the note, the close) went: the words are the showroom's switch
 and the phone's top bar (which reaches SETTINGS once the menu is closed),
 and the note and the close moved into the header. No action: what is
 picked is in force at once. Moving between the showroom and the board
 builds the screen again, coming in from its edges. The screen's layout
 (`Looks/Layouts`) is the garage's alone now.
+
+**CLEAR UI** (`src/client/ClearUi.luau`, the LocalPlayer attribute
+`ClearUi`, the session's; the owner, 2026-10-13: "add a 'clear UI' option
+that literally removes every element from the UI except a small settings
+gear button"): on, the driving HUD with its coins, callouts and edge glow,
+the phone's controls, the top bar and a desktop's CARS button all go. What
+stays is one small round gear in the top bar's place (`TopBar`, on a phone
+or a desktop), which opens SETTINGS, where the switch turns it off. A
+screen you open yourself (the menu, the garage) still shows while it is
+up. Each gui's owner reads the switch as it shows (`ClearUi.on`) and
+repaints on `ClearUi.changed`; the speed lines stay, being the camera's
+effect, not UI. On a phone this hides the pedals too, so you cannot drive
+with it on: that is the literal ask, and the one-line knob is the controls'
+`Enabled` in `HudLab.setCovered`.
 
 The pieces they share (`Looks/Parts`): the column lines up under the
 coins, its right edge and just below their foot (`Parts.coinAnchor`: the

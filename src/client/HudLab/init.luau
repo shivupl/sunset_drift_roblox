@@ -39,6 +39,7 @@ local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
 local Coins = require(script:WaitForChild("Coins"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
+local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
 local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 
 local HudLab = {}
@@ -161,7 +162,7 @@ local function newGui(name: string, order: number): ScreenGui
 	g.IgnoreGuiInset = true
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.DisplayOrder = order
-	g.Enabled = not covered
+	g.Enabled = not covered and not ClearUi.on()
 	g.Parent = player:WaitForChild("PlayerGui")
 	return g
 end
@@ -399,13 +400,13 @@ end
 
 -- A menu or the garage covers the screen: the HUD, its edge glow and the
 -- phone controls hide under it (the pedals showed through the menu's
--- middle), and come back as it goes.
+-- middle), and come back as it goes. With CLEAR UI on they stay hidden.
 function HudLab.setCovered(on: boolean)
 	covered = on
 	local pg = player:FindFirstChildOfClass("PlayerGui")
 	for _, g in { hudGui, ctlGui, toastGui, pg and pg:FindFirstChild("HajwalaHudLabGlow") } do
 		if g and g:IsA("ScreenGui") then
-			g.Enabled = not on
+			g.Enabled = not on and not ClearUi.on()
 		end
 	end
 end
@@ -474,6 +475,9 @@ function HudLab.start()
 	end)
 	player:GetAttributeChangedSignal(CameraViews.ATTRIBUTE):Connect(function()
 		toast(`VIEW: {CameraViews.current().name}`)
+	end)
+	ClearUi.changed(function()
+		HudLab.setCovered(covered)
 	end)
 	UserInputService.InputBegan:Connect(function(io: InputObject, processed: boolean)
 		if processed then

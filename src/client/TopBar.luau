@@ -12,11 +12,16 @@
 -- The look is the car picker's (CarPicker/Kit): graphite squares with a
 -- hairline edge, the icon over a heavy italic word, GARAGE edged in the
 -- picker's green. The icons are art/topbar (one sheet, 128 px cells).
+--
+-- With CLEAR UI on (ClearUi; the owner, 2026-10-13) the row goes and one
+-- small round gear stands in its place, on a phone or a desktop, the way
+-- to SETTINGS and the switch that brings everything back.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 
 local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
+local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
 
 local TopBar = {}
 
@@ -55,6 +60,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local row: Frame? = nil
 local buttons: { [string]: TextButton } = {}
+local gear: TextButton? = nil
 local shown = true -- no menu open and no garage view
 local driving = false
 
@@ -68,7 +74,8 @@ local function paint()
 		return
 	end
 	local was = g.Enabled
-	g.Enabled = Kit.isTouch() and shown
+	local clear = ClearUi.on()
+	g.Enabled = (Kit.isTouch() or clear) and shown
 	local r = row
 	if r and g.Enabled and not was then
 		-- Back after a menu or the garage: down from above the screen, as
@@ -79,8 +86,12 @@ local function paint()
 	for _, spec in SPECS do
 		local b = buttons[spec.id]
 		if b then
-			b.Visible = driving or not spec.driving
+			b.Visible = not clear and (driving or not spec.driving)
 		end
+	end
+	local ge = gear
+	if ge then
+		ge.Visible = clear
 	end
 end
 
@@ -109,6 +120,21 @@ local function fit()
 		if label then
 			label.TextSize = math.max(9, math.floor(h * 0.2))
 			label.Size = UDim2.new(1, -4, 0, label.TextSize + 2)
+		end
+	end
+	local ge = gear
+	if ge then
+		-- A little under the squares' height: small.
+		local d = math.floor(h * 0.84)
+		ge.Size = UDim2.fromOffset(d, d)
+		local corner = ge:FindFirstChildOfClass("UICorner")
+		if corner then
+			corner.CornerRadius = UDim.new(0, math.floor(d / 2))
+		end
+		local icon = ge:FindFirstChild("Icon") :: ImageLabel?
+		if icon then
+			local s = math.floor(d * 0.56)
+			icon.Size = UDim2.fromOffset(s, s)
 		end
 	end
 end
@@ -141,6 +167,44 @@ local function button(parent: Frame, spec: Spec, order: number, fn: () -> ()): T
 	label.Position = UDim2.fromScale(0.5, 0.78)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextTruncate = Enum.TextTruncate.None
+	local quick = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	b.InputBegan:Connect(function(io: InputObject)
+		if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
+			TweenService:Create(scale, quick, { Scale = PRESS }):Play()
+		end
+	end)
+	b.InputEnded:Connect(function(io: InputObject)
+		if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
+			TweenService:Create(scale, quick, { Scale = 1 }):Play()
+		end
+	end)
+	b.Activated:Connect(fn)
+	b.Parent = parent
+	return b
+end
+
+-- The gear: round, graphite, the SETTINGS icon alone, shown in the row's
+-- place with CLEAR UI on.
+local function gearButton(parent: Frame, fn: () -> ()): TextButton
+	local b = Instance.new("TextButton")
+	b.Name = "Gear"
+	b.LayoutOrder = 0
+	b.AutoButtonColor = false
+	b.Text = ""
+	b.BorderSizePixel = 0
+	b.BackgroundColor3 = Color3.new(1, 1, 1)
+	b.BackgroundTransparency = 0.1
+	b.Visible = false
+	Kit.gradient(b, Kit.C.panelTop, Kit.C.panelBottom)
+	Kit.corner(b, 18)
+	Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.85)
+	local scale = Instance.new("UIScale")
+	scale.Parent = b
+	local icon = Kit.image(b, "Icon", ICONS)
+	icon.ImageRectSize = Vector2.new(ICON_CELL, ICON_CELL)
+	icon.ImageRectOffset = Vector2.new(4 * ICON_CELL, 0)
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
 	local quick = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	b.InputBegan:Connect(function(io: InputObject)
 		if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -192,11 +256,13 @@ function TopBar.start(actions: Actions)
 	for i, spec in SPECS do
 		buttons[spec.id] = button(r, spec, i, fns[spec.id])
 	end
+	gear = gearButton(r, actions.settings)
 	row = r
 	gui = g
 	g.Parent = player:WaitForChild("PlayerGui")
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fit)
 	player:GetAttributeChangedSignal("ForceTouch"):Connect(paint)
+	ClearUi.changed(paint)
 	fit()
 	paint()
 end

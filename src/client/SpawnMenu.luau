@@ -40,6 +40,7 @@ local UIKit = require(script.Parent.UIKit)
 local LoadCover = require(script.Parent.LoadCover)
 local Menu = require(script.Parent:WaitForChild("Menu"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
+local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
 
 local SpawnMenu = {}
 
@@ -64,7 +65,8 @@ local function paintOpen()
 	local free = not openButtonHidden and not Menu.covering()
 	local ob = openButton
 	if ob then
-		ob.Visible = free and not isTouch()
+		-- Not with CLEAR UI on: the top bar's gear is the way in then.
+		ob.Visible = free and not isTouch() and not ClearUi.on()
 	end
 	TopBar.setShown(free)
 end
@@ -238,6 +240,7 @@ function SpawnMenu.start(remotes: Folder)
 	end, false, Enum.KeyCode.M)
 	-- Studio's phone mode (ForceTouch) swaps the CARS button for the top bar.
 	Players.LocalPlayer:GetAttributeChangedSignal("ForceTouch"):Connect(paintOpen)
+	ClearUi.changed(paintOpen)
 	-- The way back in returns once the menu has gone.
 	Menu.watch(function()
 		paintOpen()

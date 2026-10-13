@@ -13,6 +13,8 @@
 --                  (CameraViews; VIEW or V cycle it).
 --   HUD LAYOUT     under it: the HUD's versions as rows, a word on each
 --                  (HudLab; Y cycles it).
+--   CLEAR UI       under them, one row that switches (ClearUi; the owner,
+--                  2026-10-13): everything on the screen goes but a gear.
 --   SCREEN LAYOUT  last, only where there is more than one (a PC): the
 --                  garage's layout (Layouts), slanted choices.
 -- The chosen tile or card is edged green with a tick; a chosen choice is
@@ -29,6 +31,7 @@ local Sky = require(Client:WaitForChild("Sky"))
 local HudLab = require(Client:WaitForChild("HudLab"))
 local Finishes = require(Client:WaitForChild("HudLab"):WaitForChild("Finishes"))
 local CameraViews = require(Client:WaitForChild("CameraViews"))
+local ClearUi = require(Client:WaitForChild("ClearUi"))
 local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
@@ -430,6 +433,56 @@ function Settings.new(shell: Page.Shell): Page.Page
 		end
 	end
 
+	-- One row that switches: green and its word when on (CLEAR UI).
+	local function switchRow(parent: Instance, order: number, label: string, onWord: string, offWord: string, get: () -> boolean, set: (boolean) -> (), touch: boolean)
+		local holder = Kit.frame(parent, "Switch_" .. label)
+		holder.LayoutOrder = order
+		holder.AutomaticSize = Enum.AutomaticSize.Y
+		holder.Size = UDim2.new(1, 0, 0, 0)
+		Kit.pad(holder, 0, 0, 0, 5)
+		local h = if touch then 40 else 44
+		local b = Instance.new("ImageButton")
+		b.Name = "Choice"
+		b.AutoButtonColor = false
+		b.BackgroundTransparency = 1
+		b.Image = Art.tab
+		b.ScaleType = Enum.ScaleType.Slice
+		b.SliceCenter = Art.tabSlice
+		b.SliceScale = h / Art.tabH
+		b.Size = UDim2.new(1, 0, 0, h)
+		local g = Kit.gradient(b, Kit.C.greenTop, Kit.C.greenBottom)
+		local name = Kit.text(b, "Label", label, if touch then 11 else 13, Enum.FontWeight.ExtraBold, true, Kit.C.tabInk)
+		name.Position = UDim2.fromOffset(14, 0)
+		name.Size = UDim2.new(0.4, -14, 1, 0)
+		local hint = Kit.text(b, "Hint", "", if touch then 10 else 12, Enum.FontWeight.SemiBold, false, Kit.C.sub)
+		hint.AnchorPoint = Vector2.new(1, 0)
+		hint.Position = UDim2.new(1, -14, 0, 0)
+		hint.Size = UDim2.new(0.6, -14, 1, 0)
+		hint.TextXAlignment = Enum.TextXAlignment.Right
+		local press = Instance.new("UIScale")
+		press.Parent = b
+		b.Parent = holder
+		shell.tap(b, nil, function()
+			if not shell.busy() then
+				shell.sound("tab")
+				set(not get())
+				paint()
+			end
+		end, function(down: boolean)
+			press.Scale = if down then 0.97 else 1
+		end)
+		table.insert(painters, function()
+			local on = get()
+			g.Enabled = on
+			b.ImageColor3 = Color3.new(1, 1, 1)
+			b.ImageTransparency = if on then 0 else 0.92
+			name.TextColor3 = if on then Kit.C.inUseInk else Kit.C.tabInk
+			hint.Text = if on then onWord else offWord
+			hint.TextColor3 = if on then Kit.C.inUseInk else Kit.C.sub
+			hint.TextTransparency = if on then 0.25 else 0
+		end)
+	end
+
 	local page: Page.Page
 	page = {
 		tab = { id = "settings", label = "SETTINGS", arabic = "إعدادات", icon = Parts.TOPBAR_ICON.settings, sheet = Parts.TOPBAR_ICONS },
@@ -518,8 +571,9 @@ function Settings.new(shell: Page.Shell): Page.Page
 				Kit.list(right, true, colGap)
 				segment(right, CAMERA, 1, rightW, touch)
 				rows(right, VERSION, 2, touch)
+				switchRow(right, 3, "CLEAR UI", "On: only the gear stays", "Everything goes but a gear", ClearUi.on, ClearUi.set, touch)
 				if #SCREEN.options() > 1 then
-					segment(right, SCREEN, 3, rightW, touch)
+					segment(right, SCREEN, 4, rightW, touch)
 				end
 
 				paint()
@@ -547,7 +601,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 		paint()
 	end
 	local player = Players.LocalPlayer
-	for _, name in { "HudVariant", "HudLayout", Layouts.ATTRIBUTE, CameraViews.ATTRIBUTE } do
+	for _, name in { "HudVariant", "HudLayout", Layouts.ATTRIBUTE, CameraViews.ATTRIBUTE, ClearUi.ATTRIBUTE } do
 		player:GetAttributeChangedSignal(name):Connect(paint)
 	end
 	return page
