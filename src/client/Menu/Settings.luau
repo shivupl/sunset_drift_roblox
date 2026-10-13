@@ -55,7 +55,7 @@ local ROWS: { Row } = {
 		hint = "Every menu and the garage",
 		options = function()
 			local out: { Option } = {}
-			for _, l in Layouts.list do
+			for _, l in Layouts.all() do
 				table.insert(out, { id = l.id, label = l.name })
 			end
 			return out
@@ -145,7 +145,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 		end,
 		star = function() end,
 		form = function()
-			return function(parent: Frame, width: number, shade: boolean): Types.Form
+			return function(parent: Frame, width: number, shade: boolean, scroller: string?): Types.Form
 				local touch = shell.touch()
 				table.clear(drawn)
 				-- The rows scroll on a phone; an end with more past it fades,
@@ -164,8 +164,17 @@ function Settings.new(shell: Page.Shell): Page.Page
 				scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 				scroll.CanvasSize = UDim2.new()
 				scroll.Parent = holder
-				Parts.fades(holder, touch, shade).watch(scroll)
-				Kit.pad(scroll, 2, 6, 6, 2)
+				-- The layout's up/down control (GLASS on a phone), or the
+				-- fades.
+				local kind: Parts.ScrollKind? = if scroller == "arrows" or scroller == "rail" or scroller == "more" then scroller else nil
+				if kind then
+					Parts.scroller(holder, scroll, kind, function(): number
+						return scroll.AbsoluteWindowSize.Y * 0.5
+					end, touch, nil)
+				else
+					Parts.fades(holder, touch, shade).watch(scroll)
+				end
+				Kit.pad(scroll, 2, 6 + Parts.railRoom(kind), 6, 2)
 				Kit.list(scroll, true, if touch then 12 else 16)
 				local h = if touch then 30 else 36
 				local size = if touch then 10 else 12
@@ -188,7 +197,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 					local layout = Instance.new("UIGridLayout")
 					layout.SortOrder = Enum.SortOrder.LayoutOrder
 					layout.CellPadding = UDim2.fromOffset(gap, gap)
-					local inner = width - 8
+					local inner = width - 8 - Parts.railRoom(kind)
 					layout.CellSize = UDim2.fromOffset(math.floor((inner - gap * (per - 1)) / per), h)
 					layout.Parent = grid
 					for j, o in options do

@@ -294,8 +294,7 @@ local function nextLayout()
 		return
 	end
 	GarageSounds.play("tab")
-	local list = Layouts.list
-	local nxt = list[(table.find(list, Layouts.current()) or 0) % #list + 1]
+	local nxt = Layouts.after()
 	pendingToast = `LAYOUT: {nxt.name}`
 	Layouts.set(nxt.id)
 end

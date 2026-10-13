@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local UITheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UITheme"))
 local Client = script.Parent.Parent.Parent
@@ -343,6 +344,10 @@ export type BoxMetrics = {
 	-- What is under the list, for the fades at its ends: a panel (the
 	-- default) or a shade (the SHOWCASE variants without a panel).
 	backdrop: ("panel" | "shade")?,
+	-- An up/down control in place of the fades (GLASS on a phone; the
+	-- owner, 2026-10-12: "remove the scroll shaddow ... add an obvious
+	-- scroll/updown for the options"): Parts.scroller.
+	scroller: ScrollKind?,
 }
 
 export type Box = {
@@ -586,6 +591,298 @@ function Parts.fades(holder: GuiObject, touch: boolean, onShade: boolean): Fades
 	}
 end
 
+-- An obvious way up and down a list (the owner, 2026-10-12: "add an
+-- obvious scroll/updown for the options (make a couple versions)"), in
+-- place of the fades; the list still scrolls under a thumb as well.
+--   arrows  round white buttons with a chevron centred on the list's top
+--           and foot, over the row cut off there, each only while there is
+--           more that way; a row a tap. The down one nods once when a set
+--           opens with more below it.
+--   rail    a track down the list's right edge with a green thumb as tall
+--           as the share showing, dragged to scroll; chevrons at its ends
+--           step a row.
+--   more    a pager row under the list, in its own room: a small up and a
+--           wide "4 MORE" with chevrons, faded at either end; a page a tap.
+-- `step` is a row in screen pixels (CanvasPosition's units under the
+-- layout's UIScale); `hidden` counts the items wholly above and below.
+export type ScrollKind = "arrows" | "rail" | "more"
+export type Scroller = { update: () -> (), shown: () -> () }
+
+-- The margin right of the blocks a control takes: the rail's, so its
+-- track and chevrons stand clear of them. A layout takes it off the
+-- blocks' width (else the grid would wrap to one across).
+function Parts.railRoom(kind: ScrollKind?): number
+	return if kind == "rail" then 18 else 0
+end
+
+local CHEVRON = "›"
+local SCROLL_TWEEN = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+-- A chevron glyph pointing up (-90) or down (90).
+local function chevron(parent: Instance, size: number, up: boolean, color: Color3): TextLabel
+	local c = Kit.text(parent, "Chevron", CHEVRON, size, Enum.FontWeight.Bold, false, color)
+	c.AnchorPoint = Vector2.new(0.5, 0.5)
+	c.Position = UDim2.fromScale(0.5, 0.5)
+	c.Size = UDim2.fromOffset(size, size)
+	c.TextXAlignment = Enum.TextXAlignment.Center
+	c.Rotation = if up then -90 else 90
+	c.TextTruncate = Enum.TextTruncate.None
+	return c
+end
+
+function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, step: () -> number, touch: boolean, hidden: (() -> (number, number))?): Scroller
+	-- The list's own bar would be a second one.
+	scroll.ScrollBarThickness = 0
+	local tween: Tween? = nil
+	local function limit(): number
+		return math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
+	end
+	local function go(by: number)
+		local to = math.clamp(scroll.CanvasPosition.Y + by, 0, limit())
+		local t = tween
+		if t then
+			t:Cancel()
+		end
+		local nt = TweenService:Create(scroll, SCROLL_TWEEN, { CanvasPosition = Vector2.new(scroll.CanvasPosition.X, to) })
+		tween = nt
+		nt:Play()
+	end
+	local function page(): number
+		return math.max(step(), scroll.AbsoluteWindowSize.Y - step())
+	end
+
+	local update: () -> ()
+	-- What a new set opening does: paint, and for the arrows a nod.
+	local shown: (() -> ())? = nil
+
+	if kind == "arrows" then
+		local d = if touch then 30 else 34
+		local function arrow(up: boolean): TextButton
+			local b = Instance.new("TextButton")
+			b.Name = if up then "Up" else "Down"
+			b.AutoButtonColor = false
+			b.Text = ""
+			b.BorderSizePixel = 0
+			b.BackgroundColor3 = Color3.new(1, 1, 1)
+			b.BackgroundTransparency = 0.04
+			-- Centred on the list's top or foot, over the row cut off there
+			-- (the "more this way" row): never past the screen's edge.
+			b.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
+			b.Position = UDim2.new(0.5, 0, if up then 0 else 1, if up then 2 else -2)
+			b.Size = UDim2.fromOffset(d, d)
+			b.ZIndex = 6
+			Kit.corner(b, math.floor(d / 2))
+			local c = chevron(b, math.floor(d * 0.8), up, Kit.C.chip)
+			c.ZIndex = 7
+			b.Visible = false
+			b.Activated:Connect(function()
+				go(if up then -step() else step())
+			end)
+			b.Parent = holder
+			return b
+		end
+		local upB, downB = arrow(true), arrow(false)
+		update = function()
+			local pos, lim = scroll.CanvasPosition.Y, limit()
+			upB.Visible = pos > 1
+			downB.Visible = pos < lim - 1
+		end
+		shown = function()
+			update()
+			if downB.Visible then
+				-- One nod down, so a player sees there is more.
+				local home = UDim2.new(0.5, 0, 1, -2)
+				downB.Position = home
+				TweenService:Create(downB, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 1, true, 0.35), { Position = home + UDim2.fromOffset(0, 6) }):Play()
+			end
+		end
+	elseif kind == "rail" then
+		local w = if touch then 8 else 9
+		local cap = if touch then 24 else 26
+		local rail = Kit.frame(holder, "Rail")
+		-- In the margin the layout leaves right of the blocks for it
+		-- (Parts.railRoom), centred on it.
+		rail.AnchorPoint = Vector2.new(0.5, 0)
+		rail.Position = UDim2.new(1, -math.floor(Parts.railRoom(kind) / 2) + 2, 0, 0)
+		rail.Size = UDim2.new(0, cap, 1, 0)
+		rail.ZIndex = 6
+		local function capButton(up: boolean): (TextButton, TextLabel)
+			local b = Instance.new("TextButton")
+			b.Name = if up then "Up" else "Down"
+			b.AutoButtonColor = false
+			b.Text = ""
+			b.BackgroundTransparency = 1
+			b.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
+			b.Position = UDim2.fromScale(0.5, if up then 0 else 1)
+			b.Size = UDim2.fromOffset(cap, cap)
+			b.ZIndex = 7
+			local c = chevron(b, cap, up, Kit.C.text)
+			c.ZIndex = 7
+			b.Activated:Connect(function()
+				go(if up then -step() else step())
+			end)
+			b.Parent = rail
+			return b, c
+		end
+		local _, upC = capButton(true)
+		local _, downC = capButton(false)
+		local track = Kit.frame(rail, "Track", Color3.new(1, 1, 1), 0.8)
+		track.AnchorPoint = Vector2.new(0.5, 0)
+		track.Position = UDim2.new(0.5, 0, 0, cap)
+		track.Size = UDim2.new(0, w, 1, -2 * cap)
+		track.ZIndex = 6
+		Kit.corner(track, math.floor(w / 2))
+		local thumb = Instance.new("TextButton")
+		thumb.Name = "Thumb"
+		thumb.AutoButtonColor = false
+		thumb.Text = ""
+		thumb.BorderSizePixel = 0
+		thumb.BackgroundColor3 = Color3.new(1, 1, 1)
+		thumb.AnchorPoint = Vector2.new(0.5, 0)
+		thumb.ZIndex = 7
+		Kit.corner(thumb, math.floor((w + 4) / 2))
+		Kit.gradient(thumb, Kit.C.greenTop, Kit.C.greenBottom)
+		thumb.Parent = track
+		-- A wider hit than it looks, for a thumb.
+		local grab = Instance.new("TextButton")
+		grab.Name = "Grab"
+		grab.AutoButtonColor = false
+		grab.Text = ""
+		grab.BackgroundTransparency = 1
+		grab.AnchorPoint = Vector2.new(0.5, 0)
+		grab.Position = UDim2.fromScale(0.5, 0)
+		grab.Size = UDim2.new(0, cap + 10, 1, 0)
+		grab.ZIndex = 8
+		grab.Parent = thumb
+		update = function()
+			local window, lim = scroll.AbsoluteWindowSize.Y, limit()
+			local share = if scroll.AbsoluteCanvasSize.Y > 0 then math.clamp(window / scroll.AbsoluteCanvasSize.Y, 0.15, 1) else 1
+			rail.Visible = lim > 1
+			local at = if lim > 0 then scroll.CanvasPosition.Y / lim else 0
+			thumb.Size = UDim2.new(0, w + 4, share, 0)
+			thumb.Position = UDim2.new(0.5, 0, (1 - share) * at, 0)
+			upC.TextTransparency = if scroll.CanvasPosition.Y > 1 then 0 else 0.7
+			downC.TextTransparency = if scroll.CanvasPosition.Y < lim - 1 then 0 else 0.7
+		end
+		-- Dragging the thumb: the list follows it along the track.
+		local drag: { input: InputObject, y: number, canvas: number }? = nil
+		grab.InputBegan:Connect(function(io: InputObject)
+			if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
+				drag = { input = io, y = io.Position.Y, canvas = scroll.CanvasPosition.Y }
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(io: InputObject)
+			local dr = drag
+			if not dr or not holder.Parent then
+				return
+			end
+			if io ~= dr.input and io.UserInputType ~= Enum.UserInputType.MouseMovement then
+				return
+			end
+			local free = track.AbsoluteSize.Y - thumb.AbsoluteSize.Y
+			if free <= 0 then
+				return
+			end
+			local lim = limit()
+			local to = dr.canvas + (io.Position.Y - dr.y) * lim / free
+			scroll.CanvasPosition = Vector2.new(scroll.CanvasPosition.X, math.clamp(to, 0, lim))
+		end)
+		UserInputService.InputEnded:Connect(function(io: InputObject)
+			local dr = drag
+			if dr and (io == dr.input or io.UserInputType == Enum.UserInputType.MouseButton1) then
+				drag = nil
+			end
+		end)
+	else
+		-- A pager row under the list, in its own room (the list gives up
+		-- that height while there is more than it shows): a small BACK UP
+		-- and a wide "4 MORE", each faded when there is nothing that way.
+		local h = if touch then 26 else 30
+		local gapR = if touch then 6 else 8
+		local row = Kit.frame(holder, "Pager")
+		row.AnchorPoint = Vector2.new(0, 1)
+		row.Position = UDim2.fromScale(0, 1)
+		row.Size = UDim2.new(1, 0, 0, h)
+		row.ZIndex = 6
+		row.Visible = false
+		Kit.list(row, false, gapR, Enum.VerticalAlignment.Center)
+		local function pill(name: string, up: boolean, order: number): (TextButton, TextLabel?, TextLabel)
+			local b = Instance.new("TextButton")
+			b.Name = name
+			b.LayoutOrder = order
+			b.AutoButtonColor = false
+			b.Text = ""
+			b.BorderSizePixel = 0
+			b.BackgroundColor3 = Color3.new(1, 1, 1)
+			b.BackgroundTransparency = 0.9
+			b.Size = UDim2.new(0, math.floor(h * 1.6), 1, 0)
+			b.ZIndex = 6
+			Kit.corner(b, math.floor(h / 2))
+			Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.8)
+			local inner = Kit.frame(b, "Row")
+			inner.Size = UDim2.fromScale(1, 1)
+			inner.ZIndex = 7
+			local l = Kit.list(inner, false, 4, Enum.VerticalAlignment.Center)
+			l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+			local word: TextLabel? = nil
+			if not up then
+				local wd = Kit.text(inner, "Word", "", if touch then 11 else 13, Enum.FontWeight.ExtraBold, true)
+				wd.AutomaticSize = Enum.AutomaticSize.X
+				wd.Size = UDim2.fromScale(0, 1)
+				wd.TextTruncate = Enum.TextTruncate.None
+				wd.ZIndex = 7
+				word = wd
+			end
+			local ic = Kit.frame(inner, "Icon")
+			ic.LayoutOrder = 1
+			ic.Size = UDim2.fromOffset(h - 6, h)
+			local c = chevron(ic, h - 2, up, Kit.C.green)
+			c.ZIndex = 7
+			b.Activated:Connect(function()
+				go(if up then -page() else page())
+			end)
+			b.Parent = row
+			return b, word, c
+		end
+		local upB, _, upC = pill("BackUp", true, 1)
+		local downB, downWord, downC = pill("More", false, 2)
+		downB.Size = UDim2.fromScale(0, 1)
+		Kit.fill(downB)
+		local full = true
+		update = function()
+			local more = scroll.AbsoluteCanvasSize.Y > holder.AbsoluteSize.Y + 1
+			if more == full then
+				-- The list makes room for the row, or takes it back.
+				full = not more
+				scroll.Size = if more then UDim2.new(1, 0, 1, -(h + gapR)) else UDim2.fromScale(1, 1)
+			end
+			row.Visible = more
+			local pos, lim = scroll.CanvasPosition.Y, limit()
+			local canUp, canDown = pos > 1, pos < lim - 1
+			upC.TextTransparency = if canUp then 0 else 0.75
+			upB.BackgroundTransparency = if canUp then 0.9 else 0.96
+			downC.TextTransparency = if canDown then 0 else 0.75
+			downB.BackgroundTransparency = if canDown then 0.9 else 0.96
+			local below = 0
+			if hidden then
+				local _, b = hidden()
+				below = b
+			end
+			local w = downWord :: TextLabel
+			w.Text = if not canDown then "THE END" elseif below > 0 then `{below} MORE` else "MORE"
+			w.TextTransparency = if canDown then 0 else 0.5
+		end
+	end
+	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(update)
+	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(update)
+	scroll:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(update)
+	task.defer(update)
+	return {
+		update = update,
+		shown = shown or update,
+	}
+end
+
 -- The items in a scrolling grid (`cols` across) or list (cols 1), built
 -- again on every fill. Returns the boxes by key, for refresh and pop.
 -- `root` holds the scroll and goes in the layout's list.
@@ -618,7 +915,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	-- Blocks sit centred, the scroll bar in their right margin; a list
 	-- keeps its bar clear of the rows.
 	if m.block then
-		Kit.pad(scroll, 3, Parts.LIST_PAD_X / 2, 6, Parts.LIST_PAD_X / 2)
+		Kit.pad(scroll, 3, Parts.LIST_PAD_X / 2 + Parts.railRoom(m.scroller), 6, Parts.LIST_PAD_X / 2)
 	else
 		Kit.pad(scroll, 3, 8, 6, 3)
 	end
@@ -629,6 +926,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 
 	local fades = Parts.fades(holder, ctx.touch, m.backdrop == "shade")
 	local topFade, bottomFade = fades.top, fades.bottom
+	local kind: ScrollKind? = m.scroller
 
 	local boxes: { { e: Types.Entry, box: Box } } = {}
 	-- Measured on the boxes themselves, in screen pixels (CanvasPosition
@@ -643,8 +941,33 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		local y0 = scroll.AbsolutePosition.Y
 		local y1 = y0 + scroll.AbsoluteSize.Y
 		local l = last.box.root
-		topFade.Visible = first.box.root.AbsolutePosition.Y < y0 - 1
-		bottomFade.Visible = l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
+		topFade.Visible = kind == nil and first.box.root.AbsolutePosition.Y < y0 - 1
+		bottomFade.Visible = kind == nil and l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
+	end
+	-- The up/down control: a row (a cell and the gap) a step; it counts
+	-- the items wholly past either end.
+	local control: Scroller? = nil
+	if kind then
+		control = Parts.scroller(holder, scroll, kind, function(): number
+			-- The padding is drawing pixels; the cell's absolute size says
+			-- the scale.
+			local cell = grid.AbsoluteCellSize.Y
+			local drawn = grid.CellSize.Y.Offset
+			return cell + gap * (if drawn > 0 then cell / drawn else 1)
+		end, ctx.touch, function(): (number, number)
+			local y0 = scroll.AbsolutePosition.Y
+			local y1 = y0 + scroll.AbsoluteSize.Y
+			local above, below = 0, 0
+			for _, b in boxes do
+				local r = b.box.root
+				if r.AbsolutePosition.Y + r.AbsoluteSize.Y <= y0 + 1 then
+					above += 1
+				elseif r.AbsolutePosition.Y >= y1 - 1 then
+					below += 1
+				end
+			end
+			return above, below
+		end)
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
@@ -682,6 +1005,10 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 			end
 			-- The grid places the new boxes on the next layout pass.
 			task.defer(edges)
+			local c = control
+			if c then
+				task.defer(c.shown)
+			end
 		end,
 		refresh = function()
 			for _, b in boxes do

@@ -49,9 +49,19 @@ GarageConfig.layoutOffset = {
 	dock = 0.2,
 	showcase = -0.06,
 	glass = -0.06,
+	-- A phone's GLASS versions (2026-10-12): the car where GLASS has it.
+	glassrail = -0.06,
+	glassmore = -0.06,
 	frame = -0.06,
 	shade = 0.22,
 } :: { [string]: number }
+
+-- The garage shell's parts hidden while the view is up, on this screen
+-- only: the dark steel beams under the roof crossed right behind the cash
+-- and read as its shadow (the owner's phone, 2026-10-12: "remove ... the
+-- shaddow next ot the coins", "a shaddow behind the coins thing to the
+-- right"). Names in the shell (server World/Garage).
+GarageConfig.viewHides = { "RoofBeam", "Beam" } :: { string }
 
 -- Entering and leaving (spec section 2).
 -- The threshold is only watched while the character's root is this close

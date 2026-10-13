@@ -59,8 +59,9 @@ export type Foot = {
 -- plate search, the settings' rows. Built again on every fill, as wide as
 -- the column; `fills` takes the column's height and hides the items.
 export type Form = { root: GuiObject, fills: boolean }
--- `shade`: the column has no panel under it (FRAME), for the form's fades.
-export type FormBuilder = (parent: Frame, width: number, shade: boolean) -> Form
+-- `shade`: the column has no panel under it (FRAME), for the form's fades;
+-- `scroller`: the layout's up/down control (Parts.scroller), in their place.
+export type FormBuilder = (parent: Frame, width: number, shade: boolean, scroller: string?) -> Form
 
 export type Actions = {
 	tab: (id: string) -> (),

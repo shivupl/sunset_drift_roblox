@@ -632,6 +632,27 @@ local function setHidden(hidden: boolean)
 	end
 end
 
+-- The shell's parts the view hides (GarageConfig.viewHides): the roof
+-- beams behind the cash.
+local hiddenShell: { BasePart } = {}
+
+local function setShellHidden(hidden: boolean)
+	for _, p in hiddenShell do
+		p.LocalTransparencyModifier = 0
+	end
+	table.clear(hiddenShell)
+	local g = garage
+	if not hidden or not g then
+		return
+	end
+	for _, d in g.folder:GetDescendants() do
+		if d:IsA("BasePart") and table.find(GarageConfig.viewHides, d.Name) then
+			d.LocalTransparencyModifier = 1
+			table.insert(hiddenShell, d)
+		end
+	end
+end
+
 local function keepHidden()
 	for _, d in hiddenParts do
 		if d.LocalTransparencyModifier ~= 1 then
@@ -1134,6 +1155,7 @@ local function restore(outside: boolean)
 	end
 	restoreCamera()
 	setHidden(false)
+	setShellHidden(false)
 	setControls(true)
 	local b = leaveButton
 	if b then
@@ -1163,7 +1185,7 @@ local function restoreEssentials()
 			warn("[GarageView]", err)
 		end
 	end
-	for _, step in { { setHidden, false }, { setControls, true } } :: { { any } } do
+	for _, step in { { setHidden, false }, { setShellHidden, false }, { setControls, true } } :: { { any } } do
 		local ok, err = pcall(step[1], step[2])
 		if not ok then
 			warn("[GarageView]", err)
@@ -1254,6 +1276,7 @@ local function enter(g: Garage, carIdArg: string?)
 		fade(0)
 		setControls(false)
 		setHidden(true)
+		setShellHidden(true)
 		local cam = Workspace.CurrentCamera
 		if cam then
 			savedFov = cam.FieldOfView

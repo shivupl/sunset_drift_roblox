@@ -28,9 +28,20 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 
 local Showcase = {}
 
+-- How near the screen's right edge a column reaching past the coins may go,
+-- in drawing pixels: about a notch's depth.
+local CLEAR_EDGE = 40
+
 export type Variant = "column" | "glass" | "frame"
 
-function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types.View
+-- How a variant is fitted out beyond its look: how far past the coins'
+-- right edge the column reaches, and the list's up/down control in place
+-- of its fades (Parts.scroller).
+export type Options = { reach: number?, scroller: Parts.ScrollKind? }
+
+function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, options: Options?): Types.View
+	local opts: Options = options or {}
+	local scrollKind: Parts.ScrollKind? = opts.scroller
 	local touch = ctx.touch
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	local M = 8
@@ -117,6 +128,19 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		right = math.clamp(coins.X / scale, room.X - 80, room.X + 160)
 		sideTop = math.clamp(coins.Y / scale + (if touch then 6 else 8), -50, 80)
 	end
+	-- GLASS on a phone reaches a little past the coins (the owner,
+	-- 2026-10-12: "extend this slightly more to the right"); its left edge
+	-- stays, so it is that much wider. Only into room there is: never
+	-- nearer the screen's edge than CLEAR_EDGE (a notch's depth), so on a
+	-- screen with no margin past the coins (Studio, a PC) it stays put.
+	local reach = 0
+	if coins and opts.reach then
+		local cam = workspace.CurrentCamera
+		local screenRight = ((if cam then cam.ViewportSize.X else gui.AbsoluteSize.X) - gui.AbsolutePosition.X) / scale
+		local to = math.min(right + opts.reach, math.max(right, screenRight - CLEAR_EDGE))
+		reach = math.floor(to - right)
+		right = to
+	end
 	local sideH = room.Y - 2 * M - actionH - sideTop
 	local cols = if touch then 2 else 3
 	local tray = variant == "frame"
@@ -129,7 +153,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		-- FRAME: on a shade like the words', the blocks in a tray that
 		-- adds its own padding round them.
 		block = if touch then 104 else 110
-		inner = cols * block + gap * (cols - 1) + Parts.LIST_PAD_X + 12
+		inner = cols * block + gap * (cols - 1) + Parts.LIST_PAD_X + Parts.railRoom(scrollKind) + 12
 		sideLeft = right - inner
 		table.insert(shadesR, Parts.edgeShade(gui, root, room, "right", room.X - sideLeft, if touch then 70 else 110))
 		local side = Kit.frame(root, "Side")
@@ -138,7 +162,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		body = side
 		column = side
 	else
-		local colW = if touch then 252 else 352
+		local colW = (if touch then 252 else 352) + reach
 		local pad = if touch then 8 else 12
 		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
 		sideLeft = right - colW
@@ -156,7 +180,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		body = panelBody
 		column = col
 		inner = colW - 2 * pad
-		block = math.floor((inner - Parts.LIST_PAD_X - gap * (cols - 1)) / cols)
+		block = math.floor((inner - Parts.LIST_PAD_X - Parts.railRoom(scrollKind) - gap * (cols - 1)) / cols)
 	end
 	Kit.list(body, true, if touch then 7 else 10)
 	local sideW = if tray then inner else inner + 2 * (if touch then 8 else 12)
@@ -208,6 +232,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 	if variant ~= "column" then
 		m.backdrop = "shade"
 	end
+	m.scroller = scrollKind
 	local listParent: Frame = body
 	local itemsBox: Frame -- what holds the items in the column
 	if tray then
@@ -281,7 +306,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant): Types
 		local fills = false
 		local builder = if ctx.form then ctx.form() else nil
 		if builder then
-			local made = builder(body, inner, m.backdrop == "shade")
+			local made = builder(body, inner, m.backdrop == "shade", scrollKind)
 			made.root.LayoutOrder = 3
 			if made.fills then
 				Kit.fill(made.root)

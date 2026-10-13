@@ -7,7 +7,8 @@
 --
 --   SHOWCASE  the words down the left on a shade, the items in a graphite
 --             column under the coins, the action under it.
---   GLASS     the same, the column see-through.
+--   GLASS     the same, the column see-through. A phone's only layout
+--             (2026-10-12), in three versions of its up/down control.
 --   FRAME     the same, the column on a shade, the items in a tray.
 --   DOCK      the words as tabs in a dock along the bottom with the action
 --             and EXIT, where the thumbs are; the items in a panel above.
@@ -17,6 +18,7 @@
 -- LAYOUT row. The garage's own GarageLayout went into it.
 local Players = game:GetService("Players")
 
+local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Types = require(script.Parent:WaitForChild("Types"))
 local Showcase = require(script.Parent:WaitForChild("Showcase"))
 local Dock = require(script.Parent:WaitForChild("Dock"))
@@ -25,42 +27,64 @@ local Layouts = {}
 
 Layouts.ATTRIBUTE = "UiLayout"
 
-local function variant(id: string, name: string, v: Showcase.Variant): Types.Layout
+local function variant(id: string, name: string, v: Showcase.Variant, opts: Showcase.Options?): Types.Layout
 	return {
 		id = id,
 		name = name,
 		build = function(g: ScreenGui, c: Types.Ctx): Types.View
-			return Showcase.build(g, c, v)
+			return Showcase.build(g, c, v, opts)
 		end,
 	}
 end
 
-Layouts.list = {
+-- A phone has GLASS (the owner, 2026-10-12: "lets go with 'glass' for
+-- Mobile view garage"), its column a little past the coins and its fades
+-- gone, in three versions of the up/down control to choose between
+-- ("add an obvious scroll/updown for the options (make a couple
+-- versions)"). SHOWCASE, FRAME and DOCK stay on a PC.
+local REACH = 24
+Layouts.phone = {
+	variant("glass", "GLASS ARROWS", "glass", { reach = REACH, scroller = "arrows" }),
+	variant("glassrail", "GLASS RAIL", "glass", { reach = REACH, scroller = "rail" }),
+	variant("glassmore", "GLASS MORE", "glass", { reach = REACH, scroller = "more" }),
+} :: { Types.Layout }
+
+Layouts.pc = {
 	variant("showcase", "SHOWCASE", "column"),
 	variant("glass", "GLASS", "glass"),
 	variant("frame", "FRAME", "frame"),
 	{ id = "dock", name = "DOCK", build = Dock.build },
 } :: { Types.Layout }
 
+-- The layouts this screen cycles: a phone's or a PC's.
+function Layouts.all(): { Types.Layout }
+	return if Kit.isTouch() then Layouts.phone else Layouts.pc
+end
+
 function Layouts.current(): Types.Layout
 	local id = Players.LocalPlayer:GetAttribute(Layouts.ATTRIBUTE)
-	for _, l in Layouts.list do
+	local list = Layouts.all()
+	for _, l in list do
 		if l.id == id then
 			return l
 		end
 	end
-	return Layouts.list[1]
+	return list[1]
 end
 
 function Layouts.set(id: string)
 	Players.LocalPlayer:SetAttribute(Layouts.ATTRIBUTE, id)
 end
 
+-- The one after the current.
+function Layouts.after(): Types.Layout
+	local list = Layouts.all()
+	return list[(table.find(list, Layouts.current()) or 0) % #list + 1]
+end
+
 -- The one after the current, chosen.
 function Layouts.advance(): Types.Layout
-	local cur = Layouts.current()
-	local i = table.find(Layouts.list, cur) or 0
-	local nxt = Layouts.list[i % #Layouts.list + 1]
+	local nxt = Layouts.after()
 	Layouts.set(nxt.id)
 	return nxt
 end

@@ -266,6 +266,27 @@ bottom with LAYOUT, the action and EXIT; the column a panel on the left, the
 subject on the right). SHADE is parked; SHADES, EDGE, SHELF, CARD and WIDE
 were tried in the garage and removed.
 
+**A phone has GLASS** (the owner, 2026-10-12: "lets go with 'glass' for
+Mobile view garage"); a PC keeps all four. On a phone its column reaches a
+little past the coins' right edge (24 drawing pixels, only into room the
+screen has: never nearer its edge than a notch's depth, so with no margin
+past the coins it stays put), and its list has no fades ("remove the
+scroll shaddow"). In their place an obvious up/down control
+(`Parts.scroller`; "add an obvious scroll/updown for the options (make a
+couple versions)"), the three phone layouts the LAYOUT button cycles:
+- GLASS ARROWS: round white chevron buttons centred on the list's top and
+  foot, over the row cut off there, each only while there is more that
+  way; a row a tap; the down one nods once when a set opens.
+- GLASS RAIL: a track down the list's right edge with a green thumb as
+  tall as the share showing, dragged to scroll, chevrons at its ends a row
+  a tap (the blocks give it 18 px).
+- GLASS MORE: a pager row under the list in its own room, a small up and a
+  wide "11 MORE" (the items wholly below), faded at either end; a page a
+  tap.
+The settings' rows scroll the same way. The garage view hides the shell's
+roof beams on this screen (`GarageConfig.viewHides`): they crossed right
+behind the coins and read as their shadow.
+
 The pieces they share (`Looks/Parts`): the column lines up under the
 coins, its right edge and just below their foot (`Parts.coinAnchor`: the
 HUD's gui keeps out of the notch only, a panel's out of Roblox's margins
