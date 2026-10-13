@@ -36,6 +36,7 @@ local Parts = require(Looks:WaitForChild("Parts"))
 local Layouts = require(Looks:WaitForChild("Layouts"))
 local Showroom = require(script:WaitForChild("Looks"):WaitForChild("Showroom"))
 local Board = require(script:WaitForChild("Looks"):WaitForChild("Board"))
+local TopBar = require(script.Parent:WaitForChild("TopBar"))
 local GarageSounds = require(Client:WaitForChild("Garage"):WaitForChild("GarageSounds"))
 local Page = require(script:WaitForChild("Page"))
 local Cars = require(script:WaitForChild("Cars"))
@@ -89,6 +90,9 @@ local switched = false
 -- Told when the menu takes the screen and when it gives it back (the
 -- garage panel hides under it).
 local watchers: { (open: boolean) -> () } = {}
+-- Told the page showing as it changes, nil as the menu closes (the top
+-- bar lights its button).
+local pageWatchers: { (id: string?) -> () } = {}
 local taps: { Tap } = {}
 local press: Press? = nil
 local sheet: Sheet? = nil
@@ -98,6 +102,13 @@ local function tell(open: boolean)
 		task.spawn(fn, open)
 	end
 end
+
+local function tellPage(id: string?)
+	for _, fn in pageWatchers do
+		task.spawn(fn, id)
+	end
+end
+
 
 local function page(): Page.Page
 	return pages[pageId]
@@ -289,6 +300,7 @@ local function choosePage(id: string)
 	GarageSounds.play("tab")
 	local was = pageId
 	pageId = id
+	tellPage(id)
 	page().shown()
 	if layoutFor(was) ~= layoutFor(id) then
 		-- Another look: the screen built again, coming in from its edges.
@@ -320,10 +332,22 @@ local function nextLayout()
 	Layouts.set(nxt.id)
 end
 
+-- Drawing pixels the layout leaves clear at the top for the phone's top
+-- row, which stays up over the menu (TopBar.foot); nil with no row.
+local function clearance(g: ScreenGui): number?
+	local foot = TopBar.foot()
+	if not foot then
+		return nil
+	end
+	local s = Parts.scaleFor(touch(), Parts.screen(g))
+	return math.max(0, (foot - g.AbsolutePosition.Y) / s)
+end
+
 local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 	return {
 		touch = touch(),
 		screen = Parts.screen(g),
+		top = clearance(g),
 		title = { en = "HAJWALA", ar = "هجولة" },
 		tabs = tabs,
 		tab = function()
@@ -636,6 +660,7 @@ function Menu.open(id: string?, opts: OpenOptions?)
 	page().shown()
 	build(switched)
 	tell(true)
+	tellPage(pageId)
 	if o.switch then
 		-- The frame was on screen already: the world behind goes straight
 		-- to this page's measure.
@@ -664,6 +689,7 @@ function Menu.close()
 	serial += 1
 	local mine = serial
 	closeSheet()
+	tellPage(nil)
 	local handBack = switched
 	switched = false
 	local function finish()
@@ -700,6 +726,11 @@ end
 
 -- fn(true) as the menu takes the screen, fn(false) once it has given it
 -- back.
+-- fn(id) as the page showing changes, fn(nil) as the menu closes.
+function Menu.watchPage(fn: (id: string?) -> ())
+	table.insert(pageWatchers, fn)
+end
+
 function Menu.watch(fn: (open: boolean) -> ())
 	table.insert(watchers, fn)
 end

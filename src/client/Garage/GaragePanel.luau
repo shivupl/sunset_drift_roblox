@@ -1393,6 +1393,7 @@ local function makeCtx(g: ScreenGui): Types.Ctx
 	return {
 		touch = touch,
 		screen = Parts.screen(g),
+		top = nil,
 		title = { en = "GARAGE", ar = "كراج" },
 		tabs = TABS,
 		tab = function()

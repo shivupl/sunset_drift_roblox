@@ -52,11 +52,13 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local root, room = Parts.root(gui, ctx, "Showroom")
 	local scale = Parts.scaleFor(touch, ctx.screen)
 	local w = if touch then math.min(748, room.X - 16) else math.min(1060, room.X - 40)
-	local h = if touch then room.Y - 16 else math.min(604, room.Y - 24)
+	-- Under the phone's top row, which stays up (ctx.top).
+	local rowUp = ctx.top ~= nil
+	local y0 = (if touch then 8 else 12) + math.ceil(ctx.top or 0)
+	local h = if touch then room.Y - y0 - 8 else math.min(604, room.Y - y0 - 12)
 	local gap = if touch then 8 else 10
 	local leftW = if touch then 262 else 360
 	local x0 = math.floor((room.X - w) / 2)
-	local y0 = if touch then 8 else 12
 	local pad = if touch then 10 else 16
 	local actionH = if touch then 44 else 52
 
@@ -234,6 +236,8 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	count.TextTruncate = Enum.TextTruncate.None
 	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
 	close.LayoutOrder = 5
+	-- With the top row up, its lit button is the way out.
+	close.Visible = not rowUp
 	close.Activated:Connect(function()
 		if not ctx.busy() then
 			ctx.act.leave()

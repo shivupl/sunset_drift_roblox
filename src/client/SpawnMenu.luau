@@ -68,7 +68,9 @@ local function paintOpen()
 		-- Not with CLEAR UI on: the top bar's gear is the way in then.
 		ob.Visible = free and not isTouch() and not ClearUi.on()
 	end
-	TopBar.setShown(free)
+	-- The top bar stays up over the menu, which hangs under it (its lit
+	-- button closes it, 2026-10-13); only the garage view takes it down.
+	TopBar.setShown(not openButtonHidden)
 end
 
 local function busy(): boolean
@@ -168,6 +170,15 @@ function SpawnMenu.openTab(which: string, opts: OpenOptions?)
 	paintOpen()
 end
 
+-- The top row's buttons: the page opens, or closes if it is the one up.
+function SpawnMenu.toggleTab(which: string)
+	if Menu.isOpen() and Menu.page() == which then
+		SpawnMenu.close()
+	else
+		SpawnMenu.openTab(which)
+	end
+end
+
 function SpawnMenu.open()
 	SpawnMenu.openTab(Menu.page())
 end
@@ -245,6 +256,7 @@ function SpawnMenu.start(remotes: Folder)
 	Menu.watch(function()
 		paintOpen()
 	end)
+	Menu.watchPage(TopBar.setOpen)
 	paintOpen()
 	-- You start on foot: the menu comes in as the load cover goes (at once
 	-- if the world is built already).
