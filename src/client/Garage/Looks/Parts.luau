@@ -616,155 +616,105 @@ end
 
 -- An obvious way up and down a list (the owner, 2026-10-12: "add an
 -- obvious scroll/updown for the options (make a couple versions)"; of
--- ARROWS, RAIL and MORE tried, they picked RAIL from their phone), in
+-- ARROWS, RAIL and MORE tried, they picked RAIL from their phone, then
+-- "remove the two arrows on either side, have a simple scroll bar"), in
 -- place of the fades; the list still scrolls under a thumb as well: a
--- track down the list's right edge with a green thumb as tall as the share
--- showing, dragged to scroll; chevrons at its ends step a row.
--- `step` is a row in screen pixels (CanvasPosition's units under the
--- layout's UIScale).
+-- track down the list's right edge with a green thumb as tall as the
+-- share showing, dragged to scroll.
 export type ScrollKind = "rail"
 export type Scroller = { update: () -> (), shown: () -> () }
 
--- The margin right of the blocks a control takes: the rail's, so its
--- track and chevrons stand clear of them. A layout takes it off the
--- blocks' width (else the grid would wrap to one across).
+-- The margin right of the blocks the rail takes, so its track stands
+-- clear of them. A layout takes it off the blocks' width (else the grid
+-- would wrap to one across).
 function Parts.railRoom(kind: ScrollKind?): number
 	return if kind == "rail" then 18 else 0
 end
 
-local CHEVRON = "›"
-local SCROLL_TWEEN = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
--- A chevron glyph pointing up (-90) or down (90).
-local function chevron(parent: Instance, size: number, up: boolean, color: Color3): TextLabel
-	local c = Kit.text(parent, "Chevron", CHEVRON, size, Enum.FontWeight.Bold, false, color)
-	c.AnchorPoint = Vector2.new(0.5, 0.5)
-	c.Position = UDim2.fromScale(0.5, 0.5)
-	c.Size = UDim2.fromOffset(size, size)
-	c.TextXAlignment = Enum.TextXAlignment.Center
-	c.Rotation = if up then -90 else 90
-	c.TextTruncate = Enum.TextTruncate.None
-	return c
-end
-
-function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, step: () -> number, touch: boolean): Scroller
+function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, touch: boolean): Scroller
 	-- The list's own bar would be a second one. Thickness 0 alone still
 	-- left a hairline thumb by the blocks (Studio's phone view, 2026-10-12).
 	scroll.ScrollBarThickness = 0
 	scroll.ScrollBarImageTransparency = 1
-	local tween: Tween? = nil
 	local function limit(): number
 		return math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
 	end
-	local function go(by: number)
-		local to = math.clamp(scroll.CanvasPosition.Y + by, 0, limit())
-		local t = tween
-		if t then
-			t:Cancel()
-		end
-		local nt = TweenService:Create(scroll, SCROLL_TWEEN, { CanvasPosition = Vector2.new(scroll.CanvasPosition.X, to) })
-		tween = nt
-		nt:Play()
+	local w = if touch then 8 else 9
+	local hit = if touch then 24 else 26
+	local rail = Kit.frame(holder, "Rail")
+	-- In the margin the layout leaves right of the blocks for it
+	-- (Parts.railRoom), centred on it.
+	rail.AnchorPoint = Vector2.new(0.5, 0)
+	rail.Position = UDim2.new(1, -math.floor(Parts.railRoom(kind) / 2) + 2, 0, 0)
+	rail.Size = UDim2.new(0, hit, 1, 0)
+	rail.ZIndex = 6
+	local track = Kit.frame(rail, "Track", Color3.new(1, 1, 1), 0.8)
+	track.AnchorPoint = Vector2.new(0.5, 0)
+	track.Position = UDim2.new(0.5, 0, 0, 0)
+	track.Size = UDim2.new(0, w, 1, 0)
+	track.ZIndex = 6
+	Kit.corner(track, math.floor(w / 2))
+	-- The thumb is the track's width: one bar, the green part of it the
+	-- share showing (a wider thumb read as off its track).
+	local thumb = Instance.new("TextButton")
+	thumb.Name = "Thumb"
+	thumb.AutoButtonColor = false
+	thumb.Text = ""
+	thumb.BorderSizePixel = 0
+	thumb.BackgroundColor3 = Color3.new(1, 1, 1)
+	thumb.AnchorPoint = Vector2.new(0.5, 0)
+	thumb.ZIndex = 7
+	Kit.corner(thumb, math.floor(w / 2))
+	Kit.gradient(thumb, Kit.C.greenTop, Kit.C.greenBottom)
+	thumb.Parent = track
+	-- A wider hit than it looks, for a thumb.
+	local grab = Instance.new("TextButton")
+	grab.Name = "Grab"
+	grab.AutoButtonColor = false
+	grab.Text = ""
+	grab.BackgroundTransparency = 1
+	grab.AnchorPoint = Vector2.new(0.5, 0)
+	grab.Position = UDim2.fromScale(0.5, 0)
+	grab.Size = UDim2.new(0, hit + 10, 1, 0)
+	grab.ZIndex = 8
+	grab.Parent = thumb
+	local function update()
+		local window, lim = scroll.AbsoluteWindowSize.Y, limit()
+		local share = if scroll.AbsoluteCanvasSize.Y > 0 then math.clamp(window / scroll.AbsoluteCanvasSize.Y, 0.15, 1) else 1
+		rail.Visible = lim > 1
+		local at = if lim > 0 then scroll.CanvasPosition.Y / lim else 0
+		thumb.Size = UDim2.new(0, w, share, 0)
+		thumb.Position = UDim2.new(0.5, 0, (1 - share) * at, 0)
 	end
-	local update: () -> ()
-	do
-		local w = if touch then 8 else 9
-		local cap = if touch then 24 else 26
-		local rail = Kit.frame(holder, "Rail")
-		-- In the margin the layout leaves right of the blocks for it
-		-- (Parts.railRoom), centred on it.
-		rail.AnchorPoint = Vector2.new(0.5, 0)
-		rail.Position = UDim2.new(1, -math.floor(Parts.railRoom(kind) / 2) + 2, 0, 0)
-		rail.Size = UDim2.new(0, cap, 1, 0)
-		rail.ZIndex = 6
-		local function capButton(up: boolean): (TextButton, TextLabel)
-			local b = Instance.new("TextButton")
-			b.Name = if up then "Up" else "Down"
-			b.AutoButtonColor = false
-			b.Text = ""
-			b.BackgroundTransparency = 1
-			b.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
-			b.Position = UDim2.fromScale(0.5, if up then 0 else 1)
-			b.Size = UDim2.fromOffset(cap, cap)
-			b.ZIndex = 7
-			local c = chevron(b, cap, up, Kit.C.text)
-			c.ZIndex = 7
-			b.Activated:Connect(function()
-				go(if up then -step() else step())
-			end)
-			b.Parent = rail
-			return b, c
+	-- Dragging the thumb: the list follows it along the track.
+	local drag: { input: InputObject, y: number, canvas: number }? = nil
+	grab.InputBegan:Connect(function(io: InputObject)
+		if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
+			drag = { input = io, y = io.Position.Y, canvas = scroll.CanvasPosition.Y }
 		end
-		local _, upC = capButton(true)
-		local _, downC = capButton(false)
-		local track = Kit.frame(rail, "Track", Color3.new(1, 1, 1), 0.8)
-		track.AnchorPoint = Vector2.new(0.5, 0)
-		track.Position = UDim2.new(0.5, 0, 0, cap)
-		track.Size = UDim2.new(0, w, 1, -2 * cap)
-		track.ZIndex = 6
-		Kit.corner(track, math.floor(w / 2))
-		local thumb = Instance.new("TextButton")
-		thumb.Name = "Thumb"
-		thumb.AutoButtonColor = false
-		thumb.Text = ""
-		thumb.BorderSizePixel = 0
-		thumb.BackgroundColor3 = Color3.new(1, 1, 1)
-		thumb.AnchorPoint = Vector2.new(0.5, 0)
-		thumb.ZIndex = 7
-		Kit.corner(thumb, math.floor((w + 4) / 2))
-		Kit.gradient(thumb, Kit.C.greenTop, Kit.C.greenBottom)
-		thumb.Parent = track
-		-- A wider hit than it looks, for a thumb.
-		local grab = Instance.new("TextButton")
-		grab.Name = "Grab"
-		grab.AutoButtonColor = false
-		grab.Text = ""
-		grab.BackgroundTransparency = 1
-		grab.AnchorPoint = Vector2.new(0.5, 0)
-		grab.Position = UDim2.fromScale(0.5, 0)
-		grab.Size = UDim2.new(0, cap + 10, 1, 0)
-		grab.ZIndex = 8
-		grab.Parent = thumb
-		update = function()
-			local window, lim = scroll.AbsoluteWindowSize.Y, limit()
-			local share = if scroll.AbsoluteCanvasSize.Y > 0 then math.clamp(window / scroll.AbsoluteCanvasSize.Y, 0.15, 1) else 1
-			rail.Visible = lim > 1
-			local at = if lim > 0 then scroll.CanvasPosition.Y / lim else 0
-			thumb.Size = UDim2.new(0, w + 4, share, 0)
-			thumb.Position = UDim2.new(0.5, 0, (1 - share) * at, 0)
-			upC.TextTransparency = if scroll.CanvasPosition.Y > 1 then 0 else 0.7
-			downC.TextTransparency = if scroll.CanvasPosition.Y < lim - 1 then 0 else 0.7
+	end)
+	UserInputService.InputChanged:Connect(function(io: InputObject)
+		local dr = drag
+		if not dr or not holder.Parent then
+			return
 		end
-		-- Dragging the thumb: the list follows it along the track.
-		local drag: { input: InputObject, y: number, canvas: number }? = nil
-		grab.InputBegan:Connect(function(io: InputObject)
-			if io.UserInputType == Enum.UserInputType.Touch or io.UserInputType == Enum.UserInputType.MouseButton1 then
-				drag = { input = io, y = io.Position.Y, canvas = scroll.CanvasPosition.Y }
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(io: InputObject)
-			local dr = drag
-			if not dr or not holder.Parent then
-				return
-			end
-			if io ~= dr.input and io.UserInputType ~= Enum.UserInputType.MouseMovement then
-				return
-			end
-			local free = track.AbsoluteSize.Y - thumb.AbsoluteSize.Y
-			if free <= 0 then
-				return
-			end
-			local lim = limit()
-			local to = dr.canvas + (io.Position.Y - dr.y) * lim / free
-			scroll.CanvasPosition = Vector2.new(scroll.CanvasPosition.X, math.clamp(to, 0, lim))
-		end)
-		UserInputService.InputEnded:Connect(function(io: InputObject)
-			local dr = drag
-			if dr and (io == dr.input or io.UserInputType == Enum.UserInputType.MouseButton1) then
-				drag = nil
-			end
-		end)
-	end
+		if io ~= dr.input and io.UserInputType ~= Enum.UserInputType.MouseMovement then
+			return
+		end
+		local free = track.AbsoluteSize.Y - thumb.AbsoluteSize.Y
+		if free <= 0 then
+			return
+		end
+		local lim = limit()
+		local to = dr.canvas + (io.Position.Y - dr.y) * lim / free
+		scroll.CanvasPosition = Vector2.new(scroll.CanvasPosition.X, math.clamp(to, 0, lim))
+	end)
+	UserInputService.InputEnded:Connect(function(io: InputObject)
+		local dr = drag
+		if dr and (io == dr.input or io.UserInputType == Enum.UserInputType.MouseButton1) then
+			drag = nil
+		end
+	end)
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(update)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(update)
 	scroll:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(update)
@@ -842,16 +792,10 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		topFade.Visible = kind == nil and first.box.root.AbsolutePosition.Y < y0 - 1
 		bottomFade.Visible = kind == nil and l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
 	end
-	-- The up/down control: a row (a cell and the gap) a step.
+	-- The rail.
 	local control: Scroller? = nil
 	if kind then
-		control = Parts.scroller(holder, scroll, kind, function(): number
-			-- The padding is drawing pixels; the cell's absolute size says
-			-- the scale.
-			local cell = grid.AbsoluteCellSize.Y
-			local drawn = grid.CellSize.Y.Offset
-			return cell + gap * (if drawn > 0 then cell / drawn else 1)
-		end, ctx.touch)
+		control = Parts.scroller(holder, scroll, kind, ctx.touch)
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)

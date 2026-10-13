@@ -168,9 +168,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 				-- fades.
 				local kind: Parts.ScrollKind? = if scroller == "rail" then "rail" else nil
 				if kind then
-					Parts.scroller(holder, scroll, kind, function(): number
-						return scroll.AbsoluteWindowSize.Y * 0.5
-					end, touch)
+					Parts.scroller(holder, scroll, kind, touch)
 				else
 					Parts.fades(holder, touch, shade).watch(scroll)
 				end

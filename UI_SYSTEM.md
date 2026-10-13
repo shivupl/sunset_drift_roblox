@@ -274,10 +274,10 @@ screen has: never nearer its edge than a notch's depth, so with no margin
 past the coins it stays put), and its list has no fades ("remove the
 scroll shaddow"). In their place a rail (`Parts.scroller`; "add an
 obvious scroll/updown for the options (make a couple versions)": ARROWS,
-RAIL and MORE were tried, and from their phone the owner picked RAIL): a
-track down the list's right edge with a green thumb as tall as the share
-showing, dragged to scroll, chevrons at its ends a row a tap (the blocks
-give it 18 px).
+RAIL and MORE were tried, and from their phone the owner picked RAIL, then
+"remove the two arrows on either side, have a simple scroll bar"): a track
+down the list's right edge with a green thumb the track's width, as tall
+as the share showing, dragged to scroll (the blocks give it 18 px).
 The settings' rows scroll the same way. With no fades a row cut by the
 list's foot read as broken, so the blocks fit whole rows (`fitRows`): as
 many as fit, each up to a quarter smaller so they do, centred in the width
