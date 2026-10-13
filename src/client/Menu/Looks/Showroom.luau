@@ -23,21 +23,29 @@ local Parts = require(Looks:WaitForChild("Parts"))
 
 local Showroom = {}
 
--- Two ways to frame the picked car, to choose between (the owner,
--- 2026-10-12, from the canvas's row F: "let me see between f1 and f4 in
--- game"); the LocalPlayer attribute ShowroomPicked, flipped by the
--- temporary button in the header:
---   box   F1: the car in a framed stage box the width of the panel, IN
---         USE and CUSTOMIZE in its corners, the name over it, the stats
---         under it.
---   card  F4: the car as a big card like the list's (the picker's
---         cut-corner box, edged green), its name, IN USE and star inside
---         at the top, the drive chip and CUSTOMIZE at its foot, the stats
---         under it.
-export type Picked = "box" | "card"
+-- The picked car's stage box (F1 from the canvas's row F, the owner,
+-- 2026-10-12: "we'll go with f1 but make a couple more variations of it
+-- with better more aesthetic design"), in three looks to choose between:
+-- the LocalPlayer attribute ShowroomPicked, cycled by the temporary
+-- button in the header. The car, its light, its floor shadow and the
+-- drive watermark are the page's (Cars.stage); the box is what is under
+-- them.
+--   spot   graphite, a soft light pooled under the car, the picker's
+--          faint ring hanging off the top right, a highlight along the
+--          top edge.
+--   floor  a showroom floor: a lighter plane across the lower part with a
+--          horizon line, the car standing on it.
+--   glass  see-through to the road, a brighter hairline and a green bar
+--          down the left edge.
+export type Picked = "spot" | "floor" | "glass"
+local LOOKS: { Picked } = { "spot", "floor", "glass" }
 Showroom.PICKED = "ShowroomPicked"
 function Showroom.picked(): Picked
-	return if Players.LocalPlayer:GetAttribute(Showroom.PICKED) == "card" then "card" else "box"
+	local v = Players.LocalPlayer:GetAttribute(Showroom.PICKED)
+	return if v == "floor" then "floor" elseif v == "glass" then "glass" else "spot"
+end
+function Showroom.nextPicked(): Picked
+	return LOOKS[(table.find(LOOKS, Showroom.picked()) or 0) % #LOOKS + 1]
 end
 
 local function tabOf(ctx: Types.Ctx, id: string): Types.TabDef?
@@ -89,21 +97,18 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	Kit.pad(left, pad, pad, pad, pad)
 	Kit.list(left, true, if touch then 8 else 12)
 
-	local pickedLook = Showroom.picked()
-	local card = pickedLook == "card"
+	local look = Showroom.picked()
 	local innerW = leftW - 2 * pad
 	-- The page draws the subject's stats in a row at its stage's foot
-	-- (Cars.stage's rowH); the box or the card is the room over that row.
+	-- (Cars.stage's rowH); the box is the room over that row, down from
+	-- the head to the action.
 	local rowH = if touch then 52 else 60
-	-- The box or the card takes the panel's room down to the action, the
-	-- stats' row at its foot: how far up from the stage's foot it ends.
 	local under = rowH + 6
 
-	-- The name, chip and star: a row over the box, or inside the card.
+	-- The name, chip and star in a row over the box.
 	local head = Kit.frame(left, "Head")
 	head.LayoutOrder = 1
 	head.Size = UDim2.new(1, 0, 0, if touch then 32 else 36)
-	head.Visible = not card
 	Kit.list(head, false, 8, Enum.VerticalAlignment.Center)
 	local name = Kit.text(head, "Name", "", if touch then 17 else 22, Enum.FontWeight.Heavy, true)
 	name.LayoutOrder = 1
@@ -126,59 +131,54 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local starIcon = star:FindFirstChild("Icon") :: ImageLabel
 
 	-- The stage: the page draws the subject in it (Cars.stage, Plates.stage)
-	-- over the box or the card, its stats in the row under them; the IN
-	-- USE tag over the top left, CUSTOMIZE at the foot.
+	-- over the box, its stats in the row under it; the IN USE tag over the
+	-- box's top left, CUSTOMIZE in its bottom right.
 	local stage = Kit.frame(left, "Stage")
 	stage.LayoutOrder = 2
 	stage.Size = UDim2.fromScale(1, 0)
 	Kit.fill(stage)
-	local frameSize = UDim2.new(1, 0, 1, -under)
-	if card then
-		-- The picker's cut-corner box, edged thick and green as the one
-		-- picked in the list is (Kit.tile).
-		local fill = Kit.image(stage, "Fill", CarArt.tile)
-		fill.ScaleType = Enum.ScaleType.Slice
-		fill.SliceCenter = CarArt.tileSlice
-		fill.SliceScale = 0.5
-		fill.Size = frameSize
-		fill.ZIndex = 0
-		Kit.gradient(fill, Kit.C.tileTop, Kit.C.tileBottom)
-		local edge = Kit.image(stage, "Edge", CarArt.tileEdgeThick)
-		edge.ScaleType = Enum.ScaleType.Slice
-		edge.SliceCenter = CarArt.tileSlice
-		edge.SliceScale = 0.5
-		edge.Size = frameSize
-		edge.ZIndex = 4
-		local g = Instance.new("UIGradient")
-		g.Rotation = 90
-		g.Color = ColorSequence.new(Kit.C.greenTop, Kit.C.greenBottom)
-		g.Parent = edge
-		-- Its name and the star at the top, the drive chip at its foot.
-		name.Parent = stage
-		name.Position = UDim2.fromOffset(10, 8)
-		name.Size = UDim2.new(1, -60, 0, if touch then 22 else 26)
-		name.ZIndex = 5
-		name.TextStrokeTransparency = 0.8
-		star.Parent = stage
-		star.AnchorPoint = Vector2.new(1, 0)
-		star.Position = UDim2.new(1, -4, 0, 4)
-		star.BackgroundTransparency = 1
-		star.ZIndex = 5
-		chipHolder.Parent = stage
-		chipHolder.AnchorPoint = Vector2.new(1, 1)
-		chipHolder.Position = UDim2.new(1, -18, 1, -(under + 8))
-		chipHolder.ZIndex = 5
-	else
-		-- A framed stage box: the panel's graphite, a hairline round it.
-		local box = Kit.frame(stage, "Box", Kit.C.tileBottom, 0.1)
-		box.Size = frameSize
-		box.ZIndex = 0
-		Kit.corner(box, 10)
+	local box = Kit.frame(stage, "Box", Kit.C.tileBottom, 0.1)
+	box.Size = UDim2.new(1, 0, 1, -under)
+	box.ZIndex = 0
+	box.ClipsDescendants = true
+	Kit.corner(box, 10)
+	if look == "glass" then
+		box.BackgroundColor3 = Color3.new(0, 0, 0)
+		box.BackgroundTransparency = 0.55
+		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.74)
+		local bar = Kit.frame(box, "Bar", Kit.C.green, 0)
+		bar.Position = UDim2.fromOffset(0, 12)
+		bar.Size = UDim2.new(0, 3, 1, -24)
+		Kit.corner(bar, 2)
+	elseif look == "floor" then
 		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.9)
+		Kit.gradient(box, Color3.fromHex("#1F2125"), Color3.fromHex("#141518"))
+		local floor = Kit.frame(box, "Floor", Color3.new(1, 1, 1), 0)
+		floor.AnchorPoint = Vector2.new(0, 1)
+		floor.Position = UDim2.fromScale(0, 1)
+		floor.Size = UDim2.fromScale(1, 0.4)
+		Kit.gradient(floor, Color3.fromHex("#2E3137"), Color3.fromHex("#17181B"))
+		local horizon = Kit.frame(box, "Horizon", Color3.new(1, 1, 1), 0.86)
+		horizon.AnchorPoint = Vector2.new(0, 1)
+		horizon.Position = UDim2.fromScale(0, 0.6)
+		horizon.Size = UDim2.new(1, 0, 0, 1)
+	else
+		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.88)
 		Kit.gradient(box, Kit.C.tileTop, Kit.C.tileBottom)
+		local pool = Kit.image(box, "Pool", CarArt.spot, Color3.new(1, 1, 1), 0.86)
+		pool.AnchorPoint = Vector2.new(0.5, 0.5)
+		pool.Position = UDim2.fromScale(0.5, 0.42)
+		pool.Size = UDim2.fromScale(1.3, 1.5)
+		local ring = Kit.image(box, "Ring", CarArt.ring, Color3.new(1, 1, 1), 0.93)
+		ring.AnchorPoint = Vector2.new(1, 0)
+		ring.Position = UDim2.new(1, if touch then 34 else 40, 0, if touch then -34 else -40)
+		ring.Size = UDim2.fromOffset(if touch then 150 else 190, if touch then 150 else 190)
+		local top = Kit.frame(box, "Top", Color3.new(1, 1, 1), 0.82)
+		top.Position = UDim2.fromOffset(12, 0)
+		top.Size = UDim2.new(1, -24, 0, 1)
 	end
 	local inUse = Kit.inUse(stage, if touch then 18 else 22, if touch then 9 else 11)
-	inUse.Position = if card then UDim2.fromOffset(10, if touch then 32 else 38) else UDim2.fromOffset(6, 6)
+	inUse.Position = UDim2.fromOffset(6, 6)
 	inUse.ZIndex = 5
 	inUse.Visible = false
 	local pill = Instance.new("TextButton")
@@ -188,8 +188,8 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	pill.BorderSizePixel = 0
 	pill.BackgroundColor3 = Kit.C.chip
 	pill.BackgroundTransparency = 0.14
-	pill.AnchorPoint = if card then Vector2.new(0, 1) else Vector2.new(1, 1)
-	pill.Position = if card then UDim2.new(0, 8, 1, -(under + 8)) else UDim2.new(1, -6, 1, -(under + 6))
+	pill.AnchorPoint = Vector2.new(1, 1)
+	pill.Position = UDim2.new(1, -6, 1, -(under + 6))
 	pill.Size = UDim2.fromOffset(if touch then 108 else 128, if touch then 26 else 30)
 	pill.ZIndex = 5
 	Kit.corner(pill, if touch then 13 else 15)
@@ -291,12 +291,12 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	count.AutomaticSize = Enum.AutomaticSize.X
 	count.Size = UDim2.fromScale(0, 1)
 	count.TextTruncate = Enum.TextTruncate.None
-	-- Temporary: the other framing of the picked car (Showroom.picked).
+	-- Temporary: the next look of the picked car's box (Showroom.picked).
 	local flip = Kit.iconButton(header, "Picked", CarArt.layout, if touch then 32 else 36)
 	flip.LayoutOrder = 4
 	flip.Activated:Connect(function()
 		if not ctx.busy() then
-			Players.LocalPlayer:SetAttribute(Showroom.PICKED, if card then "box" else "card")
+			Players.LocalPlayer:SetAttribute(Showroom.PICKED, Showroom.nextPicked())
 		end
 	end)
 	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
