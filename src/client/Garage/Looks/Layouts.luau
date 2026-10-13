@@ -14,8 +14,9 @@
 --             and EXIT, where the thumbs are; the items in a panel above.
 --
 -- The choice is the LocalPlayer attribute UiLayout (it lasts the session),
--- cycled by the LAYOUT button on any screen or picked in Settings' MENU
--- LAYOUT row. The garage's own GarageLayout went into it.
+-- picked in Settings' SCREEN LAYOUT row (DOCK's LAYOUT button cycles it on
+-- a PC; the one beside EXIT went, the owner's phone, 2026-10-12). The
+-- garage's own GarageLayout went into it.
 local Players = game:GetService("Players")
 
 local Kit = require(script.Parent.Parent.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))

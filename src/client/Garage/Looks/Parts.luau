@@ -50,6 +50,9 @@ Parts.C = {
 	beaconGround = Color3.fromHex("#4A1A14"),
 	dusk = Color3.fromHex("#C99BDB"),
 	grey = Color3.fromHex("#5A5D64"),
+	-- EXIT's tint of the action's shape: the tiles' graphite, a step up so
+	-- it holds on the words' shade.
+	graphite = Color3.fromHex("#3A3D44"),
 }
 
 -- Numbers in Oswald, like the HUD's and the old garage's prices.
@@ -260,9 +263,24 @@ function Parts.square(parent: Instance, name: string, w: number, h: number, icon
 	return b
 end
 
--- EXIT: a cross and the word, side by side.
-function Parts.exit(parent: Instance, w: number, h: number, size: number): TextButton
-	local b = Parts.square(parent, "Exit", w, h)
+-- EXIT: a cross and the word, side by side, on the action's slanted
+-- shape in graphite (the owner's phone, 2026-10-12: "ensure the exit
+-- button is aligned properly and stylized appropriately"; a rounded box
+-- beside the slanted BUY read as two kits). It is the action's height on
+-- the action's line, so the bottom row reads as one.
+function Parts.exit(parent: Instance, w: number, h: number, size: number): ImageButton
+	local b = Instance.new("ImageButton")
+	b.Name = "Exit"
+	b.AutoButtonColor = false
+	b.BackgroundTransparency = 1
+	b.Image = Art.button
+	b.ScaleType = Enum.ScaleType.Slice
+	b.SliceCenter = Art.buttonSlice
+	b.SliceScale = h / Art.buttonH
+	b.ImageColor3 = Parts.C.graphite
+	b.ImageTransparency = 0.06
+	b.Size = UDim2.fromOffset(w, h)
+	b.Parent = parent
 	local row = Kit.frame(b, "Row")
 	row.Size = UDim2.fromScale(1, 1)
 	local l = Kit.list(row, false, math.floor(size * 0.6), Enum.VerticalAlignment.Center)
@@ -348,6 +366,11 @@ export type BoxMetrics = {
 	-- owner, 2026-10-12: "remove the scroll shaddow ... add an obvious
 	-- scroll/updown for the options"): Parts.scroller.
 	scroller: ScrollKind?,
+	-- Blocks sized so the list shows whole rows, never a sliver of the next
+	-- (the owner's phone, 2026-10-12: with the fades gone a cut row read as
+	-- broken): as many rows as fit at `block`, each a little smaller if
+	-- that is what makes them fit, the grid centred in the width it frees.
+	fitRows: boolean?,
 }
 
 export type Box = {
@@ -595,7 +618,7 @@ end
 -- obvious scroll/updown for the options (make a couple versions)"), in
 -- place of the fades; the list still scrolls under a thumb as well.
 --   arrows  round white buttons with a chevron centred on the list's top
---           and foot, over the row cut off there, each only while there is
+--           and foot, on the corners of the rows there, each only while there is
 --           more that way; a row a tap. The down one nods once when a set
 --           opens with more below it.
 --   rail    a track down the list's right edge with a green thumb as tall
@@ -615,6 +638,12 @@ function Parts.railRoom(kind: ScrollKind?): number
 	return if kind == "rail" then 18 else 0
 end
 
+-- The pager row's height and the gap over it (`more`): what the list gives
+-- up while there is more than it shows.
+local function pagerSize(touch: boolean): (number, number)
+	return (if touch then 26 else 30), (if touch then 6 else 8)
+end
+
 local CHEVRON = "›"
 local SCROLL_TWEEN = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -631,8 +660,10 @@ local function chevron(parent: Instance, size: number, up: boolean, color: Color
 end
 
 function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollKind, step: () -> number, touch: boolean, hidden: (() -> (number, number))?): Scroller
-	-- The list's own bar would be a second one.
+	-- The list's own bar would be a second one. Thickness 0 alone still
+	-- left a hairline thumb by the blocks (Studio's phone view, 2026-10-12).
 	scroll.ScrollBarThickness = 0
+	scroll.ScrollBarImageTransparency = 1
 	local tween: Tween? = nil
 	local function limit(): number
 		return math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
@@ -665,8 +696,8 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 			b.BorderSizePixel = 0
 			b.BackgroundColor3 = Color3.new(1, 1, 1)
 			b.BackgroundTransparency = 0.04
-			-- Centred on the list's top or foot, over the row cut off there
-			-- (the "more this way" row): never past the screen's edge.
+			-- Centred on the list's top or foot, in the gap between the
+			-- blocks: never past the screen's edge.
 			b.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
 			b.Position = UDim2.new(0.5, 0, if up then 0 else 1, if up then 2 else -2)
 			b.Size = UDim2.fromOffset(d, d)
@@ -797,8 +828,7 @@ function Parts.scroller(holder: GuiObject, scroll: ScrollingFrame, kind: ScrollK
 		-- A pager row under the list, in its own room (the list gives up
 		-- that height while there is more than it shows): a small BACK UP
 		-- and a wide "4 MORE", each faded when there is nothing that way.
-		local h = if touch then 26 else 30
-		local gapR = if touch then 6 else 8
+		local h, gapR = pagerSize(touch)
 		local row = Kit.frame(holder, "Pager")
 		row.AnchorPoint = Vector2.new(0, 1)
 		row.Position = UDim2.fromScale(0, 1)
@@ -914,14 +944,20 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	scroll.Parent = holder
 	-- Blocks sit centred, the scroll bar in their right margin; a list
 	-- keeps its bar clear of the rows.
+	local padTop, padBottom = 3, 6
 	if m.block then
-		Kit.pad(scroll, 3, Parts.LIST_PAD_X / 2 + Parts.railRoom(m.scroller), 6, Parts.LIST_PAD_X / 2)
+		Kit.pad(scroll, padTop, Parts.LIST_PAD_X / 2 + Parts.railRoom(m.scroller), padBottom, Parts.LIST_PAD_X / 2)
 	else
-		Kit.pad(scroll, 3, 8, 6, 3)
+		Kit.pad(scroll, padTop, 8, padBottom, 3)
 	end
 	local grid = Instance.new("UIGridLayout")
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.CellPadding = UDim2.fromOffset(gap, gap)
+	if m.fitRows then
+		-- Smaller blocks stay `swatchCols` across, centred.
+		grid.FillDirectionMaxCells = swatchCols
+		grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	end
 	grid.Parent = scroll
 
 	local fades = Parts.fades(holder, ctx.touch, m.backdrop == "shade")
@@ -973,42 +1009,112 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(edges)
 
+	-- The block a set is drawn at: `m.block`, or with `fitRows` the size
+	-- that shows whole rows in the list's height (in drawing pixels, under
+	-- the layout's UIScale). Rows of `block` that fit with a remainder
+	-- become one more row, each smaller, if that keeps them to three
+	-- quarters of `block`; else the rows stay at `block` and the list ends
+	-- under them, the remainder left empty below (`spare`, a padding on
+	-- the holder, so MORE's pager follows the rows up). MORE's pager takes
+	-- its room first when the set needs it.
+	local scale = Parts.scaleFor(ctx.touch, ctx.screen)
+	local spare = Instance.new("UIPadding")
+	spare.Parent = holder
+	local function blockFor(count: number): (number?, number)
+		local want = m.block
+		if not want or not m.fitRows then
+			return want, 0
+		end
+		local total = holder.AbsoluteSize.Y / scale
+		if total < want then
+			return want, 0
+		end
+		local function fit(avail: number): (number, number, number)
+			-- The rows and the padding round them fill the window, so a
+			-- set that fits does not scroll; with more, the next row starts
+			-- a gap after the last, past the bottom padding, out of sight.
+			local h = avail - padTop - padBottom
+			local r = math.max(1, math.ceil((h + gap) / (want + gap) - 0.001))
+			local b = math.floor((h - (r - 1) * gap) / r)
+			if r > 1 and b < want * 0.75 then
+				r -= 1
+				b = want
+			end
+			b = math.min(b, want)
+			return b, math.max(0, math.floor(avail - (padTop + r * b + (r - 1) * gap + padBottom))), r
+		end
+		local b, left, rows = fit(total)
+		if kind == "more" and count > rows * swatchCols then
+			local ph, pg = pagerSize(ctx.touch)
+			b, left = fit(total - ph - pg)
+		end
+		return b, left
+	end
+
+	local shown: { Types.Entry } = {}
+	local drawnAt: number? = nil
+	local function build(entries: { Types.Entry }, settle: boolean)
+		for _, b in boxes do
+			b.box.root:Destroy()
+		end
+		table.clear(boxes)
+		shown = entries
+		local block, left = blockFor(#entries)
+		drawnAt = block
+		spare.PaddingBottom = UDim.new(0, left)
+		local bm = m
+		if block then
+			grid.CellSize = UDim2.fromOffset(block, block)
+			if block ~= m.block then
+				bm = table.clone(m)
+				bm.block = block
+			end
+		else
+			local tiles = #entries > 0 and entries[1].shape == "swatch" and not m.rows
+			local cols = if tiles then swatchCols else rowCols
+			grid.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, if tiles then tileH else rowH)
+		end
+		for i, e in entries do
+			local box = Parts.box(scroll, e, bm)
+			box.root.LayoutOrder = i
+			ctx.tap(box.root, scroll, function()
+				ctx.act.entry(e)
+			end, box.press)
+			table.insert(boxes, { e = e, box = box })
+		end
+		scroll.CanvasPosition = Vector2.zero
+		-- A new set eases up into place (ui-flow: it had swapped in a
+		-- frame, and a tab tap read as a flicker).
+		if settle and #entries > 0 then
+			Parts.settle(scroll, Parts.LIFT)
+		end
+		-- The grid places the new boxes on the next layout pass.
+		task.defer(edges)
+		local c = control
+		if c then
+			task.defer(c.shown)
+		end
+	end
+	if m.fitRows then
+		-- The list's height is known only once it is laid out (and changes
+		-- with a note over it): the set is drawn again at its new size.
+		holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+			local block, left = blockFor(#shown)
+			spare.PaddingBottom = UDim.new(0, left)
+			if #shown > 0 and block ~= drawnAt then
+				build(shown, false)
+				for _, b in boxes do
+					b.box.paint(ctx.stateOf(b.e))
+				end
+			end
+		end)
+	end
+
 	return {
 		root = holder,
 		scroll = scroll,
 		fill = function(entries: { Types.Entry })
-			for _, b in boxes do
-				b.box.root:Destroy()
-			end
-			table.clear(boxes)
-			local block = m.block
-			if block then
-				grid.CellSize = UDim2.fromOffset(block, block)
-			else
-				local tiles = #entries > 0 and entries[1].shape == "swatch" and not m.rows
-				local cols = if tiles then swatchCols else rowCols
-				grid.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, if tiles then tileH else rowH)
-			end
-			for i, e in entries do
-				local box = Parts.box(scroll, e, m)
-				box.root.LayoutOrder = i
-				ctx.tap(box.root, scroll, function()
-					ctx.act.entry(e)
-				end, box.press)
-				table.insert(boxes, { e = e, box = box })
-			end
-			scroll.CanvasPosition = Vector2.zero
-			-- A new set eases up into place (ui-flow: it had swapped in a
-			-- frame, and a tab tap read as a flicker).
-			if #entries > 0 then
-				Parts.settle(scroll, Parts.LIFT)
-			end
-			-- The grid places the new boxes on the next layout pass.
-			task.defer(edges)
-			local c = control
-			if c then
-				task.defer(c.shown)
-			end
+			build(entries, true)
 		end,
 		refresh = function()
 			for _, b in boxes do

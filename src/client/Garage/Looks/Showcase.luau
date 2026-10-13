@@ -6,7 +6,7 @@
 -- move them more to the ight and lightly higher just to align more with
 -- other elements . remove other modes"). In all of them the subject is the
 -- big thing in the middle under its name; the categories are words down
--- the left on a shade, EXIT and the layout switch under them; the cash is
+-- the left on a shade, EXIT under them on the action's line; the cash is
 -- where the HUD has it (the controller's, Parts.hudCash). The right side
 -- lines up under the cash (its right edge and just below its foot) and
 -- holds the sub-tabs (REV or SHOP PLATES beside them), a note, a form
@@ -50,7 +50,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	-- The action's height, so the bottom row lines up (the owner's phone,
 	-- 2026-10-12: 44 beside 52 read as two rows).
 	local btnH = actionH
-	local exitW = if touch then 84 else 104
+	local exitW = if touch then 112 else 136
 	local gap = if touch then 8 else 10
 	local subH = if touch then 30 else 36
 
@@ -59,22 +59,25 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local shadeL = Parts.edgeShade(gui, root, room, "left", navW, if touch then 90 else 140)
 	local shadesR: { GuiObject } = {}
 
-	-- The categories, EXIT and the layout switch under them.
-	local rail = Parts.wordRail(root, ctx, if touch then 38 else 46, if touch then 13 else 16, if touch then 17 else 21, true)
-	rail.root.Position = UDim2.fromOffset(M, M)
+	-- The categories down the left, EXIT under them on the action's line.
+	-- The LAYOUT button beside EXIT went (the owner's phone, 2026-10-12:
+	-- "remove the layout button"); Settings' SCREEN LAYOUT picks one. The
+	-- words share the height down to EXIT, a row no shorter than `rowMin`
+	-- nor taller than `rowMax`, so seven and three both sit at ease, and the
+	-- first word is level with the title (its line on the title's middle;
+	-- they had sat a few pixels apart).
+	local titleSize = if touch then 15 else 19
+	local exitTop = room.Y - M - btnH
+	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else 54
+	local rowH = math.clamp(math.floor((exitTop - 12 - M) / math.max(#ctx.tabs, 1)), rowMin, rowMax)
+	local rail = Parts.wordRail(root, ctx, rowH, if touch then 13 else 16, if touch then 17 else 21, true)
+	rail.root.Position = UDim2.fromOffset(M, M + math.floor((titleSize + 4) / 2) - math.floor(rowH / 2))
 	rail.root.Size = UDim2.fromOffset(navW, 0)
-	local exit = Parts.exit(root, exitW, btnH, if touch then 12 else 14)
-	exit.Position = UDim2.fromOffset(M, room.Y - M - btnH)
+	local exit = Parts.exit(root, exitW, btnH, if touch then 13 else 15)
+	exit.Position = UDim2.fromOffset(M, exitTop)
 	exit.Activated:Connect(function()
 		if not ctx.busy() then
 			ctx.act.leave()
-		end
-	end)
-	local layoutButton = Parts.square(root, "Layout", btnH, btnH, Parts.ICON.layout)
-	layoutButton.Position = UDim2.fromOffset(M + exitW + 6, room.Y - M - btnH)
-	layoutButton.Activated:Connect(function()
-		if not ctx.busy() then
-			ctx.act.nextLayout()
 		end
 	end)
 
@@ -84,7 +87,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	head.Position = UDim2.fromOffset(cx, M)
 	head.AutomaticSize = Enum.AutomaticSize.XY
 	Kit.list(head, true, if touch then 2 else 4)
-	local title = Parts.title(head, if touch then 15 else 19, ctx.title)
+	local title = Parts.title(head, titleSize, ctx.title)
 	title.LayoutOrder = 1
 	local nameH = if touch then 34 else 46
 	local nameRow = Kit.frame(head, "NameRow")
@@ -187,7 +190,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 
 	-- The room between the words and the items, under the name: the
 	-- subject's (the garage's car is the 3D one behind it).
-	local stageTop = M + (if touch then 15 else 19) + 4 + nameH + (if touch then 6 else 10)
+	local stageTop = M + titleSize + 4 + nameH + (if touch then 6 else 10)
 	local stage = Kit.frame(root, "Stage")
 	stage.Position = UDim2.fromOffset(cx, stageTop)
 	stage.Size = UDim2.fromOffset(math.max(sideLeft - (if touch then 14 else 24) - cx, 0), room.Y - M - stageTop)
@@ -233,6 +236,9 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		m.backdrop = "shade"
 	end
 	m.scroller = scrollKind
+	-- With no fades, a row cut by the list's foot read as broken: the
+	-- blocks fit whole rows (Parts.items).
+	m.fitRows = scrollKind ~= nil
 	local listParent: Frame = body
 	local itemsBox: Frame -- what holds the items in the column
 	if tray then
@@ -360,7 +366,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	-- Coming in: the words and their shade from the left, the column and
 	-- the action from the right, the title from above, the subject up from
 	-- below (Parts.intro).
-	local left: { GuiObject } = { shadeL, rail.root, exit, layoutButton }
+	local left: { GuiObject } = { shadeL, rail.root, exit }
 	local rightSide: { GuiObject } = {}
 	for _, sh in shadesR do
 		table.insert(rightSide, sh)

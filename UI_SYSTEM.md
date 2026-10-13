@@ -258,8 +258,9 @@ one to the next:
 | The action | Bottom right, the bottom row's height | SPAWN THIS CAR / RESPAWN; BUY with the price; DONE | BUY; DRIVE THIS; ON YOUR CAR |
 
 **The layouts** are complete: one choice (`Looks/Layouts`, the LocalPlayer
-attribute `UiLayout`) for every screen, cycled by any LAYOUT button or
-picked in Settings' SCREEN LAYOUT row. SHOWCASE (the words on a shade, a
+attribute `UiLayout`) for every screen, picked in Settings' SCREEN LAYOUT
+row (DOCK on a PC also cycles it with its LAYOUT button; the button beside
+EXIT went, the owner's phone, 2026-10-12: "remove the layout button"). SHOWCASE (the words on a shade, a
 graphite column), GLASS (the column see-through), FRAME (the column on a
 shade, the blocks in a tray) and DOCK (the words as tabs in a dock along the
 bottom with LAYOUT, the action and EXIT; the column a panel on the left, the
@@ -273,17 +274,27 @@ screen has: never nearer its edge than a notch's depth, so with no margin
 past the coins it stays put), and its list has no fades ("remove the
 scroll shaddow"). In their place an obvious up/down control
 (`Parts.scroller`; "add an obvious scroll/updown for the options (make a
-couple versions)"), the three phone layouts the LAYOUT button cycles:
+couple versions)"), the three phone layouts Settings' SCREEN LAYOUT picks
+between (GLASS ARROWS first):
 - GLASS ARROWS: round white chevron buttons centred on the list's top and
-  foot, over the row cut off there, each only while there is more that
-  way; a row a tap; the down one nods once when a set opens.
+  foot, each only while there is more that way; a row a tap; the down one
+  nods once when a set opens.
 - GLASS RAIL: a track down the list's right edge with a green thumb as
   tall as the share showing, dragged to scroll, chevrons at its ends a row
   a tap (the blocks give it 18 px).
 - GLASS MORE: a pager row under the list in its own room, a small up and a
   wide "11 MORE" (the items wholly below), faded at either end; a page a
   tap.
-The settings' rows scroll the same way. The garage view hides the shell's
+The settings' rows scroll the same way. With no fades a row cut by the
+list's foot read as broken, so the blocks fit whole rows (`fitRows`): as
+many as fit, each up to a quarter smaller so they do, centred in the width
+that frees; a set that fits does not scroll, and the list's spare height
+is left empty under the rows (MORE's pager follows them up).
+
+The bottom row is one line: EXIT is the action's slanted shape in graphite
+(`Parts.C.graphite`), the action's height on the action's foot, under the
+words; the words share the height down to it (38 to 44 drawing px a row on
+a phone), the first level with the title. The garage view hides the shell's
 roof beams on this screen (`GarageConfig.viewHides`): they crossed right
 behind the coins and read as their shadow.
 

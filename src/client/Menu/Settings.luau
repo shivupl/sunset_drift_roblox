@@ -258,7 +258,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 		shown = function() end,
 	}
 
-	-- A choice made elsewhere (U, Y, STYLE, the LAYOUT button) shows here.
+	-- A choice made elsewhere (U, Y, STYLE, DOCK's LAYOUT button) shows here.
 	Sky.changed = function()
 		paint()
 	end
