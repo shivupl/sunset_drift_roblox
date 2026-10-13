@@ -34,7 +34,7 @@ local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 local Layouts = require(Looks:WaitForChild("Layouts"))
-local CarsLayouts = require(script:WaitForChild("CarsLayouts"))
+local Showroom = require(script:WaitForChild("Looks"):WaitForChild("Showroom"))
 local GarageSounds = require(Client:WaitForChild("Garage"):WaitForChild("GarageSounds"))
 local Page = require(script:WaitForChild("Page"))
 local Cars = require(script:WaitForChild("Cars"))
@@ -266,10 +266,12 @@ local build: (switch: boolean) -> ()
 local builtFor = Vector2.zero
 local openedAt = 0
 
--- The layout a page is drawn in: CARS has its own looks (CarsLayouts),
--- the rest the screen's.
+-- The layout a page is drawn in: CARS is the car picker's SHOWROOM (the
+-- owner, 2026-10-12, of PICKER, SHOWROOM and FRAME tried: "lets go with
+-- showroom for the cars menu"), the rest the screen's.
+local CARS_LOOK: Types.Layout = { id = "showroom", name = "SHOWROOM", build = Showroom.build }
 local function layoutFor(id: string): Types.Layout
-	return if id == "cars" then CarsLayouts.current() else Layouts.current()
+	return if id == "cars" then CARS_LOOK else Layouts.current()
 end
 
 local function choosePage(id: string)
@@ -308,12 +310,6 @@ local function nextLayout()
 		return
 	end
 	GarageSounds.play("tab")
-	if pageId == "cars" then
-		local nxt = CarsLayouts.after()
-		pendingToast = `CARS: {nxt.name}`
-		CarsLayouts.set(nxt.id)
-		return
-	end
 	local nxt = Layouts.after()
 	pendingToast = `LAYOUT: {nxt.name}`
 	Layouts.set(nxt.id)
@@ -769,13 +765,11 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 			end
 		end)
 	end
-	for _, name in { Layouts.ATTRIBUTE, CarsLayouts.ATTRIBUTE } do
-		player:GetAttributeChangedSignal(name):Connect(function()
-			if isOpen then
-				build(false)
-			end
-		end)
-	end
+	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
+		if isOpen then
+			build(false)
+		end
+	end)
 	for _, name in { "HudVariant", "HudLayout" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			if isOpen then

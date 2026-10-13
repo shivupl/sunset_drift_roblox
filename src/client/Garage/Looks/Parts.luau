@@ -1027,7 +1027,7 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	}
 end
 
--- The car picker's wide cards (the menu's CARS looks, 2026-10-12, the
+-- The car picker's wide cards (the menu's SHOWROOM, 2026-10-12, the
 -- owner: "the old layouts were internally a bit better, the rhs boxes"):
 -- Kit.tile, the picker's cut-corner box with the car's name, its own star,
 -- its photo on a lit stage and its drive chip, `cols` across in a list
@@ -1115,8 +1115,8 @@ function Parts.cards(parent: Instance, ctx: Types.Ctx, cols: number, cellH: numb
 	}
 end
 
--- A search box: the picker's glass and a field (the menu's SHOWROOM and
--- FRAME looks), telling `ctx.search` as it is typed in.
+-- A search box: the picker's glass and a field (the menu's SHOWROOM),
+-- telling `ctx.search` as it is typed in.
 function Parts.searchBox(parent: Instance, ctx: Types.Ctx, h: number, size: number): Frame
 	local box = Kit.frame(parent, "Search", Color3.new(1, 1, 1), 0.94)
 	box.Size = UDim2.new(1, 0, 0, h)
@@ -1151,8 +1151,10 @@ function Parts.searchBox(parent: Instance, ctx: Types.Ctx, h: number, size: numb
 	return box
 end
 
--- The picker's header buttons (the menu's PICKER and SHOWROOM looks): the
--- plates, the settings, the next look, close; each a square with its icon.
+-- The picker's header buttons (the menu's SHOWROOM): the plates, the
+-- settings, close; each a square with its icon. The next-look button went
+-- with the other looks (the owner, 2026-10-12: "remove the unnecessary
+-- layout buttons from the top of the showroom menu").
 function Parts.headerButtons(parent: Instance, ctx: Types.Ctx, size: number, gap: number): Frame
 	local row = Kit.frame(parent, "Buttons")
 	row.AutomaticSize = Enum.AutomaticSize.X
@@ -1165,7 +1167,6 @@ function Parts.headerButtons(parent: Instance, ctx: Types.Ctx, size: number, gap
 		{ name = "Settings", icon = Art.settings, fn = function()
 			ctx.act.tab("settings")
 		end },
-		{ name = "Layout", icon = Art.layout, fn = ctx.act.nextLayout },
 	}
 	for i, d in defs do
 		local b = Kit.iconButton(row, d.name, d.icon, size)

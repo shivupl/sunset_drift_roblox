@@ -1,10 +1,12 @@
 --!strict
 -- SHOWROOM: the car picker's two panels (the owner's favourite of its
--- looks), as a CARS look of the menu (2026-10-12). On the left the picked
--- car: its name, drive chip and star over it, on a lit stage with IN USE
--- when you are in it, its weight and length under it, and SPAWN. On the
--- right CARS with the header's buttons, the drive tabs with a search beside
--- them, and the wide cards two across.
+-- looks), the menu's CARS (2026-10-12; of PICKER, SHOWROOM and FRAME
+-- tried, "lets go with showroom for the cars menu"). On the left the
+-- picked car: its name, drive chip and star over it, on a lit stage with
+-- IN USE when you are in it, its weight and length under it, and SPAWN.
+-- On the right CARS with the header's buttons (the plates, the settings,
+-- close), the drive tabs with a search beside them, and the wide cards
+-- two across.
 local Client = script.Parent.Parent.Parent
 local Kit = require(Client:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local CarArt = require(Client:WaitForChild("CarPicker"):WaitForChild("Art"))
