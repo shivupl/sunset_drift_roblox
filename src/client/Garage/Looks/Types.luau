@@ -30,6 +30,10 @@ export type Entry = {
 	shape: Shape,
 	draw: (tile: Frame) -> (), -- paints the swatch
 	fades: boolean, -- the swatch fades when the car can't show it
+	-- A car's photo and its drive word, for the picker's wide card
+	-- (Parts.cards; the menu's CARS looks, 2026-10-12).
+	image: string?,
+	chip: string?,
 }
 
 -- The word under an item's name (UI_SYSTEM.md "Shop items").
@@ -39,6 +43,7 @@ export type EntryState = {
 	disabled: boolean,
 	word: string,
 	kind: WordKind,
+	starred: boolean?, -- its own star lit (a car card's)
 }
 
 -- What the action button does now: BUY the preview, DRIVE THIS car (or
@@ -73,6 +78,7 @@ export type Actions = {
 	nextLayout: () -> (),
 	collapse: () -> (),
 	star: (() -> ())?, -- the favourite star tapped
+	starEntry: ((e: Entry) -> ())?, -- a card's own star tapped
 }
 
 export type Ctx = {
@@ -97,6 +103,8 @@ export type Ctx = {
 	starred: (() -> boolean?)?,
 	-- The form for the tab showing (Form), or nil.
 	form: (() -> FormBuilder?)?,
+	-- A search over the items (the menu's cars), for a layout with a box.
+	search: { get: () -> string, set: (q: string) -> () }?,
 	act: Actions,
 	-- An item's press and tap, tracked through UserInputService (a button in
 	-- a phone's ScrollingFrame never sees Activated).

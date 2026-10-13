@@ -299,6 +299,31 @@ a phone), the first level with the title. The garage view hides the shell's
 roof beams on this screen (`GarageConfig.viewHides`): they crossed right
 behind the coins and read as their shadow.
 
+**The CARS page has looks of its own** (`Menu/CarsLayouts`, the LocalPlayer
+attribute `CarsLayout`; the owner, 2026-10-12: "the old layouts were
+internally a bit better the rhs boxes, the overall styling. on start, it
+should be simple. make a couple more variations for me to try from, maybe
+ones that combine all options"), cycled by the LAYOUT button in the cars
+header; PLATES and SETTINGS keep the screen's layout, and Settings is left
+as it is. All three draw the car picker's wide card (`Parts.cards`:
+`Kit.tile`, the name, its own star, the photo on a lit stage, the drive
+chip, the picked one edged green), with the rail and the finger's scrolling
+as the blocks have:
+- PICKER, the start: the picker's one panel down the left with the road
+  open beside it: CARS and the header's buttons (plates, settings, the next
+  look, close), the drive tabs, the cards two across, the picked car's name
+  and "IN USE · FWD" over SPAWN at the foot.
+- SHOWROOM: the picker's two panels: the picked car on the left (its name,
+  chip and star, the photo with IN USE, weight and length, SPAWN), CARS on
+  the right with the tabs, a search beside them and the cards.
+- FRAME: the screen's one frame (the words, HAJWALA, the car on the stage
+  with its stats, EXIT, the coins) with the cards one to a row in the GLASS
+  column, a search and the next-look button over them.
+A page says what the cards need (`Entry.image`, `Entry.chip`,
+`EntryState.starred`, `Actions.starEntry`, `Ctx.search`); moving between a
+page with its own look and one without builds the screen again, coming in
+from its edges.
+
 The pieces they share (`Looks/Parts`): the column lines up under the
 coins, its right edge and just below their foot (`Parts.coinAnchor`: the
 HUD's gui keeps out of the notch only, a panel's out of Roblox's margins

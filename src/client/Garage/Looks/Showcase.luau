@@ -35,9 +35,11 @@ local CLEAR_EDGE = 40
 export type Variant = "column" | "glass" | "frame"
 
 -- How a variant is fitted out beyond its look: how far past the coins'
--- right edge the column reaches, and the list's up/down control in place
--- of its fades (Parts.scroller).
-export type Options = { reach: number?, scroller: Parts.ScrollKind? }
+-- right edge the column reaches, the list's up/down control in place of
+-- its fades (Parts.scroller), and `cards`: the picker's wide cards one to
+-- a row in place of the blocks, with a search over them and the next-look
+-- button beside it (the menu's FRAME cars look, 2026-10-12).
+export type Options = { reach: number?, scroller: Parts.ScrollKind?, cards: boolean? }
 
 function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, options: Options?): Types.View
 	local opts: Options = options or {}
@@ -256,7 +258,28 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		listParent = t
 		itemsBox = t
 	end
-	local items = Parts.items(listParent, ctx, cols, cols, block, block, gap, m)
+	local items: Parts.Items = if opts.cards
+		then Parts.cards(listParent, ctx, 1, if touch then 96 else 128, gap)
+		else Parts.items(listParent, ctx, cols, cols, block, block, gap, m)
+	-- The search and the next-look button, over the cards.
+	if opts.cards and ctx.search then
+		local row = Kit.frame(body, "SearchRow")
+		row.LayoutOrder = 3
+		row.Size = UDim2.new(1, 0, 0, subH)
+		Kit.list(row, false, 6, Enum.VerticalAlignment.Center)
+		local holder = Kit.frame(row, "SearchHolder")
+		holder.LayoutOrder = 1
+		holder.Size = UDim2.fromScale(0, 1)
+		Kit.fill(holder)
+		Parts.searchBox(holder, ctx, subH, if touch then 11 else 13)
+		local nextLook = Kit.iconButton(row, "Layout", CarArt.layout, subH)
+		nextLook.LayoutOrder = 2
+		nextLook.Activated:Connect(function()
+			if not ctx.busy() then
+				ctx.act.nextLayout()
+			end
+		end)
+	end
 	if tray then
 		items.root.Size = UDim2.fromScale(1, 1)
 	else

@@ -48,6 +48,7 @@ local M_FROM, M_SPAN = 4.5, 2
 
 function Cars.new(shell: Page.Shell): Page.Page
 	local filter = "all"
+	local query = ""
 	local selected = ""
 	local favs: { [string]: boolean } = {}
 
@@ -81,10 +82,28 @@ function Cars.new(shell: Page.Shell): Page.Page
 	end
 
 	local function visible(c: Car): boolean
+		if query ~= "" and not string.find(string.lower(c.name), string.lower(query), 1, true) then
+			return false
+		end
 		if filter == "fav" then
 			return favs[c.id] == true
 		end
 		return filter == "all" or string.lower(c.drive) == filter
+	end
+
+	local function toggleFav(id: string)
+		if id == "" then
+			return
+		end
+		if favs[id] then
+			favs[id] = nil
+		else
+			favs[id] = true
+		end
+		if filter == "fav" then
+			shell.fill()
+		end
+		shell.refresh()
 	end
 
 	local function picked(): Car?
@@ -126,6 +145,9 @@ function Cars.new(shell: Page.Shell): Page.Page
 			if filter == "fav" and next(favs) == nil then
 				return "Star a car to keep it here."
 			end
+			if query ~= "" and #page.entries() == 0 then
+				return "No car matches that."
+			end
 			return nil
 		end,
 		entries = function()
@@ -143,6 +165,8 @@ function Cars.new(shell: Page.Shell): Page.Page
 						draw = function(tile: Frame)
 							drawPhoto(tile, c)
 						end,
+						image = c.photo,
+						chip = c.drive,
 					})
 				end
 			end
@@ -156,6 +180,7 @@ function Cars.new(shell: Page.Shell): Page.Page
 				disabled = false,
 				word = if inUse then "✓ IN USE" else (if c then c.drive else ""),
 				kind = if inUse then "owned" else "note",
+				starred = favs[e.key] == true,
 			}
 		end,
 		tap = function(e: Types.Entry)
@@ -194,19 +219,21 @@ function Cars.new(shell: Page.Shell): Page.Page
 			return favs[selected] == true
 		end,
 		star = function()
-			if selected == "" then
-				return
-			end
-			if favs[selected] then
-				favs[selected] = nil
-			else
-				favs[selected] = true
-			end
-			if filter == "fav" then
-				shell.fill()
-			end
-			shell.refresh()
+			toggleFav(selected)
 		end,
+		starEntry = toggleFav,
+		search = {
+			get = function()
+				return query
+			end,
+			set = function(q: string)
+				if q ~= query then
+					query = q
+					shell.fill()
+					shell.refresh()
+				end
+			end,
+		},
 		form = function()
 			return nil
 		end,

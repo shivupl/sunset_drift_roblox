@@ -19,7 +19,9 @@ menu (`src/client/Menu`: CARS, PLATES, SETTINGS) draws through the garage's layo
 the garage share the words, EXIT, the HUD's own coins, the column, the action and one motion; one
 layout choice (`UiLayout`: SHOWCASE, GLASS, FRAME, DOCK) for every screen. The car picker's layouts
 (COMPACT, SHOWROOM, STRIP) and the old PLATES and SETTINGS panels are gone on this branch (they are
-on `tweaks-2`). UI_SYSTEM.md "One frame for every screen" has the whole of it.
+on `tweaks-2`). The CARS page then got looks of its own to choose from (PICKER, SHOWROOM, FRAME:
+the old picker's wide cards, `Menu/CarsLayouts`). UI_SYSTEM.md "One frame for every screen" has
+the whole of it.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long

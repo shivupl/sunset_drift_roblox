@@ -1027,6 +1027,165 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	}
 end
 
+-- The car picker's wide cards (the menu's CARS looks, 2026-10-12, the
+-- owner: "the old layouts were internally a bit better, the rhs boxes"):
+-- Kit.tile, the picker's cut-corner box with the car's name, its own star,
+-- its photo on a lit stage and its drive chip, `cols` across in a list
+-- that scrolls as the blocks do (the rail and the finger on a phone).
+-- The same handle as Parts.items, so a layout takes either.
+function Parts.cards(parent: Instance, ctx: Types.Ctx, cols: number, cellH: number, gap: number): Items
+	local touch = ctx.touch
+	local holder = Kit.frame(parent, "Cars")
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "Scroll"
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.fromScale(1, 1)
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
+	scroll.ScrollBarImageTransparency = 0.8
+	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new()
+	scroll.Active = true
+	scroll.Parent = holder
+	local kind: ScrollKind? = if touch then "rail" else nil
+	Kit.pad(scroll, 2, 4 + Parts.railRoom(kind), 4, 2)
+	local grid = Instance.new("UIGridLayout")
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.CellPadding = UDim2.fromOffset(gap, gap)
+	grid.CellSize = UDim2.new(1 / cols, -math.ceil(gap * (cols - 1) / cols), 0, cellH)
+	grid.Parent = scroll
+	if kind then
+		Parts.scroller(holder, scroll, kind, touch)
+	end
+	if touch then
+		Parts.touchScroll(scroll, function(): boolean
+			return not ctx.busy()
+		end)
+	end
+	local empty = Kit.text(holder, "Empty", "", if touch then 12 else 13, Enum.FontWeight.SemiBold, false, Kit.C.sub)
+	empty.Size = UDim2.fromScale(1, 1)
+	empty.TextXAlignment = Enum.TextXAlignment.Center
+	empty.TextWrapped = true
+	empty.Visible = false
+	-- The picker's card metrics (CarPicker/Common.tileMetrics).
+	local m: Kit.TileMetrics = if touch
+		then { name = 12, chipH = 17, chipText = 9, starBox = 30, star = 16, imageTop = 16, imageBottom = 14, ring = 112, ringInset = 26 }
+		else { name = 14, chipH = 20, chipText = 10, starBox = 34, star = 19, imageTop = 20, imageBottom = 18, ring = 150, ringInset = 30 }
+	local tiles: { { e: Types.Entry, tile: Kit.Tile } } = {}
+	return {
+		root = holder,
+		scroll = scroll,
+		fill = function(entries: { Types.Entry })
+			for _, t in tiles do
+				t.tile.root:Destroy()
+			end
+			table.clear(tiles)
+			for i, e in entries do
+				local car: Kit.Car = { id = e.key, name = e.name, drive = e.chip or "", blurb = "", kg = 0, lengthM = 0, image = e.image }
+				local tile = Kit.tile(scroll, car, m)
+				tile.root.LayoutOrder = i
+				local starFn = ctx.act.starEntry
+				if starFn then
+					ctx.tap(tile.star, scroll, function()
+						starFn(e)
+					end)
+				end
+				ctx.tap(tile.root, scroll, function()
+					ctx.act.entry(e)
+				end)
+				table.insert(tiles, { e = e, tile = tile })
+			end
+			scroll.CanvasPosition = Vector2.zero
+			empty.Visible = #entries == 0
+			empty.Text = ctx.note() or "No car matches that."
+			if #entries > 0 then
+				Parts.settle(scroll, Parts.LIFT)
+			end
+		end,
+		refresh = function()
+			for _, t in tiles do
+				local st = ctx.stateOf(t.e)
+				t.tile.setPicked(st.chosen)
+				t.tile.setFav(st.starred == true)
+			end
+		end,
+		pop = function() end,
+	}
+end
+
+-- A search box: the picker's glass and a field (the menu's SHOWROOM and
+-- FRAME looks), telling `ctx.search` as it is typed in.
+function Parts.searchBox(parent: Instance, ctx: Types.Ctx, h: number, size: number): Frame
+	local box = Kit.frame(parent, "Search", Color3.new(1, 1, 1), 0.94)
+	box.Size = UDim2.new(1, 0, 0, h)
+	Kit.corner(box, math.floor(h * 0.3))
+	Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.88)
+	local icon = Kit.image(box, "Icon", Art.search, Kit.C.green, 0)
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.Position = UDim2.new(0, math.floor(h * 0.35), 0.5, 0)
+	icon.Size = UDim2.fromOffset(math.floor(h * 0.5), math.floor(h * 0.5))
+	local field = Instance.new("TextBox")
+	field.Name = "Field"
+	field.BackgroundTransparency = 1
+	field.ClearTextOnFocus = false
+	field.PlaceholderText = "Search"
+	field.PlaceholderColor3 = Kit.C.sub
+	field.TextColor3 = Kit.C.text
+	field.TextSize = size
+	field.FontFace = Kit.font(Enum.FontWeight.SemiBold)
+	field.TextXAlignment = Enum.TextXAlignment.Left
+	field.TextTruncate = Enum.TextTruncate.AtEnd
+	field.Position = UDim2.fromOffset(math.floor(h * 1.1), 0)
+	field.Size = UDim2.new(1, -math.floor(h * 1.3), 1, 0)
+	field.ZIndex = 2
+	local search = ctx.search
+	if search then
+		field.Text = search.get()
+		field:GetPropertyChangedSignal("Text"):Connect(function()
+			search.set(field.Text)
+		end)
+	end
+	field.Parent = box
+	return box
+end
+
+-- The picker's header buttons (the menu's PICKER and SHOWROOM looks): the
+-- plates, the settings, the next look, close; each a square with its icon.
+function Parts.headerButtons(parent: Instance, ctx: Types.Ctx, size: number, gap: number): Frame
+	local row = Kit.frame(parent, "Buttons")
+	row.AutomaticSize = Enum.AutomaticSize.X
+	row.Size = UDim2.fromOffset(0, size)
+	Kit.list(row, false, gap, Enum.VerticalAlignment.Center)
+	local defs: { { name: string, icon: string, fn: () -> () } } = {
+		{ name = "Plates", icon = Art.plates, fn = function()
+			ctx.act.tab("plates")
+		end },
+		{ name = "Settings", icon = Art.settings, fn = function()
+			ctx.act.tab("settings")
+		end },
+		{ name = "Layout", icon = Art.layout, fn = ctx.act.nextLayout },
+	}
+	for i, d in defs do
+		local b = Kit.iconButton(row, d.name, d.icon, size)
+		b.LayoutOrder = i
+		b.Activated:Connect(function()
+			if not ctx.busy() then
+				d.fn()
+			end
+		end)
+	end
+	local close = Kit.iconButton(row, "Close", nil, size, "×")
+	close.LayoutOrder = 9
+	close.Activated:Connect(function()
+		if not ctx.busy() then
+			ctx.act.leave()
+		end
+	end)
+	return row
+end
+
 -- The line naming what the action is for: the item picked and how it
 -- stands (Previewing, On your Kamri), over or beside the action. Not on
 -- MY CARS: the car's name is over the car already (the owner's phone,

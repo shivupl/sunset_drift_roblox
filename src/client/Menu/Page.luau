@@ -64,6 +64,10 @@ export type Page = {
 	-- The favourite star beside the subject: nil for none.
 	starred: () -> boolean?,
 	star: () -> (),
+	-- A card's own star (the cars' wide cards): nil for none.
+	starEntry: ((key: string) -> ())?,
+	-- A search over the items: nil for none.
+	search: { get: () -> string, set: (q: string) -> () }?,
 	form: () -> Types.FormBuilder?,
 	stage: (stage: Frame, touch: boolean) -> Stage,
 	-- The page comes up (the menu opens on it, or its word is tapped).
