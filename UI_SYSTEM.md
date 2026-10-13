@@ -419,7 +419,11 @@ round graphite icons with no words, GARAGE ringed green, the open one
 widened into a green capsule with its word; TABS, GARAGE, PLATES and
 SETTINGS as the kit's slanted tabs, the open one green, the driving tools
 as graphite squares after them. With CLEAR UI on the row is one small
-round gear. The canvas's rows I and J (more rows; seven looks for the
+round gear. The row is level with Roblox's own pill, which is not centred
+in the top bar inset but 12 px down it and 44 tall where the inset is 58
+(Studio and the owner's phone agree), so the row takes those fractions
+of the inset's height ("line the buttons up well with this
+horizontally"). The canvas's rows I and J (more rows; seven looks for the
 cash) are not built.
 
 Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to

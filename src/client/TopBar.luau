@@ -67,9 +67,13 @@ local SPECS: { Spec } = {
 }
 local SETTINGS_SPEC = SPECS[6]
 
--- A button's height is Roblox's top bar less this, within these bounds
--- (the CARS button's measure: as tall as Roblox's own buttons).
-local INSET = 12
+-- The row sits level with Roblox's own pill (the owner, 2026-10-13: "line
+-- the buttons up well with this horizontally"): the pill is not centred
+-- in the top bar inset but 12 px down it and 44 tall where the inset is
+-- 58 (measured in Studio and on the owner's phone), so the row takes the
+-- same fractions of the inset's height, within these bounds.
+local PILL_TOP = 12 / 58
+local PILL_H = 44 / 58
 local MIN_H, MAX_H = 36, 48
 local GAP = 6
 -- How far a press sinks.
@@ -382,8 +386,8 @@ local function fit()
 		return
 	end
 	local bar = GuiService.TopbarInset
-	h = math.clamp(bar.Height - INSET, MIN_H, MAX_H)
-	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.max(bar.Height, h) / 2)
+	h = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
+	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + h / 2)
 	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
 	rebuild()
