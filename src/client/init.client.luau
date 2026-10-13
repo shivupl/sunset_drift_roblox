@@ -152,15 +152,12 @@ Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
 -- The phone's top bar, right of Roblox's buttons: GARAGE (the car menu) and
--- SETTINGS always (PLATES too in its TABS row), RESET, VIEW and STYLE while
--- driving; a page's button closes it when it is the one up. A desktop keeps
--- the CARS button and the keys (M, R, V, U).
+-- SETTINGS always, RESET, VIEW and STYLE while driving; a page's button
+-- closes it when it is the one up. A desktop keeps the CARS button and the
+-- keys (M, R, V, U).
 TopBar.start({
 	garage = function()
 		SpawnMenu.toggleTab("cars")
-	end,
-	plates = function()
-		SpawnMenu.toggleTab("plates")
 	end,
 	reset = function()
 		Input.pulse("reset")

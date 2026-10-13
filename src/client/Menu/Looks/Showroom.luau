@@ -78,21 +78,11 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	local rowH = if touch then 52 else 60
 	local under = rowH + 6
 
-	-- The close, the name, chip and star in a row over the box. The close
-	-- is always here, top left (the owner, 2026-10-13: "when im in the menu
-	-- there should always be a like x button top left"), beside the top
-	-- row's lit button and a tap outside.
+	-- The name, chip and star in a row over the box.
 	local head = Kit.frame(left, "Head")
 	head.LayoutOrder = 1
 	head.Size = UDim2.new(1, 0, 0, if touch then 32 else 36)
 	Kit.list(head, false, 8, Enum.VerticalAlignment.Center)
-	local close = Kit.iconButton(head, "Close", nil, if touch then 32 else 36, "×")
-	close.LayoutOrder = 0
-	close.Activated:Connect(function()
-		if not ctx.busy() then
-			ctx.act.leave()
-		end
-	end)
 	local name = Kit.text(head, "Name", "", if touch then 17 else 22, Enum.FontWeight.Heavy, true)
 	name.LayoutOrder = 1
 	name.Size = UDim2.fromScale(0, 1)
@@ -243,6 +233,16 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	count.AutomaticSize = Enum.AutomaticSize.X
 	count.Size = UDim2.fromScale(0, 1)
 	count.TextTruncate = Enum.TextTruncate.None
+	-- The close, always, at the top right (the owner, 2026-10-13: "there
+	-- should always be a like x button ... top right, as it was before"),
+	-- beside the top row's lit button and a tap outside.
+	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
+	close.LayoutOrder = 5
+	close.Activated:Connect(function()
+		if not ctx.busy() then
+			ctx.act.leave()
+		end
+	end)
 
 	local subH = if touch then 30 else 34
 	local filter = Kit.frame(right, "Filter")

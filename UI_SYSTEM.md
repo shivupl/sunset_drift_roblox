@@ -416,17 +416,23 @@ menu's dim (DisplayOrder 22), so the lit button stays crisp, and shades
 its other buttons itself while the menu is open ("it should darken the
 other buttons on top"), all of them under a confirm sheet
 (`TopBar.setBusy`); Roblox's own pill is not ours to shade. Three ways
-out of the menu: the × at the top left of every page (the picked car's
-head, the settings header; "there should always be a like x button top
-left"), the row's lit button, and a tap anywhere outside the panels (the
-menu's `Outside` button under everything it draws; "i should also be able
-to leave the menu by clicking outside"). Two rows to try from the canvas's row H (the attribute
+out of the menu: the × at the top right of every page, as before (the
+cars header after the count, the settings header after the note; "there
+should always be a like x button ... top right, as it was before"), the
+row's lit button, and a tap anywhere outside the panels (the menu's
+`Outside` button under everything it draws; "i should also be able to
+leave the menu by clicking outside"). Two rows to try from the canvas's row H (the attribute
 `TopRow`, cycled by the temporary ROW button at the row's end): DISCS,
 round graphite icons with no words, GARAGE ringed green, the open one
-widened into a green capsule with its word; TABS, GARAGE, PLATES and
-SETTINGS as the kit's slanted tabs, the open one green, the driving tools
-as graphite squares after them. With CLEAR UI on the row is one small
-round gear. The row is level with Roblox's own pill, which is not centred
+widened into a green capsule with its word; TABS, GARAGE and SETTINGS as
+the kit's slanted tabs, the open one green, the driving tools as graphite
+squares after them (PLATES was a tab too: "remove the plates tab on the
+top menu for now"); and three glass rows ("make some more glass options
+like the one i already have"), see-through as the garage's GLASS column:
+GLASS DISCS, the discs see-through; GLASS PILL, one capsule like Roblox's
+with the icons in it, the open one a green capsule inside with its word;
+GLASS BAR, one bar with each button's icon over a small word, the open
+one green. With CLEAR UI on the row is one small round gear. The row is level with Roblox's own pill, which is not centred
 in the top bar inset but 12 px down it and 44 tall where the inset is 58
 (Studio and the owner's phone agree), so the row takes those fractions
 of the inset's height ("line the buttons up well with this
