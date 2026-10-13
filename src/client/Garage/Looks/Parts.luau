@@ -614,6 +614,108 @@ function Parts.fades(holder: GuiObject, touch: boolean, onShade: boolean): Fades
 	}
 end
 
+-- A list's touch scrolling done by hand (the owner's phone, 2026-10-12:
+-- "sometimes when i try it just doesnt scroll"). Roblox's own gesture on a
+-- ScrollingFrame locked to Y takes a drag only once the finger has moved
+-- mostly up or down, and drops one that starts a little across, so a
+-- player lifts and tries again. This follows the finger from its first
+-- pixel, its up-and-down only, and flings on release; the engine's own
+-- gesture is off so the two do not fight. On touch screens only (a PC
+-- keeps the wheel). A touch that starts on a button outside the list (the
+-- rail's thumb, EXIT) is that button's. `live` says whether the list may
+-- scroll now (not under a sheet).
+--   FLING_DECAY   how fast a fling dies, per second (4: about a second of
+--                 travel after a flick; higher stops sooner).
+--   FLING_STOP    the speed, px/s, under which a fling ends.
+local FLING_DECAY = 4
+local FLING_STOP = 24
+function Parts.touchScroll(scroll: ScrollingFrame, live: (() -> boolean)?)
+	scroll.ScrollingEnabled = false
+	local function limit(): number
+		return math.max(0, scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteWindowSize.Y)
+	end
+	local function set(y: number)
+		scroll.CanvasPosition = Vector2.new(scroll.CanvasPosition.X, math.clamp(y, 0, limit()))
+	end
+	local fling: RBXScriptConnection? = nil
+	local function stopFling()
+		local f = fling
+		if f then
+			f:Disconnect()
+			fling = nil
+		end
+	end
+	-- Is the point on the list, with no button of something else over it?
+	local function onList(pos: Vector3): boolean
+		local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+		if not pg or not scroll.Parent then
+			return false
+		end
+		local hit = false
+		for _, o in pg:GetGuiObjectsAtPosition(pos.X, pos.Y) do
+			if o == scroll or o:IsDescendantOf(scroll) then
+				hit = true
+			elseif o:IsA("GuiButton") and o.Visible then
+				return false
+			end
+		end
+		return hit
+	end
+	local drag: { input: InputObject, y: number, vel: number, t: number }? = nil
+	UserInputService.InputBegan:Connect(function(io: InputObject)
+		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			return
+		end
+		if drag or (live and not live()) or not onList(io.Position) then
+			return
+		end
+		stopFling()
+		drag = { input = io, y = io.Position.Y, vel = 0, t = os.clock() }
+	end)
+	UserInputService.InputChanged:Connect(function(io: InputObject)
+		local d = drag
+		if not d or not scroll.Parent then
+			return
+		end
+		if io ~= d.input and io.UserInputType ~= Enum.UserInputType.MouseMovement then
+			return
+		end
+		local now = os.clock()
+		local dy = io.Position.Y - d.y
+		local dt = math.max(now - d.t, 1 / 240)
+		-- The fling's speed is the last moves' average, so a finger that
+		-- stops before lifting leaves none.
+		d.vel = d.vel * 0.5 + (dy / dt) * 0.5
+		d.y, d.t = io.Position.Y, now
+		set(scroll.CanvasPosition.Y - dy)
+	end)
+	UserInputService.InputEnded:Connect(function(io: InputObject)
+		local d = drag
+		if not d or (io ~= d.input and io.UserInputType ~= Enum.UserInputType.MouseButton1) then
+			return
+		end
+		drag = nil
+		local vel = if os.clock() - d.t < 0.1 then d.vel else 0
+		if math.abs(vel) < FLING_STOP then
+			return
+		end
+		fling = RunService.Heartbeat:Connect(function(dt: number)
+			if not scroll.Parent then
+				stopFling()
+				return
+			end
+			local before = scroll.CanvasPosition.Y
+			set(before - vel * dt)
+			vel *= math.exp(-FLING_DECAY * dt)
+			if math.abs(vel) < FLING_STOP or scroll.CanvasPosition.Y == before then
+				stopFling()
+			end
+		end)
+	end)
+	-- A set built again (a tab tap) starts at the top: no fling carries on.
+	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(stopFling)
+end
+
 -- An obvious way up and down a list (the owner, 2026-10-12: "add an
 -- obvious scroll/updown for the options (make a couple versions)"; of
 -- ARROWS, RAIL and MORE tried, they picked RAIL from their phone, then
@@ -798,10 +900,15 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		topFade.Visible = kind == nil and first.box.root.AbsolutePosition.Y < y0 - 1
 		bottomFade.Visible = kind == nil and l.AbsolutePosition.Y + l.AbsoluteSize.Y > y1 + 1
 	end
-	-- The rail.
+	-- The rail, and on a phone the finger's own scrolling.
 	local control: Scroller? = nil
 	if kind then
 		control = Parts.scroller(holder, scroll, kind, ctx.touch)
+	end
+	if ctx.touch then
+		Parts.touchScroll(scroll, function(): boolean
+			return not ctx.busy()
+		end)
 	end
 	scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)

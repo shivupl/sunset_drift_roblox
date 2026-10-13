@@ -174,6 +174,9 @@ function Settings.new(shell: Page.Shell): Page.Page
 				else
 					Parts.fades(holder, touch, shade).watch(scroll)
 				end
+				if touch then
+					Parts.touchScroll(scroll, nil)
+				end
 				Kit.list(scroll, true, if touch then 12 else 16)
 				local h = if touch then 30 else 36
 				local size = if touch then 10 else 12

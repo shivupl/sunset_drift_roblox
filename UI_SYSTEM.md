@@ -277,7 +277,15 @@ obvious scroll/updown for the options (make a couple versions)": ARROWS,
 RAIL and MORE were tried, and from their phone the owner picked RAIL, then
 "remove the two arrows on either side, have a simple scroll bar"): a track
 down the list's right edge with a green thumb the track's width, as tall
-as the share showing, dragged to scroll (the blocks give it 18 px).
+as the share showing, dragged to scroll (the blocks give it 18 px). On a
+phone the list's own finger scrolling is done by hand too
+(`Parts.touchScroll`; the owner: "sometimes when i try it just doesnt
+scroll"): Roblox's gesture takes a drag only once it moves mostly up or
+down and drops one that starts across, so the list follows the finger
+from its first pixel, up-and-down only, and flings on release
+(`FLING_DECAY` 4 per second, `FLING_STOP` 24 px/s); the engine's gesture
+is off there. A touch that starts on a button outside the list (the
+thumb, EXIT) is that button's.
 The settings' rows scroll the same way. With no fades a row cut by the
 list's foot read as broken, so the blocks fit whole rows (`fitRows`): as
 many as fit, each up to a quarter smaller so they do, centred in the width
