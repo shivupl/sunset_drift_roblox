@@ -70,7 +70,9 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local exitTop = room.Y - M - btnH
 	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else 54
 	local rowH = math.clamp(math.floor((exitTop - 12 - M) / math.max(#ctx.tabs, 1)), rowMin, rowMax)
-	local rail = Parts.wordRail(root, ctx, rowH, if touch then 13 else 16, if touch then 17 else 21, true)
+	-- The words two points bigger on a phone (the owner, 2026-10-12:
+	-- "slightly increase the font size of the left options").
+	local rail = Parts.wordRail(root, ctx, rowH, if touch then 15 else 16, if touch then 19 else 21, true)
 	rail.root.Position = UDim2.fromOffset(M, M + math.floor((titleSize + 4) / 2) - math.floor(rowH / 2))
 	rail.root.Size = UDim2.fromOffset(navW, 0)
 	local exit = Parts.exit(root, exitW, btnH, if touch then 13 else 15)
