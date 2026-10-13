@@ -305,10 +305,14 @@ rhs boxes, the overall styling"; of PICKER, SHOWROOM and FRAME tried,
 "lets go with showroom for the cars menu"; of a RAIL or a SEGMENT to the
 pages and CUSTOMIZE on the STAGE or as a BUTTON tried from the canvas's
 row E, "go with showroom segment stage"). Two panels: the subject on the
-left (its name, chip and star; the page's stage: the car with IN USE and
-its weight and length, or the plate; CUSTOMIZE as a dark pill with a green
-ring at the stage's bottom right, a toast until the menu can take you to
-the garage, `Actions.customize`; the action, SPAWN or BUY), the page on
+left (its name, chip and star in a row; under them the page's stage in a
+framed graphite box the panel's width, F1 from the canvas's row F, chosen
+over a big card and over spot, floor, glass, carbon and band looks of the
+box, "lets just go with the original f1 background": the car with IN USE
+top left and CUSTOMIZE, a dark pill with a green ring, bottom right, a
+toast until the menu can take you to the garage, `Actions.customize`; or
+the plate; the weight and length under the box; the action, SPAWN or
+BUY), the page on
 the right: a CARS | PLATES switch in the header with the count and close
 beside it, the sub-tabs, a search beside them where the page has one, the
 page's form (the plates' field) and its items, the picker's wide cards for

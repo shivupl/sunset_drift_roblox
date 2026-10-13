@@ -777,13 +777,11 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 			end
 		end)
 	end
-	for _, name in { Layouts.ATTRIBUTE, Showroom.PICKED } do
-		player:GetAttributeChangedSignal(name):Connect(function()
-			if isOpen then
-				build(false)
-			end
-		end)
-	end
+	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
+		if isOpen then
+			build(false)
+		end
+	end)
 	for _, name in { "HudVariant", "HudLayout" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			if isOpen then

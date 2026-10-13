@@ -12,8 +12,6 @@
 -- beside them, the page's form (the plates' field) and its items: the
 -- picker's wide cards for cars, the blocks for plates. SETTINGS keeps the
 -- screen's layout.
-local Players = game:GetService("Players")
-
 local Client = script.Parent.Parent.Parent
 local Kit = require(Client:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local CarArt = require(Client:WaitForChild("CarPicker"):WaitForChild("Art"))
@@ -22,37 +20,6 @@ local Types = require(Looks:WaitForChild("Types"))
 local Parts = require(Looks:WaitForChild("Parts"))
 
 local Showroom = {}
-
--- The picked car's stage box (F1 from the canvas's row F, the owner,
--- 2026-10-12: "we'll go with f1 but make a couple more variations of it
--- with better more aesthetic design"), in three looks to choose between:
--- the LocalPlayer attribute ShowroomPicked, cycled by the temporary
--- button in the header. The car, its light, its floor shadow and the
--- drive watermark are the page's (Cars.stage); the box is what is under
--- them.
---   spot   graphite, a soft light pooled under the car, the picker's
---          faint ring hanging off the top right, a highlight along the
---          top edge.
---   floor  a showroom floor: a lighter plane across the lower part with a
---          horizon line, the car standing on it.
---   glass  see-through to the road, a brighter hairline and a green bar
---          down the left edge.
---   carbon the panels' dot weave across the box under a teal pool of
---          light (the canvas's G4); carbonlight the same on lighter grey.
---   band   a green diagonal sweep low behind the car with a thin white
---          echo, the drive letters huge and outlined top left (G5);
---          bandlight the same on lighter grey.
-export type Picked = "spot" | "floor" | "glass" | "carbon" | "carbonlight" | "band" | "bandlight"
-local LOOKS: { Picked } = { "spot", "floor", "glass", "carbon", "carbonlight", "band", "bandlight" }
-Showroom.PICKED = "ShowroomPicked"
-function Showroom.picked(): Picked
-	local v = Players.LocalPlayer:GetAttribute(Showroom.PICKED)
-	local i = if typeof(v) == "string" then table.find(LOOKS, (v :: any) :: Picked) else nil
-	return if i then LOOKS[i] else "spot"
-end
-function Showroom.nextPicked(): Picked
-	return LOOKS[(table.find(LOOKS, Showroom.picked()) or 0) % #LOOKS + 1]
-end
 
 local function tabOf(ctx: Types.Ctx, id: string): Types.TabDef?
 	for _, t in ctx.tabs do
@@ -103,7 +70,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	Kit.pad(left, pad, pad, pad, pad)
 	Kit.list(left, true, if touch then 8 else 12)
 
-	local look = Showroom.picked()
 	local innerW = leftW - 2 * pad
 	-- The page draws the subject's stats in a row at its stage's foot
 	-- (Cars.stage's rowH); the box is the room over that row, down from
@@ -143,107 +109,15 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	stage.LayoutOrder = 2
 	stage.Size = UDim2.fromScale(1, 0)
 	Kit.fill(stage)
-	local bandLetters: TextLabel? = nil
-	-- White under the gradients: a gradient multiplies the colour it is
-	-- on (Kit.panel does the same), so a dark base would crush the lighter
-	-- looks to one shade.
-	local box = Kit.frame(stage, "Box", Color3.new(1, 1, 1), 0.1)
+	-- A framed stage box (F1 from the canvas's row F; of its looks tried,
+	-- the owner, 2026-10-12: "lets just go with the original f1
+	-- background"): the panel's graphite, a hairline round it.
+	local box = Kit.frame(stage, "Box", Kit.C.tileBottom, 0.1)
 	box.Size = UDim2.new(1, 0, 1, -under)
 	box.ZIndex = 0
-	box.ClipsDescendants = true
 	Kit.corner(box, 10)
-	if look == "glass" then
-		box.BackgroundColor3 = Color3.new(0, 0, 0)
-		box.BackgroundTransparency = 0.55
-		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.74)
-		local bar = Kit.frame(box, "Bar", Kit.C.green, 0)
-		bar.Position = UDim2.fromOffset(0, 12)
-		bar.Size = UDim2.new(0, 3, 1, -24)
-		Kit.corner(bar, 2)
-	elseif look == "floor" then
-		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.9)
-		Kit.gradient(box, Color3.fromHex("#1F2125"), Color3.fromHex("#141518"))
-		local floor = Kit.frame(box, "Floor", Color3.new(1, 1, 1), 0)
-		floor.AnchorPoint = Vector2.new(0, 1)
-		floor.Position = UDim2.fromScale(0, 1)
-		floor.Size = UDim2.fromScale(1, 0.4)
-		Kit.gradient(floor, Color3.fromHex("#2E3137"), Color3.fromHex("#17181B"))
-		local horizon = Kit.frame(box, "Horizon", Color3.new(1, 1, 1), 0.86)
-		horizon.AnchorPoint = Vector2.new(0, 1)
-		horizon.Position = UDim2.fromScale(0, 0.6)
-		horizon.Size = UDim2.new(1, 0, 0, 1)
-	elseif look == "carbon" or look == "carbonlight" then
-		local light = look == "carbonlight"
-		Kit.stroke(box, Color3.new(1, 1, 1), 1, if light then 0.8 else 0.88)
-		if light then
-			Kit.gradient(box, Color3.fromHex("#4E525A"), Color3.fromHex("#34373D"))
-		else
-			Kit.gradient(box, Color3.fromHex("#1A1B1F"), Color3.fromHex("#111214"))
-		end
-		-- The weave: the panels' dots tiled over the box, fading out to its
-		-- edges (a vignette drawn over them in the box's own colour).
-		local dots = Kit.image(box, "Dots", CarArt.dots, if light then Color3.new(0, 0, 0) else Color3.new(1, 1, 1), if light then 0.7 else 0.84)
-		dots.ScaleType = Enum.ScaleType.Tile
-		dots.TileSize = UDim2.fromOffset(9, 9)
-		dots.Size = UDim2.fromScale(1, 1)
-		local pool = Kit.image(box, "Pool", CarArt.spot, Kit.C.teal, if light then 0.82 else 0.84)
-		pool.AnchorPoint = Vector2.new(0.5, 0.5)
-		pool.Position = UDim2.fromScale(0.5, 0.4)
-		pool.Size = UDim2.fromScale(1.4, 1.5)
-	elseif look == "band" or look == "bandlight" then
-		local light = look == "bandlight"
-		Kit.stroke(box, Color3.new(1, 1, 1), 1, if light then 0.8 else 0.88)
-		if light then
-			Kit.gradient(box, Color3.fromHex("#4C5058"), Color3.fromHex("#33363C"))
-		else
-			Kit.gradient(box, Color3.fromHex("#1B1D21"), Color3.fromHex("#101114"))
-		end
-		-- The drive letters, outlined only, big at the top left; the word
-		-- comes with the car (refresh).
-		local letters = Kit.text(box, "Letters", "", if touch then 72 else 90, Enum.FontWeight.Heavy, true)
-		letters.TextTransparency = 1
-		letters.TextStrokeColor3 = Color3.new(1, 1, 1)
-		letters.TextStrokeTransparency = if light then 0.86 else 0.9
-		letters.Position = UDim2.fromOffset(4, if touch then 10 else 14)
-		letters.Size = UDim2.new(1, -8, 0, if touch then 76 else 96)
-		letters.TextXAlignment = Enum.TextXAlignment.Left
-		letters.TextTruncate = Enum.TextTruncate.None
-		bandLetters = letters
-		-- The sweep: a wide green band leaning up to the right, clear at
-		-- both ends, and a thin white echo under it.
-		local function sweep(name: string, color: Color3, h: number, dy: number, strength: number): Frame
-			local f = Kit.frame(box, name, color, 0)
-			f.AnchorPoint = Vector2.new(0.5, 0.5)
-			f.Position = UDim2.new(0.5, 0, 0.66, dy)
-			f.Size = UDim2.new(1.3, 0, 0, h)
-			f.Rotation = -8
-			local g = Instance.new("UIGradient")
-			g.Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.35, strength + 0.15),
-				NumberSequenceKeypoint.new(0.6, strength),
-				NumberSequenceKeypoint.new(1, 1),
-			})
-			g.Parent = f
-			return f
-		end
-		sweep("Sweep", Kit.C.green, if touch then 34 else 42, 0, if light then 0.3 else 0.35)
-		sweep("Echo", Color3.new(1, 1, 1), 2, if touch then 36 else 44, 0.88)
-	else
-		Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.88)
-		Kit.gradient(box, Kit.C.tileTop, Kit.C.tileBottom)
-		local pool = Kit.image(box, "Pool", CarArt.spot, Color3.new(1, 1, 1), 0.86)
-		pool.AnchorPoint = Vector2.new(0.5, 0.5)
-		pool.Position = UDim2.fromScale(0.5, 0.42)
-		pool.Size = UDim2.fromScale(1.3, 1.5)
-		local ring = Kit.image(box, "Ring", CarArt.ring, Color3.new(1, 1, 1), 0.93)
-		ring.AnchorPoint = Vector2.new(1, 0)
-		ring.Position = UDim2.new(1, if touch then 34 else 40, 0, if touch then -34 else -40)
-		ring.Size = UDim2.fromOffset(if touch then 150 else 190, if touch then 150 else 190)
-		local top = Kit.frame(box, "Top", Color3.new(1, 1, 1), 0.82)
-		top.Position = UDim2.fromOffset(12, 0)
-		top.Size = UDim2.new(1, -24, 0, 1)
-	end
+	Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.9)
+	Kit.gradient(box, Kit.C.tileTop, Kit.C.tileBottom)
 	local inUse = Kit.inUse(stage, if touch then 18 else 22, if touch then 9 else 11)
 	inUse.Position = UDim2.fromOffset(6, 6)
 	inUse.ZIndex = 5
@@ -358,14 +232,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 	count.AutomaticSize = Enum.AutomaticSize.X
 	count.Size = UDim2.fromScale(0, 1)
 	count.TextTruncate = Enum.TextTruncate.None
-	-- Temporary: the next look of the picked car's box (Showroom.picked).
-	local flip = Kit.iconButton(header, "Picked", CarArt.layout, if touch then 32 else 36)
-	flip.LayoutOrder = 4
-	flip.Activated:Connect(function()
-		if not ctx.busy() then
-			Players.LocalPlayer:SetAttribute(Showroom.PICKED, Showroom.nextPicked())
-		end
-	end)
 	local close = Kit.iconButton(header, "Close", nil, if touch then 32 else 36, "×")
 	close.LayoutOrder = 5
 	close.Activated:Connect(function()
@@ -491,10 +357,6 @@ function Showroom.build(gui: ScreenGui, ctx: Types.Ctx): Types.View
 		name.Text = ctx.carName()
 		inUse.Visible = f.label == "RESPAWN"
 		local drive = ctx.carDrive()
-		local bl = bandLetters
-		if bl then
-			bl.Text = drive
-		end
 		if drive ~= chipText then
 			chipText = drive
 			local old = chip
