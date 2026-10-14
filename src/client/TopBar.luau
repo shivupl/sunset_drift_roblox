@@ -12,14 +12,9 @@
 -- CAMERA and STYLE while you drive (RESET left the row: "store, garage,
 -- settings then camera, style buttons"). Sized to Roblox's pill: the tab
 -- 44 tall, the icon 18, the word 11 ("make sure the text and icon sizes
--- are also proportionate"). Two takes to try, each with SETTINGS as a word
--- or as the gear alone, the LocalPlayer attribute TopRow, cycled by the
--- small ROW button at the row's end (temporary):
---   TABS      (L1) the icon beside the word; the tools slanted squares
---             with the icon alone.
---   STACKED   (L3) the icon over a smaller word, the tools with their
---             words too, so the row reads as one set.
---   ...GEAR   the same with SETTINGS as the gear alone.
+-- are also proportionate"). The places carry their words, the tools their
+-- icons alone (the canvas's L1; of the four takes tried, the owner,
+-- 2026-10-13: "just implement this version but fix the spacing").
 --
 -- The row stays up while the menu is open, which hangs under it, and the
 -- button of the page showing is lit; tapping it again closes the menu
@@ -34,9 +29,8 @@
 -- The row fits the room it has, between Roblox's buttons and the cash
 -- (the owner's phone, 2026-10-13: the row ran into the coin; "make sure
 -- you are making all these changes so that they adjust dynamically"): it
--- measures what it would need, and if that is more than the room, drops
--- words in steps (SETTINGS and the tools to their icons, then every tab),
--- and only then scales down, never past 0.7. Nothing is sized to a
+-- measures what it would need, and if that is more than the room, scales
+-- down to fit, never past 0.7, keeping every word. Nothing is sized to a
 -- particular screen: the row takes its height from Roblox's top bar
 -- inset and its room from where the cash is drawn (any "Cash" frame on
 -- screen, the HUD's or a menu's, and its hanging "Coin").
@@ -61,10 +55,6 @@ export type Actions = {
 	style: () -> (),
 	settings: () -> (),
 }
-
-export type Variant = "tabs" | "tabsgear" | "stacked" | "stackedgear"
-local VARIANTS: { Variant } = { "tabs", "tabsgear", "stacked", "stackedgear" }
-TopBar.ATTRIBUTE = "TopRow"
 
 -- art/topbar/out/topbar_icons.png: GARAGE, RESET, VIEW, STYLE, SETTINGS.
 local ICONS = "rbxassetid://115983636701904"
@@ -105,16 +95,13 @@ local RIM = 0.86
 -- The icon and the word, as shares of the tab's height (the canvas's row
 -- L, measured in the browser: an 18 px icon and an 11 px word on a 44
 -- tab, 16 of padding, 8 between them; the tools 42 wide with the icon
--- alone; stacked, the 18 icon over a 9 word, 4 apart, 12 of padding).
--- Roblox draws the word narrower than the browser (no letter spacing), so
--- it is a size up.
+-- alone). Roblox draws the word narrower than the browser (no letter
+-- spacing), so it is a size up.
 local ICON_SHARE = 0.41
 local WORD_SHARE = 0.27
 local PAD_SHARE = 0.36
 local TOOL_PAD_SHARE = 0.27
 local WORD_GAP_SHARE = 0.18
-local STACK_WORD_SHARE = 0.23
-local STACK_GAP_SHARE = 0.09
 -- The sheet's drawings sit inside a margin of their cell; the icon shows
 -- the cell cropped to the drawing, so an 18 px icon draws 18 px.
 local ICON_CROP = 22
@@ -127,7 +114,6 @@ local actions: Actions? = nil
 type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
-local switch: TextButton? = nil
 local shown = true -- no garage view up
 local driving = false
 local openPage: string? = nil -- the menu page showing, or nil
@@ -138,36 +124,12 @@ local h = MAX_H
 local rest = UDim2.new()
 local SLIDE = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
--- Fitting the room: the step of words dropped (0 as the variant says, 1
--- SETTINGS and the tools to their icons, 2 every tab its icon alone), the
--- row's scale past that, and a label that measures words.
-local tier = 0
+-- Fitting the room: the row's scale, and a label that measures words.
 local rowScale: UIScale? = nil
 local scratch: TextLabel? = nil
 local MIN_SCALE = 0.7
 -- Room kept before the cash and past Roblox's inset.
 local MARGIN = 8
--- The small discs (the gear, ROW) and their width at this height.
-local function discSize(): number
-	return math.floor(h * 0.84)
-end
-
-local function variant(): Variant
-	local v = player:GetAttribute(TopBar.ATTRIBUTE)
-	local i = if type(v) == "string" then table.find(VARIANTS, (v :: any) :: Variant) else nil
-	return if i then VARIANTS[i] else "tabs"
-end
-
-local function stacked(): boolean
-	local v = variant()
-	return v == "stacked" or v == "stackedgear"
-end
-
-local function gearOnly(): boolean
-	local v = variant()
-	return v == "tabsgear" or v == "stackedgear"
-end
-
 -- The menu page a button stands for is lit.
 local function litBy(spec: Spec): boolean
 	return spec.page ~= nil and spec.page == openPage
@@ -217,14 +179,6 @@ local function paint()
 	if ge then
 		ge.Visible = clear
 	end
-	local sw = switch
-	if sw then
-		sw.Visible = not clear
-		local sh = sw:FindFirstChild("Shade")
-		if sh and sh:IsA("Frame") then
-			sh.Visible = openPage ~= nil
-		end
-	end
 end
 
 local function pressable(b: GuiButton)
@@ -258,29 +212,18 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
--- Whether a tab carries its word, by the variant and the step of words
--- dropped to fit.
+-- A place carries its word; a tool its icon alone.
 local function wordsFor(spec: Spec): boolean
-	if tier >= 2 then
-		return false
-	end
-	if spec.driving then
-		return stacked() and tier == 0
-	end
-	if spec.id == "settings" then
-		return not gearOnly() and tier == 0
-	end
-	return true
+	return not spec.driving
 end
 
 -- A tab's sizes at this height.
 local function sizes(): (number, number, number, number, number)
-	local up = stacked()
 	local iconSize = math.floor(h * ICON_SHARE + 0.5)
-	local wordSize = math.max(8, math.floor(h * (if up then STACK_WORD_SHARE else WORD_SHARE) + 0.5))
+	local wordSize = math.max(8, math.floor(h * WORD_SHARE + 0.5))
 	local pad = math.floor(h * PAD_SHARE + 0.5)
 	local toolPad = math.floor(h * TOOL_PAD_SHARE + 0.5)
-	local gap = math.floor(h * (if up then STACK_GAP_SHARE else WORD_GAP_SHARE) + 0.5)
+	local gap = math.floor(h * WORD_GAP_SHARE + 0.5)
 	return iconSize, wordSize, pad, toolPad, gap
 end
 
@@ -301,11 +244,7 @@ local function tabWidth(spec: Spec): number
 	if not wordsFor(spec) then
 		return 2 * toolPad + iconSize
 	end
-	local w = wordWidth(spec.label, wordSize)
-	if stacked() then
-		return 2 * toolPad + math.max(iconSize, w)
-	end
-	return 2 * pad + iconSize + gap + w
+	return 2 * pad + iconSize + gap + wordWidth(spec.label, wordSize)
 end
 
 -- What the row would measure, built now, with the tools in or out.
@@ -321,9 +260,6 @@ local function naturalWidth(): number
 	if driving then
 		total += GROUP_GAP - 2 * GAP
 	end
-	-- The ROW switch (temporary).
-	total += discSize()
-	n += 1
 	return total + GAP * (n - 1)
 end
 
@@ -371,8 +307,8 @@ end
 
 -- A slanted glass tab: the rim (the button's own shape), the fill inset a
 -- pixel over it (green when lit), the icon and the word in it, the tab as
--- wide as they need. `words`: the word drawn (a tool's only when stacked;
--- SETTINGS' not when the gear stands alone).
+-- wide as they need. `words`: the word drawn (a place's; a tool has its
+-- icon alone).
 local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), words: boolean): Button
 	local b = Instance.new("ImageButton")
 	b.Name = spec.label
@@ -392,11 +328,10 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	inner.AutomaticSize = Enum.AutomaticSize.X
 	inner.Size = UDim2.fromOffset(0, h)
 	inner.ZIndex = 2
-	local up = stacked()
 	local iconSize, wordSize, padWords, toolPad, gap = sizes()
-	local pad = if not words or up then toolPad else padWords
+	local pad = if words then padWords else toolPad
 	Kit.pad(inner, 0, pad, 0, pad)
-	local l = Kit.list(inner, up and words, gap, Enum.VerticalAlignment.Center)
+	local l = Kit.list(inner, false, gap, Enum.VerticalAlignment.Center)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	local icon = iconOf(inner, spec, iconSize)
 	icon.ZIndex = 2
@@ -416,8 +351,7 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label }
 end
 
--- A small round graphite button: the gear (CLEAR UI's way back) and the
--- temporary ROW switch.
+-- A small round graphite button: the gear (CLEAR UI's way back).
 local function smallDisc(parent: Frame, name: string, order: number, fn: () -> ()): TextButton
 	local d = math.floor(h * 0.84)
 	local b = Instance.new("TextButton")
@@ -485,29 +419,16 @@ local function rebuild()
 	gi.AnchorPoint = Vector2.new(0.5, 0.5)
 	gi.Position = UDim2.fromScale(0.5, 0.5)
 	gear = ge
-	-- Temporary: the ROW switch, cycling the rows to try.
-	local sw = smallDisc(r, "Row", 99, function()
-		local i = table.find(VARIANTS, variant()) or 0
-		player:SetAttribute(TopBar.ATTRIBUTE, VARIANTS[i % #VARIANTS + 1])
-	end)
-	local st = Kit.text(sw, "Label", "ROW", math.max(8, math.floor(h * 0.2)), Enum.FontWeight.Heavy, true, Kit.C.tabInk)
-	st.Size = UDim2.fromScale(1, 1)
-	st.TextXAlignment = Enum.TextXAlignment.Center
-	switch = sw
 	paint()
 end
 
--- The row fitted to its room: words dropped in steps, then scaled.
+-- The row fitted to its room: scaled down when it needs more, every word
+-- kept.
 local function refit()
 	if not row or ClearUi.on() then
 		return
 	end
 	local have = room()
-	tier = 0
-	while tier < 2 and naturalWidth() > have do
-		tier += 1
-	end
-	rebuild()
 	local n = naturalWidth()
 	local sc = rowScale
 	if sc then
@@ -538,6 +459,7 @@ local function fit()
 	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + h / 2)
 	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
+	rebuild()
 	refit()
 end
 
@@ -615,7 +537,6 @@ function TopBar.start(a: Actions)
 		paint()
 		scheduleRefit()
 	end)
-	player:GetAttributeChangedSignal(TopBar.ATTRIBUTE):Connect(refit)
 	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
 	ClearUi.changed(function()
 		paint()

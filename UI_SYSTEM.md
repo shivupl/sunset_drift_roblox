@@ -421,32 +421,26 @@ in the browser ("make sure the text and icon sizes are also
 proportionate", then "the spacing and proportions isnt as good as the
 prototypes ... make sure they are close to 1-to-1"): an 18 px icon and an
 11 px word on a 44 tab, 16 of padding and 8 between them, the tools 42
-wide with the icon alone, 5 between tabs and 20 before the tools;
-stacked, the icon over a 9 word, 4 apart, 12 of padding. The icon shows
-its sheet cell cropped to the drawing (`ICON_CROP`: the drawings sit in a
-margin of their cell), so an 18 px icon draws 18 px; the word is a size up
-(12, 10 stacked) because Roblox draws Montserrat narrower than the
-browser, with no letter spacing. Measured in Studio: within 5 px of the
-mock on every tab. The row fits the room it has (the owner's phone: the
+wide with the icon alone, 5 between tabs and 20 before the tools. The
+icon shows its sheet cell cropped to the drawing (`ICON_CROP`: the
+drawings sit in a margin of their cell), so an 18 px icon draws 18 px;
+the word is a size up (12) because Roblox draws Montserrat narrower than
+the browser, with no letter spacing. The places carry their words, the
+tools their icons alone (of the four takes tried, with SETTINGS as a word
+or the gear and the icon over the word: "just implement this version but
+fix the spacing"). The row fits the room it has (the owner's phone: the
 row ran into the coin; "make sure you are making all these changes so
 that they adjust dynamically ... not hard programming for the mobile
 emulation on pc"): it measures what it would need (the words through a
 hidden label's `TextBounds`) against the room from where it rests to the
 cash (the left edge of any "Cash" frame or hanging "Coin" showing, the
 HUD's or a menu's; Roblox's inset's end with none) less 8, and if that is
-more than the room drops words in steps (SETTINGS and the tools to their
-icons, then every tab) and only then scales the row down, never past
-0.7; it refits as the tools come and go, the menu opens, the cash
+more than the room scales the row down to fit, never past 0.7, keeping
+every word; it refits as the tools come and go, the menu opens, the cash
 appears and the inset changes. On the owner's phone (about 404 px of
-room with the tools up) that is SETTINGS as the gear. In Studio the
+room with the tools up, the row needing 428) that is 0.95. In Studio the
 LocalPlayer attribute `TopRowRoom` (a number) stands in for the cash to
-try a narrow phone. Four takes to try (the
-attribute `TopRow`, cycled by the temporary ROW button at the row's
-end): TABS (L1), the icon beside the word, the tools with the icon alone;
-STACKED (L3), the icon over a smaller word, the tools with words too; and
-each with SETTINGS as the gear alone (TABSGEAR, STACKEDGEAR). The earlier
-rows (DISCS, the glass discs, pill and bar) are in git before 2026-10-13's
-row L. With CLEAR UI on the row is one small round gear.
+try a narrow phone. With CLEAR UI on the row is one small round gear.
 
 The row stays up while the menu is open, which hangs under it
 (`Ctx.top`: the drawing pixels to leave clear under the row, mostly 0
