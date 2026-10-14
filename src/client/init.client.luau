@@ -1,4 +1,5 @@
 --!strict
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remotes = ReplicatedStorage:WaitForChild("Remotes") :: Folder
 local driveStart = remotes:WaitForChild("DriveStart") :: RemoteEvent
@@ -33,6 +34,12 @@ local GarageView = require(script.Garage.GarageView)
 local GaragePanel = require(script.Garage.GaragePanel)
 
 print("[Hajwala] client boot")
+-- A phone plays in landscape only (the owner, 2026-10-14: "when i startup
+-- the game it should automatically lock the screen to landscape").
+-- StarterGui's ScreenOrientation (default.project.json) is the default for
+-- every PlayerGui; it is set here as well, for one made before that
+-- property reached it. LandscapeSensor: either way up, never portrait.
+Players.LocalPlayer:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- Up first: the server may still be building the world this client joined.
 LoadCover.start()
 -- Lamp lights follow the camera whether or not the player is driving. They

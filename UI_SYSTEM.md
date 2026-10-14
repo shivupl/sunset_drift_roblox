@@ -156,6 +156,12 @@ the same, in a fixed way:
 - A palette (a grid of colour swatches) has as many columns as fit tiles
   `paletteMinTile` wide (76 px; 88 on touch): three on desktop, two on a
   phone. A palette name that does not fit shrinks, down to caption size.
+- A phone plays in landscape only: `StarterGui.ScreenOrientation` is
+  `LandscapeSensor` (default.project.json), and the client sets its
+  PlayerGui's the same at boot (the owner, 2026-10-14: "when i startup the
+  game it should automatically lock the screen to landscape"). Every
+  layout is drawn for a landscape phone; portrait would stack them off
+  the screen.
 
 ## States
 

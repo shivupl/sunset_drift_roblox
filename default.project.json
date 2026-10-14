@@ -51,6 +51,12 @@
         }
       }
     },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$properties": {
+        "ScreenOrientation": "LandscapeSensor"
+      }
+    },
     "MaterialService": {
       "$className": "MaterialService",
       "HajwalaSand": {
