@@ -18,7 +18,6 @@ local ScoreController = require(script.ScoreController)
 local WorldLights = require(script.WorldLights)
 local SpawnMenu = require(script.SpawnMenu)
 local TopBar = require(script.TopBar)
-local Input = require(script.Input)
 local CameraViews = require(script.CameraViews)
 local CarBodies = require(script.CarBodies)
 local CarLights = require(script.CarLights)
@@ -151,16 +150,17 @@ end)
 Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
--- The phone's top bar, right of Roblox's buttons: GARAGE (the car menu) and
--- SETTINGS always, RESET, VIEW and STYLE while driving; a page's button
--- closes it when it is the one up. A desktop keeps the CARS button and the
--- keys (M, R, V, U).
+-- The phone's top bar, right of Roblox's buttons: STORE (the plates page,
+-- until a store exists), GARAGE (the car menu) and SETTINGS always, CAMERA
+-- and STYLE while driving; a page's button closes it when it is the one
+-- up. RESET left the row (2026-10-13); a desktop keeps the CARS button and
+-- the keys (M, R, V, U).
 TopBar.start({
+	store = function()
+		SpawnMenu.toggleTab("plates")
+	end,
 	garage = function()
 		SpawnMenu.toggleTab("cars")
-	end,
-	reset = function()
-		Input.pulse("reset")
 	end,
 	view = CameraViews.cycle,
 	style = HudLab.cycle,

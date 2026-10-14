@@ -404,9 +404,29 @@ The load cover wears the same look (graphite, HAJWALA هجولة, the green
 bar), and the menu slides in under it as it fades.
 
 The phone's **top bar** (`src/client/TopBar.luau`, 2026-10-11) is one row
-right of Roblox's own buttons, GARAGE (the menu's CARS) and SETTINGS always,
-RESET, VIEW and STYLE while driving. A desktop keeps the CARS button and
-the keys. The row stays up while the menu is open, which hangs under it
+right of Roblox's own buttons: STORE (the plates page, until a store
+exists), GARAGE (the car menu, tinted green) and SETTINGS always, CAMERA
+and STYLE while driving (RESET left the row 2026-10-13: "store, garage,
+settings then camera, style buttons"; R stays on a keyboard). A desktop
+keeps the CARS button and the keys. The row is the kit's slanted tabs as
+glass (the owner, of the TABS row on their phone: "i am a big fan of this
+one but i think it needs some work"; the canvas's row L): each tab the
+slanted shape nearly clear over a fainter copy of itself (a white tint,
+green for GARAGE), sized to Roblox's pill, which is not centred in the
+top bar inset but 12 px down it and 44 tall where the inset is 58
+(Studio and the owner's phone agree), so the row takes those fractions
+of the inset's height ("line the buttons up well with this
+horizontally"); the icon's cell is 0.64 of the tab's height (the sheet's
+drawings fill three fifths of a cell), the word a quarter ("make sure the
+text and icon sizes are also proportionate"). Four takes to try (the
+attribute `TopRow`, cycled by the temporary ROW button at the row's
+end): TABS (L1), the icon beside the word, the tools with the icon alone;
+STACKED (L3), the icon over a smaller word, the tools with words too; and
+each with SETTINGS as the gear alone (TABSGEAR, STACKEDGEAR). The earlier
+rows (DISCS, the glass discs, pill and bar) are in git before 2026-10-13's
+row L. With CLEAR UI on the row is one small round gear.
+
+The row stays up while the menu is open, which hangs under it
 (`Ctx.top`: the drawing pixels to leave clear under the row, mostly 0
 since the row ends above the menu's gui; nil with no row), and the button
 of the page showing is lit; tapping it again closes the menu. The owner,
@@ -421,23 +441,7 @@ cars header after the count, the settings header after the note; "there
 should always be a like x button ... top right, as it was before"), the
 row's lit button, and a tap anywhere outside the panels (the menu's
 `Outside` button under everything it draws; "i should also be able to
-leave the menu by clicking outside"). Two rows to try from the canvas's row H (the attribute
-`TopRow`, cycled by the temporary ROW button at the row's end): DISCS,
-round graphite icons with no words, GARAGE ringed green, the open one
-widened into a green capsule with its word; TABS, GARAGE and SETTINGS as
-the kit's slanted tabs, the open one green, the driving tools as graphite
-squares after them (PLATES was a tab too: "remove the plates tab on the
-top menu for now"); and three glass rows ("make some more glass options
-like the one i already have"), see-through as the garage's GLASS column:
-GLASS DISCS, the discs see-through; GLASS PILL, one capsule like Roblox's
-with the icons in it, the open one a green capsule inside with its word;
-GLASS BAR, one bar with each button's icon over a small word, the open
-one green. With CLEAR UI on the row is one small round gear. The row is level with Roblox's own pill, which is not centred
-in the top bar inset but 12 px down it and 44 tall where the inset is 58
-(Studio and the owner's phone agree), so the row takes those fractions
-of the inset's height ("line the buttons up well with this
-horizontally"). The canvas's rows I and J (more rows; seven looks for the
-cash) are not built.
+leave the menu by clicking outside").
 
 Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to
 the screen it is on. In Studio the LocalPlayer attribute `ScreenSim` (a

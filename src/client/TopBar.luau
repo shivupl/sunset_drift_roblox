@@ -2,41 +2,37 @@
 -- The phone's top row (the owner, 2026-10-11: "format the top button bar
 -- with the new setup ... garage, view, style, settings buttons keep 'view'
 -- icon as a regular camera"; asked, they kept RESET and let EXIT and UI go):
--- one row right of Roblox's own buttons. GARAGE opens the car menu and
--- SETTINGS its settings, on foot or driving; RESET, VIEW and STYLE sit
--- between them while you drive. Phones only (the owner: "still only
--- working on mobile"); a desktop keeps the CARS button and the keys.
+-- one row right of Roblox's own buttons. Phones only (the owner: "still
+-- only working on mobile"); a desktop keeps the CARS button and the keys.
+--
+-- The row is the kit's slanted tabs as glass (the owner, 2026-10-13, of
+-- the TABS row on their phone: "i am a big fan of this one but i think it
+-- needs some work"; the canvas's row L): STORE (the plates page, until a
+-- store exists), GARAGE (the car menu, ringed green) and SETTINGS, then
+-- CAMERA and STYLE while you drive (RESET left the row: "store, garage,
+-- settings then camera, style buttons"). Sized to Roblox's pill: the tab
+-- 44 tall, the icon 18, the word 11 ("make sure the text and icon sizes
+-- are also proportionate"). Two takes to try, each with SETTINGS as a word
+-- or as the gear alone, the LocalPlayer attribute TopRow, cycled by the
+-- small ROW button at the row's end (temporary):
+--   TABS      (L1) the icon beside the word; the tools slanted squares
+--             with the icon alone.
+--   STACKED   (L3) the icon over a smaller word, the tools with their
+--             words too, so the row reads as one set.
+--   ...GEAR   the same with SETTINGS as the gear alone.
 --
 -- The row stays up while the menu is open, which hangs under it, and the
 -- button of the page showing is lit; tapping it again closes the menu
--- (the owner, 2026-10-13: "when clicking settings or garage the options
--- should stay there and the tabs/menu should just show below"). The row
--- draws over the menu's dim, so the lit button stays crisp, and shades its
--- other buttons itself while the menu is open ("it should darken the
--- other buttons on top"), all of them while a confirm sheet is up. Rows
--- to try (the canvas's row H, then "make some more glass options like
--- the one i already have"), the LocalPlayer attribute TopRow, cycled by
--- the small ROW button at the row's end (temporary):
---   DISCS        (H3) round graphite icons with no words, GARAGE ringed
---                green; the one open widens into a green capsule with its
---                word.
---   TABS         (H4) GARAGE and SETTINGS as the kit's slanted tabs, the
---                open one green; the driving tools as squares after them
---                (PLATES went: "remove the plates tab on the top menu for
---                now").
---   GLASS DISCS  the discs see-through, as the garage's GLASS column.
---   GLASS PILL   one see-through capsule like Roblox's pill, the icons in
---                it; the open one a green capsule inside with its word.
---   GLASS BAR    one see-through bar, each button its icon over a small
---                word; the open one green.
+-- ("when clicking settings or garage the options should stay there and
+-- the tabs/menu should just show below"). The row draws over the menu's
+-- dim, so the lit button stays crisp, and shades its other buttons itself
+-- while the menu is open ("it should darken the other buttons on top"),
+-- all of them while a confirm sheet is up. With CLEAR UI on (ClearUi) the
+-- row goes and one small round gear stands in its place, on a phone or a
+-- desktop, the way to SETTINGS and the switch that brings everything back.
 --
--- With CLEAR UI on (ClearUi; the owner, 2026-10-13) the row goes and one
--- small round gear stands in its place, on a phone or a desktop, the way
--- to SETTINGS and the switch that brings everything back.
---
--- The look is the car picker's (CarPicker/Kit): graphite with a hairline
--- edge, heavy italic words; glass is the picker's see-through graphite.
--- The icons are art/topbar (one sheet, 128 px cells).
+-- The icons are art/topbar (one sheet, 128 px cells); STORE's is the
+-- garage's plates cell.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
@@ -48,32 +44,34 @@ local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
 local TopBar = {}
 
 export type Actions = {
+	store: () -> (),
 	garage: () -> (),
-	reset: () -> (),
 	view: () -> (),
 	style: () -> (),
 	settings: () -> (),
 }
 
-export type Variant = "discs" | "tabs" | "glassdiscs" | "glasspill" | "glassbar"
-local VARIANTS: { Variant } = { "discs", "tabs", "glassdiscs", "glasspill", "glassbar" }
+export type Variant = "tabs" | "tabsgear" | "stacked" | "stackedgear"
+local VARIANTS: { Variant } = { "tabs", "tabsgear", "stacked", "stackedgear" }
 TopBar.ATTRIBUTE = "TopRow"
 
 -- art/topbar/out/topbar_icons.png: GARAGE, RESET, VIEW, STYLE, SETTINGS.
 local ICONS = "rbxassetid://115983636701904"
+-- The garage's sheet (Parts.ICONS): STORE is its plates cell, 3.
+local GARAGE_ICONS = "rbxassetid://71924428072059"
 local ICON_CELL = 128
 
 -- `page`: the menu page this button opens (lit while it shows); `driving`:
 -- only while the phone controls are up.
-type Spec = { id: string, label: string, icon: number, page: string?, driving: boolean }
+type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean }
 local SPECS: { Spec } = {
-	{ id = "garage", label = "GARAGE", icon = 0, page = "cars", driving = false },
-	{ id = "reset", label = "RESET", icon = 1, driving = true },
-	{ id = "view", label = "VIEW", icon = 2, driving = true },
-	{ id = "style", label = "STYLE", icon = 3, driving = true },
-	{ id = "settings", label = "SETTINGS", icon = 4, page = "settings", driving = false },
+	{ id = "store", label = "STORE", icon = 3, sheet = GARAGE_ICONS, page = "plates", driving = false },
+	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false },
+	{ id = "settings", label = "SETTINGS", icon = 4, sheet = ICONS, page = "settings", driving = false },
+	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true },
+	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true },
 }
-local SETTINGS_SPEC = SPECS[5]
+local SETTINGS_SPEC = SPECS[3]
 
 -- The row sits level with Roblox's own pill (the owner, 2026-10-13: "line
 -- the buttons up well with this horizontally"): the pill is not centred
@@ -83,18 +81,31 @@ local SETTINGS_SPEC = SPECS[5]
 local PILL_TOP = 12 / 58
 local PILL_H = 44 / 58
 local MIN_H, MAX_H = 36, 48
-local GAP = 6
+-- Between tabs; between the places and the tools.
+local GAP = 5
+local GROUP_GAP = 10
 -- How far a press sinks.
 local PRESS = 0.92
--- See-through, as the garage's GLASS column (Showcase).
-local GLASS = 0.42
+-- The glass: the tab's white shape nearly clear over a second, fainter
+-- copy of it (a tint: white, or green for GARAGE), so the tab reads a
+-- shade lighter than the world through it.
+local GLASS = 0.9
+local RIM = 0.86
+-- The icon and the word, as shares of the tab's height (the canvas's row
+-- L: an 18 px drawing and an 11 px word on 44; the stacked word smaller).
+-- The sheet's drawings fill about three fifths of their cell, so the
+-- icon's cell is drawn bigger than the drawing wanted.
+local ICON_SHARE = 0.64
+local WORD_SHARE = 0.25
+local STACK_ICON_SHARE = 0.58
+local STACK_WORD_SHARE = 0.2
 
 local player = Players.LocalPlayer
 
 local gui: ScreenGui? = nil
 local row: Frame? = nil
 local actions: Actions? = nil
-type Button = { spec: Spec, b: GuiButton, icon: ImageLabel, label: TextLabel?, gradient: UIGradient?, stroke: UIStroke?, space: Frame?, shade: Frame? }
+type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
 local switch: TextButton? = nil
@@ -111,17 +122,22 @@ local SLIDE = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.O
 local function variant(): Variant
 	local v = player:GetAttribute(TopBar.ATTRIBUTE)
 	local i = if type(v) == "string" then table.find(VARIANTS, (v :: any) :: Variant) else nil
-	return if i then VARIANTS[i] else "discs"
+	return if i then VARIANTS[i] else "tabs"
 end
 
--- The menu page a button stands for is lit; the showroom's two pages
--- are both GARAGE's.
+local function stacked(): boolean
+	local v = variant()
+	return v == "stacked" or v == "stackedgear"
+end
+
+local function gearOnly(): boolean
+	local v = variant()
+	return v == "tabsgear" or v == "stackedgear"
+end
+
+-- The menu page a button stands for is lit.
 local function litBy(spec: Spec): boolean
-	local p = spec.page
-	if not p or not openPage then
-		return false
-	end
-	return p == openPage or (p == "cars" and openPage == "plates")
+	return spec.page ~= nil and spec.page == openPage
 end
 
 local function paint()
@@ -139,7 +155,6 @@ local function paint()
 		r.Position = rest - UDim2.fromOffset(0, r.AbsoluteSize.Y + 24)
 		TweenService:Create(r, SLIDE, { Position = rest }):Play()
 	end
-	local kind = variant()
 	for _, it in buttons do
 		local spec = it.spec
 		it.b.Visible = not clear and (driving or not spec.driving)
@@ -150,59 +165,19 @@ local function paint()
 		local on = litBy(spec)
 		-- Behind the menu: every button but the lit one, all under a sheet.
 		local off = busy or (openPage ~= nil and not on)
-		local sh = it.shade
-		if sh then
-			sh.Visible = off
-		end
+		local accent = spec.id == "garage"
+		-- The rim (the button's own image) and the fill over it.
+		it.b.ImageColor3 = if accent and not on then Kit.C.green else Color3.new(1, 1, 1)
+		it.b.ImageTransparency = if on then 1 elseif accent then (if off then 0.88 else 0.72) elseif off then 0.94 else RIM
+		it.gradient.Enabled = on
+		it.fill.ImageTransparency = if on then (if off then 0.5 else 0) elseif off then 0.96 else GLASS
+		local ink = if on then Kit.C.inUseInk elseif accent then Kit.C.green else Kit.C.text
+		it.icon.ImageColor3 = ink
 		it.icon.ImageTransparency = if off then 0.45 else 0
 		local lb = it.label
 		if lb then
+			lb.TextColor3 = if on then Kit.C.inUseInk elseif accent then Kit.C.green elseif spec.driving then Kit.C.tabInk else Kit.C.text
 			lb.TextTransparency = if off then 0.45 else 0
-		end
-		local accent = spec.id == "garage"
-		if kind == "discs" or kind == "glassdiscs" then
-			-- A disc, or the open one a capsule with its word.
-			it.b.Size = UDim2.fromOffset(if on then math.floor(h * 2.5) else h, h)
-			it.b.BackgroundTransparency = if on then 0 elseif kind == "glassdiscs" then GLASS else 0.1
-			local gr = it.gradient
-			if gr then
-				gr.Color = if on then ColorSequence.new(Kit.C.greenTop, Kit.C.greenBottom) else ColorSequence.new(Kit.C.panelTop, Kit.C.panelBottom)
-			end
-			local st = it.stroke
-			if st then
-				st.Color = if accent and not on then Kit.C.green else Color3.new(1, 1, 1)
-				st.Transparency = if on then 1 elseif accent then 0.3 elseif kind == "glassdiscs" then 0.75 else 0.85
-			end
-			it.icon.ImageColor3 = if on then Kit.C.inUseInk else Kit.C.text
-			if lb then
-				lb.Visible = on
-			end
-		elseif kind == "tabs" then
-			if spec.page then
-				local ib = it.b :: ImageButton
-				local gr = it.gradient
-				if gr then
-					gr.Enabled = on
-				end
-				ib.ImageColor3 = Color3.new(1, 1, 1)
-				ib.ImageTransparency = if on and not off then 0 elseif on then 0.5 elseif off then 0.97 else 0.92
-				it.icon.ImageColor3 = if on then Kit.C.inUseInk else Kit.C.text
-				if lb then
-					lb.TextColor3 = if on then Kit.C.inUseInk else Kit.C.tabInk
-				end
-			end
-		else
-			-- An item in the glass: clear, or green when open.
-			if kind == "glasspill" then
-				local d = h - 8
-				it.b.Size = UDim2.fromOffset(if on then math.floor(h * 2.3) else d, d)
-			end
-			it.b.BackgroundTransparency = if on then 0 else 1
-			it.icon.ImageColor3 = if on then Kit.C.inUseInk else (if accent then Kit.C.green else Kit.C.text)
-			if lb then
-				lb.Visible = kind == "glassbar" or on
-				lb.TextColor3 = if on then Kit.C.inUseInk else (if accent then Kit.C.green else Kit.C.tabInk)
-			end
 		end
 	end
 	local ge = gear
@@ -217,16 +192,6 @@ local function paint()
 			sh.Visible = openPage ~= nil
 		end
 	end
-end
-
--- A dark shade over a button while it is behind the menu.
-local function shadeOf(b: GuiButton, radius: number): Frame
-	local f = Kit.frame(b, "Shade", Color3.new(0, 0, 0), 0.5)
-	f.Size = UDim2.fromScale(1, 1)
-	f.ZIndex = 5
-	f.Visible = false
-	Kit.corner(f, radius)
-	return f
 end
 
 local function pressable(b: GuiButton)
@@ -246,14 +211,76 @@ local function pressable(b: GuiButton)
 end
 
 local function iconOf(parent: GuiObject, spec: Spec, size: number): ImageLabel
-	local icon = Kit.image(parent, "Icon", ICONS)
+	local icon = Kit.image(parent, "Icon", spec.sheet)
 	icon.ImageRectSize = Vector2.new(ICON_CELL, ICON_CELL)
 	icon.ImageRectOffset = Vector2.new(spec.icon * ICON_CELL, 0)
 	icon.Size = UDim2.fromOffset(size, size)
 	return icon
 end
 
-local function plainButton(name: string, order: number): TextButton
+local function slice(o: any)
+	o.Image = Art.tab
+	o.ScaleType = Enum.ScaleType.Slice
+	o.SliceCenter = Art.tabSlice
+	o.SliceScale = h / Art.tabH
+end
+
+-- A slanted glass tab: the rim (the button's own shape), the fill inset a
+-- pixel over it (green when lit), the icon and the word in it, the tab as
+-- wide as they need. `words`: the word drawn (a tool's only when stacked;
+-- SETTINGS' not when the gear stands alone).
+local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), words: boolean): Button
+	local b = Instance.new("ImageButton")
+	b.Name = spec.label
+	b.LayoutOrder = order
+	b.AutoButtonColor = false
+	b.BackgroundTransparency = 1
+	b.AutomaticSize = Enum.AutomaticSize.X
+	b.Size = UDim2.fromOffset(0, h)
+	slice(b)
+	local fill = Kit.image(b, "Fill", Art.tab, Color3.new(1, 1, 1), GLASS)
+	slice(fill)
+	fill.Position = UDim2.fromOffset(1, 1)
+	fill.Size = UDim2.new(1, -2, 1, -2)
+	local gradient = Kit.gradient(fill, Kit.C.greenTop, Kit.C.greenBottom)
+	gradient.Enabled = false
+	local inner = Kit.frame(b, "Inner")
+	inner.AutomaticSize = Enum.AutomaticSize.X
+	inner.Size = UDim2.fromOffset(0, h)
+	inner.ZIndex = 2
+	local up = stacked()
+	local iconSize = math.floor(h * (if up then STACK_ICON_SHARE else ICON_SHARE) + 0.5)
+	local wordSize = math.max(8, math.floor(h * (if up then STACK_WORD_SHARE else WORD_SHARE) + 0.5))
+	if not words then
+		-- The icon alone, a little bigger.
+		iconSize += 3
+	end
+	local pad = if words then math.floor(h * 0.36) else math.floor(h * 0.3)
+	Kit.pad(inner, 0, pad, 0, pad)
+	local l = Kit.list(inner, up and words, if up then 3 else math.floor(h * 0.18), Enum.VerticalAlignment.Center)
+	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local icon = iconOf(inner, spec, iconSize)
+	icon.ZIndex = 2
+	local label: TextLabel? = nil
+	if words then
+		local t = Kit.text(inner, "Label", spec.label, wordSize, Enum.FontWeight.ExtraBold, true)
+		t.LayoutOrder = 1
+		t.AutomaticSize = Enum.AutomaticSize.X
+		t.Size = UDim2.fromOffset(0, wordSize + 2)
+		t.TextTruncate = Enum.TextTruncate.None
+		t.ZIndex = 2
+		label = t
+	end
+	pressable(b)
+	b.Activated:Connect(fn)
+	b.Parent = parent
+	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label }
+end
+
+-- A small round graphite button: the gear (CLEAR UI's way back) and the
+-- temporary ROW switch.
+local function smallDisc(parent: Frame, name: string, order: number, fn: () -> ()): TextButton
+	local d = math.floor(h * 0.84)
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.LayoutOrder = order
@@ -261,150 +288,21 @@ local function plainButton(name: string, order: number): TextButton
 	b.Text = ""
 	b.BorderSizePixel = 0
 	b.BackgroundColor3 = Color3.new(1, 1, 1)
-	return b
-end
-
--- The icon with the word beside it, centred (the discs, the glass pill);
--- the word shows while the button is open.
-local function iconBeside(b: GuiButton, spec: Spec, d: number): (ImageLabel, TextLabel?)
-	local inner = Kit.frame(b, "Inner")
-	inner.Size = UDim2.fromScale(1, 1)
-	local l = Kit.list(inner, false, math.floor(d * 0.16), Enum.VerticalAlignment.Center)
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	local icon = iconOf(inner, spec, math.floor(d * 0.44))
-	local label: TextLabel? = nil
-	if spec.page then
-		local t = Kit.text(inner, "Label", spec.label, math.max(9, math.floor(d * 0.26)), Enum.FontWeight.Heavy, true, Kit.C.inUseInk)
-		t.LayoutOrder = 1
-		t.AutomaticSize = Enum.AutomaticSize.X
-		t.Size = UDim2.fromScale(0, 1)
-		t.TextTruncate = Enum.TextTruncate.None
-		t.Visible = false
-		label = t
-	end
-	return icon, label
-end
-
--- A round graphite button, the icon alone (DISCS, GLASS DISCS; the gear;
--- the ROW switch). A place's word sits beside the icon, shown while it is
--- open (paint widens the disc into a capsule).
-local function disc(parent: Frame, spec: Spec?, name: string, order: number, d: number, fn: () -> ()): (TextButton, Button?)
-	local b = plainButton(name, order)
 	b.BackgroundTransparency = 0.1
-	b.Size = UDim2.fromOffset(d, d)
-	local gradient = Kit.gradient(b, Kit.C.panelTop, Kit.C.panelBottom)
-	Kit.corner(b, math.floor(d / 2))
-	local stroke = Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.85)
-	local shade = shadeOf(b, math.floor(d / 2))
-	pressable(b)
-	b.Activated:Connect(fn)
-	b.Parent = parent
-	if not spec then
-		return b, nil
-	end
-	local icon, label = iconBeside(b, spec, d)
-	local it: Button = { spec = spec, b = b, icon = icon, label = label, gradient = gradient, stroke = stroke, shade = shade }
-	return b, it
-end
-
--- TABS: a place as the kit's slanted tab, icon and word.
-local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> ()): Button
-	local b = Instance.new("ImageButton")
-	b.Name = spec.label
-	b.LayoutOrder = order
-	b.AutoButtonColor = false
-	b.BackgroundTransparency = 1
-	b.Image = Art.tab
-	b.ScaleType = Enum.ScaleType.Slice
-	b.SliceCenter = Art.tabSlice
-	b.SliceScale = h / Art.tabH
-	b.Size = UDim2.fromOffset(math.floor(h * (if spec.id == "settings" then 2.4 else 2.2)), h)
-	local gradient = Kit.gradient(b, Kit.C.greenTop, Kit.C.greenBottom)
-	local inner = Kit.frame(b, "Inner")
-	inner.Size = UDim2.fromScale(1, 1)
-	local l = Kit.list(inner, false, math.floor(h * 0.14), Enum.VerticalAlignment.Center)
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	local icon = iconOf(inner, spec, math.floor(h * 0.38))
-	local t = Kit.text(inner, "Label", spec.label, math.max(9, math.floor(h * 0.24)), Enum.FontWeight.Heavy, true, Kit.C.tabInk)
-	t.LayoutOrder = 1
-	t.AutomaticSize = Enum.AutomaticSize.X
-	t.Size = UDim2.fromScale(0, 1)
-	t.TextTruncate = Enum.TextTruncate.None
-	pressable(b)
-	b.Activated:Connect(fn)
-	b.Parent = parent
-	return { spec = spec, b = b, icon = icon, label = t, gradient = gradient }
-end
-
--- TABS: a tool as a graphite square with the icon alone.
-local function square(parent: Frame, spec: Spec, order: number, fn: () -> ()): Button
-	local b = plainButton(spec.label, order)
-	b.BackgroundTransparency = 0.1
-	local d = math.floor(h * 0.86)
+	b.Visible = false
 	b.Size = UDim2.fromOffset(d, d)
 	Kit.gradient(b, Kit.C.panelTop, Kit.C.panelBottom)
-	Kit.corner(b, math.floor(d * 0.26))
-	Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.9)
-	local icon = iconOf(b, spec, math.floor(d * 0.5))
-	icon.AnchorPoint = Vector2.new(0.5, 0.5)
-	icon.Position = UDim2.fromScale(0.5, 0.5)
-	local shade = shadeOf(b, math.floor(d * 0.26))
+	Kit.corner(b, math.floor(d / 2))
+	Kit.stroke(b, Color3.new(1, 1, 1), 1, 0.85)
+	local shade = Kit.frame(b, "Shade", Color3.new(0, 0, 0), 0.5)
+	shade.Size = UDim2.fromScale(1, 1)
+	shade.ZIndex = 5
+	shade.Visible = false
+	Kit.corner(shade, math.floor(d / 2))
 	pressable(b)
 	b.Activated:Connect(fn)
 	b.Parent = parent
-	return { spec = spec, b = b, icon = icon, shade = shade }
-end
-
--- A see-through container for the GLASS PILL and GLASS BAR rows.
-local function glassBox(parent: Frame, radius: number, padX: number): Frame
-	local box = Kit.frame(parent, "Glass", Color3.new(1, 1, 1), GLASS)
-	box.LayoutOrder = 1
-	box.AutomaticSize = Enum.AutomaticSize.X
-	box.Size = UDim2.fromOffset(0, h)
-	Kit.gradient(box, Kit.C.panelTop, Kit.C.panelBottom)
-	Kit.corner(box, radius)
-	Kit.stroke(box, Color3.new(1, 1, 1), 1, 0.8)
-	Kit.pad(box, 0, padX, 0, padX)
-	Kit.list(box, false, 2, Enum.VerticalAlignment.Center)
-	return box
-end
-
--- An item in the glass: clear on it, green when open. The pill's is round
--- with the word beside the icon while open; the bar's is a rounded square
--- with the word under the icon always.
-local function glassItem(parent: Frame, spec: Spec, order: number, fn: () -> (), bar: boolean): Button
-	local b = plainButton(spec.label, order)
-	b.BackgroundTransparency = 1
-	local gradient = Kit.gradient(b, Kit.C.greenTop, Kit.C.greenBottom)
-	local icon: ImageLabel
-	local label: TextLabel? = nil
-	local radius: number
-	if bar then
-		local w, d = math.floor(h * 1.22), h - 6
-		b.Size = UDim2.fromOffset(w, d)
-		radius = math.floor(d * 0.26)
-		icon = iconOf(b, spec, math.floor(d * 0.44))
-		icon.AnchorPoint = Vector2.new(0.5, 0.5)
-		icon.Position = UDim2.fromScale(0.5, 0.36)
-		local t = Kit.text(b, "Label", spec.label, math.max(8, math.floor(d * 0.2)), Enum.FontWeight.Heavy, true, Kit.C.tabInk)
-		t.AnchorPoint = Vector2.new(0.5, 0.5)
-		t.Position = UDim2.fromScale(0.5, 0.77)
-		t.Size = UDim2.new(1, -4, 0, math.floor(d * 0.2) + 2)
-		t.TextXAlignment = Enum.TextXAlignment.Center
-		t.TextTruncate = Enum.TextTruncate.None
-		label = t
-	else
-		local d = h - 8
-		b.Size = UDim2.fromOffset(d, d)
-		radius = math.floor(d / 2)
-		icon, label = iconBeside(b, spec, d)
-	end
-	Kit.corner(b, radius)
-	local shade = shadeOf(b, radius)
-	pressable(b)
-	b.Activated:Connect(fn)
-	b.Parent = parent
-	return { spec = spec, b = b, icon = icon, label = label, gradient = gradient, shade = shade }
+	return b
 end
 
 local function spacer(parent: Frame, order: number, w: number): Frame
@@ -427,61 +325,31 @@ local function rebuild()
 	end
 	table.clear(buttons)
 	local fns: { [string]: () -> () } = {
+		store = a.store,
 		garage = a.garage,
-		reset = a.reset,
+		settings = a.settings,
 		view = a.view,
 		style = a.style,
-		settings = a.settings,
 	}
-	local kind = variant()
-	local l = r:FindFirstChildOfClass("UIListLayout")
-	if l then
-		-- The tabs touch; the discs and the squares sit GAP apart (spacers).
-		l.Padding = UDim.new(0, if kind == "tabs" then 1 else GAP)
-	end
-	local glass: Frame? = nil
-	if kind == "glasspill" then
-		glass = glassBox(r, math.floor(h / 2), 4)
-	elseif kind == "glassbar" then
-		glass = glassBox(r, 12, 3)
-	end
+	local up, bare = stacked(), gearOnly()
 	for i, spec in SPECS do
-		local fn = fns[spec.id]
-		if kind == "discs" or kind == "glassdiscs" then
-			local _, it = disc(r, spec, spec.label, i, h, fn)
-			if it then
-				table.insert(buttons, it)
-			end
-		elseif kind == "tabs" then
-			if spec.page then
-				-- The places first, the tools after them a little apart.
-				table.insert(buttons, slantTab(r, spec, i, fn))
-			else
-				-- Its spacer goes with it (paint hides the tools on foot).
-				local sp = spacer(r, 20 + 2 * i - 1, if spec.id == "reset" then 8 else GAP - 1)
-				local it = square(r, spec, 20 + 2 * i, fn)
-				it.space = sp
-				table.insert(buttons, it)
-			end
-		elseif glass then
-			table.insert(buttons, glassItem(glass, spec, i, fn, kind == "glassbar"))
+		local words = if spec.id == "settings" then not bare elseif spec.driving then up else true
+		local it = slantTab(r, spec, i, fns[spec.id], words)
+		if spec.id == "view" then
+			-- The tools a little apart from the places; the spacer goes
+			-- with them (paint hides the tools on foot).
+			it.space = spacer(r, i - 1, GROUP_GAP - GAP)
 		end
-	end
-	local small = math.floor(h * 0.84)
-	if kind == "tabs" then
-		spacer(r, 89, GAP - 1)
+		table.insert(buttons, it)
 	end
 	-- The gear: the SETTINGS icon alone, shown with CLEAR UI on.
-	local ge = disc(r, nil, "Gear", 90, small, a.settings)
-	local gi = iconOf(ge, SETTINGS_SPEC, math.floor(small * 0.56))
+	local ge = smallDisc(r, "Gear", 90, a.settings)
+	local gi = iconOf(ge, SETTINGS_SPEC, math.floor(ge.Size.X.Offset * 0.56))
 	gi.AnchorPoint = Vector2.new(0.5, 0.5)
 	gi.Position = UDim2.fromScale(0.5, 0.5)
 	gear = ge
 	-- Temporary: the ROW switch, cycling the rows to try.
-	if kind == "tabs" then
-		spacer(r, 98, GAP - 1)
-	end
-	local sw = disc(r, nil, "Row", 99, small, function()
+	local sw = smallDisc(r, "Row", 99, function()
 		local i = table.find(VARIANTS, variant()) or 0
 		player:SetAttribute(TopBar.ATTRIBUTE, VARIANTS[i % #VARIANTS + 1])
 	end)
