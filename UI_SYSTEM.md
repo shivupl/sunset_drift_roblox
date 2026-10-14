@@ -297,10 +297,13 @@ every point, and until it was marked (2026-10-14, the owner's phone: "i
 cant tap scroll, only the scroll bar seems to work") it took every drag
 on the car menu's list.
 The settings' rows scroll the same way. With no fades a row cut by the
-list's foot read as broken, so the blocks fit whole rows (`fitRows`): as
-many as fit, each up to a quarter smaller so they do, centred in the width
-that frees; a set that fits does not scroll, and the list's spare height
-is left empty under the rows (MORE's pager follows them up).
+list's foot read as broken, so the list shows whole rows (`fitRows`): as
+many as fit at the block size; a set that fits does not scroll, and the
+list's spare height is left empty under the rows (MORE's pager follows
+them up). The blocks used to shrink by up to a quarter to fit one more
+row, so MY CARS drew 73 px boxes beside PAINT's 85 on a phone (the owner,
+2026-10-14: "boxes need to be proportionate"); every tab's boxes are the
+block size now.
 
 The bottom row is one line: EXIT is the action's slanted shape in graphite
 (`Parts.C.graphite`), the action's height on the action's foot, under the

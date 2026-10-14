@@ -366,10 +366,13 @@ export type BoxMetrics = {
 	-- 2026-10-12: "remove the scroll shaddow ... add an obvious
 	-- scroll/updown for the options"): Parts.scroller.
 	scroller: ScrollKind?,
-	-- Blocks sized so the list shows whole rows, never a sliver of the next
-	-- (the owner's phone, 2026-10-12: with the fades gone a cut row read as
-	-- broken): as many rows as fit at `block`, each a little smaller if
-	-- that is what makes them fit, the grid centred in the width it frees.
+	-- The list shows whole rows, never a sliver of the next (the owner's
+	-- phone, 2026-10-12: with the fades gone a cut row read as broken): as
+	-- many rows as fit at `block`, the rest of the height left under them.
+	-- The blocks used to shrink to fit one more row, so MY CARS drew 73 px
+	-- boxes where PAINT drew 85 (the owner's phone, 2026-10-14: "my cars
+	-- menu in garage, boxes need to be proportionate"); now every tab's
+	-- boxes are `block`.
 	fitRows: boolean?,
 }
 
@@ -918,13 +921,12 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 	scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(edges)
 	scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(edges)
 
-	-- The block a set is drawn at: `m.block`, or with `fitRows` the size
-	-- that shows whole rows in the list's height (in drawing pixels, under
-	-- the layout's UIScale). Rows of `block` that fit with a remainder
-	-- become one more row, each smaller, if that keeps them to three
-	-- quarters of `block`; else the rows stay at `block` and the list ends
-	-- under them, the remainder left empty below (`spare`, a padding on
-	-- the holder).
+	-- The block a set is drawn at: `m.block`; with `fitRows` the list's
+	-- height (in drawing pixels, under the layout's UIScale) is cut to the
+	-- rows of `block` that fit whole, the remainder left empty below
+	-- (`spare`, a padding on the holder). The blocks no longer shrink to
+	-- fit one more row (2026-10-14): a set's boxes are the size of every
+	-- other set's.
 	local scale = Parts.scaleFor(ctx.touch, ctx.screen)
 	local spare = Instance.new("UIPadding")
 	spare.Parent = holder
@@ -941,14 +943,8 @@ function Parts.items(parent: Instance, ctx: Types.Ctx, swatchCols: number, rowCo
 		-- that fits does not scroll; with more, the next row starts a gap
 		-- after the last, past the bottom padding, out of sight.
 		local h = total - padTop - padBottom
-		local r = math.max(1, math.ceil((h + gap) / (want + gap) - 0.001))
-		local b = math.floor((h - (r - 1) * gap) / r)
-		if r > 1 and b < want * 0.75 then
-			r -= 1
-			b = want
-		end
-		b = math.min(b, want)
-		return b, math.max(0, math.floor(total - (padTop + r * b + (r - 1) * gap + padBottom)))
+		local r = math.max(1, math.floor((h + gap) / (want + gap)))
+		return want, math.max(0, math.floor(total - (padTop + r * want + (r - 1) * gap + padBottom)))
 	end
 
 	local shown: { Types.Entry } = {}
