@@ -96,6 +96,10 @@ local pageWatchers: { (id: string?) -> () } = {}
 local taps: { Tap } = {}
 local press: Press? = nil
 local sheet: Sheet? = nil
+-- Where the last touch or click came down while the menu was open: the
+-- tap-outside button checks it too, so a drag that starts on a list and
+-- lets go past the panel (a fling) is not a tap outside.
+local downAt: Vector3? = nil
 
 local function tell(open: boolean)
 	for _, fn in watchers do
@@ -576,6 +580,9 @@ local function bindInput()
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
+		if isOpen then
+			downAt = io.Position
+		end
 		if not isOpen or press or sheet then
 			return
 		end
@@ -775,8 +782,13 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	-- button under everything the layout draws. The frames over it do not
 	-- keep a tap from it, Active or not (a tap on a car card activated it
 	-- and closed the menu; the owner, 2026-10-14), so it looks at what is
-	-- under the tap itself: over a panel (Kit.panel's attribute), the tap
-	-- was for the panel.
+	-- under the tap itself, where it came down and where it let go: over a
+	-- panel (Kit.panel's attribute) either time, the tap was for the panel
+	-- (a drag down a list that lets go past it closed the menu, 2026-10-14).
+	-- PassThrough: drawn but not in the way, so a list's
+	-- finger scrolling (Parts.touchScroll) does not take it for a button
+	-- over the list (it did, and only the rail scrolled the car menu; the
+	-- owner's phone, 2026-10-14).
 	local outside = Instance.new("TextButton")
 	outside.Name = "Outside"
 	outside.AutoButtonColor = false
@@ -785,6 +797,7 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	outside.Text = ""
 	UIKit.edgeToEdge(outside, g)
 	outside.ZIndex = 0
+	outside:SetAttribute("PassThrough", true)
 	outside.Activated:Connect(function(io: InputObject)
 		local hk = hooks
 		if not (isOpen and not sheet and hk) then
@@ -792,9 +805,12 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 		end
 		local pg = player:FindFirstChildOfClass("PlayerGui")
 		if pg then
-			for _, o in pg:GetGuiObjectsAtPosition(io.Position.X, io.Position.Y) do
-				if o:GetAttribute("Panel") == true and o:IsDescendantOf(g) then
-					return
+			local down = downAt
+			for _, at in { io.Position, down or io.Position } do
+				for _, o in pg:GetGuiObjectsAtPosition(at.X, at.Y) do
+					if o:GetAttribute("Panel") == true and o:IsDescendantOf(g) then
+						return
+					end
 				end
 			end
 		end

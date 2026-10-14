@@ -285,7 +285,11 @@ down and drops one that starts across, so the list follows the finger
 from its first pixel, up-and-down only, and flings on release
 (`FLING_DECAY` 4 per second, `FLING_STOP` 24 px/s); the engine's gesture
 is off there. A touch that starts on a button outside the list (the
-thumb, EXIT) is that button's.
+thumb, EXIT) is that button's, unless the button is marked `PassThrough`
+(drawn but not in the way): the menu's tap-outside button lies under
+every point, and until it was marked (2026-10-14, the owner's phone: "i
+cant tap scroll, only the scroll bar seems to work") it took every drag
+on the car menu's list.
 The settings' rows scroll the same way. With no fades a row cut by the
 list's foot read as broken, so the blocks fit whole rows (`fitRows`): as
 many as fit, each up to a quarter smaller so they do, centred in the width
@@ -495,9 +499,12 @@ row's lit button, and a tap anywhere outside the panels (the menu's
 `Outside` button under everything it draws; "i should also be able to
 leave the menu by clicking outside"). The frames over that button do not
 keep a tap from it, Active or not (2026-10-14: a tap on a car card
-activated it and closed the menu), so it hit-tests the tap itself and
-ignores one over a panel (`Kit.panel` marks its frame with the attribute
-`Panel`).
+activated it and closed the menu), so it hit-tests the tap itself, where
+it came down and where it let go, and ignores one over a panel either
+time (`Kit.panel` marks its frame with the attribute `Panel`; a drag down
+a list that let go past the panel used to close the menu). The button is
+`PassThrough` so the lists' finger scrolling does not take it for a
+button over them.
 
 Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to
 the screen it is on. In Studio the LocalPlayer attribute `ScreenSim` (a

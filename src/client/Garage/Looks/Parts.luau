@@ -646,6 +646,10 @@ function Parts.touchScroll(scroll: ScrollingFrame, live: (() -> boolean)?)
 		end
 	end
 	-- Is the point on the list, with no button of something else over it?
+	-- A button marked PassThrough is drawn but not in the way (the menu's
+	-- tap-outside button under everything: it took every drag on the car
+	-- menu's list from the finger, so only the rail scrolled it; the
+	-- owner's phone, 2026-10-14).
 	local function onList(pos: Vector3): boolean
 		local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 		if not pg or not scroll.Parent then
@@ -655,7 +659,7 @@ function Parts.touchScroll(scroll: ScrollingFrame, live: (() -> boolean)?)
 		for _, o in pg:GetGuiObjectsAtPosition(pos.X, pos.Y) do
 			if o == scroll or o:IsDescendantOf(scroll) then
 				hit = true
-			elseif o:IsA("GuiButton") and o.Visible then
+			elseif o:IsA("GuiButton") and o.Visible and not o:GetAttribute("PassThrough") then
 				return false
 			end
 		end
