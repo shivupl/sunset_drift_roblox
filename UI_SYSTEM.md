@@ -251,7 +251,7 @@ one to the next:
 |---|---|---|---|
 | The words | Down the left on a shade (or the dock's tabs) | CARS, PLATES, SETTINGS | Its seven categories |
 | EXIT, LAYOUT | Bottom left (or the dock's ends) | Closes the menu | Leaves the garage |
-| The coins | Where the driving HUD has them, drawn as the HUD draws them (`HudLab.coins`) | | |
+| The coins | Where the driving HUD has them, drawn as the HUD draws them (`HudLab.coins`): the price tag below | | |
 | The title | Top, after the words: the place, small, then the subject, big | HAJWALA هجولة; the car or plate | GARAGE كراج; the car |
 | The subject | The middle | The car's photo with its weight and length; the plate, big | The 3D car |
 | The column | Under the coins: sub-tabs, a form, blocks, the item picked | Drive filters and cars; plate styles, search, your plates; the settings' rows | Sub-tabs and items |
@@ -409,6 +409,21 @@ page still answers DONE for a layout with one).
 
 The load cover wears the same look (graphite, HAJWALA هجولة, the green
 bar), and the menu slides in under it as it fades.
+
+**The cash is one price tag everywhere** (`HudLab/CashTag.luau`; the owner,
+2026-10-14, of the canvas's J7 "Price tag: a sodium plate with the cut
+corner, dark ink": "uniformly implement this one throughout the ui"): a
+sodium plate (#FFD592 over #FFBA5C, a white 9-slice `hud_tag` tinted by a
+gradient; three corners rounded, the bottom-right cut, the kit's shape),
+the amount in the HUD's italic digits in dark ink (#2B1903), the coin
+1.25 the plate's height over its left end. The driving HUD draws it in
+every version and finish (ScoreLive, ScoreBoard: BOARD's long CASH plate
+went, BEST sits under the tag as in FLOW), and the menu and the garage
+show the same drawing at the same spot (`Coins`). Sized in fractions of
+the screen's height as before (`LayoutD.CASH_H` tall at `CASH_Y`), the
+plate as wide as the amount: the mock's 34/32 of its height left of the
+digits, 12/32 right, one atlas cell (80/150 of the digits' height, half
+the plate's) a character.
 
 The phone's **top bar** (`src/client/TopBar.luau`, 2026-10-11) is one row
 right of Roblox's own buttons: STORE (the plates page, until a store

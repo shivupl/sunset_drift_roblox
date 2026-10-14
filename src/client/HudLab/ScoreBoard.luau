@@ -15,6 +15,7 @@ local Motion = require(HudLab:WaitForChild("Motion"))
 local LayoutD = require(HudLab:WaitForChild("LayoutD"))
 local Finishes = require(HudLab:WaitForChild("Finishes"))
 local R = require(HudLab:WaitForChild("Readouts"))
+local CashTag = require(HudLab:WaitForChild("CashTag"))
 
 local BAR = 18 -- angle bar segments, 5 degrees each
 
@@ -29,23 +30,18 @@ local ScoreBoard = {}
 function ScoreBoard.build(root: Frame, right: Frame, f: Finishes.Finish): Score
 	local er = LayoutD.EDGE_R
 
-	-- Cash, top right.
-	local pill = W.image(right, "Cash", f.art.pill)
-	pill.ScaleType = Enum.ScaleType.Slice
-	pill.SliceCenter = Rect.new(40, 30, 260, 82)
-	pill.AnchorPoint = Vector2.new(1, 0)
-	pill.Position = UDim2.fromScale(1 - er, LayoutD.CASH_Y)
-	pill.Size = UDim2.fromScale(0.463, LayoutD.CASH_H)
-	local cashLabel = R.label(pill, "Label", "CASH", f.label)
-	R.rect(cashLabel, 0.04, 0.3, 0.13, 0.36)
-	local cash = R.nums(pill, "Value", 9, "left")
-	cash.tint(f.print)
-	R.rect(cash.root, 0.17, 0.14, 0.52, 0.68)
-	local best = R.label(pill, "Best", "", f.label)
-	R.rect(best, 0.68, 0.32, 0.28, 0.34)
+	-- Cash, top right: the price tag every screen shows (CashTag), BEST
+	-- under it as FLOW has it (the long plate with CASH, the amount and
+	-- BEST went with it).
+	local cash = CashTag.build(right)
+	local best = R.label(right, "Best", "", f.label)
+	best.AnchorPoint = Vector2.new(1, 0)
+	best.Position = UDim2.fromScale(1 - er - 0.012, LayoutD.CASH_Y + LayoutD.CASH_H + 0.004)
+	best.Size = UDim2.fromScale(0.32, 0.03)
 	best.TextXAlignment = Enum.TextXAlignment.Right
+	W.stroke(best, R.INK, 1, 0.45)
 	local cashScale = Instance.new("UIScale")
-	cashScale.Parent = pill
+	cashScale.Parent = cash.root
 
 	-- The drift board, top middle (660x170 art).
 	local board = W.image(root, "Board", f.art.board)
@@ -94,7 +90,6 @@ function ScoreBoard.build(root: Frame, right: Frame, f: Finishes.Finish): Score
 	local function update(v: any, dt: number)
 		clock += dt
 		local now = os.clock()
-		pill.SliceScale = math.max(pill.AbsoluteSize.Y, 1) / 120
 		if cashRoller.shown < 0 then
 			cashRoller.shown = v.cash
 		end
@@ -171,7 +166,8 @@ function ScoreBoard.build(root: Frame, right: Frame, f: Finishes.Finish): Score
 		update = update,
 		event = event,
 		destroy = function()
-			pill:Destroy()
+			cash.root:Destroy()
+			best:Destroy()
 			board:Destroy()
 			graceBar:Destroy()
 		end,

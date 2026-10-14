@@ -53,6 +53,7 @@ return {
 	disc = "rbxassetid://80388430810332", -- hud_disc, 256, white: a disc (the badge's ground)
 	soft = "rbxassetid://91186672633925", -- hud_soft, 256: a dark blot behind plateless text
 	coin = "rbxassetid://117391161025187", -- hud_coin, 256: the cash's coin
+	tag = "rbxassetid://98956306441095", -- hud_tag (streetd/tag.py), 300x120, white 9-slice: the cash's plate, three corners rounded, the bottom-right cut
 	tachoGlass = "rbxassetid://128679846706849", -- streetd_tacho_glass, 512: the glass and cap, every finish
 	num = "rbxassetid://121313293704646", -- num, 640x300, cells of 80x150, 8 across: 0123456789,.x+-°
 	gear = "rbxassetid://79074122323209", -- street_gear, 896x160, cells of 112x160, 123456RN

@@ -10,6 +10,9 @@ and writes the PNGs itself:
   HUD tints them), the lit halo, a thin ring (the grace arc), a disc (the
   multiplier badge), a soft dark blot (behind plateless text),
   the coin, and the readouts' italic digits (`num`).
+- `streetd/tag.py`: the cash's price tag plate (`hud_tag`, 300x120, white
+  9-slice, three corners rounded and the bottom-right cut; the HUD tints it
+  sodium with a gradient). Pillow only: `python3 tag.py`.
 - `street/`: the STREET cluster from the HUD trial (after Initial D Arcade
   Stage and CarX Street). The HUD uses its gear digits; the rest of its
   parts were for the cluster.

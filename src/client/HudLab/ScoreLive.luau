@@ -14,11 +14,11 @@
 --   FLOW   the score small and centred at the top
 --   SIDE   the score down the right under the cash, right-aligned
 --
--- The cash is a coin and the amount: FLOW on a short chip with the coin
--- over its end, SIDE on nothing. A banked slide's cash flies from the score
--- into the coin and the amount counts up. (The coin spun and the cash
--- popped as it landed; the owner, 2026-10-10: "it makes a strange animation
--- on the top right like popping in and out that i dont like".)
+-- The cash is the price tag every screen shows (CashTag: a sodium plate,
+-- the coin over its left end), BEST under it. A banked slide's cash flies
+-- from the score into the coin and the amount counts up. (The coin spun and
+-- the cash popped as it landed; the owner, 2026-10-10: "it makes a strange
+-- animation on the top right like popping in and out that i dont like".)
 local HudLab = script.Parent
 local W = require(HudLab:WaitForChild("Widgets"))
 local Motion = require(HudLab:WaitForChild("Motion"))
@@ -26,8 +26,9 @@ local LayoutD = require(HudLab:WaitForChild("LayoutD"))
 local Art = require(HudLab:WaitForChild("Art"))
 local Finishes = require(HudLab:WaitForChild("Finishes"))
 local R = require(HudLab:WaitForChild("Readouts"))
+local CashTag = require(HudLab:WaitForChild("CashTag"))
 
--- The cash's box, fractions of the screen's height.
+-- The BEST line under the cash, fractions of the screen's height.
 local CASH_W = 0.32
 -- How long a banked slide's cash takes to fly into the coin.
 local FLY_SECONDS = 0.6
@@ -51,36 +52,11 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 	end
 
 	------------------------------------------------------------------
-	-- Cash: a coin and the amount.
+	-- Cash: the price tag, BEST under it.
 	------------------------------------------------------------------
-	local cashBox = keep(W.frame(right, "Cash"))
-	cashBox.AnchorPoint = Vector2.new(1, 0)
-	cashBox.Position = UDim2.fromScale(1 - er, LayoutD.CASH_Y)
-	cashBox.Size = UDim2.fromScale(CASH_W, LayoutD.CASH_H)
-	local chip: ImageLabel? = nil
-	if side then
-		local shade = W.image(cashBox, "Shade", Art.soft)
-		shade.ImageTransparency = 0.4
-		shade.Size = UDim2.fromScale(1.3, 2)
-		W.at(shade, 0.55, 0.5)
-		shade.ZIndex = 0
-	else
-		local c = W.image(cashBox, "Chip", f.art.pill)
-		c.ScaleType = Enum.ScaleType.Slice
-		c.SliceCenter = Rect.new(40, 30, 260, 82)
-		chip = c
-	end
-	local coinHolder = W.frame(cashBox, "Coin")
-	coinHolder.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	coinHolder.Size = UDim2.fromScale(1.25, 1.25)
-	coinHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-	coinHolder.Position = UDim2.fromScale(if side then 0.1 else 0.05, 0.5)
-	coinHolder.ZIndex = 4
-	local coin = W.image(coinHolder, "Face", Art.coin)
-	coin.ZIndex = 4
-	local cash = R.nums(cashBox, "Value", 9, "left")
-	cash.tint(f.print)
-	R.rect(cash.root, if side then 0.3 else 0.26, 0.255, 0.7, 0.49)
+	local cash = CashTag.build(right)
+	keep(cash.root)
+	local coin = cash.coin
 	local best = keep(R.label(right, "Best", "", f.label))
 	best.AnchorPoint = Vector2.new(1, 0)
 	best.Position = UDim2.fromScale(1 - er - 0.012, LayoutD.CASH_Y + LayoutD.CASH_H + 0.004)
@@ -230,10 +206,6 @@ function ScoreLive.build(root: Frame, right: Frame, f: Finishes.Finish, side: bo
 		local now = os.clock()
 
 		-- Cash.
-		local c = chip
-		if c then
-			c.SliceScale = math.max(c.AbsoluteSize.Y, 1) / 120
-		end
 		if cashRoller.shown < 0 then
 			cashRoller.shown = v.cash
 		end

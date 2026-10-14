@@ -395,7 +395,7 @@ end
 -- The cash as this HUD draws it, in `gui` (set up as the HUD's): the menu
 -- and the garage show it at the HUD's spot (Coins).
 function HudLab.coins(gui: ScreenGui): Coins.Coins
-	return Coins.build(gui, finish(), version().id)
+	return Coins.build(gui)
 end
 
 -- A menu or the garage covers the screen: the HUD, its edge glow and the
