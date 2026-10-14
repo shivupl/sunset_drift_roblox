@@ -10,6 +10,11 @@
 --              the player is unseated and the car parks on the drive-out
 --              spot, facing away from the door, still and anchored, its
 --              prompt off so nobody else takes it. -> { status = "ok" }
+--   "bringIn"  the same from anywhere (CUSTOMIZE in the car menu; the
+--              owner, 2026-10-14: "clicking customize should take me to
+--              the actual garage"): the doorway and speed checks are
+--              skipped, and the player is stood beside the parked car so
+--              "driveOut" finds them in range.
 --   "driveOut" leaving the view after a drive-in: the parked car is
 --              unanchored and the player seated in it (CarSpawner's own
 --              seating, which hands them network ownership as any seat
@@ -125,7 +130,8 @@ local function release(player: Player)
 	end
 end
 
-local function driveIn(player: Player): string
+-- `afar`: "bringIn", from anywhere on the map.
+local function driveIn(player: Player, afar: boolean): string
 	if parked[player] then
 		-- A stale park (the car was replaced since) is dropped; a live one
 		-- means the view is already open for it.
@@ -153,16 +159,18 @@ local function driveIn(player: Player): string
 		return "refused"
 	end
 	local chassis = handles.chassis
-	-- At the doorway: within the zone's box plus the margin.
-	local rel = zone.CFrame:PointToObjectSpace(chassis.Position)
 	local half = zone.Size / 2
-	local margin = s(GarageConfig.driveIn.zoneMarginM)
-	if math.abs(rel.X) > half.X + margin or math.abs(rel.Y) > half.Y + margin or math.abs(rel.Z) > half.Z + margin then
-		return "refused"
-	end
-	local kmh = chassis.AssemblyLinearVelocity.Magnitude * ConfigLoader.current().units.metersPerStud * 3.6
-	if kmh > GarageConfig.driveIn.maxKmh * GarageConfig.driveIn.serverSlack then
-		return "refused"
+	if not afar then
+		-- At the doorway: within the zone's box plus the margin.
+		local rel = zone.CFrame:PointToObjectSpace(chassis.Position)
+		local margin = s(GarageConfig.driveIn.zoneMarginM)
+		if math.abs(rel.X) > half.X + margin or math.abs(rel.Y) > half.Y + margin or math.abs(rel.Z) > half.Z + margin then
+			return "refused"
+		end
+		local kmh = chassis.AssemblyLinearVelocity.Magnitude * ConfigLoader.current().units.metersPerStud * 3.6
+		if kmh > GarageConfig.driveIn.maxKmh * GarageConfig.driveIn.serverSlack then
+			return "refused"
+		end
 	end
 	local spot = spotFrame(zone)
 	if spotTaken(spot, model, player) then
@@ -217,6 +225,14 @@ local function driveIn(player: Player): string
 	local p = parked[player]
 	if p and p.model == model and model.Parent then
 		p.prompt.Enabled = false
+	end
+	if afar then
+		-- The player came with the car: stood beside it on the apron (the
+		-- view hides them; "driveOut" wants them within leaveRangeM).
+		local c = player.Character
+		if c and hum.Health > 0 and not hum.SeatPart then
+			c:PivotTo(target * CFrame.new(s(GarageConfig.visit.standBesideM), s(2), 0))
+		end
 	end
 	return "ok"
 end
@@ -283,14 +299,19 @@ local function action(player: Player, what: any): string
 		end
 		return "ok"
 	end
-	if what ~= "driveIn" and what ~= "driveOut" then
+	if what ~= "driveIn" and what ~= "bringIn" and what ~= "driveOut" then
 		return "refused"
 	end
 	if busy[player] then
 		return "busy"
 	end
 	busy[player] = true
-	local ok, result = pcall(if what == "driveIn" then driveIn else driveOut, player)
+	local ok, result = pcall(function(): string
+		if what == "driveOut" then
+			return driveOut(player)
+		end
+		return driveIn(player, what == "bringIn")
+	end)
 	busy[player] = nil
 	if not ok then
 		warn("[GarageService]", what, player.Name, result)

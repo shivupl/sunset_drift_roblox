@@ -309,8 +309,15 @@ left (its name, chip and star in a row; under them the page's stage in a
 framed graphite box the panel's width, F1 from the canvas's row F, chosen
 over a big card and over spot, floor, glass, carbon and band looks of the
 box, "lets just go with the original f1 background": the car with IN USE
-top left and CUSTOMIZE, a dark pill with a green ring, bottom right, a
-toast until the menu can take you to the garage, `Actions.customize`; or
+top left and CUSTOMIZE, a dark pill with a green ring, bottom right,
+which takes you to the garage with that car on the turntable (the owner,
+2026-10-14: "clicking customize should take me to the actual garage";
+`Actions.customize` → `GarageView.visit`: on foot a walk-in from where
+you stand, LEAVE standing you at the door; driving your own car a drive-in
+from afar, the server's "bringIn" parking it on the drive-out spot and
+LEAVE seating you back in it; in another's car a notice and nothing moves;
+far from the garage its parts are streamed in first, around the folder's
+`DoorPosition`); or
 the plate; the weight and length under the box; the action, SPAWN or
 BUY), the page on
 the right: a CARS | PLATES switch in the header with the count and close

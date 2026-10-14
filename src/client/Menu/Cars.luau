@@ -222,6 +222,10 @@ function Cars.new(shell: Page.Shell): Page.Page
 			toggleFav(selected)
 		end,
 		starEntry = toggleFav,
+		picked = function(): string?
+			local c = picked()
+			return if c then c.id else nil
+		end,
 		search = {
 			get = function()
 				return query

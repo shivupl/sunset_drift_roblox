@@ -1395,7 +1395,9 @@ end
 -- Driving in: the car's chassis, while this player drives their own car.
 local lastCarSide: number? = nil
 
-local function driveIn(g: Garage, carId: string)
+-- `afar`: from the menu's CUSTOMIZE anywhere on the map ("bringIn": the
+-- server skips the doorway and stands the player beside the parked car).
+local function driveIn(g: Garage, carId: string, afar: boolean?)
 	if state ~= "outside" then
 		return
 	end
@@ -1407,7 +1409,7 @@ local function driveIn(g: Garage, carId: string)
 		pcall(fade, 0)
 		fading = false
 	end)
-	local status = garageAction("driveIn")
+	local status = garageAction(if afar then "bringIn" else "driveIn")
 	while fading do
 		task.wait()
 	end
@@ -1426,6 +1428,20 @@ local function driveIn(g: Garage, carId: string)
 	local deadline = os.clock() + 2
 	while os.clock() < deadline and ((hum and hum.SeatPart) or VehicleController.isDriving()) do
 		task.wait()
+	end
+	if afar then
+		-- The server stood the character beside the car: the garage streams
+		-- in around them now, so its parts are found again (the ones found
+		-- before may have gone).
+		local until_ = os.clock() + GarageConfig.visit.streamSeconds
+		local found = findGarage()
+		while not found and os.clock() < until_ do
+			task.wait(0.1)
+			found = findGarage()
+		end
+		if found then
+			g = found
+		end
 	end
 	state = "outside"
 	enter(g, carId)
@@ -1607,6 +1623,68 @@ end
 
 function GarageView.leave()
 	task.spawn(leaveNow, true)
+end
+
+-- To the garage from anywhere: CUSTOMIZE in the car menu (the owner,
+-- 2026-10-14: "clicking customize should take me to the actual garage"),
+-- with the car the menu had picked on the turntable. On foot it is a
+-- walk-in from where you stand (the view hides the character; LEAVE
+-- stands you at the door as ever). Driving your own car it is a drive-in
+-- from afar: the server parks the car on the drive-out spot and stands you
+-- beside it ("bringIn"), and LEAVE seats you back in it. In someone else's
+-- car, or a passenger, it says so and nothing moves. The world streams
+-- (WorldConfig.streaming) around the character, so far from the garage
+-- its parts may not be on this client: the folder's DoorPosition (the
+-- server's, on an instance that is always here) is asked to stream in
+-- first, and on foot the character is stood at the exit spot before the
+-- view opens, so the building stays streamed in while it is up (tried
+-- without, 2026-10-14: the turntable came in and the building did not).
+-- After a bring-in the server has stood the character beside the car, so
+-- the garage is found again before the view opens. False when it could
+-- not go.
+local function streamInGarage(): Garage?
+	local g = findGarage()
+	if g then
+		return g
+	end
+	local world = Workspace:FindFirstChild("World")
+	local folder = world and world:FindFirstChild("Garage")
+	local at = folder and folder:GetAttribute("DoorPosition")
+	if typeof(at) == "Vector3" then
+		pcall(function()
+			player:RequestStreamAroundAsync(at, GarageConfig.visit.streamSeconds)
+		end)
+		g = findGarage()
+	end
+	return g
+end
+
+function GarageView.visit(carId: string?): boolean
+	if state ~= "outside" then
+		return false
+	end
+	local g = streamInGarage()
+	if not g then
+		notice(GarageConfig.visit.noGarageText)
+		return false
+	end
+	local character, hum = characterParts()
+	if not character or not hum or hum.Health <= 0 then
+		return false
+	end
+	local id = carId or currentCarId()
+	if hum.SeatPart then
+		local car = VehicleController.currentCar()
+		if car and car:GetAttribute("OwnerUserId") == player.UserId and hum.SeatPart:IsDescendantOf(car) then
+			task.spawn(driveIn, g, id, true)
+			return true
+		end
+		notice(GarageConfig.visit.seatedText)
+		return false
+	end
+	character:PivotTo(g.exit.CFrame)
+	task.spawn(enter, g, id)
+	return true
 end
 
 function GarageView.start()

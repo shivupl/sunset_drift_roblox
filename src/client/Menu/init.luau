@@ -430,14 +430,23 @@ local function makeCtx(g: ScreenGui, cash: ScreenGui): Types.Ctx
 					fn(e.key)
 				end
 			end,
-			-- CUSTOMIZE: the garage, once the menu can take you there; a
-			-- toast for now (the showroom's versions, 2026-10-12).
-			customize = function()
-				if not sheet then
-					GarageSounds.play("tap")
-					toast("CUSTOMIZE: the garage, soon", "info")
+			-- CUSTOMIZE: to the garage with the car picked (the owner,
+			-- 2026-10-14: "clicking customize should take me to the actual
+			-- garage"). The menu closes and the garage's own fade takes
+			-- over; nil (no hook) hides the button.
+			customize = if hooks and hooks.customize
+				then function()
+					local hk = hooks
+					local go = hk and hk.customize
+					if go and not sheet then
+						GarageSounds.play("tap")
+						local pk = page().picked
+						local id = if pk then pk() else nil
+						hk.close()
+						go(id)
+					end
 				end
-			end,
+				else nil,
 		},
 		search = {
 			get = function()

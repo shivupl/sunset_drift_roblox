@@ -119,6 +119,26 @@ GarageConfig.driveIn = {
 	holdSeconds = 2,
 }
 
+-- CUSTOMIZE in the car menu takes you to the garage from anywhere (the
+-- owner, 2026-10-14: "clicking customize should take me to the actual
+-- garage"): on foot as a walk-in, driving your own car as a drive-in from
+-- afar (GarageService "bringIn" parks it on the drive-out spot). What is
+-- said when it cannot:
+--   seatedText: in a car that is not yours to park (a passenger, someone
+--     else's car).
+--   noGarageText: the garage is not built or not on this client yet.
+--   standBesideM: after a bring-in the player stands this far to the
+--     right of the parked car, on the apron (within driveIn.leaveRangeM).
+--   streamSeconds: how long to wait for the garage's parts to stream in
+--     when CUSTOMIZE is tapped far from it (the world streams at 2,048
+--     studs; the highway is longer).
+GarageConfig.visit = {
+	seatedText = "Get out of the car first.",
+	noGarageText = "The garage is not here yet.",
+	standBesideM = 3,
+	streamSeconds = 5,
+}
+
 -- Turntable.
 GarageConfig.spinDegPerSec = 8
 GarageConfig.dragDegPerPixel = 0.35 -- a horizontal drag outside the panel spins it

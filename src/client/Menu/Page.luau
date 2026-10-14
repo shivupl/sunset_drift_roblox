@@ -14,6 +14,9 @@ export type Hooks = {
 	current: () -> string?, -- the car you are in
 	busy: () -> boolean, -- a spawn is cooling down
 	close: () -> (), -- EXIT: the spawn menu closes (and hands back the modal)
+	-- CUSTOMIZE: to the garage with the car picked (GarageView.visit); nil
+	-- hides the button.
+	customize: ((carId: string?) -> ())?,
 }
 
 -- What a page gets from the menu.
@@ -66,6 +69,9 @@ export type Page = {
 	star: () -> (),
 	-- A card's own star (the cars' wide cards): nil for none.
 	starEntry: ((key: string) -> ())?,
+	-- The car picked (CUSTOMIZE takes it to the garage): nil for a page
+	-- without one.
+	picked: (() -> string?)?,
 	-- A search over the items: nil for none.
 	search: { get: () -> string, set: (q: string) -> () }?,
 	form: () -> Types.FormBuilder?,

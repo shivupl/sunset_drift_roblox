@@ -121,7 +121,20 @@ is left as it is (the world's).
   fade, restore camera to Custom, controls on, character shown, character
   placed 3 m outside the door facing out, panel slides away.
 - **Driving into the garage** does nothing: the zone only reacts to a
-  character on foot (not seated).
+  character on foot (not seated). (Superseded by garage round 2 §3: a slow
+  drive through the door parks the car and opens the view.)
+- **From the car menu** (2026-10-14, the owner: "clicking customize should
+  take me to the actual garage"): CUSTOMIZE on the picked car takes you to
+  the garage from anywhere, that car on the turntable (`GarageView.visit`).
+  On foot it is a walk-in from where you stand; LEAVE stands you at the
+  door. Driving your own car it is a drive-in from afar: the server's
+  `bringIn` is `driveIn` without the doorway and speed checks, and it stands
+  the player beside the parked car (`GarageConfig.visit.standBesideM`) so
+  `driveOut` finds them within `leaveRangeM`; LEAVE seats them back in the
+  car. In someone else's car, or as a passenger, a notice and nothing
+  moves. Far from the garage its parts may be streamed out, so the view
+  first asks to stream in around the folder's `DoorPosition` attribute
+  (set by the build; the folder itself never streams).
 
 ## 3. The view
 

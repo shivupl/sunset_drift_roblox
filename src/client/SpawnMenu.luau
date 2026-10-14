@@ -41,6 +41,9 @@ local LoadCover = require(script.Parent.LoadCover)
 local Menu = require(script.Parent:WaitForChild("Menu"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
 local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
+-- CUSTOMIZE's way to the garage (GarageView needs nothing of the menu, so
+-- no cycle; the panel's SHOP PLATES comes the other way, through SpawnMenu).
+local GarageView = require(script.Parent:WaitForChild("Garage"):WaitForChild("GarageView"))
 
 local SpawnMenu = {}
 
@@ -241,6 +244,7 @@ function SpawnMenu.start(remotes: Folder)
 		end,
 		busy = busy,
 		close = SpawnMenu.close,
+		customize = GarageView.visit,
 	}, remotes)
 	buildButton()
 	ContextActionService:BindAction(ACTION, function(_, state: Enum.UserInputState)

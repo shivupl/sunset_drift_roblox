@@ -961,14 +961,19 @@ function Garage.build(cfg: Config, ctx: Context, path: Path, parent: Instance): 
 	-- The client's handles: the threshold and where a leaving player
 	-- stands.
 	------------------------------------------------------------------
+	local doorFrame = place(o, g.displayU, door.heightM / 2, -hd + t / 2)
 	Build.part({
 		name = "DoorZone",
 		size = Vector3.new(S(door.widthM), S(door.heightM), S(g.doorZoneDepthM)),
-		cframe = place(o, g.displayU, door.heightM / 2, -hd + t / 2),
+		cframe = doorFrame,
 		color = C.hatch,
 		parent = folder,
 		transparency = 1,
 	})
+	-- Where the door is, on the folder (always on every client, where the
+	-- parts stream): the menu's CUSTOMIZE streams the garage in around it
+	-- before the view opens (GarageView.visit).
+	folder:SetAttribute("DoorPosition", doorFrame.Position)
 	Build.part({
 		name = "ExitSpot",
 		size = Vector3.new(S(0.6), S(0.6), S(0.6)),
