@@ -427,7 +427,20 @@ its sheet cell cropped to the drawing (`ICON_CROP`: the drawings sit in a
 margin of their cell), so an 18 px icon draws 18 px; the word is a size up
 (12, 10 stacked) because Roblox draws Montserrat narrower than the
 browser, with no letter spacing. Measured in Studio: within 5 px of the
-mock on every tab. Four takes to try (the
+mock on every tab. The row fits the room it has (the owner's phone: the
+row ran into the coin; "make sure you are making all these changes so
+that they adjust dynamically ... not hard programming for the mobile
+emulation on pc"): it measures what it would need (the words through a
+hidden label's `TextBounds`) against the room from where it rests to the
+cash (the left edge of any "Cash" frame or hanging "Coin" showing, the
+HUD's or a menu's; Roblox's inset's end with none) less 8, and if that is
+more than the room drops words in steps (SETTINGS and the tools to their
+icons, then every tab) and only then scales the row down, never past
+0.7; it refits as the tools come and go, the menu opens, the cash
+appears and the inset changes. On the owner's phone (about 404 px of
+room with the tools up) that is SETTINGS as the gear. In Studio the
+LocalPlayer attribute `TopRowRoom` (a number) stands in for the cash to
+try a narrow phone. Four takes to try (the
 attribute `TopRow`, cycled by the temporary ROW button at the row's
 end): TABS (L1), the icon beside the word, the tools with the icon alone;
 STACKED (L3), the icon over a smaller word, the tools with words too; and

@@ -31,10 +31,21 @@
 -- row goes and one small round gear stands in its place, on a phone or a
 -- desktop, the way to SETTINGS and the switch that brings everything back.
 --
+-- The row fits the room it has, between Roblox's buttons and the cash
+-- (the owner's phone, 2026-10-13: the row ran into the coin; "make sure
+-- you are making all these changes so that they adjust dynamically"): it
+-- measures what it would need, and if that is more than the room, drops
+-- words in steps (SETTINGS and the tools to their icons, then every tab),
+-- and only then scales down, never past 0.7. Nothing is sized to a
+-- particular screen: the row takes its height from Roblox's top bar
+-- inset and its room from where the cash is drawn (any "Cash" frame on
+-- screen, the HUD's or a menu's, and its hanging "Coin").
+--
 -- The icons are art/topbar (one sheet, 128 px cells); STORE's is the
 -- garage's plates cell.
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
@@ -126,6 +137,20 @@ local h = MAX_H
 -- Where the row rests (fit), so it can come back down to it.
 local rest = UDim2.new()
 local SLIDE = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
+-- Fitting the room: the step of words dropped (0 as the variant says, 1
+-- SETTINGS and the tools to their icons, 2 every tab its icon alone), the
+-- row's scale past that, and a label that measures words.
+local tier = 0
+local rowScale: UIScale? = nil
+local scratch: TextLabel? = nil
+local MIN_SCALE = 0.7
+-- Room kept before the cash and past Roblox's inset.
+local MARGIN = 8
+-- The small discs (the gear, ROW) and their width at this height.
+local function discSize(): number
+	return math.floor(h * 0.84)
+end
 
 local function variant(): Variant
 	local v = player:GetAttribute(TopBar.ATTRIBUTE)
@@ -233,6 +258,117 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
+-- Whether a tab carries its word, by the variant and the step of words
+-- dropped to fit.
+local function wordsFor(spec: Spec): boolean
+	if tier >= 2 then
+		return false
+	end
+	if spec.driving then
+		return stacked() and tier == 0
+	end
+	if spec.id == "settings" then
+		return not gearOnly() and tier == 0
+	end
+	return true
+end
+
+-- A tab's sizes at this height.
+local function sizes(): (number, number, number, number, number)
+	local up = stacked()
+	local iconSize = math.floor(h * ICON_SHARE + 0.5)
+	local wordSize = math.max(8, math.floor(h * (if up then STACK_WORD_SHARE else WORD_SHARE) + 0.5))
+	local pad = math.floor(h * PAD_SHARE + 0.5)
+	local toolPad = math.floor(h * TOOL_PAD_SHARE + 0.5)
+	local gap = math.floor(h * (if up then STACK_GAP_SHARE else WORD_GAP_SHARE) + 0.5)
+	return iconSize, wordSize, pad, toolPad, gap
+end
+
+-- A word's width as the tabs draw it.
+local function wordWidth(text: string, size: number): number
+	local t = scratch
+	if not t then
+		return #text * size * 0.7
+	end
+	t.TextSize = size
+	t.Text = text
+	return t.TextBounds.X
+end
+
+-- What a tab would measure, built now.
+local function tabWidth(spec: Spec): number
+	local iconSize, wordSize, pad, toolPad, gap = sizes()
+	if not wordsFor(spec) then
+		return 2 * toolPad + iconSize
+	end
+	local w = wordWidth(spec.label, wordSize)
+	if stacked() then
+		return 2 * toolPad + math.max(iconSize, w)
+	end
+	return 2 * pad + iconSize + gap + w
+end
+
+-- What the row would measure, built now, with the tools in or out.
+local function naturalWidth(): number
+	local total = 0
+	local n = 0
+	for _, spec in SPECS do
+		if driving or not spec.driving then
+			total += tabWidth(spec)
+			n += 1
+		end
+	end
+	if driving then
+		total += GROUP_GAP - 2 * GAP
+	end
+	-- The ROW switch (temporary).
+	total += discSize()
+	n += 1
+	return total + GAP * (n - 1)
+end
+
+-- The left edge of the cash on screen, from any "Cash" frame showing
+-- (the HUD's, a menu's) and the coin hanging off it; nil with none.
+local function cashLeft(): number?
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	local g = gui
+	if not pg then
+		return nil
+	end
+	local left: number? = nil
+	for _, screen in pg:GetChildren() do
+		if screen:IsA("ScreenGui") and screen.Enabled and screen ~= g then
+			for _, d in screen:GetDescendants() do
+				if d:IsA("GuiObject") and (d.Name == "Cash" or d.Name == "Coin") and d.Visible and d.AbsoluteSize.X > 0 then
+					local x = d.AbsolutePosition.X
+					if not left or x < left then
+						left = x
+					end
+				end
+			end
+		end
+	end
+	return left
+end
+
+-- The room the row has, in its pixels: from where it rests to the cash
+-- (or Roblox's inset's end), less a margin. In Studio the LocalPlayer
+-- attribute TopRowRoom (a number) stands in for the cash, to try a
+-- narrow phone.
+local function room(): number
+	local forced = player:GetAttribute("TopRowRoom")
+	if RunService:IsStudio() and type(forced) == "number" then
+		return forced
+	end
+	local bar = GuiService.TopbarInset
+	local limit = bar.Max.X
+	local c = cashLeft()
+	if c then
+		limit = math.min(limit, c)
+	end
+	return limit - MARGIN - rest.X.Offset
+end
+
 -- A slanted glass tab: the rim (the button's own shape), the fill inset a
 -- pixel over it (green when lit), the icon and the word in it, the tab as
 -- wide as they need. `words`: the word drawn (a tool's only when stacked;
@@ -257,11 +393,10 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	inner.Size = UDim2.fromOffset(0, h)
 	inner.ZIndex = 2
 	local up = stacked()
-	local iconSize = math.floor(h * ICON_SHARE + 0.5)
-	local wordSize = math.max(8, math.floor(h * (if up then STACK_WORD_SHARE else WORD_SHARE) + 0.5))
-	local pad = math.floor(h * (if not words then TOOL_PAD_SHARE elseif up then TOOL_PAD_SHARE else PAD_SHARE) + 0.5)
+	local iconSize, wordSize, padWords, toolPad, gap = sizes()
+	local pad = if not words or up then toolPad else padWords
 	Kit.pad(inner, 0, pad, 0, pad)
-	local l = Kit.list(inner, up and words, math.floor(h * (if up then STACK_GAP_SHARE else WORD_GAP_SHARE) + 0.5), Enum.VerticalAlignment.Center)
+	local l = Kit.list(inner, up and words, gap, Enum.VerticalAlignment.Center)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	local icon = iconOf(inner, spec, iconSize)
 	icon.ZIndex = 2
@@ -335,10 +470,8 @@ local function rebuild()
 		view = a.view,
 		style = a.style,
 	}
-	local up, bare = stacked(), gearOnly()
 	for i, spec in SPECS do
-		local words = if spec.id == "settings" then not bare elseif spec.driving then up else true
-		local it = slantTab(r, spec, i, fns[spec.id], words)
+		local it = slantTab(r, spec, i, fns[spec.id], wordsFor(spec))
 		if spec.id == "view" then
 			-- The tools a little apart from the places; the spacer goes
 			-- with them (paint hides the tools on foot).
@@ -364,6 +497,37 @@ local function rebuild()
 	paint()
 end
 
+-- The row fitted to its room: words dropped in steps, then scaled.
+local function refit()
+	if not row or ClearUi.on() then
+		return
+	end
+	local have = room()
+	tier = 0
+	while tier < 2 and naturalWidth() > have do
+		tier += 1
+	end
+	rebuild()
+	local n = naturalWidth()
+	local sc = rowScale
+	if sc then
+		sc.Scale = if n > have and have > 0 then math.max(MIN_SCALE, have / n) else 1
+	end
+end
+
+-- A refit a moment on, once what moved has laid out.
+local pendingFit = false
+local function scheduleRefit()
+	if pendingFit then
+		return
+	end
+	pendingFit = true
+	task.delay(0.1, function()
+		pendingFit = false
+		refit()
+	end)
+end
+
 local function fit()
 	local r = row
 	if not r then
@@ -374,7 +538,7 @@ local function fit()
 	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + h / 2)
 	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
-	rebuild()
+	refit()
 end
 
 -- False while the garage view fills the screen (SpawnMenu). The menu
@@ -388,12 +552,14 @@ end
 function TopBar.setDriving(on: boolean)
 	driving = on
 	paint()
+	scheduleRefit()
 end
 
 -- The menu page showing (Menu.watchPage), or nil: its button is lit.
 function TopBar.setOpen(page: string?)
 	openPage = page
 	paint()
+	scheduleRefit()
 end
 
 -- A confirm sheet is up over the menu: the whole row shades.
@@ -432,13 +598,32 @@ function TopBar.start(a: Actions)
 	r.AnchorPoint = Vector2.new(0, 0.5)
 	r.AutomaticSize = Enum.AutomaticSize.X
 	Kit.list(r, false, GAP, Enum.VerticalAlignment.Center)
+	local sc = Instance.new("UIScale")
+	sc.Parent = r
+	rowScale = sc
+	-- Measures words as the tabs draw them.
+	local t = Kit.text(g, "Scratch", "", 12, Enum.FontWeight.ExtraBold, true)
+	t.AutomaticSize = Enum.AutomaticSize.XY
+	t.Visible = false
+	scratch = t
 	row = r
 	gui = g
-	g.Parent = player:WaitForChild("PlayerGui")
+	local pg = player:WaitForChild("PlayerGui")
+	g.Parent = pg
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fit)
-	player:GetAttributeChangedSignal("ForceTouch"):Connect(paint)
-	player:GetAttributeChangedSignal(TopBar.ATTRIBUTE):Connect(rebuild)
-	ClearUi.changed(paint)
+	player:GetAttributeChangedSignal("ForceTouch"):Connect(function()
+		paint()
+		scheduleRefit()
+	end)
+	player:GetAttributeChangedSignal(TopBar.ATTRIBUTE):Connect(refit)
+	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
+	ClearUi.changed(function()
+		paint()
+		scheduleRefit()
+	end)
+	-- The cash comes and goes with the HUD and the menus.
+	pg.ChildAdded:Connect(scheduleRefit)
+	pg.ChildRemoved:Connect(scheduleRefit)
 	fit()
 end
 
