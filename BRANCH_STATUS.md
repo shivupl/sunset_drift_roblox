@@ -12,8 +12,9 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
-**`ui-flow` (2026-10-12, an experiment branched from `tweaks-2` at `b2166f3`; not merged): the
-whole phone UI as one frame.** The owner: "string together the entire UI from here for mobile. make
+**`ui-flow` (2026-10-12, branched from `tweaks-2` at `b2166f3`; merged into `main` by fast-forward
+on 2026-10-14 at `9e46cea`, not yet pushed; the local branch is kept for now): the whole phone UI as
+one frame.** The owner: "string together the entire UI from here for mobile. make
 a couple different complete layouts but just stop it from being so choppy and disconnected". The
 menu (`src/client/Menu`: CARS, PLATES, SETTINGS) draws through the garage's layouts, so the menu and
 the garage share the words, EXIT, the HUD's own coins, the column, the action and one motion; one
@@ -22,7 +23,10 @@ layout choice (`UiLayout`: SHOWCASE, GLASS, FRAME, DOCK) for every screen. The c
 on `tweaks-2`). CARS and PLATES are then the old picker's SHOWROOM (two panels, its wide cards, a CARS | PLATES
 switch, CUSTOMIZE on the car's stage; PICKER, FRAME, a side RAIL and a CUSTOMIZE button were tried
 and went), and SETTINGS the BOARD (one panel: time-of-day tiles, HUD finish cards, the camera and
-HUD layout as slanted choices). UI_SYSTEM.md "One frame for every screen" has the whole of it.
+HUD layout as slanted choices). UI_SYSTEM.md "One frame for every screen" has the whole of it. Its last five commits were the owner's phone fixes, tested
+one by one on `mobile-fixes` (deleted after merging): landscape lock, EXIT on the top row while driving,
+tabs 40 tall with the art at 2x, the garage doorway as a box you are in at any speed, and MY CARS boxes
+one size per tab.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
