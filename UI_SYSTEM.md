@@ -416,9 +416,18 @@ green for GARAGE), sized to Roblox's pill, which is not centred in the
 top bar inset but 12 px down it and 44 tall where the inset is 58
 (Studio and the owner's phone agree), so the row takes those fractions
 of the inset's height ("line the buttons up well with this
-horizontally"); the icon's cell is 0.64 of the tab's height (the sheet's
-drawings fill three fifths of a cell), the word a quarter ("make sure the
-text and icon sizes are also proportionate"). Four takes to try (the
+horizontally"). The tab is laid out from the mock's measurements, taken
+in the browser ("make sure the text and icon sizes are also
+proportionate", then "the spacing and proportions isnt as good as the
+prototypes ... make sure they are close to 1-to-1"): an 18 px icon and an
+11 px word on a 44 tab, 16 of padding and 8 between them, the tools 42
+wide with the icon alone, 5 between tabs and 20 before the tools;
+stacked, the icon over a 9 word, 4 apart, 12 of padding. The icon shows
+its sheet cell cropped to the drawing (`ICON_CROP`: the drawings sit in a
+margin of their cell), so an 18 px icon draws 18 px; the word is a size up
+(12, 10 stacked) because Roblox draws Montserrat narrower than the
+browser, with no letter spacing. Measured in Studio: within 5 px of the
+mock on every tab. Four takes to try (the
 attribute `TopRow`, cycled by the temporary ROW button at the row's
 end): TABS (L1), the icon beside the word, the tools with the icon alone;
 STACKED (L3), the icon over a smaller word, the tools with words too; and

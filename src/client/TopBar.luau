@@ -81,9 +81,9 @@ local SETTINGS_SPEC = SPECS[3]
 local PILL_TOP = 12 / 58
 local PILL_H = 44 / 58
 local MIN_H, MAX_H = 36, 48
--- Between tabs; between the places and the tools.
+-- Between tabs; between the places and the tools (the mock's 5 and 20).
 local GAP = 5
-local GROUP_GAP = 10
+local GROUP_GAP = 20
 -- How far a press sinks.
 local PRESS = 0.92
 -- The glass: the tab's white shape nearly clear over a second, fainter
@@ -92,13 +92,21 @@ local PRESS = 0.92
 local GLASS = 0.9
 local RIM = 0.86
 -- The icon and the word, as shares of the tab's height (the canvas's row
--- L: an 18 px drawing and an 11 px word on 44; the stacked word smaller).
--- The sheet's drawings fill about three fifths of their cell, so the
--- icon's cell is drawn bigger than the drawing wanted.
-local ICON_SHARE = 0.64
-local WORD_SHARE = 0.25
-local STACK_ICON_SHARE = 0.58
-local STACK_WORD_SHARE = 0.2
+-- L, measured in the browser: an 18 px icon and an 11 px word on a 44
+-- tab, 16 of padding, 8 between them; the tools 42 wide with the icon
+-- alone; stacked, the 18 icon over a 9 word, 4 apart, 12 of padding).
+-- Roblox draws the word narrower than the browser (no letter spacing), so
+-- it is a size up.
+local ICON_SHARE = 0.41
+local WORD_SHARE = 0.27
+local PAD_SHARE = 0.36
+local TOOL_PAD_SHARE = 0.27
+local WORD_GAP_SHARE = 0.18
+local STACK_WORD_SHARE = 0.23
+local STACK_GAP_SHARE = 0.09
+-- The sheet's drawings sit inside a margin of their cell; the icon shows
+-- the cell cropped to the drawing, so an 18 px icon draws 18 px.
+local ICON_CROP = 22
 
 local player = Players.LocalPlayer
 
@@ -212,8 +220,8 @@ end
 
 local function iconOf(parent: GuiObject, spec: Spec, size: number): ImageLabel
 	local icon = Kit.image(parent, "Icon", spec.sheet)
-	icon.ImageRectSize = Vector2.new(ICON_CELL, ICON_CELL)
-	icon.ImageRectOffset = Vector2.new(spec.icon * ICON_CELL, 0)
+	icon.ImageRectSize = Vector2.new(ICON_CELL - 2 * ICON_CROP, ICON_CELL - 2 * ICON_CROP)
+	icon.ImageRectOffset = Vector2.new(spec.icon * ICON_CELL + ICON_CROP, ICON_CROP)
 	icon.Size = UDim2.fromOffset(size, size)
 	return icon
 end
@@ -249,15 +257,11 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	inner.Size = UDim2.fromOffset(0, h)
 	inner.ZIndex = 2
 	local up = stacked()
-	local iconSize = math.floor(h * (if up then STACK_ICON_SHARE else ICON_SHARE) + 0.5)
+	local iconSize = math.floor(h * ICON_SHARE + 0.5)
 	local wordSize = math.max(8, math.floor(h * (if up then STACK_WORD_SHARE else WORD_SHARE) + 0.5))
-	if not words then
-		-- The icon alone, a little bigger.
-		iconSize += 3
-	end
-	local pad = if words then math.floor(h * 0.36) else math.floor(h * 0.3)
+	local pad = math.floor(h * (if not words then TOOL_PAD_SHARE elseif up then TOOL_PAD_SHARE else PAD_SHARE) + 0.5)
 	Kit.pad(inner, 0, pad, 0, pad)
-	local l = Kit.list(inner, up and words, if up then 3 else math.floor(h * 0.18), Enum.VerticalAlignment.Center)
+	local l = Kit.list(inner, up and words, math.floor(h * (if up then STACK_GAP_SHARE else WORD_GAP_SHARE) + 0.5), Enum.VerticalAlignment.Center)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	local icon = iconOf(inner, spec, iconSize)
 	icon.ZIndex = 2
@@ -338,7 +342,7 @@ local function rebuild()
 		if spec.id == "view" then
 			-- The tools a little apart from the places; the spacer goes
 			-- with them (paint hides the tools on foot).
-			it.space = spacer(r, i - 1, GROUP_GAP - GAP)
+			it.space = spacer(r, i - 1, GROUP_GAP - 2 * GAP)
 		end
 		table.insert(buttons, it)
 	end
