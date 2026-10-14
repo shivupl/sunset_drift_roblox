@@ -482,7 +482,12 @@ this one"), a slimmer slanted tab with a 24 px gear and 13 of padding.
 CAMERA and STYLE are off the row for now ("forget the style and camera
 buttons for now"; `TOOLS`, the code kept). The icons are 22 on 44 (the
 mock's 18 was "big enough" only just: "make sure the icons are big
-enough"), and the icon-and-word pair is leaned 2 px left ("the text is
+enough"); the tab itself is 40 tall round them (`TAB_SHARE`, 2026-10-14:
+"buttons should be slightly vertically narrower (text and icon remain
+the same)"), its middle on the pill's, and its art is drawn at 277x128,
+twice the old 138x64 ("edges look wierd and blury": a 44 px tab is 88 to
+132 device pixels on a phone, more than the old art had), and the
+icon-and-word pair is leaned 2 px left ("the text is
 centered well, right now it kind of looks off center and that there is a
 little less room on the right of it"): an icon's drawing sits inside its
 box and the italic word's ink leans past its box's right, so a

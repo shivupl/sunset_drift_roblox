@@ -193,7 +193,7 @@ def gear_icon(d, k):
 
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
-    slant("cm_tab", 120, 64, 10, 16, False)
+    slant("cm_tab", 240, 128, 20, 16, False)
     slant("cm_btn", 240, 104, 16, 12, True)
     tile_art()
     spot()

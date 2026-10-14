@@ -98,6 +98,11 @@ local TOOLS = false
 local PILL_TOP = 12 / 58
 local PILL_H = 44 / 58
 local MIN_H, MAX_H = 36, 48
+-- The tab's own height as a share of the pill's: the icon, the word and
+-- the padding keep the pill's measure (`ch`), the tab is this much
+-- shorter round them (the owner, 2026-10-14: "buttons should be slightly
+-- vertically narrower (text and icon remain the same)"): 40 on 44.
+local TAB_SHARE = 40 / 44
 -- Between tabs; between the places and the tools (the mock's 5 and 20).
 local GAP = 5
 local GROUP_GAP = 20
@@ -146,7 +151,8 @@ local shown = true -- no garage view up
 local driving = false
 local openPage: string? = nil -- the menu page showing, or nil
 local busy = false -- a confirm sheet is up over the menu
-local h = MAX_H
+local ch = MAX_H -- the content's height: the pill's
+local h = MAX_H -- the tab's
 
 -- Where the row rests (fit), so it can come back down to it.
 local rest = UDim2.new()
@@ -264,11 +270,11 @@ end
 
 -- A tab's sizes at this height.
 local function sizes(): (number, number, number, number, number)
-	local iconSize = math.floor(h * ICON_SHARE + 0.5)
-	local wordSize = math.max(8, math.floor(h * WORD_SHARE + 0.5))
-	local pad = math.floor(h * PAD_SHARE + 0.5)
-	local toolPad = math.floor(h * TOOL_PAD_SHARE + 0.5)
-	local gap = math.floor(h * WORD_GAP_SHARE + 0.5)
+	local iconSize = math.floor(ch * ICON_SHARE + 0.5)
+	local wordSize = math.max(8, math.floor(ch * WORD_SHARE + 0.5))
+	local pad = math.floor(ch * PAD_SHARE + 0.5)
+	local toolPad = math.floor(ch * TOOL_PAD_SHARE + 0.5)
+	local gap = math.floor(ch * WORD_GAP_SHARE + 0.5)
 	return iconSize, wordSize, pad, toolPad, gap
 end
 
@@ -276,7 +282,7 @@ end
 -- SETTINGS as the gear, a touch bigger.
 local function aloneSizes(spec: Spec): (number, number)
 	if spec == SETTINGS_SPEC then
-		return math.floor(h * GEAR_ICON_SHARE + 0.5), math.floor(h * GEAR_PAD_SHARE + 0.5)
+		return math.floor(ch * GEAR_ICON_SHARE + 0.5), math.floor(ch * GEAR_PAD_SHARE + 0.5)
 	end
 	local iconSize, _, _, toolPad = sizes()
 	return iconSize, toolPad
@@ -387,7 +393,7 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	local iconSize, wordSize, pad, _, gap = sizes()
 	-- The pair leaned left to read centred (less padding on the left,
 	-- more on the right); an icon alone is centred as it is.
-	local lean = if words then math.floor(h * LEAN_SHARE + 0.5) else 0
+	local lean = if words then math.floor(ch * LEAN_SHARE + 0.5) else 0
 	if not words then
 		iconSize, pad = aloneSizes(spec)
 	end
@@ -414,7 +420,7 @@ end
 
 -- A small round graphite button: the gear (CLEAR UI's way back).
 local function smallDisc(parent: Frame, name: string, order: number, fn: () -> ()): TextButton
-	local d = math.floor(h * 0.84)
+	local d = math.floor(ch * 0.84)
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.LayoutOrder = order
@@ -517,8 +523,10 @@ local function fit()
 		return
 	end
 	local bar = GuiService.TopbarInset
-	h = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
-	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + h / 2)
+	ch = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
+	h = math.floor(ch * TAB_SHARE + 0.5)
+	-- The row's middle on the pill's, whatever the tab's height.
+	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + ch / 2)
 	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
 	rebuild()
@@ -564,7 +572,7 @@ function TopBar.foot(): number?
 	if not g or not r or not g.Enabled or ClearUi.on() then
 		return nil
 	end
-	return g.AbsolutePosition.Y + rest.Y.Offset + h / 2
+	return g.AbsolutePosition.Y + rest.Y.Offset + ch / 2
 end
 
 function TopBar.start(a: Actions)

@@ -4,10 +4,13 @@
 -- pieces are white and tinted here; the 9-slice ones say their centre.
 local Art = {}
 
--- A slanted tab (16 degrees), 138x64: the slant lives in the end caps.
-Art.tab = "rbxassetid://85004345953586"
-Art.tabSlice = Rect.new(30, 31, 108, 33)
-Art.tabH = 64
+-- A slanted tab (16 degrees), 277x128: the slant lives in the end caps.
+-- Drawn at twice its old 138x64 (2026-10-14, the owner: "edges look wierd
+-- and blury"): a 44 px tab on a phone is 88 to 132 device pixels, and
+-- the 64 px art was being blown up to them.
+Art.tab = "rbxassetid://97717198360566"
+Art.tabSlice = Rect.new(60, 62, 216, 66)
+Art.tabH = 128
 -- The SPAWN button: slanted 12 degrees, shaded (light top, dark lip), 262x104.
 Art.button = "rbxassetid://118789381950876"
 Art.buttonSlice = Rect.new(40, 51, 222, 53)
