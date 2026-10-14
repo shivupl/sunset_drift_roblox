@@ -10,6 +10,7 @@ local slideResult = remotes:WaitForChild("SlideResult") :: RemoteEvent
 local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
 local ExitSpot = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ExitSpot"))
 local VehicleController = require(script.VehicleController)
+local Input = require(script.Input)
 local DebugPanel = require(script.DebugPanel)
 local Hud = require(script.Hud)
 -- The driving HUD and the phone controls (layout D; STYLE or U cycles its finish).
@@ -158,16 +159,20 @@ Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
 -- The phone's top bar, right of Roblox's buttons: STORE (the plates page,
--- until a store exists), GARAGE (the car menu) and SETTINGS always, CAMERA
--- and STYLE while driving; a page's button closes it when it is the one
--- up. RESET left the row (2026-10-13); a desktop keeps the CARS button and
--- the keys (M, R, V, U).
+-- until a store exists), GARAGE (the car menu) and SETTINGS always, EXIT
+-- while driving (CAMERA and STYLE are off it for now); a page's button
+-- closes it when it is the one up. RESET left the row (2026-10-13); a
+-- desktop keeps the CARS button and the keys (M, R, V, U, E).
 TopBar.start({
 	store = function()
 		SpawnMenu.toggleTab("plates")
 	end,
 	garage = function()
 		SpawnMenu.toggleTab("cars")
+	end,
+	-- The same pulse as E: the car controller sends ExitCar on its next step.
+	exit = function()
+		Input.pulse("exit")
 	end,
 	view = CameraViews.cycle,
 	style = HudLab.cycle,

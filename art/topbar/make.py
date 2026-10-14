@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The phone top bar's icons (src/client/TopBar.luau): GARAGE, RESET, VIEW,
-STYLE and SETTINGS, white strokes on transparent for the game to tint, in
-one sheet of 128 px cells, 5 across, in that order. Drawn from the
+STYLE, SETTINGS and EXIT, white strokes on transparent for the game to
+tint, in one sheet of 128 px cells, 6 across, in that order. Drawn from the
 "Hajwala Menus" canvas's Driving board (2026-10-11); VIEW keeps the HUD's
 own camera (art/hud/streetd/make.py "view"), as the owner asked ("keep
 'view' icon as a regular camera"). Run:
@@ -38,8 +38,12 @@ ICONS = {
                      '<g stroke="#fff" stroke-width="3" stroke-linecap="butt">'
                      + "".join(f'<line x1="12" y1="5.6" x2="12" y2="2.6" transform="rotate({a} 12 12)"/>' for a in range(0, 360, 45))
                      + "</g>"),
+    # Out of the car (2026-10-14, "need an exit car button"): a door frame
+    # open to the right and an arrow going out through it.
+    "exit": (24, f'<g {STROKE}><path d="M10 4H6a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 6 20h4"/>'
+                 '<path d="M9.5 12h10.5M16 7.5l4.5 4.5-4.5 4.5"/></g>'),
 }
-ORDER = ["garage", "reset", "view", "style", "settings"]
+ORDER = ["garage", "reset", "view", "style", "settings", "exit"]
 
 
 def main():

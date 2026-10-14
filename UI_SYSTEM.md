@@ -437,10 +437,12 @@ the plate's) a character.
 
 The phone's **top bar** (`src/client/TopBar.luau`, 2026-10-11) is one row
 right of Roblox's own buttons: STORE (the plates page, until a store
-exists), GARAGE (the car menu, tinted green) and SETTINGS always, CAMERA
-and STYLE while driving (RESET left the row 2026-10-13: "store, garage,
-settings then camera, style buttons"; R stays on a keyboard). A desktop
-keeps the CARS button and the keys. The row is the kit's slanted tabs as
+exists), GARAGE (the car menu, tinted green) and SETTINGS always, EXIT
+while driving (2026-10-14: "on mobile - need an exit car button"; the
+same pulse as E, a group apart from the places), CAMERA and STYLE while
+driving once they are back (RESET left the row 2026-10-13: "store,
+garage, settings then camera, style buttons"; R stays on a keyboard). A
+desktop keeps the CARS button and the keys. The row is the kit's slanted tabs as
 glass (the owner, of the TABS row on their phone: "i am a big fan of this
 one but i think it needs some work"; the canvas's row L): each tab the
 slanted shape nearly clear over a fainter copy of itself (a white tint,

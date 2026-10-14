@@ -58,26 +58,31 @@ local TopBar = {}
 export type Actions = {
 	store: () -> (),
 	garage: () -> (),
+	exit: () -> (),
 	view: () -> (),
 	style: () -> (),
 	settings: () -> (),
 }
 
--- art/topbar/out/topbar_icons.png: GARAGE, RESET, VIEW, STYLE, SETTINGS.
-local ICONS = "rbxassetid://115983636701904"
+-- art/topbar/out/topbar_icons.png: GARAGE, RESET, VIEW, STYLE, SETTINGS, EXIT.
+local ICONS = "rbxassetid://112507017361383"
 -- The garage's sheet (Parts.ICONS): STORE is its plates cell, 3.
 local GARAGE_ICONS = "rbxassetid://71924428072059"
 local ICON_CELL = 128
 
 -- `page`: the menu page this button opens (lit while it shows); `driving`:
--- only while the phone controls are up.
-type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean }
+-- only while the phone controls are up; `tool`: CAMERA and STYLE, the
+-- icon alone, off the row for now (TOOLS).
+type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean, tool: boolean }
 local SPECS: { Spec } = {
-	{ id = "store", label = "STORE", icon = 3, sheet = GARAGE_ICONS, page = "plates", driving = false },
-	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false },
-	{ id = "settings", label = "SETTINGS", icon = 4, sheet = ICONS, page = "settings", driving = false },
-	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true },
-	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true },
+	{ id = "store", label = "STORE", icon = 3, sheet = GARAGE_ICONS, page = "plates", driving = false, tool = false },
+	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false, tool = false },
+	{ id = "settings", label = "SETTINGS", icon = 4, sheet = ICONS, page = "settings", driving = false, tool = false },
+	-- Out of the car (the owner, 2026-10-14: "on mobile - need an exit car
+	-- button"; a desktop has E): the first driving tab, a group apart.
+	{ id = "exit", label = "EXIT", icon = 5, sheet = ICONS, driving = true, tool = false },
+	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true, tool = true },
+	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true, tool = true },
 }
 local SETTINGS_SPEC = SPECS[3]
 
@@ -153,9 +158,20 @@ local scratch: TextLabel? = nil
 local MIN_SCALE = 0.7
 -- Room kept before the cash and past Roblox's inset.
 local MARGIN = 8
--- The tools belong on the row now.
-local function toolsUp(): boolean
-	return TOOLS and driving
+-- Whether a tab belongs on the row now: a driving tab only while the
+-- phone controls are up, a tool only with TOOLS.
+local function up(spec: Spec): boolean
+	return (not spec.driving or driving) and (not spec.tool or TOOLS)
+end
+
+-- Any driving tab up: the group gap before them is drawn.
+local function drivingUp(): boolean
+	for _, spec in SPECS do
+		if spec.driving and up(spec) then
+			return true
+		end
+	end
+	return false
 end
 
 -- The menu page a button stands for is lit.
@@ -180,7 +196,7 @@ local function paint()
 	end
 	for _, it in buttons do
 		local spec = it.spec
-		it.b.Visible = not clear and (toolsUp() or not spec.driving)
+		it.b.Visible = not clear and up(spec)
 		local sp = it.space
 		if sp then
 			sp.Visible = it.b.Visible
@@ -240,10 +256,10 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
--- STORE and GARAGE carry their words; SETTINGS is the gear alone, a tool
--- its icon alone.
+-- STORE, GARAGE and EXIT carry their words; SETTINGS is the gear alone, a
+-- tool its icon alone.
 local function wordsFor(spec: Spec): boolean
-	return spec ~= SETTINGS_SPEC and not spec.driving
+	return spec ~= SETTINGS_SPEC and not spec.tool
 end
 
 -- A tab's sizes at this height.
@@ -287,17 +303,17 @@ local function tabWidth(spec: Spec): number
 	return 2 * pad + iconSize + gap + wordWidth(spec.label, wordSize)
 end
 
--- What the row would measure, built now, with the tools in or out.
+-- What the row would measure, built now, with the driving tabs in or out.
 local function naturalWidth(): number
 	local total = 0
 	local n = 0
 	for _, spec in SPECS do
-		if toolsUp() or not spec.driving then
+		if up(spec) then
 			total += tabWidth(spec)
 			n += 1
 		end
 	end
-	if toolsUp() then
+	if drivingUp() then
 		total += GROUP_GAP - 2 * GAP
 	end
 	return total + GAP * (n - 1)
@@ -446,14 +462,15 @@ local function rebuild()
 		store = a.store,
 		garage = a.garage,
 		settings = a.settings,
+		exit = a.exit,
 		view = a.view,
 		style = a.style,
 	}
 	for i, spec in SPECS do
 		local it = slantTab(r, spec, i, fns[spec.id], wordsFor(spec))
-		if spec.id == "view" then
-			-- The tools a little apart from the places; the spacer goes
-			-- with them (paint hides the tools on foot).
+		if spec.id == "exit" then
+			-- The driving tabs a little apart from the places; the spacer
+			-- goes with the first of them (paint hides them on foot).
 			it.space = spacer(r, i - 1, GROUP_GAP - 2 * GAP)
 		end
 		table.insert(buttons, it)
