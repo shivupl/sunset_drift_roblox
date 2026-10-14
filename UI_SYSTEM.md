@@ -478,7 +478,11 @@ cars header after the count, the settings header after the note; "there
 should always be a like x button ... top right, as it was before"), the
 row's lit button, and a tap anywhere outside the panels (the menu's
 `Outside` button under everything it draws; "i should also be able to
-leave the menu by clicking outside").
+leave the menu by clicking outside"). The frames over that button do not
+keep a tap from it, Active or not (2026-10-14: a tap on a car card
+activated it and closed the menu), so it hit-tests the tap itself and
+ignores one over a panel (`Kit.panel` marks its frame with the attribute
+`Panel`).
 
 Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to
 the screen it is on. In Studio the LocalPlayer attribute `ScreenSim` (a

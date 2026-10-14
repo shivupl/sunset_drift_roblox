@@ -145,6 +145,9 @@ end
 -- Body, where the content and its layout go (the texture stays out of it).
 function Kit.panel(parent: Instance, name: string, radius: number): (Frame, Frame)
 	local p = Kit.frame(parent, name, Color3.new(1, 1, 1), 0.05)
+	-- Marks the panel for hit tests (the menu's tap outside the panels:
+	-- a tap over one is for it, whatever it landed on).
+	p:SetAttribute("Panel", true)
 	Kit.gradient(p, Kit.C.panelTop, Kit.C.panelBottom)
 	Kit.corner(p, radius)
 	Kit.stroke(p, Color3.new(1, 1, 1), 1, 0.92)

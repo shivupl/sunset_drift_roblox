@@ -772,7 +772,11 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	dim = d
 	-- A tap outside the panels closes the menu (the owner, 2026-10-13: "i
 	-- should also be able to leave the menu by clicking outside"): a clear
-	-- button under everything the layout draws.
+	-- button under everything the layout draws. The frames over it do not
+	-- keep a tap from it, Active or not (a tap on a car card activated it
+	-- and closed the menu; the owner, 2026-10-14), so it looks at what is
+	-- under the tap itself: over a panel (Kit.panel's attribute), the tap
+	-- was for the panel.
 	local outside = Instance.new("TextButton")
 	outside.Name = "Outside"
 	outside.AutoButtonColor = false
@@ -781,12 +785,21 @@ function Menu.start(h: Page.Hooks, remotes: Folder)
 	outside.Text = ""
 	UIKit.edgeToEdge(outside, g)
 	outside.ZIndex = 0
-	outside.Activated:Connect(function()
+	outside.Activated:Connect(function(io: InputObject)
 		local hk = hooks
-		if isOpen and not sheet and hk then
-			GarageSounds.play("tap")
-			hk.close()
+		if not (isOpen and not sheet and hk) then
+			return
 		end
+		local pg = player:FindFirstChildOfClass("PlayerGui")
+		if pg then
+			for _, o in pg:GetGuiObjectsAtPosition(io.Position.X, io.Position.Y) do
+				if o:GetAttribute("Panel") == true and o:IsDescendantOf(g) then
+					return
+				end
+			end
+		end
+		GarageSounds.play("tap")
+		hk.close()
 	end)
 	outside.Parent = g
 	g.Parent = player:WaitForChild("PlayerGui")
