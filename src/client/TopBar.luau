@@ -16,17 +16,12 @@
 -- icons alone (the canvas's L1; of the four takes tried, the owner,
 -- 2026-10-13: "just implement this version but fix the spacing").
 --
--- Four takes to try (the owner, 2026-10-13, of two screenshots of the row,
--- one driving with the tools up, where the row had scaled to 0.86 to fit,
--- and one in the garage at full size: "they are both good but a little
--- different. try to implement both variants (forget the style and camera
--- buttons for now). also for each variant do one where settings is just
--- the cog/wheel"): the LocalPlayer attribute TopRow, cycled by the small
--- ROW button at the row's end (temporary):
---   FULL         the tab 44 tall, as in the garage screenshot.
---   COMPACT      the same row drawn at 38, as in the driving one.
---   ...GEAR      the same with SETTINGS as the gear alone.
--- CAMERA and STYLE are off the row for now (TOOLS), still in the code.
+-- SETTINGS is the gear alone (the owner, 2026-10-13, of four takes, full
+-- or compact and the word or the gear: "go with this one"), and CAMERA and
+-- STYLE are off the row for now ("forget the style and camera buttons for
+-- now"; TOOLS, the code kept). The icons were then made bigger and the
+-- pair leaned left to read centred ("make sure the icons are big enough
+-- and the text is centered well ... a little less room on the right").
 --
 -- The row stays up while the menu is open, which hangs under it, and the
 -- button of the page showing is lit; tapping it again closes the menu
@@ -86,13 +81,6 @@ local SPECS: { Spec } = {
 }
 local SETTINGS_SPEC = SPECS[3]
 
--- The takes (TopRow): the row's size, and SETTINGS as a word or the gear.
-export type Variant = "full" | "fullgear" | "compact" | "compactgear"
-local VARIANTS: { Variant } = { "full", "fullgear", "compact", "compactgear" }
-TopBar.ATTRIBUTE = "TopRow"
--- COMPACT: the row drawn at this scale (the driving screenshot's tabs
--- measured 38 tall against the garage one's 44).
-local COMPACT = 38 / 44
 -- CAMERA and STYLE on the row while driving; off for now (the owner,
 -- 2026-10-13: "forget the style and camera buttons for now").
 local TOOLS = false
@@ -120,14 +108,23 @@ local RIM = 0.86
 -- tab, 16 of padding, 8 between them; the tools 42 wide with the icon
 -- alone). Roblox draws the word narrower than the browser (no letter
 -- spacing), so it is a size up.
-local ICON_SHARE = 0.41
+-- The icon was 18 on 44 (0.41), the mock's; the owner wanted it bigger.
+local ICON_SHARE = 0.5
 local WORD_SHARE = 0.27
 local PAD_SHARE = 0.36
 local TOOL_PAD_SHARE = 0.27
 local WORD_GAP_SHARE = 0.18
--- SETTINGS as the gear alone (the mock: a 20 px gear, 13 of padding).
-local GEAR_ICON_SHARE = 0.45
+-- SETTINGS as the gear alone (the mock: a 20 px gear, 13 of padding; the
+-- gear bigger with the icons).
+local GEAR_ICON_SHARE = 0.55
 local GEAR_PAD_SHARE = 0.3
+-- An icon's drawing sits inside its box (the sheet's margin and the
+-- glyph's own) and the italic word's ink leans past its box's right, so
+-- a centred pair reads right of centre (the owner's phone: 10 px clear
+-- on the left of STORE, 8 on the right). The padding leans the other way
+-- by this share of the height: 2 px on 40 or 44 (3 overshot, measured off
+-- a Studio capture: 10 clear on the left, 12 on the right).
+local LEAN_SHARE = 0.045
 -- The sheet's drawings sit inside a margin of their cell; the icon shows
 -- the cell cropped to the drawing, so an 18 px icon draws 18 px.
 local ICON_CROP = 22
@@ -140,7 +137,6 @@ local actions: Actions? = nil
 type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
-local switch: TextButton? = nil
 local shown = true -- no garage view up
 local driving = false
 local openPage: string? = nil -- the menu page showing, or nil
@@ -157,22 +153,6 @@ local scratch: TextLabel? = nil
 local MIN_SCALE = 0.7
 -- Room kept before the cash and past Roblox's inset.
 local MARGIN = 8
-local function variant(): Variant
-	local v = player:GetAttribute(TopBar.ATTRIBUTE)
-	local i = if type(v) == "string" then table.find(VARIANTS, (v :: any) :: Variant) else nil
-	return if i then VARIANTS[i] else "full"
-end
-
-local function compact(): boolean
-	local v = variant()
-	return v == "compact" or v == "compactgear"
-end
-
-local function gearOnly(): boolean
-	local v = variant()
-	return v == "fullgear" or v == "compactgear"
-end
-
 -- The tools belong on the row now.
 local function toolsUp(): boolean
 	return TOOLS and driving
@@ -227,10 +207,6 @@ local function paint()
 	if ge then
 		ge.Visible = clear
 	end
-	local sw = switch
-	if sw then
-		sw.Visible = not clear
-	end
 end
 
 local function pressable(b: GuiButton)
@@ -264,13 +240,10 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
--- A place carries its word (SETTINGS unless the take is the gear alone);
--- a tool its icon alone.
+-- STORE and GARAGE carry their words; SETTINGS is the gear alone, a tool
+-- its icon alone.
 local function wordsFor(spec: Spec): boolean
-	if spec == SETTINGS_SPEC then
-		return not gearOnly()
-	end
-	return not spec.driving
+	return spec ~= SETTINGS_SPEC and not spec.driving
 end
 
 -- A tab's sizes at this height.
@@ -396,10 +369,13 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	inner.Size = UDim2.fromOffset(0, h)
 	inner.ZIndex = 2
 	local iconSize, wordSize, pad, _, gap = sizes()
+	-- The pair leaned left to read centred (less padding on the left,
+	-- more on the right); an icon alone is centred as it is.
+	local lean = if words then math.floor(h * LEAN_SHARE + 0.5) else 0
 	if not words then
 		iconSize, pad = aloneSizes(spec)
 	end
-	Kit.pad(inner, 0, pad, 0, pad)
+	Kit.pad(inner, 0, pad + lean, 0, pad - lean) -- top, right, bottom, left
 	local l = Kit.list(inner, false, gap, Enum.VerticalAlignment.Center)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	local icon = iconOf(inner, spec, iconSize)
@@ -454,7 +430,7 @@ local function spacer(parent: Frame, order: number, w: number): Frame
 	return f
 end
 
--- The row built again for the variant and the height.
+-- The row built again for the height (fit).
 local function rebuild()
 	local r, a = row, actions
 	if not r or not a then
@@ -488,31 +464,20 @@ local function rebuild()
 	gi.AnchorPoint = Vector2.new(0.5, 0.5)
 	gi.Position = UDim2.fromScale(0.5, 0.5)
 	gear = ge
-	-- Temporary: the ROW switch, cycling the takes to try.
-	local sw = smallDisc(r, "Row", 99, function()
-		local i = table.find(VARIANTS, variant()) or 0
-		player:SetAttribute(TopBar.ATTRIBUTE, VARIANTS[i % #VARIANTS + 1])
-	end)
-	local st = Kit.text(sw, "Label", "ROW", math.max(8, math.floor(h * 0.2)), Enum.FontWeight.Heavy, true, Kit.C.tabInk)
-	st.Size = UDim2.fromScale(1, 1)
-	st.TextXAlignment = Enum.TextXAlignment.Center
-	switch = sw
 	paint()
 end
 
--- The row fitted to its room: drawn at the take's size (COMPACT or full),
--- and scaled down further when it needs more than it has, every word
+-- The row fitted to its room: scaled down when it needs more, every word
 -- kept.
 local function refit()
 	if not row or ClearUi.on() then
 		return
 	end
 	local have = room()
-	local base = if compact() then COMPACT else 1
-	local n = naturalWidth() * base
+	local n = naturalWidth()
 	local sc = rowScale
 	if sc then
-		sc.Scale = if n > have and have > 0 then math.max(MIN_SCALE, base * have / n) else base
+		sc.Scale = if n > have and have > 0 then math.max(MIN_SCALE, have / n) else 1
 	end
 end
 
@@ -618,10 +583,6 @@ function TopBar.start(a: Actions)
 		scheduleRefit()
 	end)
 	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
-	player:GetAttributeChangedSignal(TopBar.ATTRIBUTE):Connect(function()
-		rebuild()
-		refit()
-	end)
 	ClearUi.changed(function()
 		paint()
 		scheduleRefit()

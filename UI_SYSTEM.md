@@ -442,17 +442,19 @@ room with the tools up, the row needing 428) that is 0.95. In Studio the
 LocalPlayer attribute `TopRowRoom` (a number) stands in for the cash to
 try a narrow phone. With CLEAR UI on the row is one small round gear.
 
-Four takes to try (the owner, 2026-10-13, of two screenshots of that row,
-one driving with the tools up, where the fitting had scaled it to 0.86,
-and one in the garage at full size: "they are both good but a little
-different. try to implement both variants (forget the style and camera
-buttons for now). also for each variant do one where settings is just
-the cog/wheel"): the LocalPlayer attribute `TopRow`, cycled by the small
-ROW button at the row's end (temporary): FULL (the tab 44 tall, the
-garage screenshot), COMPACT (the same row drawn at 38/44, the driving
-one; the fitting scales down from there if it must), and each with
-SETTINGS as the gear alone (a 20 px gear with 13 of padding, the mock's).
-CAMERA and STYLE are off the row for now (`TOOLS`), the code kept.
+SETTINGS is the gear alone (the owner, 2026-10-13, of four takes tried,
+the row full size or compact and SETTINGS as a word or the gear: "go with
+this one"), a slimmer slanted tab with a 24 px gear and 13 of padding.
+CAMERA and STYLE are off the row for now ("forget the style and camera
+buttons for now"; `TOOLS`, the code kept). The icons are 22 on 44 (the
+mock's 18 was "big enough" only just: "make sure the icons are big
+enough"), and the icon-and-word pair is leaned 2 px left ("the text is
+centered well, right now it kind of looks off center and that there is a
+little less room on the right of it"): an icon's drawing sits inside its
+box and the italic word's ink leans past its box's right, so a
+geometrically centred pair read right of centre (the owner's phone: 10 px
+clear left of STORE, 8 right; a 3 px lean overshot to 10 and 12 in a
+Studio capture).
 
 The row stays up while the menu is open, which hangs under it
 (`Ctx.top`: the drawing pixels to leave clear under the row, mostly 0
