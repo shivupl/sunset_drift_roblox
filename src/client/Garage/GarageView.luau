@@ -6,8 +6,8 @@
 -- docs/superpowers/specs/2026-09-28-garage-design.md sections 1 to 3; the
 -- numbers are GarageConfig.
 --
--- On foot, walking in through the open door (the character's root crossing
--- DoorZone from outside to inside) fades to asphalt950, drops the controls,
+-- On foot, walking in through the open door (the character's root in
+-- DoorZone's box, 2 m either side of the door line) fades to asphalt950, drops the controls,
 -- hides the character, suspends the world lamp pool and lights the display
 -- bay with the view's own four lights, builds the preview car on the
 -- turntable and puts the camera on one fixed framing. The turntable turns
@@ -24,8 +24,8 @@
 --
 -- Driving in (garage round 2 §3, the owner on 2026-09-28: "also add the
 -- ability to not only walk in but drive a car in as well"): seated as the
--- driver of your own car, the chassis's centre crossing DoorZone inward
--- below GarageConfig.driveIn.maxKmh fades out and asks the server
+-- driver of your own car, the chassis's centre in DoorZone's box, at any
+-- speed (2026-10-14), fades out and asks the server
 -- (GarageAction "driveIn", server/GarageService), which unseats the player
 -- and parks the car on the drive-out spot facing out; the view then opens
 -- with that car. Leaving after a drive-in asks for "driveOut", which seats
@@ -1362,38 +1362,49 @@ end
 -- The threshold and the lift car, watched from start().
 ------------------------------------------------------------------------
 
-local lastSide: number? = nil
+-- DoorZone is a box you are in, not a line you cross (2026-10-14; the
+-- owner: "when i enter the garage at some angles or to fast it often
+-- doesnt take me to the custom page/ui"): a crossing was one frame's
+-- side against the last's, and a fast or angled entry could have the
+-- root or the chassis's centre skip the 0.6 m box or miss its width at
+-- the frame it crossed. Now any frame with it in the box, after a frame
+-- with it out (so standing at ExitSpot after leaving does not go back
+-- in), opens the view. nil: not known (far away, or just left).
+local wasInDoor: boolean? = nil
+local wasCarInDoor: boolean? = nil
+
+-- Is the point (in DoorZone's space) in its box?
+local function inDoor(g: Garage, rel: Vector3): boolean
+	local half = g.door.Size / 2
+	return math.abs(rel.X) <= half.X and math.abs(rel.Y) <= half.Y and math.abs(rel.Z) <= half.Z
+end
 
 local function watchThreshold()
 	if state ~= "outside" then
-		lastSide = nil
+		wasInDoor = nil
 		return
 	end
 	local g = garage
 	local _, hum, root = characterParts()
 	if not g or not g.door.Parent or not hum or not root or hum.SeatPart or hum.Health <= 0 then
-		lastSide = nil
+		wasInDoor = nil
 		return
 	end
 	local rel = g.door.CFrame:PointToObjectSpace(root.Position)
 	if rel.Magnitude > GarageConfig.thresholdRangeM / mps() then
-		lastSide = nil
+		wasInDoor = nil
 		return
 	end
-	-- Along the zone's LookVector (its -Z), which points into the garage.
-	local side = -rel.Z
-	local half = g.door.Size / 2
-	local inDoorway = math.abs(rel.X) <= half.X and math.abs(rel.Y) <= half.Y
-	local was = lastSide
-	lastSide = side
-	if was and was <= 0 and side > 0 and inDoorway then
-		lastSide = nil
+	local now = inDoor(g, rel)
+	local was = wasInDoor
+	wasInDoor = now
+	if now and was == false then
+		wasInDoor = nil
 		task.spawn(enter, g)
 	end
 end
 
 -- Driving in: the car's chassis, while this player drives their own car.
-local lastCarSide: number? = nil
 
 -- `afar`: from the menu's CUSTOMIZE anywhere on the map ("bringIn": the
 -- server skips the doorway and stands the player beside the parked car).
@@ -1450,42 +1461,37 @@ end
 local function watchDriveIn()
 	local car = VehicleController.currentCar()
 	if not car then
-		lastCarSide = nil
+		wasCarInDoor = nil
 		return
 	end
 	local g = garage
 	local _, hum = characterParts()
 	if state ~= "outside" or not g or not g.door.Parent or not hum or not hum.SeatPart or hum.Health <= 0 then
-		lastCarSide = nil
+		wasCarInDoor = nil
 		return
 	end
 	-- Only your own car: the view and the parking are for the owner.
 	if car:GetAttribute("OwnerUserId") ~= player.UserId or not hum.SeatPart:IsDescendantOf(car) then
-		lastCarSide = nil
+		wasCarInDoor = nil
 		return
 	end
 	local chassis = car.PrimaryPart
 	if not chassis then
-		lastCarSide = nil
+		wasCarInDoor = nil
 		return
 	end
 	local rel = g.door.CFrame:PointToObjectSpace(chassis.Position)
 	if rel.Magnitude > GarageConfig.thresholdRangeM / mps() then
-		lastCarSide = nil
+		wasCarInDoor = nil
 		return
 	end
-	local side = -rel.Z
-	local half = g.door.Size / 2
-	local inDoorway = math.abs(rel.X) <= half.X and math.abs(rel.Y) <= half.Y
-	local was = lastCarSide
-	lastCarSide = side
-	if was and was <= 0 and side > 0 and inDoorway then
-		local kmh = chassis.AssemblyLinearVelocity.Magnitude * mps() * 3.6
-		if kmh <= GarageConfig.driveIn.maxKmh then
-			lastCarSide = nil
-			local id = car:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
-			task.spawn(driveIn, g, ConfigLoader.resolveCarId(if type(id) == "string" then id else nil))
-		end
+	local now = inDoor(g, rel)
+	local was = wasCarInDoor
+	wasCarInDoor = now
+	if now and was == false then
+		wasCarInDoor = nil
+		local id = car:GetAttribute(VehicleRig.CAR_ID_ATTRIBUTE)
+		task.spawn(driveIn, g, ConfigLoader.resolveCarId(if type(id) == "string" then id else nil))
 	end
 end
 

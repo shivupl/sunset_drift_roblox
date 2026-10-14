@@ -75,18 +75,17 @@ GarageConfig.exitCamera = { backM = 4, upM = 1.6 }
 
 -- Driving in (garage round 2 §3; the owner, 2026-09-28: "also add the
 -- ability to not only walk in but drive a car in as well"). While seated
--- as the driver of your own car, the chassis's centre crossing DoorZone
--- inward below maxKmh opens the view with that car; faster does nothing
--- and the walls stop the car as before.
---   maxKmh: the spec's "~20 km/h", a crawl through a 5 m door. Higher lets
---     a quicker entry count; lower asks for a slower one.
---   serverSlack: the server checks the replicated speed against
---     maxKmh * this, so a car the client saw at 19.9 is not refused for
---     reading 20.5 a moment later.
+-- as the driver of your own car, the chassis's centre in DoorZone's box
+-- (WorldConfig.garage.doorZoneDepthM) opens the view with that car, at
+-- any speed: the server parks it on the spot at once, so the walls never
+-- come into it (a 20 km/h limit, maxKmh, went on 2026-10-14; the owner:
+-- "when i enter the garage ... to fast it often doesnt take me to the
+-- custom page/ui ... everytime you go in, it brings the customize UI up").
 --   zoneMarginM: how far past DoorZone's box (sideways, and along the
 --     car's travel) the chassis may be when the server checks; the car
---     keeps rolling while the request is in flight (5.5 m/s at 20 km/h,
---     about 0.5 m over 100 ms of ping), so 3 m is generous.
+--     keeps rolling while the request is in flight (28 m/s at 100 km/h,
+--     about 3 m over 100 ms of ping, on top of the box's 2 m inside the
+--     door), so 6 m.
 --   outM: the drive-out spot, measured from DoorZone's centre straight out
 --     of the door along the ground; the car's middle parks there facing
 --     away from the door. 7, so that a 5 m car's tail (2.5 m) stays clear
@@ -109,9 +108,7 @@ GarageConfig.exitCamera = { backM = 4, upM = 1.6 }
 --     only matters for a client that hangs; shorter risks the fall again
 --     on a slow one.
 GarageConfig.driveIn = {
-	maxKmh = 20,
-	serverSlack = 1.25,
-	zoneMarginM = 3,
+	zoneMarginM = 6,
 	outM = 7,
 	clearM = Vector2.new(3, 6),
 	leaveRangeM = 20,

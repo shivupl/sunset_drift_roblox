@@ -4,9 +4,9 @@
 -- as well (either one)." The numbers are GarageConfig.driveIn.
 --
 -- GarageAction (RemoteFunction), from the client's GarageView:
---   "driveIn"  the sender is driving their own car through the open door,
---              slowly. Checked here (seated driver of their own car, the
---              chassis at the doorway, slow, the drive-out spot free); then
+--   "driveIn"  the sender is driving their own car through the open door.
+--              Checked here (seated driver of their own car, the chassis
+--              at the doorway, the drive-out spot free); then
 --              the player is unseated and the car parks on the drive-out
 --              spot, facing away from the door, still and anchored, its
 --              prompt off so nobody else takes it. -> { status = "ok" }
@@ -161,14 +161,11 @@ local function driveIn(player: Player, afar: boolean): string
 	local chassis = handles.chassis
 	local half = zone.Size / 2
 	if not afar then
-		-- At the doorway: within the zone's box plus the margin.
+		-- At the doorway: within the zone's box plus the margin. At any
+		-- speed (2026-10-14): the car parks at once, before the walls.
 		local rel = zone.CFrame:PointToObjectSpace(chassis.Position)
 		local margin = s(GarageConfig.driveIn.zoneMarginM)
 		if math.abs(rel.X) > half.X + margin or math.abs(rel.Y) > half.Y + margin or math.abs(rel.Z) > half.Z + margin then
-			return "refused"
-		end
-		local kmh = chassis.AssemblyLinearVelocity.Magnitude * ConfigLoader.current().units.metersPerStud * 3.6
-		if kmh > GarageConfig.driveIn.maxKmh * GarageConfig.driveIn.serverSlack then
 			return "refused"
 		end
 	end

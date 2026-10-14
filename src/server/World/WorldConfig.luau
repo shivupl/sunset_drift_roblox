@@ -668,7 +668,14 @@ local config = {
 		-- LiftCarSpot, its tyres raiseM off the floor, nose to the back wall.
 		lift = { v = 1.2, raiseM = 1.8, postSpanM = 3.7, heightM = 3.9 },
 
-		doorZoneDepthM = 0.6, -- the invisible threshold box across the open door
+		-- The invisible threshold box across the open door, centred on the
+		-- door line, this deep: 2 m out and 2 m in. A box you are in, not a
+		-- line you cross (0.6 until 2026-10-14; the owner: "when i enter
+		-- the garage at some angles or to fast it often doesnt take me to
+		-- the custom page/ui ... maybe fix this by added a clear bounding
+		-- box at the entrance"). ExitSpot (3 m out) and the parked car (7 m
+		-- out) stay outside it.
+		doorZoneDepthM = 4,
 		-- Where a leaving player stands: outM outside the door, facing
 		-- out, the box's centre at a character's root height.
 		exitSpot = { outM = 3, rootHeightM = 0.9 },

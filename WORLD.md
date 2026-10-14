@@ -557,9 +557,12 @@ view lights are scaled down by the night exposure (0.76), so the car reads
 the same under either sky.
 
 **The customisation view** (the client's `Garage/GarageView.luau`):
-- **Entering:** the character's root crosses `DoorZone` into the garage,
-  on foot, or the chassis of your own car does, slowly, while you drive it
-  (Driving in, above). The screen fades, control drops away (the root is anchored on
+- **Entering:** the character's root is in `DoorZone`'s box (2 m either
+  side of the door line), on foot, having been out of it, or the chassis
+  of your own car is, at any speed, while you drive it (Driving in,
+  above; until 2026-10-14 the root or chassis had to cross a 0.6 m box
+  inward, below 20 km/h, and a fast or angled entry skipped it: "i just go
+  into the structure"). The screen fades, control drops away (the root is anchored on
   the client), the character hides, and the lamp pool is suspended.
 - **Lights and the cap:** the view makes its four lights on invisible
   anchors in the bay and suspends the lamp pool. Measured on the client
@@ -603,7 +606,7 @@ turntable and its ring collide (22 parts); nothing else does.
 **The client's handles** (directly under the `Garage` folder, which has
 `GarageRoot = true`): `Turntable` (`GarageRole = "turntable"`, and
 `ViewFrame`: its top centre looking into the garage), `DoorZone` (invisible
-5 x 4 x 0.6 m box in the doorway, LookVector into the garage), `ExitSpot`
+5 x 4 x 4 m box centred on the door line, LookVector into the garage), `ExitSpot`
 (3 m outside the door, facing out, at root height 0.9 m), `LiftCarSpot`
 (the raised car's tyre-bottom centre, 1.8 m up, nose to the back wall) and
 `Backdrop`.
