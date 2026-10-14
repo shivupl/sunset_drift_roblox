@@ -16,6 +16,18 @@
 -- icons alone (the canvas's L1; of the four takes tried, the owner,
 -- 2026-10-13: "just implement this version but fix the spacing").
 --
+-- Four takes to try (the owner, 2026-10-13, of two screenshots of the row,
+-- one driving with the tools up, where the row had scaled to 0.86 to fit,
+-- and one in the garage at full size: "they are both good but a little
+-- different. try to implement both variants (forget the style and camera
+-- buttons for now). also for each variant do one where settings is just
+-- the cog/wheel"): the LocalPlayer attribute TopRow, cycled by the small
+-- ROW button at the row's end (temporary):
+--   FULL         the tab 44 tall, as in the garage screenshot.
+--   COMPACT      the same row drawn at 38, as in the driving one.
+--   ...GEAR      the same with SETTINGS as the gear alone.
+-- CAMERA and STYLE are off the row for now (TOOLS), still in the code.
+--
 -- The row stays up while the menu is open, which hangs under it, and the
 -- button of the page showing is lit; tapping it again closes the menu
 -- ("when clicking settings or garage the options should stay there and
@@ -74,6 +86,17 @@ local SPECS: { Spec } = {
 }
 local SETTINGS_SPEC = SPECS[3]
 
+-- The takes (TopRow): the row's size, and SETTINGS as a word or the gear.
+export type Variant = "full" | "fullgear" | "compact" | "compactgear"
+local VARIANTS: { Variant } = { "full", "fullgear", "compact", "compactgear" }
+TopBar.ATTRIBUTE = "TopRow"
+-- COMPACT: the row drawn at this scale (the driving screenshot's tabs
+-- measured 38 tall against the garage one's 44).
+local COMPACT = 38 / 44
+-- CAMERA and STYLE on the row while driving; off for now (the owner,
+-- 2026-10-13: "forget the style and camera buttons for now").
+local TOOLS = false
+
 -- The row sits level with Roblox's own pill (the owner, 2026-10-13: "line
 -- the buttons up well with this horizontally"): the pill is not centred
 -- in the top bar inset but 12 px down it and 44 tall where the inset is
@@ -102,6 +125,9 @@ local WORD_SHARE = 0.27
 local PAD_SHARE = 0.36
 local TOOL_PAD_SHARE = 0.27
 local WORD_GAP_SHARE = 0.18
+-- SETTINGS as the gear alone (the mock: a 20 px gear, 13 of padding).
+local GEAR_ICON_SHARE = 0.45
+local GEAR_PAD_SHARE = 0.3
 -- The sheet's drawings sit inside a margin of their cell; the icon shows
 -- the cell cropped to the drawing, so an 18 px icon draws 18 px.
 local ICON_CROP = 22
@@ -114,6 +140,7 @@ local actions: Actions? = nil
 type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
+local switch: TextButton? = nil
 local shown = true -- no garage view up
 local driving = false
 local openPage: string? = nil -- the menu page showing, or nil
@@ -130,6 +157,27 @@ local scratch: TextLabel? = nil
 local MIN_SCALE = 0.7
 -- Room kept before the cash and past Roblox's inset.
 local MARGIN = 8
+local function variant(): Variant
+	local v = player:GetAttribute(TopBar.ATTRIBUTE)
+	local i = if type(v) == "string" then table.find(VARIANTS, (v :: any) :: Variant) else nil
+	return if i then VARIANTS[i] else "full"
+end
+
+local function compact(): boolean
+	local v = variant()
+	return v == "compact" or v == "compactgear"
+end
+
+local function gearOnly(): boolean
+	local v = variant()
+	return v == "fullgear" or v == "compactgear"
+end
+
+-- The tools belong on the row now.
+local function toolsUp(): boolean
+	return TOOLS and driving
+end
+
 -- The menu page a button stands for is lit.
 local function litBy(spec: Spec): boolean
 	return spec.page ~= nil and spec.page == openPage
@@ -152,7 +200,7 @@ local function paint()
 	end
 	for _, it in buttons do
 		local spec = it.spec
-		it.b.Visible = not clear and (driving or not spec.driving)
+		it.b.Visible = not clear and (toolsUp() or not spec.driving)
 		local sp = it.space
 		if sp then
 			sp.Visible = it.b.Visible
@@ -178,6 +226,10 @@ local function paint()
 	local ge = gear
 	if ge then
 		ge.Visible = clear
+	end
+	local sw = switch
+	if sw then
+		sw.Visible = not clear
 	end
 end
 
@@ -212,8 +264,12 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
--- A place carries its word; a tool its icon alone.
+-- A place carries its word (SETTINGS unless the take is the gear alone);
+-- a tool its icon alone.
 local function wordsFor(spec: Spec): boolean
+	if spec == SETTINGS_SPEC then
+		return not gearOnly()
+	end
 	return not spec.driving
 end
 
@@ -225,6 +281,16 @@ local function sizes(): (number, number, number, number, number)
 	local toolPad = math.floor(h * TOOL_PAD_SHARE + 0.5)
 	local gap = math.floor(h * WORD_GAP_SHARE + 0.5)
 	return iconSize, wordSize, pad, toolPad, gap
+end
+
+-- The icon and the padding of a tab with the icon alone: a tool's, or
+-- SETTINGS as the gear, a touch bigger.
+local function aloneSizes(spec: Spec): (number, number)
+	if spec == SETTINGS_SPEC then
+		return math.floor(h * GEAR_ICON_SHARE + 0.5), math.floor(h * GEAR_PAD_SHARE + 0.5)
+	end
+	local iconSize, _, _, toolPad = sizes()
+	return iconSize, toolPad
 end
 
 -- A word's width as the tabs draw it.
@@ -240,9 +306,10 @@ end
 
 -- What a tab would measure, built now.
 local function tabWidth(spec: Spec): number
-	local iconSize, wordSize, pad, toolPad, gap = sizes()
+	local iconSize, wordSize, pad, _, gap = sizes()
 	if not wordsFor(spec) then
-		return 2 * toolPad + iconSize
+		local alone, aPad = aloneSizes(spec)
+		return 2 * aPad + alone
 	end
 	return 2 * pad + iconSize + gap + wordWidth(spec.label, wordSize)
 end
@@ -252,12 +319,12 @@ local function naturalWidth(): number
 	local total = 0
 	local n = 0
 	for _, spec in SPECS do
-		if driving or not spec.driving then
+		if toolsUp() or not spec.driving then
 			total += tabWidth(spec)
 			n += 1
 		end
 	end
-	if driving then
+	if toolsUp() then
 		total += GROUP_GAP - 2 * GAP
 	end
 	return total + GAP * (n - 1)
@@ -328,8 +395,10 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 	inner.AutomaticSize = Enum.AutomaticSize.X
 	inner.Size = UDim2.fromOffset(0, h)
 	inner.ZIndex = 2
-	local iconSize, wordSize, padWords, toolPad, gap = sizes()
-	local pad = if words then padWords else toolPad
+	local iconSize, wordSize, pad, _, gap = sizes()
+	if not words then
+		iconSize, pad = aloneSizes(spec)
+	end
 	Kit.pad(inner, 0, pad, 0, pad)
 	local l = Kit.list(inner, false, gap, Enum.VerticalAlignment.Center)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -419,20 +488,31 @@ local function rebuild()
 	gi.AnchorPoint = Vector2.new(0.5, 0.5)
 	gi.Position = UDim2.fromScale(0.5, 0.5)
 	gear = ge
+	-- Temporary: the ROW switch, cycling the takes to try.
+	local sw = smallDisc(r, "Row", 99, function()
+		local i = table.find(VARIANTS, variant()) or 0
+		player:SetAttribute(TopBar.ATTRIBUTE, VARIANTS[i % #VARIANTS + 1])
+	end)
+	local st = Kit.text(sw, "Label", "ROW", math.max(8, math.floor(h * 0.2)), Enum.FontWeight.Heavy, true, Kit.C.tabInk)
+	st.Size = UDim2.fromScale(1, 1)
+	st.TextXAlignment = Enum.TextXAlignment.Center
+	switch = sw
 	paint()
 end
 
--- The row fitted to its room: scaled down when it needs more, every word
+-- The row fitted to its room: drawn at the take's size (COMPACT or full),
+-- and scaled down further when it needs more than it has, every word
 -- kept.
 local function refit()
 	if not row or ClearUi.on() then
 		return
 	end
 	local have = room()
-	local n = naturalWidth()
+	local base = if compact() then COMPACT else 1
+	local n = naturalWidth() * base
 	local sc = rowScale
 	if sc then
-		sc.Scale = if n > have and have > 0 then math.max(MIN_SCALE, have / n) else 1
+		sc.Scale = if n > have and have > 0 then math.max(MIN_SCALE, base * have / n) else base
 	end
 end
 
@@ -538,6 +618,10 @@ function TopBar.start(a: Actions)
 		scheduleRefit()
 	end)
 	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
+	player:GetAttributeChangedSignal(TopBar.ATTRIBUTE):Connect(function()
+		rebuild()
+		refit()
+	end)
 	ClearUi.changed(function()
 		paint()
 		scheduleRefit()
