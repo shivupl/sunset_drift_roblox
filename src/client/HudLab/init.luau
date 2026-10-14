@@ -14,7 +14,10 @@
 -- LocalPlayer attribute HudVariant (a finish's id). Switching version
 -- (Versions.luau: FLOW, SIDE, BOARD): the HUD LAYOUT row in Settings, Y on a
 -- keyboard, or the attribute HudLayout (the UI button went with the top bar,
--- 2026-10-11). Hud.luau and Input/Touch.luau hand each update, flash and
+-- 2026-10-11). Switching a desktop's layout (Desk.luau: DASH, STRIP,
+-- CLUSTER: where the readouts, the key guide and the top row's tabs go):
+-- the PC LAYOUT row in Settings, K, or the attribute HudDesk (desktop-ui,
+-- 2026-10-14). Hud.luau and Input/Touch.luau hand each update, flash and
 -- binding here. The top bar's VIEW cycles the driving view (CameraViews; V
 -- on a keyboard) and the new view's name shows here too.
 --
@@ -35,6 +38,7 @@ local Input = require(script.Parent:WaitForChild("Input"))
 local CameraViews = require(script.Parent:WaitForChild("CameraViews"))
 local Finishes = require(script:WaitForChild("Finishes"))
 local Versions = require(script:WaitForChild("Versions"))
+local Desk = require(script:WaitForChild("Desk"))
 local StreetHud = require(script:WaitForChild("StreetHud"))
 local LayoutD = require(script:WaitForChild("LayoutD"))
 local Coins = require(script:WaitForChild("Coins"))
@@ -257,7 +261,7 @@ local function onSwitch(what: string)
 	if bound then
 		buildControls()
 	end
-	toast(if what == "layout" then `UI: {version().name}` else `STYLE: {finish().name}`)
+	toast(if what == "layout" then `UI: {version().name}` elseif what == "desk" then `PC: {Desk.current().name}` else `STYLE: {finish().name}`)
 end
 
 -- The next finish, from the top bar's STYLE or U.
@@ -306,6 +310,23 @@ end
 
 function HudLab.setVersion(id: string)
 	player:SetAttribute("HudLayout", id)
+end
+
+-- A desktop's layouts in cycle order, for Settings' PC LAYOUT row.
+function HudLab.desks(): { Style }
+	local out: { Style } = {}
+	for _, d in Desk.list do
+		table.insert(out, { id = d.id, name = d.name, blurb = d.blurb })
+	end
+	return out
+end
+
+function HudLab.currentDesk(): string
+	return Desk.current().id
+end
+
+function HudLab.setDesk(id: string)
+	Desk.set(id)
 end
 
 ------------------------------------------------------------------------
@@ -442,7 +463,7 @@ local function frame()
 	if shown then
 		local f = finish()
 		local ver = version()
-		local key = f.id .. ":" .. ver.id .. (if isTouch() then ":touch" else ":desk")
+		local key = f.id .. ":" .. ver.id .. (if isTouch() then ":touch" else ":desk:" .. Desk.current().id)
 		if hudFor ~= key then
 			dropHud()
 			local g = newGui("HajwalaHudLab", 6)
@@ -473,6 +494,9 @@ function HudLab.start()
 	player:GetAttributeChangedSignal("HudLayout"):Connect(function()
 		onSwitch("layout")
 	end)
+	player:GetAttributeChangedSignal(Desk.ATTRIBUTE):Connect(function()
+		onSwitch("desk")
+	end)
 	player:GetAttributeChangedSignal(CameraViews.ATTRIBUTE):Connect(function()
 		toast(`VIEW: {CameraViews.current().name}`)
 	end)
@@ -487,6 +511,8 @@ function HudLab.start()
 			HudLab.cycle()
 		elseif io.KeyCode == Enum.KeyCode.Y then
 			HudLab.cycleLayout()
+		elseif io.KeyCode == Enum.KeyCode.K and not isTouch() then
+			Desk.cycle()
 		end
 	end)
 	RunService.RenderStepped:Connect(frame)

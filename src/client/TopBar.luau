@@ -2,8 +2,14 @@
 -- The phone's top row (the owner, 2026-10-11: "format the top button bar
 -- with the new setup ... garage, view, style, settings buttons keep 'view'
 -- icon as a regular camera"; asked, they kept RESET and let EXIT and UI go):
--- one row right of Roblox's own buttons. Phones only (the owner: "still
--- only working on mobile"); a desktop keeps the CARS button and the keys.
+-- one row right of Roblox's own buttons. Phones first (the owner: "still
+-- only working on mobile"; a desktop kept a CARS button and the keys);
+-- since desktop-ui (2026-10-14: "the buttons and everything needs to be
+-- redone and spaced for pc") a desktop has the same row, sized by its
+-- desk layout (Desk: the tabs 44, 36 or 48 tall), each tab that has a
+-- key wearing it as a keycap (KeyGuide.cap: GARAGE M, EXIT F, CAMERA V,
+-- STYLE U), CAMERA and STYLE on the row while driving, and the CARS
+-- button gone.
 --
 -- The row is the kit's slanted tabs as glass (the owner, 2026-10-13, of
 -- the TABS row on their phone: "i am a big fan of this one but i think it
@@ -52,6 +58,8 @@ local TweenService = game:GetService("TweenService")
 local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Art = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Art"))
 local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
+local Desk = require(script.Parent:WaitForChild("HudLab"):WaitForChild("Desk"))
+local KeyGuide = require(script.Parent:WaitForChild("HudLab"):WaitForChild("KeyGuide"))
 
 local TopBar = {}
 
@@ -71,24 +79,30 @@ local GARAGE_ICONS = "rbxassetid://71924428072059"
 local ICON_CELL = 128
 
 -- `page`: the menu page this button opens (lit while it shows); `driving`:
--- only while the phone controls are up; `tool`: CAMERA and STYLE, the
--- icon alone, off the row for now (TOOLS).
-type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean, tool: boolean }
+-- only while driving; `tool`: CAMERA and STYLE, the icon alone, off the
+-- phone's row for now (toolsUp); `key`: the keyboard key, worn as a
+-- keycap on a desktop's tab.
+type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean, tool: boolean, key: string? }
 local SPECS: { Spec } = {
 	{ id = "store", label = "STORE", icon = 3, sheet = GARAGE_ICONS, page = "plates", driving = false, tool = false },
-	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false, tool = false },
+	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false, tool = false, key = "M" },
 	{ id = "settings", label = "SETTINGS", icon = 4, sheet = ICONS, page = "settings", driving = false, tool = false },
 	-- Out of the car (the owner, 2026-10-14: "on mobile - need an exit car
-	-- button"; a desktop has E): the first driving tab, a group apart.
-	{ id = "exit", label = "EXIT", icon = 5, sheet = ICONS, driving = true, tool = false },
-	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true, tool = true },
-	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true, tool = true },
+	-- button"; a desktop has F): the first driving tab, a group apart.
+	{ id = "exit", label = "EXIT", icon = 5, sheet = ICONS, driving = true, tool = false, key = "F" },
+	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true, tool = true, key = "V" },
+	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true, tool = true, key = "U" },
 }
 local SETTINGS_SPEC = SPECS[3]
 
--- CAMERA and STYLE on the row while driving; off for now (the owner,
--- 2026-10-13: "forget the style and camera buttons for now").
-local TOOLS = false
+-- CAMERA and STYLE on the row while driving: a desktop's (with their
+-- keys); off the phone's for now (the owner, 2026-10-13: "forget the
+-- style and camera buttons for now").
+local function toolsUp(): boolean
+	return not Kit.isTouch()
+end
+-- A desktop tab's keycap, as a share of the tab's height (22 on 44).
+local KEY_SHARE = 0.5
 
 -- The row sits level with Roblox's own pill (the owner, 2026-10-13: "line
 -- the buttons up well with this horizontally"): the pill is not centred
@@ -144,7 +158,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local row: Frame? = nil
 local actions: Actions? = nil
-type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, space: Frame? }
+type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, key: Frame?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
 local shown = true -- no garage view up
@@ -167,7 +181,7 @@ local MARGIN = 8
 -- Whether a tab belongs on the row now: a driving tab only while the
 -- phone controls are up, a tool only with TOOLS.
 local function up(spec: Spec): boolean
-	return (not spec.driving or driving) and (not spec.tool or TOOLS)
+	return (not spec.driving or driving) and (not spec.tool or toolsUp())
 end
 
 -- Any driving tab up: the group gap before them is drawn.
@@ -192,7 +206,7 @@ local function paint()
 	end
 	local was = g.Enabled
 	local clear = ClearUi.on()
-	g.Enabled = (Kit.isTouch() or clear) and shown
+	g.Enabled = shown
 	local r = row
 	if r and g.Enabled and not was then
 		-- Back after the garage: down from above the screen, as the menu's
@@ -223,6 +237,19 @@ local function paint()
 		if lb then
 			lb.TextColor3 = if on then Kit.C.inUseInk elseif accent then Kit.C.green elseif spec.driving then Kit.C.tabInk else Kit.C.text
 			lb.TextTransparency = if off then 0.45 else 0
+		end
+		local k = it.key
+		if k then
+			k.BackgroundTransparency = if off then 0.45 else 0
+			for _, d in k:GetDescendants() do
+				if d:IsA("TextLabel") then
+					d.TextTransparency = if off then 0.45 else 0
+				elseif d:IsA("Frame") then
+					d.BackgroundTransparency = if off then 0.6 else (if d.Name == "Lip" then 0.35 else 0)
+				elseif d:IsA("UIStroke") then
+					d.Transparency = if off then 0.45 else 0
+				end
+			end
 		end
 	end
 	local ge = gear
@@ -263,9 +290,25 @@ local function slice(o: any)
 end
 
 -- STORE, GARAGE and EXIT carry their words; SETTINGS is the gear alone, a
--- tool its icon alone.
+-- tool its icon alone. On a desktop the layout says (Desk.words): every
+-- tab but SETTINGS, or GARAGE's alone with the rest their icons and keys.
 local function wordsFor(spec: Spec): boolean
-	return spec ~= SETTINGS_SPEC and not spec.tool
+	if spec == SETTINGS_SPEC then
+		return false
+	end
+	if not Kit.isTouch() then
+		return Desk.current().words or spec.id == "garage"
+	end
+	return not spec.tool
+end
+
+-- A desktop tab's key, as a keycap after its word (or its icon).
+local function keyFor(spec: Spec): string?
+	return if Kit.isTouch() then nil else spec.key
+end
+
+local function keySize(): number
+	return math.floor(ch * KEY_SHARE + 0.5)
 end
 
 -- A tab's sizes at this height.
@@ -299,14 +342,25 @@ local function wordWidth(text: string, size: number): number
 	return t.TextBounds.X
 end
 
+-- What a keycap would measure: its letter and padding, never narrower
+-- than it is tall (KeyGuide.cap).
+local function keyWidth(letter: string): number
+	local size = keySize()
+	local font = math.max(8, math.floor(size * 0.5 + 0.5))
+	local pad = math.floor(size * 5 / 22 + 0.5)
+	return math.max(size, math.ceil(wordWidth(letter, font) + 2 * pad))
+end
+
 -- What a tab would measure, built now.
 local function tabWidth(spec: Spec): number
 	local iconSize, wordSize, pad, _, gap = sizes()
+	local key = keyFor(spec)
+	local keyW = if key then gap + keyWidth(key) else 0
 	if not wordsFor(spec) then
 		local alone, aPad = aloneSizes(spec)
-		return 2 * aPad + alone
+		return 2 * aPad + alone + keyW
 	end
-	return 2 * pad + iconSize + gap + wordWidth(spec.label, wordSize)
+	return 2 * pad + iconSize + gap + wordWidth(spec.label, wordSize) + keyW
 end
 
 -- What the row would measure, built now, with the driving tabs in or out.
@@ -412,10 +466,23 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 		t.ZIndex = 2
 		label = t
 	end
+	local keyFrame: Frame? = nil
+	local key = keyFor(spec)
+	if key then
+		local cap = KeyGuide.cap(inner, key, keySize())
+		cap.root.LayoutOrder = 2
+		cap.root.ZIndex = 2
+		for _, d in cap.root:GetDescendants() do
+			if d:IsA("GuiObject") then
+				d.ZIndex = 3
+			end
+		end
+		keyFrame = cap.root
+	end
 	pressable(b)
 	b.Activated:Connect(fn)
 	b.Parent = parent
-	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label }
+	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label, key = keyFrame }
 end
 
 -- A small round graphite button: the gear (CLEAR UI's way back).
@@ -523,10 +590,16 @@ local function fit()
 		return
 	end
 	local bar = GuiService.TopbarInset
-	ch = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
-	h = math.floor(ch * TAB_SHARE + 0.5)
+	if Kit.isTouch() then
+		ch = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
+		h = math.floor(ch * TAB_SHARE + 0.5)
+	else
+		-- A desktop's tabs are the desk layout's height, content and all.
+		ch = Desk.current().tabH
+		h = ch
+	end
 	-- The row's middle on the pill's, whatever the tab's height.
-	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + ch / 2)
+	rest = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + math.floor(bar.Height * PILL_TOP + 0.5) + math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H) / 2)
 	r.Position = rest
 	r.Size = UDim2.fromOffset(0, h)
 	rebuild()
@@ -603,10 +676,8 @@ function TopBar.start(a: Actions)
 	local pg = player:WaitForChild("PlayerGui")
 	g.Parent = pg
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fit)
-	player:GetAttributeChangedSignal("ForceTouch"):Connect(function()
-		paint()
-		scheduleRefit()
-	end)
+	player:GetAttributeChangedSignal("ForceTouch"):Connect(fit)
+	player:GetAttributeChangedSignal(Desk.ATTRIBUTE):Connect(fit)
 	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
 	ClearUi.changed(function()
 		paint()

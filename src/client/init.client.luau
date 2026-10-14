@@ -118,6 +118,8 @@ driveStart.OnClientEvent:Connect(function(carArg: Model?, carName: string?)
 	VehicleController.start(car, remotes)
 	local id = car:GetAttribute("CarId")
 	SpawnMenu.setCurrent(if type(id) == "string" then id else nil)
+	-- The top row's driving tabs (EXIT; CAMERA and STYLE on a desktop).
+	TopBar.setDriving(true)
 end)
 -- Stepping out: our own character is ours to move (the server's move alone
 -- lost to it, and the owner landed under the car, 2026-09-27), so once the
@@ -148,6 +150,7 @@ driveStop.OnClientEvent:Connect(function()
 	ScoreController.clear()
 	Hud.hide()
 	DebugPanel.hide()
+	TopBar.setDriving(false)
 	if car then
 		task.spawn(standBeside, car)
 	end
@@ -158,11 +161,12 @@ end)
 Sky.start(remotes)
 -- Players start on foot; the spawn menu opens and puts them in a car.
 SpawnMenu.start(remotes)
--- The phone's top bar, right of Roblox's buttons: STORE (the plates page,
--- until a store exists), GARAGE (the car menu) and SETTINGS always, EXIT
--- while driving (CAMERA and STYLE are off it for now); a page's button
--- closes it when it is the one up. RESET left the row (2026-10-13); a
--- desktop keeps the CARS button and the keys (M, R, V, U, E).
+-- The top bar, right of Roblox's buttons: STORE (the plates page, until a
+-- store exists), GARAGE (the car menu) and SETTINGS always, EXIT while
+-- driving (CAMERA and STYLE too on a desktop; off the phone's row for
+-- now); a page's button closes it when it is the one up. RESET left the
+-- row (2026-10-13). A desktop's tabs wear their keys (M, F, V, U) and the
+-- CARS button went (desktop-ui, 2026-10-14).
 TopBar.start({
 	store = function()
 		SpawnMenu.toggleTab("plates")

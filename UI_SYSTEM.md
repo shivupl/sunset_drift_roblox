@@ -445,7 +445,8 @@ while driving (2026-10-14: "on mobile - need an exit car button"; the
 same pulse as E, a group apart from the places), CAMERA and STYLE while
 driving once they are back (RESET left the row 2026-10-13: "store,
 garage, settings then camera, style buttons"; R stays on a keyboard). A
-desktop keeps the CARS button and the keys. The row is the kit's slanted tabs as
+desktop has the same row since desktop-ui (2026-10-14; before it kept a
+CARS button and the keys): see "The desktop HUD" below. The row is the kit's slanted tabs as
 glass (the owner, of the TABS row on their phone: "i am a big fan of this
 one but i think it needs some work"; the canvas's row L): each tab the
 slanted shape nearly clear over a fainter copy of itself (a white tint,
@@ -526,6 +527,50 @@ Each layout is drawn for an 844x346 phone and a 1280x664 PC and scaled to
 the screen it is on. In Studio the LocalPlayer attribute `ScreenSim` (a
 Vector2) lays the menu and the garage out for that screen size at the
 viewport's top left, to check a phone's proportions (`Parts.screen`).
+
+## The desktop HUD (desktop-ui)
+
+The owner, 2026-10-14, of the PC screen: "put a small guide on which
+keys are for what", "the odometer and stuff should go on the right",
+"the buttons and everything needs to be redone and spaced for pc", "make
+a couple different full UI options ... and also implement them in game
+for me to switch between". The canvas "Hajwala desktop HUD" has the
+three drawn at 1920x1080; `src/client/HudLab/Desk.luau` is the list
+(`HudDesk` attribute; K cycles it, the PC LAYOUT rows under HUD STYLE's
+cards in Settings pick one, the toast says `PC: DASH`). Nothing of it
+touches a phone: a phone's readouts are the dial in the bottom middle,
+its controls layout D.
+
+| | DASH | STRIP | CLUSTER |
+|---|---|---|---|
+| Readouts, bottom right | the dial as it was (0.28 of the height, was 0.3 in the bottom middle), the gear above its cap, the speed under it | no dial: the gear in a box, the speed big, the revs as a bar (0.407 of the height wide, 0.15 tall) with the last 2/9 red | a glass tray in the tabs' slant (0.519 x 0.213): GEAR and the speed on its left, a dial 0.87 of its height on its right |
+| Key guide, bottom left | one line on a soft blot | two columns on the blot (HANDBRAKE in full) | one line on a glass strip of the tabs' slant, 48 tall |
+| Top row tabs | 44 tall, words and keys | 36 tall, icons and keys, GARAGE's word alone | 48 tall, words and keys |
+
+- **The key guide** (`HudLab/KeyGuide.luau`): the driving keys as keycaps
+  (22 tall, 4 round, a 2 px lip, the letter 11 ExtraBold; 4 apart, 6
+  before the word, 22 between pairs) with a word each in sand: W A S D
+  DRIVE, SPACE HAND, Q E NATL, R RESET, H HORN, G LIGHTS. A keycap lights
+  sodium while its key is held. The keys that sit on the row's tabs (M,
+  F, V, U) are not repeated. Measured in Studio's 1257x683 viewport: the
+  line 659x42 at 24 in from the left and 28 up; the stack 274x102; the
+  glass strip 681x48 at 40 in.
+- **The top row on a desktop** (`TopBar`): the phone's row, STORE,
+  GARAGE, SETTINGS (the gear), then EXIT, CAMERA and STYLE while driving
+  (CAMERA and STYLE are off the phone's row for now), each tab with a key
+  wearing it as the same keycap after its word (`KeyGuide.cap`, half the
+  tab's height); the tab's height is the layout's, content and all, its
+  middle on Roblox's pill's. The CARS (M) button went (`SpawnMenu`). The
+  row's fit-to-room scaling applies as on a phone: at 1257 wide CLUSTER's
+  48 tabs draw at 46. The debug panel moved under the inset so it no
+  longer lies over the row.
+- **Readouts** (`StreetHud.readouts`): placed in the HUD's top-right
+  corner square in fractions of the screen's height, 0.026 in from the
+  right and 0.03 up (CLUSTER's tray 0.041 in). The STRIP's bar is a
+  spring on the revs like the dial's needle. Measured at 1257x683: the
+  dial 191 px at x 1048, the strip 277x102 at x 961, the tray 354x145 at
+  x 874. The words a size up on the canvas's 12 px (`STRIP_LABELS`,
+  `TRAY_GEAR_LABEL`): at 683 tall those came out 7 px.
 
 ## Don'ts
 

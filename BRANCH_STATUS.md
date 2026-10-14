@@ -28,6 +28,15 @@ one by one on `mobile-fixes` (deleted after merging): landscape lock, EXIT on th
 tabs 40 tall with the art at 2x, the garage doorway as a box you are in at any speed, and MY CARS boxes
 one size per tab.
 
+**`desktop-ui` (2026-10-14, branched from `main` at `71b0fda`; not merged): the PC screen.** The
+owner: "put a small guide on which keys are for what", "the odometer and stuff should go on the
+right", "the buttons and everything needs to be redone and spaced for pc", "make a couple different
+full UI options ... implement them in game for me to switch between". Three desktop layouts (DASH,
+STRIP, CLUSTER: `HudLab/Desk.luau`, K or Settings' PC LAYOUT rows) of where the readouts, the key
+guide (`HudLab/KeyGuide.luau`) and the top row's tabs go; the top bar on a desktop with the keys on
+its tabs, the CARS button gone. UI_SYSTEM.md "The desktop HUD" has it; the canvas "Hajwala desktop
+HUD" the drawings.
+
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
 axis (client and shared `AutoFlip`, `CarConfig.autoFlip`): steer and it heaves up off its edge and drops

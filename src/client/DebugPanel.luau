@@ -64,8 +64,10 @@ local function ensureLabel(): TextLabel
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.TextYAlignment = Enum.TextYAlignment.Top
 	l.AutomaticSize = Enum.AutomaticSize.XY
-	-- On a phone the top-left belongs to Roblox's chat button; drop below it.
-	l.Position = if isTouch() then UDim2.new(0, 8, 0.2, 0) else UDim2.fromOffset(8, 8)
+	-- On a phone the top-left belongs to Roblox's chat button; drop below
+	-- it. On a desktop, under Roblox's top bar, where the menu row now
+	-- sits (desktop-ui, 2026-10-14: it was over the row's STORE and GARAGE).
+	l.Position = if isTouch() then UDim2.new(0, 8, 0.2, 0) else UDim2.fromOffset(8, game:GetService("GuiService").TopbarInset.Max.Y + 8)
 	l.Size = UDim2.fromOffset(0, 0)
 	l.Text = ""
 	l.Parent = gui

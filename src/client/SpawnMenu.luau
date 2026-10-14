@@ -28,19 +28,14 @@
 -- that back: closing the menu in a car must not hand the thumbstick back
 -- mid-drive.
 local ContextActionService = game:GetService("ContextActionService")
-local GuiService = game:GetService("GuiService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared.ConfigLoader)
 local VehicleRig = require(Shared.VehicleRig)
-local UITheme = require(Shared:WaitForChild("UITheme"))
-local UIKit = require(script.Parent.UIKit)
 local LoadCover = require(script.Parent.LoadCover)
 local Menu = require(script.Parent:WaitForChild("Menu"))
 local TopBar = require(script.Parent:WaitForChild("TopBar"))
-local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
 -- CUSTOMIZE's way to the garage (GarageView needs nothing of the menu, so
 -- no cycle; the panel's SHOP PLATES comes the other way, through SpawnMenu).
 local GarageView = require(script.Parent:WaitForChild("Garage"):WaitForChild("GarageView"))
@@ -50,29 +45,18 @@ local SpawnMenu = {}
 local ACTION = "HJ_SpawnMenu"
 
 local remote: RemoteEvent? = nil
-local openButton: TextButton? = nil
 local currentCarId: string? = nil
 local waitingUntil = 0
 local modalBefore = false
 -- The garage view hides the way back in (SpawnMenu.setOpenButtonHidden).
 local openButtonHidden = false
 
-local isTouch = UIKit.isTouch
-
--- The way back into the menu shows while no menu is open and no garage view
--- fills the screen: on a desktop the CARS button, on a phone the top bar
--- (TopBar, whose GARAGE took the CARS button's place, 2026-10-11).
+-- The way back into the menu is the top bar (TopBar, whose GARAGE took
+-- the CARS button's place on a phone, 2026-10-11, and on a desktop too
+-- since desktop-ui, 2026-10-14, when the CARS button went). It stays up
+-- over the menu, which hangs under it (its lit button closes it,
+-- 2026-10-13); only the garage view takes it down.
 local function paintOpen()
-	-- Not while the menu is still going out: the top bar came back over its
-	-- title as it slid away.
-	local free = not openButtonHidden and not Menu.covering()
-	local ob = openButton
-	if ob then
-		-- Not with CLEAR UI on: the top bar's gear is the way in then.
-		ob.Visible = free and not isTouch() and not ClearUi.on()
-	end
-	-- The top bar stays up over the menu, which hangs under it (its lit
-	-- button closes it, 2026-10-13); only the garage view takes it down.
 	TopBar.setShown(not openButtonHidden)
 end
 
@@ -110,42 +94,6 @@ local function sortedCars(): { { id: string, entry: VehicleRig.CarEntry } }
 		return a.entry.displayName < b.entry.displayName
 	end)
 	return out
-end
-
--- The CARS button, on a desktop: as tall as Roblox's own top bar buttons,
--- just right of them (the owner, 2026-10-08: "put the cars menu at the top").
-local function fitButton()
-	local ob = openButton
-	if not ob then
-		return
-	end
-	local bar = GuiService.TopbarInset
-	local barH = math.max(bar.Height, 36)
-	local h = math.max(barH - 12, 32)
-	ob.Size = UDim2.fromOffset(92, h)
-	ob.TextSize = UITheme.textSize("label", false)
-	ob.Position = UDim2.fromOffset(bar.Min.X + 8, bar.Min.Y + barH / 2)
-end
-
-local function buildButton()
-	local openGui = Instance.new("ScreenGui")
-	openGui.Name = "HajwalaSpawnButton"
-	openGui.ResetOnSpawn = false
-	openGui.IgnoreGuiInset = true
-	openGui.DisplayOrder = 7
-	local open = UIKit.button(openGui, "CARS  (M)", "secondary", false)
-	open.Name = "OpenSpawnMenu"
-	open.AnchorPoint = Vector2.new(0, 0.5)
-	open.AutomaticSize = Enum.AutomaticSize.None
-	-- It floats over the road like the HUD card: alpha.hud, not a panel's.
-	open.BackgroundTransparency = UITheme.alpha.hud
-	open.Activated:Connect(function()
-		SpawnMenu.toggle()
-	end)
-	openButton = open
-	openGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fitButton)
-	fitButton()
 end
 
 function SpawnMenu.isOpen(): boolean
@@ -210,8 +158,8 @@ function SpawnMenu.cars(): { { id: string, entry: VehicleRig.CarEntry } }
 	return sortedCars()
 end
 
--- Hides the way back in (the CARS button, the top bar on a phone) while the
--- garage view fills the screen; M still opens the menu.
+-- Hides the way back in (the top bar) while the garage view fills the
+-- screen; M still opens the menu.
 function SpawnMenu.setOpenButtonHidden(hidden: boolean)
 	openButtonHidden = hidden
 	paintOpen()
@@ -246,20 +194,12 @@ function SpawnMenu.start(remotes: Folder)
 		close = SpawnMenu.close,
 		customize = GarageView.visit,
 	}, remotes)
-	buildButton()
 	ContextActionService:BindAction(ACTION, function(_, state: Enum.UserInputState)
 		if state == Enum.UserInputState.Begin then
 			SpawnMenu.toggle()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.M)
-	-- Studio's phone mode (ForceTouch) swaps the CARS button for the top bar.
-	Players.LocalPlayer:GetAttributeChangedSignal("ForceTouch"):Connect(paintOpen)
-	ClearUi.changed(paintOpen)
-	-- The way back in returns once the menu has gone.
-	Menu.watch(function()
-		paintOpen()
-	end)
 	Menu.watchPage(TopBar.setOpen)
 	paintOpen()
 	-- You start on foot: the menu comes in as the load cover goes (at once

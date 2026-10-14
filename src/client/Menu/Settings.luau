@@ -9,6 +9,8 @@
 --   HUD STYLE      the middle: the driving HUD's finishes as cards, each a
 --                  mock readout in its own colours (HudLab; STYLE or U
 --                  cycle it).
+--   PC LAYOUT      under the cards, a PC only: the desktop HUD's layouts
+--                  as rows (HudLab/Desk; K cycles it).
 --   CAMERA         the right, first: the driving views as slanted choices
 --                  (CameraViews; VIEW or V cycle it).
 --   HUD LAYOUT     under it: the HUD's versions as rows, a word on each
@@ -100,6 +102,19 @@ local VERSION: Row = {
 	end,
 	current = HudLab.currentVersion,
 	pick = HudLab.setVersion,
+}
+
+local DESK: Row = {
+	title = "PC LAYOUT",
+	options = function()
+		local out: { Option } = {}
+		for _, d in HudLab.desks() do
+			table.insert(out, { id = d.id, label = d.name, hint = d.blurb })
+		end
+		return out
+	end,
+	current = HudLab.currentDesk,
+	pick = HudLab.setDesk,
 }
 
 local SCREEN: Row = {
@@ -563,6 +578,14 @@ function Settings.new(shell: Page.Shell): Page.Page
 				for i, o in STYLE.options() do
 					styleCard(cards, o, i, touch)
 				end
+				-- PC LAYOUT under the cards, a desktop only (the cards give up
+				-- the room: the right column had no more, 2026-10-14).
+				if not touch then
+					local gap = Kit.frame(mid, "Gap")
+					gap.LayoutOrder = 2
+					gap.Size = UDim2.new(1, 0, 0, colGap - titleGap)
+					rows(mid, DESK, 3, touch)
+				end
 
 				-- CAMERA, HUD LAYOUT and (a PC) SCREEN LAYOUT down the right.
 				local right = Kit.frame(holder, "Choices")
@@ -601,7 +624,7 @@ function Settings.new(shell: Page.Shell): Page.Page
 		paint()
 	end
 	local player = Players.LocalPlayer
-	for _, name in { "HudVariant", "HudLayout", Layouts.ATTRIBUTE, CameraViews.ATTRIBUTE, ClearUi.ATTRIBUTE } do
+	for _, name in { "HudVariant", "HudLayout", "HudDesk", Layouts.ATTRIBUTE, CameraViews.ATTRIBUTE, ClearUi.ATTRIBUTE } do
 		player:GetAttributeChangedSignal(name):Connect(paint)
 	end
 	return page
