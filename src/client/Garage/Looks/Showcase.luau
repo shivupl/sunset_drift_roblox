@@ -51,15 +51,16 @@ export type Sizing = {
 	name: number,
 	word: number,
 	subH: number,
+	restyle: boolean?, -- its blocks take the price style picked (Parts.priceStyle)
 }
 -- SHOWCASE as it was after the PC spacing pass: 16/21 words, 3 blocks of
 -- 94 across a 332 column.
 Showcase.REGULAR = { rail = 16, railOn = 21, rowMax = 50, navW = 190, colW = 332, cols = 3, swatch = 56, name = 13, word = 11, subH = 32 } :: Sizing
 -- BIGGER: 18/24 words in rows up to 56; 3 blocks of 108 across a 372
 -- column, the swatch 66.
-Showcase.BIGGER = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 372, cols = 3, swatch = 66, name = 14, word = 12, subH = 34 } :: Sizing
+Showcase.BIGGER = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 372, cols = 3, swatch = 66, name = 14, word = 12, subH = 34, restyle = true } :: Sizing
 -- WIDE: the same words; 2 blocks of 156 across a 352 column, the swatch 88.
-Showcase.WIDE = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 352, cols = 2, swatch = 88, name = 15, word = 12, subH = 34 } :: Sizing
+Showcase.WIDE = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 352, cols = 2, swatch = 88, name = 15, word = 12, subH = 34, restyle = true } :: Sizing
 
 -- How a variant is fitted out beyond its look: how far past the coins'
 -- right edge the column reaches, the list's up/down control in place of
@@ -275,7 +276,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
-		else { name = pc.name, word = pc.word, swatch = pc.swatch, rows = false, inline = false, block = block }
+		else { name = pc.name, word = pc.word, swatch = pc.swatch, rows = false, inline = false, block = block, price = if pc.restyle then Parts.priceStyle() else nil }
 	if variant ~= "column" then
 		m.backdrop = "shade"
 	end

@@ -1389,6 +1389,16 @@ local function nextLayout()
 	toast(`LAYOUT: {nxt.name}`, "info")
 end
 
+-- The next price style for the blocks, from J on a PC (Parts.nextPriceStyle).
+local function nextPriceStyle()
+	if sheet then
+		return
+	end
+	local nxt = Parts.nextPriceStyle()
+	GarageSounds.play("tab")
+	toast(`BOXES: {nxt:upper()}`, "info")
+end
+
 -- The next SHOWCASE size, from K on a PC (Layouts.nextSize).
 local function nextSize()
 	if sheet then
@@ -1677,6 +1687,11 @@ local function bindInput()
 			nextSize()
 			return
 		end
+		-- J on a PC: the next price style for the blocks (BIGGER, WIDE).
+		if io.KeyCode == Enum.KeyCode.J and not processed and not touch and not SpawnMenu.isOpen() then
+			nextPriceStyle()
+			return
+		end
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
@@ -1767,6 +1782,12 @@ function GaragePanel.start(remotes: Folder)
 	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
 		if inside then
 			buildView(false)
+		end
+	end)
+	-- The blocks' price style (J): the view built again with it.
+	player:GetAttributeChangedSignal(Parts.PRICE_ATTRIBUTE):Connect(function()
+		if inside then
+			buildView(false, true)
 		end
 	end)
 	-- The menu over the garage (SHOP PLATES, M): the panel and its coins

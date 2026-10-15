@@ -356,6 +356,21 @@ cut (MY CARS' cards the same 146). The car sits a little further left
 under the wider columns (`GarageConfig.layoutOffset`: bigger -0.08, wide
 -0.07, showcase -0.06).
 
+**The price on BIGGER's and WIDE's blocks** comes three ways
+(`Parts.BoxMetrics.price`, the LocalPlayer attribute `BoxStyle`, J in the
+garage cycles it with a `BOXES:` toast; the owner, 2026-10-14: "make a
+couple redesigned versions of the display boxes where the price is more
+visible"). PLAIN is the word under the name as it was. BAND puts the
+name over a dark band along the box's foot (`Kit.C.chip` 0.3
+see-through, inset 6 from the cut edge, the word's size plus 12 tall)
+with the coin and the price in Oswald a size up on the plain word's,
+ON CAR and OWNED in green with no coin, a note grey; the swatch gives
+up the room (BIGGER's 39 px for 66, WIDE's 82 for 88). TAG leaves the
+name alone at the foot and puts the price on a sodium pill in the box's
+top right corner with the dark buy ink, ON CAR and OWNED on a green pill
+with its dark ink, a note on grey; the swatch keeps its size. SHOWCASE's
+blocks stay plain (`Showcase.Sizing.restyle`).
+
 **CARS and PLATES are the car picker's SHOWROOM** (`Menu/Looks/Showroom`;
 the owner, 2026-10-12: "the old layouts were internally a bit better the
 rhs boxes, the overall styling"; of PICKER, SHOWROOM and FRAME tried,
