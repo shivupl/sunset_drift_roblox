@@ -87,6 +87,18 @@ function Layouts.after(): Types.Layout
 	return list[(table.find(list, Layouts.current()) or 0) % #list + 1]
 end
 
+-- The next SHOWCASE size round (a PC's SHOWCASE, BIGGER, WIDE; DOCK is
+-- skipped, and from DOCK it goes to SHOWCASE), chosen: K in the garage
+-- (the owner, 2026-10-14: "make k the shortcut for me to switch between
+-- those 3").
+Layouts.SIZES = { "showcase", "bigger", "wide" }
+function Layouts.nextSize(): Types.Layout
+	local i = table.find(Layouts.SIZES, Layouts.current().id) or 0
+	local id = Layouts.SIZES[i % #Layouts.SIZES + 1]
+	Layouts.set(id)
+	return Layouts.current()
+end
+
 -- The one after the current, chosen.
 function Layouts.advance(): Types.Layout
 	local nxt = Layouts.after()

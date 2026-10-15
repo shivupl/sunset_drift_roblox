@@ -1389,6 +1389,16 @@ local function nextLayout()
 	toast(`LAYOUT: {nxt.name}`, "info")
 end
 
+-- The next SHOWCASE size, from K on a PC (Layouts.nextSize).
+local function nextSize()
+	if sheet then
+		return
+	end
+	local nxt = Layouts.nextSize()
+	GarageSounds.play("tab")
+	toast(`LAYOUT: {nxt.name}`, "info")
+end
+
 local function makeCtx(g: ScreenGui): Types.Ctx
 	return {
 		touch = touch,
@@ -1557,9 +1567,13 @@ local function teardown()
 	press = nil
 end
 
+-- Set while the garage is up, for keys other screens share (HudLab's K).
+local OPEN_ATTRIBUTE = "GarageOpen"
+
 local function onEnter(id: string, preview: Model)
 	teardown()
 	inside = true
+	Players.LocalPlayer:SetAttribute(OPEN_ATTRIBUTE, true)
 	collapsed = false
 	tab = "paint"
 	carId = id
@@ -1601,6 +1615,7 @@ local function onLeave()
 		SpawnMenu.close()
 	end
 	inside = false
+	Players.LocalPlayer:SetAttribute(OPEN_ATTRIBUTE, nil)
 	teardown()
 	previewModel = nil
 	previewing = nil
@@ -1654,6 +1669,12 @@ local function bindInput()
 		-- under the menu).
 		if ((io.KeyCode == Enum.KeyCode.H and not processed) or io.KeyCode == Enum.KeyCode.ButtonY) and not SpawnMenu.isOpen() then
 			setCollapsed(not collapsed)
+			return
+		end
+		-- K on a PC: the next SHOWCASE size (the HUD's K, the desk layout,
+		-- stands aside while the garage is open: the GarageOpen attribute).
+		if io.KeyCode == Enum.KeyCode.K and not processed and not touch and not SpawnMenu.isOpen() then
+			nextSize()
 			return
 		end
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then

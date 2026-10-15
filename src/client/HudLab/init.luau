@@ -511,7 +511,9 @@ function HudLab.start()
 			HudLab.cycle()
 		elseif io.KeyCode == Enum.KeyCode.Y then
 			HudLab.cycleLayout()
-		elseif io.KeyCode == Enum.KeyCode.K and not isTouch() then
+		elseif io.KeyCode == Enum.KeyCode.K and not isTouch() and player:GetAttribute("GarageOpen") ~= true then
+			-- K is the garage's while it is up (GaragePanel: the next
+			-- SHOWCASE size).
 			Desk.cycle()
 		end
 	end)

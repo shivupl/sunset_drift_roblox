@@ -331,7 +331,10 @@ foot (were y 560, 9 from it); the words and the cross both at x 36 (were
 
 **A PC's SHOWCASE comes in three sizes** (`Showcase.Sizing`: REGULAR,
 BIGGER, WIDE; `Layouts.pc` lists them as SHOWCASE, BIGGER and WIDE
-beside DOCK, picked in Settings' SCREEN LAYOUT row; the owner,
+beside DOCK, picked in Settings' SCREEN LAYOUT row or cycled with K in
+the garage (`Layouts.nextSize`, the three sizes round, DOCK skipped; the
+HUD's K, the desk layout, stands aside while the garage is up: the
+`GarageOpen` attribute); the owner,
 2026-10-14: "make a couple variants of the customization UI, i feel like
 the text buttons on the left side need to be a bit bigger and also the
 boxes in the right side menu also could be bigger"). GLASS and FRAME are
