@@ -534,43 +534,59 @@ The owner, 2026-10-14, of the PC screen: "put a small guide on which
 keys are for what", "the odometer and stuff should go on the right",
 "the buttons and everything needs to be redone and spaced for pc", "make
 a couple different full UI options ... and also implement them in game
-for me to switch between". The canvas "Hajwala desktop HUD" has the
-three drawn at 1920x1080; `src/client/HudLab/Desk.luau` is the list
+for me to switch between". Three were drawn and built (DASH, STRIP,
+CLUSTER: the canvas "Hajwala desktop HUD", boards A–C; the code at
+`a669f1a`). The owner picked DASH "but still needs some polishing and
+work, make a couple variants ... the controls on the bottom should be
+faint and lighter opacity and more simple ... the keys inside [the
+buttons] are off center and too dark". So every layout is DASH now, and
+the layouts differ in the key guide (the canvas's A1–A3 boards, and "The
+keys" board up close). `src/client/HudLab/Desk.luau` is the list
 (`HudDesk` attribute; K cycles it, the PC LAYOUT rows under HUD STYLE's
-cards in Settings pick one, the toast says `PC: DASH`). Nothing of it
-touches a phone: a phone's readouts are the dial in the bottom middle,
-its controls layout D.
+cards in Settings pick one, the toast says `PC: DASH THIN`). Nothing of
+it touches a phone: a phone's readouts are the dial in the bottom
+middle, its controls layout D.
 
-| | DASH | STRIP | CLUSTER |
+| | DASH | DASH THIN | DASH FADE |
 |---|---|---|---|
-| Readouts, bottom right | the dial as it was (0.28 of the height, was 0.3 in the bottom middle), the gear above its cap, the speed under it | no dial: the gear in a box, the speed big, the revs as a bar (0.407 of the height wide, 0.15 tall) with the last 2/9 red | a glass tray in the tabs' slant (0.519 x 0.213): GEAR and the speed on its left, a dial 0.87 of its height on its right |
-| Key guide, bottom left | one line on a soft blot | two columns on the blot (HANDBRAKE in full) | one line on a glass strip of the tabs' slant, 48 tall |
-| Top row tabs | 44 tall, words and keys | 36 tall, icons and keys, GARAGE's word alone | 48 tall, words and keys |
+| Key guide, bottom left | outlined keycaps, nothing behind them | the letters alone, no keycaps | the outlined keycaps on black fading up 130 px from the screen's bottom edge (0.58 at the edge), under the dial too |
+| Measured at 1257x683 | 638x22 at 24 in, 28 up | 531x24 | as DASH; the fade 1257x130 |
 
-- **The key guide** (`HudLab/KeyGuide.luau`): the driving keys as keycaps
-  (22 tall, 4 round, a 2 px lip, the letter 11 ExtraBold; 4 apart, 6
-  before the word, 22 between pairs) with a word each in sand: W A S D
-  DRIVE, SPACE HAND, Q E NATL, R RESET, H HORN, G LIGHTS. A keycap lights
-  sodium while its key is held. The keys that sit on the row's tabs (M,
-  F, V, U) are not repeated. Measured in Studio's 1257x683 viewport: the
-  line 659x42 at 24 in from the left and 28 up; the stack 274x102; the
-  glass strip 681x48 at 40 in.
+The same in all three: the dial as it was (0.28 of the height, was 0.3
+in the bottom middle) in the bottom right corner, the gear above its
+cap and the speed under it (measured: 191 px at x 1048); the top row's
+tabs 44 tall with their keys.
+
+- **The keycap** (`KeyGuide.cap`): 22 tall, 4 round, the letter 11
+  ExtraBold centred in a cap sized to it, never narrower than it is
+  tall; a *tone* colours its face, its 1 px edge and its ink, each with
+  its own transparency (`KeyGuide.TONES`). The guide's `ghost` tone is
+  white: the face 0.94 see-through, the edge 0.66, the letter 0.28; the
+  word after the keys white 12 SemiBold, 0.5 see-through. THIN's `bare`
+  caps have no face or edge, the letter 12 (a 24 cap), the word 0.55.
+  Held: `lit`, sodium with the lamp's lens for an edge and dark ink
+  (bare: the letter itself goes sodium). 4 between keys (THIN 3), 6
+  before the word (8), 24 between pairs (28): W A S D DRIVE, SPACE HAND,
+  Q E NATL, R RESET, H HORN, G LIGHTS. The keys on the row's tabs (M, F,
+  V, U) are not repeated.
+- **The first cut's mistake:** the letter was drawn in a label of its
+  own width set at the cap's left, so it sat left of centre by half the
+  slack (F by 3 px at 22 wide) and 1 px high over a 2 px lip; the cap was
+  near-black on the dark glass. Now the label fills the cap and centres
+  the text; the lip went. Measured: every tab's letter box 0,0 off its
+  cap's centre (was -1.5 to -3.0, -1.0).
 - **The top row on a desktop** (`TopBar`): the phone's row, STORE,
   GARAGE, SETTINGS (the gear), then EXIT, CAMERA and STYLE while driving
   (CAMERA and STYLE are off the phone's row for now), each tab with a key
-  wearing it as the same keycap after its word (`KeyGuide.cap`, half the
-  tab's height); the tab's height is the layout's, content and all, its
+  wearing it as the same keycap after its word (half the tab's height)
+  in the `tab` tone: a white face 0.84 see-through, the edge 0.66, the
+  letter white; GARAGE's key green with its word (`tabGreen`), and on
+  the lit tab the dark green ink the word takes (`tabOn`); a shaded tab
+  washes its key out 0.45 more. The tabs 44 tall (`DESK_TAB_H`), their
   middle on Roblox's pill's. The CARS (M) button went (`SpawnMenu`). The
-  row's fit-to-room scaling applies as on a phone: at 1257 wide CLUSTER's
-  48 tabs draw at 46. The debug panel moved under the inset so it no
-  longer lies over the row.
-- **Readouts** (`StreetHud.readouts`): placed in the HUD's top-right
-  corner square in fractions of the screen's height, 0.026 in from the
-  right and 0.03 up (CLUSTER's tray 0.041 in). The STRIP's bar is a
-  spring on the revs like the dial's needle. Measured at 1257x683: the
-  dial 191 px at x 1048, the strip 277x102 at x 961, the tray 354x145 at
-  x 874. The words a size up on the canvas's 12 px (`STRIP_LABELS`,
-  `TRAY_GEAR_LABEL`): at 683 tall those came out 7 px.
+  debug panel sits under the inset so it does not lie over the row.
+  Measured at 1257x683: STORE 98, GARAGE 138, EXIT 116, CAMERA 140, STYLE
+  125 wide, all 44 tall, the same as before the fix.
 
 ## Don'ts
 

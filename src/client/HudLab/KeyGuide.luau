@@ -1,125 +1,207 @@
 --!strict
 -- The desktop's key guide (desktop-ui, 2026-10-14; the owner: "put a small
--- guide on which keys are for what"): the driving keys as keycaps with a
--- word each, bottom left, in the form the desk layout asks for
--- (Desk.guide). A keycap lights sodium while its key is held, so the
--- guide also shows what the car is being told. The keys that sit on the
--- top row's tabs (M, F, V, U) are not repeated here.
+-- guide on which keys are for what"): the driving keys with a word each,
+-- bottom left, in the form the desk layout asks for (Desk.guide). A key
+-- lights sodium while it is held, so the guide also shows what the car is
+-- being told. The keys that sit on the top row's tabs (M, F, V, U) are not
+-- repeated here.
 --
---   line    one row on a soft dark blot (DASH)
---   stack   two columns on the blot (STRIP)
---   glass   one row on a slanted glass strip, the tabs' own shape (CLUSTER)
+-- The owner, of the first cut (a line of dark keycaps on a blot): "the
+-- controls on the bottom should be faint and lighter opacity and more
+-- simple". So the guide is faint: no blot, white a quarter to a half
+-- there, in one of three forms (the canvas "Hajwala desktop HUD", the
+-- A1–A3 boards):
 --
--- Pixel sizes, a desktop's (the canvas's "The pieces" board): the keycap
--- 22 tall with a 2 px lip, its letter 11, the word 12; 4 between keycaps,
--- 6 before the word, 22 between pairs. The keycap is also the top row's
--- (TopBar draws a tab's key with KeyGuide.cap), so one keycap means one
--- thing everywhere.
+--   ghost   outlined keycaps, nothing behind them (DASH)
+--   thin    the letters alone, no keycaps (DASH THIN)
+--   fade    the outlined keycaps on a fade up from the screen's bottom
+--           edge, under the dial too (DASH FADE)
+--
+-- Pixel sizes, a desktop's: the keycap 22 tall, its letter 11, the word
+-- 12; 4 between keycaps, 6 before the word, 24 between pairs. The keycap
+-- is also the top row's (TopBar draws a tab's key with KeyGuide.cap, in
+-- the `tab` tones), so one keycap means one thing everywhere. The letter
+-- is centred in a cap sized to it (the owner, of the tabs' keys: "off
+-- center and too dark"; the letter was drawn in a box of its own width
+-- set at the cap's left, so F sat 3 px left of centre).
+local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent
 local Kit = require(Client:WaitForChild("CarPicker"):WaitForChild("Kit"))
-local PickerArt = require(Client:WaitForChild("CarPicker"):WaitForChild("Art"))
 
 local KeyGuide = {}
 
--- The keycap.
+-- The keycap: never narrower than it is tall.
 local CAP_H = 22
 local CAP_PAD = 5
 local CAP_FONT = 11
 local CAP_RADIUS = 4
-local LIP = 2
-local CAP_BG = Color3.fromHex("#0C0D0F")
-local CAP_EDGE = Color3.fromHex("#3D3832")
-local CAP_INK = Color3.fromHex("#E8E2CD")
-local CAP_LIP = Color3.fromHex("#000000")
--- Lit while held: sodium, the edge the lamp's lens, the ink dark.
-local LIT_BG = Color3.fromHex("#FFBA5C")
-local LIT_EDGE = Color3.fromHex("#FFD592")
-local LIT_INK = Color3.fromHex("#2B1903")
-local LIT_LIP = Color3.fromHex("#E08A2E")
--- The word after the keys.
+-- THIN's letters, a size up: a bare cap this tall carries a 12 px letter.
+local THIN_H = 24
+
+local WHITE = Color3.new(1, 1, 1)
+local SODIUM = Color3.fromHex("#FFBA5C")
+
+-- A keycap's colours: the face (its fill), the edge (a 1 px stroke) and
+-- the ink (the letter), each with how see-through it is.
+export type Tone = { face: Color3, faceAlpha: number, edge: Color3, edgeAlpha: number, ink: Color3, inkAlpha: number }
+
+KeyGuide.TONES = {
+	-- A tab's key: a light face on the dark glass, the letter white.
+	tab = { face = WHITE, faceAlpha = 0.84, edge = WHITE, edgeAlpha = 0.66, ink = WHITE, inkAlpha = 0 } :: Tone,
+	-- GARAGE's key while its word is green: the key in the green too.
+	tabGreen = { face = Kit.C.green, faceAlpha = 0.86, edge = Kit.C.green, edgeAlpha = 0.45, ink = Kit.C.green, inkAlpha = 0 } :: Tone,
+	-- A tab's key on the lit (solid green) tab: the dark ink its word takes.
+	tabOn = { face = Kit.C.inUseInk, faceAlpha = 0.84, edge = Kit.C.inUseInk, edgeAlpha = 0.6, ink = Kit.C.inUseInk, inkAlpha = 0 } :: Tone,
+	-- The guide's: an outline, a whisper of a face, the letter three
+	-- quarters there.
+	ghost = { face = WHITE, faceAlpha = 0.94, edge = WHITE, edgeAlpha = 0.66, ink = WHITE, inkAlpha = 0.28 } :: Tone,
+	-- No cap at all, the letter alone.
+	bare = { face = WHITE, faceAlpha = 1, edge = WHITE, edgeAlpha = 1, ink = WHITE, inkAlpha = 0.28 } :: Tone,
+	-- Held: sodium, the lamp's lens for an edge, the ink dark.
+	lit = { face = SODIUM, faceAlpha = 0, edge = Color3.fromHex("#FFD592"), edgeAlpha = 0, ink = Color3.fromHex("#2B1903"), inkAlpha = 0 } :: Tone,
+	-- Held with no cap: the letter itself goes sodium.
+	litBare = { face = SODIUM, faceAlpha = 1, edge = SODIUM, edgeAlpha = 1, ink = SODIUM, inkAlpha = 0 } :: Tone,
+}
+
+-- The word after the keys: white, half there.
 local WORD_FONT = 12
-local WORD_INK = Color3.fromHex("#C6AC84")
+local WORD_ALPHA = 0.5
+local THIN_WORD_ALPHA = 0.55
 local KEY_GAP = 4
+local THIN_KEY_GAP = 3
 local WORD_GAP = 6
--- Between pairs on a line; the stack's rows and columns.
-local PAIR_GAP = 22
-local ROW_GAP = 8
-local COL_GAP = 28
--- The blot: asphalt950, 0.55 see-through, 10 round, 10/16 padding.
-local BLOT = Color3.fromRGB(12, 12, 13)
-local BLOT_ALPHA = 0.55
-local BLOT_RADIUS = 10
-local BLOT_PAD_Y, BLOT_PAD_X = 10, 16
--- The glass strip: the tabs' slanted shape, 48 tall, 22 of padding at
--- each end, 24 between pairs; dark glass with a faint rim.
-local GLASS_H = 48
-local GLASS_PAD = 22
-local GLASS_GAP = 24
-local GLASS_ALPHA = 0.5
-local RIM_ALPHA = 0.88
+local THIN_WORD_GAP = 8
+local PAIR_GAP = 24
+local THIN_PAIR_GAP = 28
 -- In from the screen's bottom left corner.
 local EDGE_X, EDGE_Y = 24, 28
-local GLASS_EDGE_X = 40
+-- FADE: black fading up from the screen's bottom edge, 130 tall, 0.58
+-- there at the edge.
+local FADE_H = 130
+local FADE_ALPHA = 0.42
 
-type Pair = { keys: { Enum.KeyCode }, caps: { string }, word: string, long: string? }
+type Pair = { keys: { Enum.KeyCode }, caps: { string }, word: string }
 local PAIRS: { Pair } = {
 	{ keys = { Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D }, caps = { "W", "A", "S", "D" }, word = "DRIVE" },
-	{ keys = { Enum.KeyCode.Space }, caps = { "SPACE" }, word = "HAND", long = "HANDBRAKE" },
+	{ keys = { Enum.KeyCode.Space }, caps = { "SPACE" }, word = "HAND" },
 	{ keys = { Enum.KeyCode.Q, Enum.KeyCode.E }, caps = { "Q", "E" }, word = "NATL" },
 	{ keys = { Enum.KeyCode.R }, caps = { "R" }, word = "RESET" },
 	{ keys = { Enum.KeyCode.H }, caps = { "H" }, word = "HORN" },
 	{ keys = { Enum.KeyCode.G }, caps = { "G" }, word = "LIGHTS" },
 }
 
-export type Cap = { root: Frame, setLit: (on: boolean) -> () }
+local function fontFor(size: number): number
+	return math.max(8, math.floor(size * CAP_FONT / CAP_H + 0.5))
+end
 
--- A keycap with `letter` on it, `h` tall (the guide's 22; a tab's is
--- sized to the tab), as wide as the letter needs and never narrower than
--- it is tall.
-function KeyGuide.cap(parent: Instance, letter: string, h: number?): Cap
+-- Measures a letter as the caps draw it: a hidden label in the PlayerGui
+-- (TextBounds needs the label in a screen).
+local scratch: TextLabel? = nil
+local function scratchLabel(): TextLabel
+	local t = scratch
+	if t then
+		return t
+	end
+	local g = Instance.new("ScreenGui")
+	g.Name = "HajwalaKeyScratch"
+	g.ResetOnSpawn = false
+	g.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local l = Kit.text(g, "Scratch", "", CAP_FONT, Enum.FontWeight.ExtraBold, false)
+	l.AutomaticSize = Enum.AutomaticSize.XY
+	l.Visible = false
+	scratch = l
+	return l
+end
+local function measure(letter: string, font: number): number
+	local t = scratchLabel()
+	t.TextSize = font
+	t.Text = letter
+	local w = t.TextBounds.X
+	return if w > 0 then w else #letter * font * 0.75
+end
+
+-- What a keycap measures: its letter and padding, never narrower than it
+-- is tall; a bare one the letter alone.
+function KeyGuide.width(letter: string, h: number?, bare: boolean?): number
 	local size = h or CAP_H
-	local font = math.max(8, math.floor(size * CAP_FONT / CAP_H + 0.5))
+	local w = measure(letter, fontFor(size))
+	if bare then
+		return math.ceil(w)
+	end
 	local pad = math.floor(size * CAP_PAD / CAP_H + 0.5)
-	local lip = math.max(1, math.floor(size * LIP / CAP_H + 0.5))
-	local root = Kit.frame(parent, "Key_" .. letter, CAP_BG, 0)
-	root.AutomaticSize = Enum.AutomaticSize.X
-	root.Size = UDim2.fromOffset(0, size)
-	Kit.corner(root, CAP_RADIUS)
-	local edge = Kit.stroke(root, CAP_EDGE, 1, 0)
-	local min = Instance.new("UISizeConstraint")
-	min.MinSize = Vector2.new(size, size)
-	min.Parent = root
-	local lipF = Kit.frame(root, "Lip", CAP_LIP, 0.35)
-	lipF.AnchorPoint = Vector2.new(0, 1)
-	lipF.Position = UDim2.fromScale(0, 1)
-	lipF.Size = UDim2.new(1, 0, 0, lip + CAP_RADIUS)
-	Kit.corner(lipF, CAP_RADIUS)
-	local cover = Kit.frame(root, "Face", CAP_BG, 0)
-	cover.Size = UDim2.new(1, 0, 1, -lip)
-	Kit.corner(cover, CAP_RADIUS)
-	local t = Kit.text(cover, "Letter", letter, font, Enum.FontWeight.ExtraBold, false, CAP_INK)
-	t.AutomaticSize = Enum.AutomaticSize.X
-	t.Size = UDim2.new(0, 0, 1, 0)
-	t.TextTruncate = Enum.TextTruncate.None
+	return math.max(size, math.ceil(w + 2 * pad))
+end
+
+export type Cap = {
+	root: Frame,
+	setTone: (tone: Tone, fade: number?) -> (), -- the cap's own colours; `fade` washes them out that much more (a shaded tab)
+	setLit: (on: boolean) -> (),
+}
+
+export type CapOpts = {
+	h: number?, -- the guide's 22; a tab's is sized to the tab
+	tone: Tone?, -- ghost unless said
+	lit: Tone?, -- lit (litBare if bare) unless said
+	bare: boolean?, -- no face, no edge, no padding: the letter alone
+}
+
+-- A keycap with `letter` on it, centred.
+function KeyGuide.cap(parent: Instance, letter: string, opts: CapOpts?): Cap
+	local o: CapOpts = opts or {}
+	local size = o.h or CAP_H
+	local bare = o.bare == true
+	local base: Tone = o.tone or (if bare then KeyGuide.TONES.bare else KeyGuide.TONES.ghost)
+	local litTone: Tone = o.lit or (if bare then KeyGuide.TONES.litBare else KeyGuide.TONES.lit)
+	local baseFade = 0
+	local root = Kit.frame(parent, "Key_" .. letter, base.face, base.faceAlpha)
+	root.Size = UDim2.fromOffset(KeyGuide.width(letter, size, bare), size)
+	local edge: UIStroke? = nil
+	if not bare then
+		Kit.corner(root, CAP_RADIUS)
+		edge = Kit.stroke(root, base.edge, 1, base.edgeAlpha)
+	end
+	local t = Kit.text(root, "Letter", letter, fontFor(size), Enum.FontWeight.ExtraBold, false, base.ink)
+	t.Size = UDim2.fromScale(1, 1)
 	t.TextXAlignment = Enum.TextXAlignment.Center
-	t.ZIndex = 2
-	Kit.pad(t, 0, pad, 0, pad)
+	t.TextTruncate = Enum.TextTruncate.None
+	t.TextTransparency = base.inkAlpha
+	t.ZIndex = root.ZIndex + 1
+	local function apply(tone: Tone, fade: number)
+		local function washed(alpha: number): number
+			return 1 - (1 - alpha) * (1 - fade)
+		end
+		root.BackgroundColor3 = tone.face
+		root.BackgroundTransparency = washed(tone.faceAlpha)
+		local e = edge
+		if e then
+			e.Color = tone.edge
+			e.Transparency = washed(tone.edgeAlpha)
+		end
+		t.TextColor3 = tone.ink
+		t.TextTransparency = washed(tone.inkAlpha)
+	end
 	local lit = false
 	return {
 		root = root,
+		setTone = function(tone: Tone, fade: number?)
+			base = tone
+			baseFade = fade or 0
+			if not lit then
+				apply(base, baseFade)
+			end
+		end,
 		setLit = function(on: boolean)
 			if on == lit then
 				return
 			end
 			lit = on
-			root.BackgroundColor3 = if on then LIT_BG else CAP_BG
-			cover.BackgroundColor3 = if on then LIT_BG else CAP_BG
-			lipF.BackgroundColor3 = if on then LIT_LIP else CAP_LIP
-			lipF.BackgroundTransparency = if on then 0 else 0.35
-			edge.Color = if on then LIT_EDGE else CAP_EDGE
-			t.TextColor3 = if on then LIT_INK else CAP_INK
+			if on then
+				apply(litTone, 0)
+			else
+				apply(base, baseFade)
+			end
 		end,
 	}
 end
@@ -132,85 +214,54 @@ export type Guide = {
 
 type Lit = { keys: { Enum.KeyCode }, caps: { Cap } }
 
--- One pair: its keycaps in a row and the word after them.
-local function pair(parent: Instance, p: Pair, order: number, long: boolean, out: { Lit })
+-- One pair: its keys in a row and the word after them.
+local function pair(parent: Instance, p: Pair, order: number, thin: boolean, out: { Lit })
 	local row = Kit.frame(parent, "Pair_" .. p.word)
 	row.LayoutOrder = order
 	row.AutomaticSize = Enum.AutomaticSize.XY
-	Kit.list(row, false, KEY_GAP, Enum.VerticalAlignment.Center)
+	Kit.list(row, false, if thin then THIN_KEY_GAP else KEY_GAP, Enum.VerticalAlignment.Center)
 	local caps: { Cap } = {}
 	for i, letter in p.caps do
-		local c = KeyGuide.cap(row, letter)
+		local c = KeyGuide.cap(row, letter, if thin then { h = THIN_H, bare = true } else nil)
 		c.root.LayoutOrder = i
 		table.insert(caps, c)
 	end
-	local w = Kit.text(row, "Word", if long then p.long or p.word else p.word, WORD_FONT, Enum.FontWeight.SemiBold, false, WORD_INK)
+	local w = Kit.text(row, "Word", p.word, WORD_FONT, Enum.FontWeight.SemiBold, false, WHITE)
 	w.LayoutOrder = 10
 	w.AutomaticSize = Enum.AutomaticSize.X
 	w.Size = UDim2.fromOffset(0, CAP_H)
 	w.TextTruncate = Enum.TextTruncate.None
-	Kit.pad(w, 0, 0, 0, WORD_GAP)
+	w.TextTransparency = if thin then THIN_WORD_ALPHA else WORD_ALPHA
+	Kit.pad(w, 0, 0, 0, if thin then THIN_WORD_GAP else WORD_GAP)
 	table.insert(out, { keys = p.keys, caps = caps })
 end
 
--- The guide in `form` ("line", "stack" or "glass"), in the HUD's root
--- (the screen), bottom left.
+-- The guide in `form` ("ghost", "thin" or "fade"), in the HUD's root (the
+-- screen), bottom left.
 function KeyGuide.build(parent: Instance, form: string): Guide
 	local lit: { Lit } = {}
+	local thin = form == "thin"
+	local fade: Frame? = nil
+	if form == "fade" then
+		local f = Kit.frame(parent, "KeyFade", Color3.new(0, 0, 0), 0)
+		f.AnchorPoint = Vector2.new(0, 1)
+		f.Position = UDim2.fromScale(0, 1)
+		f.Size = UDim2.new(1, 0, 0, FADE_H)
+		f.ZIndex = 0 -- under the dial and everything else in the HUD
+		local g = Instance.new("UIGradient")
+		g.Rotation = 90
+		g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, FADE_ALPHA) })
+		g.Parent = f
+		fade = f
+	end
 	local root = Kit.frame(parent, "KeyGuide")
 	root.AnchorPoint = Vector2.new(0, 1)
 	root.AutomaticSize = Enum.AutomaticSize.XY
+	root.Position = UDim2.new(0, EDGE_X, 1, -EDGE_Y)
 	root.ZIndex = 3
-	if form == "glass" then
-		root.Position = UDim2.new(0, GLASS_EDGE_X, 1, -EDGE_Y)
-		root.Size = UDim2.fromOffset(0, GLASS_H)
-		local function slice(o: ImageLabel)
-			o.Image = PickerArt.tab
-			o.ScaleType = Enum.ScaleType.Slice
-			o.SliceCenter = PickerArt.tabSlice
-			o.SliceScale = GLASS_H / PickerArt.tabH
-		end
-		local rim = Kit.image(root, "Rim", PickerArt.tab, Color3.new(1, 1, 1), RIM_ALPHA)
-		slice(rim)
-		rim.Size = UDim2.fromScale(1, 1)
-		local fill = Kit.image(root, "Fill", PickerArt.tab, Kit.C.chip, GLASS_ALPHA)
-		slice(fill)
-		fill.Position = UDim2.fromOffset(1, 1)
-		fill.Size = UDim2.new(1, -2, 1, -2)
-		local inner = Kit.frame(root, "Inner")
-		inner.AutomaticSize = Enum.AutomaticSize.X
-		inner.Size = UDim2.fromOffset(0, GLASS_H)
-		inner.ZIndex = 2
-		Kit.pad(inner, 0, GLASS_PAD, 0, GLASS_PAD)
-		Kit.list(inner, false, GLASS_GAP, Enum.VerticalAlignment.Center)
-		for i, p in PAIRS do
-			pair(inner, p, i, false, lit)
-		end
-	else
-		root.Position = UDim2.new(0, EDGE_X, 1, -EDGE_Y)
-		root.BackgroundColor3 = BLOT
-		root.BackgroundTransparency = BLOT_ALPHA
-		Kit.corner(root, BLOT_RADIUS)
-		Kit.pad(root, BLOT_PAD_Y, BLOT_PAD_X, BLOT_PAD_Y, BLOT_PAD_X)
-		if form == "stack" then
-			Kit.list(root, false, COL_GAP, Enum.VerticalAlignment.Top)
-			local cols = { Kit.frame(root, "Left"), Kit.frame(root, "Right") }
-			for i, c in cols do
-				c.LayoutOrder = i
-				c.AutomaticSize = Enum.AutomaticSize.XY
-				Kit.list(c, true, ROW_GAP)
-			end
-			-- Down the left, then down the right.
-			local half = math.ceil(#PAIRS / 2)
-			for i, p in PAIRS do
-				pair(cols[if i <= half then 1 else 2], p, i, true, lit)
-			end
-		else
-			Kit.list(root, false, PAIR_GAP, Enum.VerticalAlignment.Center)
-			for i, p in PAIRS do
-				pair(root, p, i, false, lit)
-			end
-		end
+	Kit.list(root, false, if thin then THIN_PAIR_GAP else PAIR_GAP, Enum.VerticalAlignment.Center)
+	for i, p in PAIRS do
+		pair(root, p, i, thin, lit)
 	end
 	-- Every zindex above the HUD's glow and shade.
 	for _, d in root:GetDescendants() do
@@ -232,6 +283,10 @@ function KeyGuide.build(parent: Instance, form: string): Guide
 		end,
 		destroy = function()
 			root:Destroy()
+			local f = fade
+			if f then
+				f:Destroy()
+			end
 		end,
 	}
 end

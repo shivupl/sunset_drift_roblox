@@ -6,7 +6,7 @@
 -- only working on mobile"; a desktop kept a CARS button and the keys);
 -- since desktop-ui (2026-10-14: "the buttons and everything needs to be
 -- redone and spaced for pc") a desktop has the same row, sized by its
--- desk layout (Desk: the tabs 44, 36 or 48 tall), each tab that has a
+-- desktop's tabs 44 tall (DESK_TAB_H), each tab that has a
 -- key wearing it as a keycap (KeyGuide.cap: GARAGE M, EXIT F, CAMERA V,
 -- STYLE U), CAMERA and STYLE on the row while driving, and the CARS
 -- button gone.
@@ -58,7 +58,6 @@ local TweenService = game:GetService("TweenService")
 local Kit = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Kit"))
 local Art = require(script.Parent:WaitForChild("CarPicker"):WaitForChild("Art"))
 local ClearUi = require(script.Parent:WaitForChild("ClearUi"))
-local Desk = require(script.Parent:WaitForChild("HudLab"):WaitForChild("Desk"))
 local KeyGuide = require(script.Parent:WaitForChild("HudLab"):WaitForChild("KeyGuide"))
 
 local TopBar = {}
@@ -101,7 +100,9 @@ local SETTINGS_SPEC = SPECS[3]
 local function toolsUp(): boolean
 	return not Kit.isTouch()
 end
--- A desktop tab's keycap, as a share of the tab's height (22 on 44).
+-- A desktop's tabs: 44 tall, content and all (the canvas "Hajwala desktop
+-- HUD"; a phone's follow Roblox's pill), the keycap half that (22).
+local DESK_TAB_H = 44
 local KEY_SHARE = 0.5
 
 -- The row sits level with Roblox's own pill (the owner, 2026-10-13: "line
@@ -158,7 +159,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local row: Frame? = nil
 local actions: Actions? = nil
-type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, key: Frame?, space: Frame? }
+type Button = { spec: Spec, b: ImageButton, fill: ImageLabel, gradient: UIGradient, icon: ImageLabel, label: TextLabel?, key: KeyGuide.Cap?, space: Frame? }
 local buttons: { Button } = {}
 local gear: TextButton? = nil
 local shown = true -- no garage view up
@@ -240,16 +241,7 @@ local function paint()
 		end
 		local k = it.key
 		if k then
-			k.BackgroundTransparency = if off then 0.45 else 0
-			for _, d in k:GetDescendants() do
-				if d:IsA("TextLabel") then
-					d.TextTransparency = if off then 0.45 else 0
-				elseif d:IsA("Frame") then
-					d.BackgroundTransparency = if off then 0.6 else (if d.Name == "Lip" then 0.35 else 0)
-				elseif d:IsA("UIStroke") then
-					d.Transparency = if off then 0.45 else 0
-				end
-			end
+			k.setTone(if on then KeyGuide.TONES.tabOn elseif accent then KeyGuide.TONES.tabGreen else KeyGuide.TONES.tab, if off then 0.45 else 0)
 		end
 	end
 	local ge = gear
@@ -290,16 +282,12 @@ local function slice(o: any)
 end
 
 -- STORE, GARAGE and EXIT carry their words; SETTINGS is the gear alone, a
--- tool its icon alone. On a desktop the layout says (Desk.words): every
--- tab but SETTINGS, or GARAGE's alone with the rest their icons and keys.
+-- tool its icon alone. On a desktop every tab but SETTINGS has its word.
 local function wordsFor(spec: Spec): boolean
 	if spec == SETTINGS_SPEC then
 		return false
 	end
-	if not Kit.isTouch() then
-		return Desk.current().words or spec.id == "garage"
-	end
-	return not spec.tool
+	return not Kit.isTouch() or not spec.tool
 end
 
 -- A desktop tab's key, as a keycap after its word (or its icon).
@@ -342,13 +330,9 @@ local function wordWidth(text: string, size: number): number
 	return t.TextBounds.X
 end
 
--- What a keycap would measure: its letter and padding, never narrower
--- than it is tall (KeyGuide.cap).
+-- What a keycap would measure (KeyGuide.cap).
 local function keyWidth(letter: string): number
-	local size = keySize()
-	local font = math.max(8, math.floor(size * 0.5 + 0.5))
-	local pad = math.floor(size * 5 / 22 + 0.5)
-	return math.max(size, math.ceil(wordWidth(letter, font) + 2 * pad))
+	return KeyGuide.width(letter, keySize())
 end
 
 -- What a tab would measure, built now.
@@ -466,10 +450,10 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 		t.ZIndex = 2
 		label = t
 	end
-	local keyFrame: Frame? = nil
+	local keyCap: KeyGuide.Cap? = nil
 	local key = keyFor(spec)
 	if key then
-		local cap = KeyGuide.cap(inner, key, keySize())
+		local cap = KeyGuide.cap(inner, key, { h = keySize(), tone = KeyGuide.TONES.tab })
 		cap.root.LayoutOrder = 2
 		cap.root.ZIndex = 2
 		for _, d in cap.root:GetDescendants() do
@@ -477,12 +461,12 @@ local function slantTab(parent: Frame, spec: Spec, order: number, fn: () -> (), 
 				d.ZIndex = 3
 			end
 		end
-		keyFrame = cap.root
+		keyCap = cap
 	end
 	pressable(b)
 	b.Activated:Connect(fn)
 	b.Parent = parent
-	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label, key = keyFrame }
+	return { spec = spec, b = b, fill = fill, gradient = gradient, icon = icon, label = label, key = keyCap }
 end
 
 -- A small round graphite button: the gear (CLEAR UI's way back).
@@ -594,8 +578,7 @@ local function fit()
 		ch = math.clamp(math.floor(bar.Height * PILL_H + 0.5), MIN_H, MAX_H)
 		h = math.floor(ch * TAB_SHARE + 0.5)
 	else
-		-- A desktop's tabs are the desk layout's height, content and all.
-		ch = Desk.current().tabH
+		ch = DESK_TAB_H
 		h = ch
 	end
 	-- The row's middle on the pill's, whatever the tab's height.
@@ -677,7 +660,6 @@ function TopBar.start(a: Actions)
 	g.Parent = pg
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(fit)
 	player:GetAttributeChangedSignal("ForceTouch"):Connect(fit)
-	player:GetAttributeChangedSignal(Desk.ATTRIBUTE):Connect(fit)
 	player:GetAttributeChangedSignal("TopRowRoom"):Connect(scheduleRefit)
 	ClearUi.changed(function()
 		paint()

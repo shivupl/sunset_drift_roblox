@@ -32,9 +32,11 @@ one size per tab.
 owner: "put a small guide on which keys are for what", "the odometer and stuff should go on the
 right", "the buttons and everything needs to be redone and spaced for pc", "make a couple different
 full UI options ... implement them in game for me to switch between". Three desktop layouts (DASH,
-STRIP, CLUSTER: `HudLab/Desk.luau`, K or Settings' PC LAYOUT rows) of where the readouts, the key
-guide (`HudLab/KeyGuide.luau`) and the top row's tabs go; the top bar on a desktop with the keys on
-its tabs, the CARS button gone. UI_SYSTEM.md "The desktop HUD" has it; the canvas "Hajwala desktop
+STRIP, CLUSTER, at `a669f1a`) of where the readouts, the key guide (`HudLab/KeyGuide.luau`) and the
+top row's tabs go; the top bar on a desktop with the keys on its tabs, the CARS button gone. The
+owner picked DASH and asked for polish and variants, so the layouts are now DASH, DASH THIN and DASH
+FADE (`HudLab/Desk.luau`, K or Settings' PC LAYOUT rows): the dial bottom right in all, the key guide
+faint in three forms, the tabs' keys centred and light. UI_SYSTEM.md "The desktop HUD" has it; the canvas "Hajwala desktop
 HUD" the drawings.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
