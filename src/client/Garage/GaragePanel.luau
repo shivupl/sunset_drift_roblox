@@ -1389,26 +1389,6 @@ local function nextLayout()
 	toast(`LAYOUT: {nxt.name}`, "info")
 end
 
--- The next price style for the blocks, from J on a PC (Parts.nextPriceStyle).
-local function nextPriceStyle()
-	if sheet then
-		return
-	end
-	local nxt = Parts.nextPriceStyle()
-	GarageSounds.play("tab")
-	toast(`BOXES: {nxt:upper()}`, "info")
-end
-
--- The next SHOWCASE size, from K on a PC (Layouts.nextSize).
-local function nextSize()
-	if sheet then
-		return
-	end
-	local nxt = Layouts.nextSize()
-	GarageSounds.play("tab")
-	toast(`LAYOUT: {nxt.name}`, "info")
-end
-
 local function makeCtx(g: ScreenGui): Types.Ctx
 	return {
 		touch = touch,
@@ -1577,7 +1557,8 @@ local function teardown()
 	press = nil
 end
 
--- Set while the garage is up, for keys other screens share (HudLab's K).
+-- Set while the garage is up: HudLab's K (the desk layout) stands aside,
+-- so the HUD can't change unseen behind the garage.
 local OPEN_ATTRIBUTE = "GarageOpen"
 
 local function onEnter(id: string, preview: Model)
@@ -1681,17 +1662,6 @@ local function bindInput()
 			setCollapsed(not collapsed)
 			return
 		end
-		-- K on a PC: the next SHOWCASE size (the HUD's K, the desk layout,
-		-- stands aside while the garage is open: the GarageOpen attribute).
-		if io.KeyCode == Enum.KeyCode.K and not processed and not touch and not SpawnMenu.isOpen() then
-			nextSize()
-			return
-		end
-		-- J on a PC: the next price style for the blocks (BIGGER, WIDE).
-		if io.KeyCode == Enum.KeyCode.J and not processed and not touch and not SpawnMenu.isOpen() then
-			nextPriceStyle()
-			return
-		end
 		if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return
 		end
@@ -1782,12 +1752,6 @@ function GaragePanel.start(remotes: Folder)
 	player:GetAttributeChangedSignal(Layouts.ATTRIBUTE):Connect(function()
 		if inside then
 			buildView(false)
-		end
-	end)
-	-- The blocks' price style (J): the view built again with it.
-	player:GetAttributeChangedSignal(Parts.PRICE_ATTRIBUTE):Connect(function()
-		if inside then
-			buildView(false, true)
 		end
 	end)
 	-- The menu over the garage (SHOP PLATES, M): the panel and its coins

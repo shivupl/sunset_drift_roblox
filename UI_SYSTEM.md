@@ -319,62 +319,44 @@ that the exit and buy buttons can be raised slightly"): the margin from
 the screen's edges is 22 drawing px (a phone's 8; EXIT and the action
 had sat 8 from the bottom, the words 7 from the left); EXIT's cross and
 word start where the rail's words do (`Parts.exit`'s indent, the rail's
-own `size * 1.1`), so the left side has one edge; the rows 50 at most
-(were 54); the column 332 wide with 10 of padding (were 352, 12), 8
-between its pieces and its blocks (were 10), the sub-tabs 32 (36), the
-swatch 56 (60), the item line 26 (28), 12 between the column's foot and
-the action. Measured in Studio's 1257x683 viewport (the layout scaled
-0.941): EXIT and the action 56 tall at y 547 of 625, 22 from the gui's
-foot (were y 560, 9 from it); the words and the cross both at x 36 (were
-23 and about 35); the column 312x503 (was 331x520) holding four rows of
-88 px blocks (were 92) and a sliver of the fifth, which fades.
+own `size * 1.1`), so the left side has one edge; the column has 10 of
+padding (was 12), 8 between its pieces and its blocks (were 10), the
+item line 26 (28), 12 between the column's foot and the action.
+Measured in Studio's 1257x683 viewport (the layout scaled 0.941): EXIT
+and the action 56 tall at y 547 of 625, 22 from the gui's foot (were y
+560, 9 from it); the words and the cross both at x 36 (were 23 and about
+35).
 
-**A PC's SHOWCASE comes in three sizes** (`Showcase.Sizing`: REGULAR,
-BIGGER, WIDE; `Layouts.pc` lists them as BIGGER, SHOWCASE and WIDE
-beside DOCK, picked in Settings' SCREEN LAYOUT row or cycled with K in
-the garage (`Layouts.nextSize`, the three sizes round, DOCK skipped; the
-HUD's K, the desk layout, stands aside while the garage is up: the
-`GarageOpen` attribute); the owner,
-2026-10-14: "make a couple variants of the customization UI, i feel like
-the text buttons on the left side need to be a bit bigger and also the
-boxes in the right side menu also could be bigger"). **BIGGER is a PC's
-default** (first in the list, so what a player who never picks gets; the
-owner, 2026-10-14, after seeing the three: "for box sizes - do bigger").
-GLASS and FRAME are off a PC's list. In drawing px:
+**A PC's SHOWCASE is the bigger of three sizes tried** (`Showcase.luau`'s
+`PC` sizing; the owner, 2026-10-14: "make a couple variants of the
+customization UI, i feel like the text buttons on the left side need to
+be a bit bigger and also the boxes in the right side menu also could be
+bigger", then, of SHOWCASE, BIGGER and WIDE cycled with K: "for box
+sizes - do bigger ... remove the k and j switching and the other
+styles"). In drawing px: the rail's words 18, the chosen word 24, in
+rows up to 56; the rail 200 wide; the column 372 with 3 blocks of 108
+across; the swatch 66, the name 14, the word 12; the sub-tabs 34.
+(SHOWCASE had 16/21 words in rows up to 50, a 332 column with 3 blocks
+of 94, the swatch 56; WIDE 2 blocks of 156 across 352 with the swatch
+88.) Measured at 1257x683: rows 52.7, the column 350 wide with 101 px
+blocks, three rows whole and the fourth cut. The car sits a little
+further left under the wider column (`GarageConfig.layoutOffset`
+showcase -0.08, was -0.06). A PC's layouts are SHOWCASE and DOCK
+(Settings' SCREEN LAYOUT row); GLASS and FRAME are off a PC's list.
 
-| | SHOWCASE | BIGGER | WIDE |
-|---|---|---|---|
-| Rail words, chosen word | 16, 21 | 18, 24 | 18, 24 |
-| Rows, at most | 50 | 56 | 56 |
-| Rail width | 190 | 200 | 200 |
-| Column, blocks across | 332, 3 of 94 | 372, 3 of 108 | 352, 2 of 156 |
-| Swatch, name, word | 56, 13, 11 | 66, 14, 12 | 88, 15, 12 |
-| Sub-tabs | 32 | 34 | 34 |
-
-Measured at 1257x683 (scaled 0.941): BIGGER's rows 52 with 18 px words,
-its column 350 wide with 101 px blocks, three rows whole and the fourth
-cut; WIDE's column 331 with 146 px blocks, two rows whole and the third
-cut (MY CARS' cards the same 146). The car sits a little further left
-under the wider columns (`GarageConfig.layoutOffset`: bigger -0.08, wide
--0.07, showcase -0.06).
-
-**The price on BIGGER's and WIDE's blocks** comes three ways
-(`Parts.BoxMetrics.price`, the LocalPlayer attribute `BoxStyle`, J in the
-garage cycles it with a `BOXES:` toast; the owner, 2026-10-14: "make a
-couple redesigned versions of the display boxes where the price is more
-visible"). **BAND is the default** (`Parts.priceStyle` without the
-attribute; the owner, 2026-10-14, after seeing the three: "do boxes
-band for prices"); J goes BAND, TAG, PLAIN. PLAIN is the word under the
-name as it was. BAND puts the
-name over a dark band along the box's foot (`Kit.C.chip` 0.3
+**The price on a PC's blocks sits on a band** (`Parts.BoxMetrics.band`;
+the owner, 2026-10-14: "make a couple redesigned versions of the display
+boxes where the price is more visible", then, of PLAIN, BAND and TAG
+cycled with J: "do boxes band for prices"; the others went with J). The
+name sits over a dark band along the box's foot (`Kit.C.chip` 0.3
 see-through, inset 6 from the cut edge, the word's size plus 12 tall)
-with the coin and the price in Oswald a size up on the plain word's,
-ON CAR and OWNED in green with no coin, a note grey; the swatch gives
-up the room (BIGGER's 39 px for 66, WIDE's 82 for 88). TAG leaves the
-name alone at the foot and puts the price on a sodium pill in the box's
-top right corner with the dark buy ink, ON CAR and OWNED on a green pill
-with its dark ink, a note on grey; the swatch keeps its size. SHOWCASE's
-blocks stay plain (`Showcase.Sizing.restyle`).
+with the coin and the price in Oswald a size up on the plain word's, ON
+CAR and OWNED in green with no coin, a note grey; the swatch gives up
+the room for it (39 px of its 66). Measured at 1257x683: the band 90x22
+in a 101 px block, the price 17 beside a 15 coin. A phone's blocks keep
+the word under the name. (TAG was the price on a sodium pill in the
+box's top right corner with the name alone at the foot; it kept the
+swatch whole but covered its corner.)
 
 **CARS and PLATES are the car picker's SHOWROOM** (`Menu/Looks/Showroom`;
 the owner, 2026-10-12: "the old layouts were internally a bit better the

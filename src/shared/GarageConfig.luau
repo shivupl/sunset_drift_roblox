@@ -47,9 +47,7 @@ GarageConfig.screenOffset = 0.18
 -- the middle between the words and the blocks down the right.
 GarageConfig.layoutOffset = {
 	dock = 0.2,
-	showcase = -0.06,
-	bigger = -0.08, -- its column 40 wider (Showcase.BIGGER)
-	wide = -0.07,
+	showcase = -0.08, -- a PC's column 372 wide (2026-10-14; was -0.06 at 332)
 	glass = -0.06,
 	frame = -0.06,
 	shade = 0.22,

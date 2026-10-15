@@ -380,37 +380,13 @@ export type BoxMetrics = {
 	-- menu in garage, boxes need to be proportionate"); now every tab's
 	-- boxes are `block`.
 	fitRows: boolean?,
-	-- How a block shows its price (the owner, 2026-10-14, of BIGGER and
-	-- WIDE: "make a couple redesigned versions of the display boxes where
-	-- the price is more visible"; Parts.PRICE_STYLES, J in the garage):
-	--   band   a dark band along the box's foot with a coin and the price
-	--          (the pick, so the default)
-	--   plain  the word under the name, as it was
-	--   tag    a sodium tag in the box's top right corner, the name alone
-	--          at the foot
-	price: PriceStyle?,
+	-- A PC's blocks put the price on a dark band along the foot with a
+	-- coin (the owner, 2026-10-14: "make a couple redesigned versions of
+	-- the display boxes where the price is more visible", then of BAND,
+	-- PLAIN and TAG: "do boxes band for prices"; the others went). A
+	-- phone's blocks keep the word under the name.
+	band: boolean?,
 }
-
-export type PriceStyle = "plain" | "band" | "tag"
-local PRICE_STYLES: { PriceStyle } = { "band", "tag", "plain" }
-Parts.PRICE_STYLES = PRICE_STYLES
-Parts.PRICE_ATTRIBUTE = "BoxStyle"
-
--- The style picked (the LocalPlayer attribute BoxStyle): BAND unless set
--- (the owner, 2026-10-14, after seeing the three: "do boxes band for
--- prices").
-function Parts.priceStyle(): PriceStyle
-	local v = Players.LocalPlayer:GetAttribute(Parts.PRICE_ATTRIBUTE)
-	return if v == "plain" or v == "tag" then v else "band"
-end
-
--- The next style round, chosen.
-function Parts.nextPriceStyle(): PriceStyle
-	local i = table.find(PRICE_STYLES, Parts.priceStyle()) or 1
-	local nxt: PriceStyle = PRICE_STYLES[i % #PRICE_STYLES + 1]
-	Players.LocalPlayer:SetAttribute(Parts.PRICE_ATTRIBUTE, nxt)
-	return nxt
-end
 
 export type Box = {
 	root: Frame,
@@ -451,11 +427,8 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 	nameLabel.RichText = true
 	nameLabel.Text = if e.rare then `<font color="#{Parts.C.dusk:ToHex()}">◆</font> {e.name}` else e.name
 	local word = Kit.text(root, "Word", "", m.word, Enum.FontWeight.ExtraBold, true, Parts.C.sodium)
-	-- The band or the tag the price sits in (BoxMetrics.price), and the
-	-- band's coin.
-	local style: PriceStyle = if block then m.price or "plain" else "plain"
+	-- The band the price sits on (BoxMetrics.band) and its coin.
 	local band: Frame? = nil
-	local tag: Frame? = nil
 	local coin: ImageLabel? = nil
 	if block then
 		-- The picture fills the room over the words: a palette's colour
@@ -464,7 +437,7 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 		local textH = m.name + m.word + 16
 		local artTop = 8
 		local bandH = m.word + 12
-		if style == "band" then
+		if m.band then
 			-- The name over a band along the foot, inset 6 from the box's
 			-- cut edge, the coin and the price on it.
 			textH = m.name + bandH + 6 + 10
@@ -481,19 +454,6 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 			c.ZIndex = 3
 			coin = c
 			band = b
-		elseif style == "tag" then
-			-- The name alone at the foot; the price on a tag in the top
-			-- right corner, over the picture's room.
-			textH = m.name + 14
-			local t = Kit.frame(root, "Tag", Parts.C.sodium, 0)
-			t.AnchorPoint = Vector2.new(1, 0)
-			t.Position = UDim2.new(1, -7, 0, 7)
-			t.AutomaticSize = Enum.AutomaticSize.X
-			t.Size = UDim2.fromOffset(0, m.word + 10)
-			t.ZIndex = 4
-			Kit.corner(t, math.floor((m.word + 10) / 2))
-			Kit.pad(t, 0, 7, 0, 7)
-			tag = t
 		end
 		local artRoom = block - textH - artTop - 4
 		local w, h = 0, 0
@@ -514,7 +474,7 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 		tile.Size = UDim2.fromOffset(w, h)
 		Kit.corner(tile, if round then math.floor(h / 2) else 8)
 		nameLabel.AnchorPoint = Vector2.new(0.5, 1)
-		nameLabel.Position = UDim2.new(0.5, 0, 1, if style == "band" then -(bandH + 6 + 4) elseif style == "tag" then -10 else -(m.word + 12))
+		nameLabel.Position = UDim2.new(0.5, 0, 1, if m.band then -(bandH + 6 + 4) else -(m.word + 12))
 		nameLabel.Size = UDim2.new(1, -12, 0, m.name + 3)
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
 		nameLabel.TextScaled = true
@@ -522,7 +482,7 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 		limit.MaxTextSize = math.floor(m.name)
 		limit.MinTextSize = math.floor(m.name * 0.72)
 		limit.Parent = nameLabel
-		local b, t = band, tag
+		local b = band
 		if b then
 			word.Parent = b
 			word.LayoutOrder = 1
@@ -530,12 +490,6 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 			word.Size = UDim2.fromScale(0, 1)
 			word.TextTruncate = Enum.TextTruncate.None
 			word.ZIndex = 3
-		elseif t then
-			word.Parent = t
-			word.AutomaticSize = Enum.AutomaticSize.X
-			word.Size = UDim2.fromScale(0, 1)
-			word.TextTruncate = Enum.TextTruncate.None
-			word.ZIndex = 5
 		else
 			word.AnchorPoint = Vector2.new(0.5, 1)
 			word.Position = UDim2.new(0.5, 0, 1, -8)
@@ -637,7 +591,7 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 			local shown = k ~= "none" and not st.disabled
 			word.Visible = shown
 			word.Text = st.word
-			local b, t, c = band, tag, coin
+			local b, c = band, coin
 			if b then
 				-- The band: the price in Oswald, a size up, sodium beside
 				-- its coin; ON CAR and OWNED green; a note grey.
@@ -653,29 +607,6 @@ function Parts.box(parent: Instance, e: Types.Entry, m: BoxMetrics): Box
 					word.FontFace = Kit.font(Enum.FontWeight.ExtraBold, true)
 					word.TextSize = m.word + 1
 					word.TextColor3 = if k == "note" then Kit.C.sub else Kit.C.green
-				end
-			elseif t then
-				-- The tag: sodium with dark ink for a price; green with
-				-- its dark ink for ON CAR and OWNED; grey for a note.
-				t.Visible = shown
-				if k == "price" then
-					t.BackgroundColor3 = Parts.C.sodium
-					t.BackgroundTransparency = 0
-					word.FontFace = Parts.num(Enum.FontWeight.Bold)
-					word.TextSize = m.word + 3
-					word.TextColor3 = Parts.C.buyInk
-				elseif k == "note" then
-					t.BackgroundColor3 = Parts.C.grey
-					t.BackgroundTransparency = 0.4
-					word.FontFace = Kit.font(Enum.FontWeight.ExtraBold, true)
-					word.TextSize = m.word
-					word.TextColor3 = Kit.C.text
-				else
-					t.BackgroundColor3 = Kit.C.green
-					t.BackgroundTransparency = 0
-					word.FontFace = Kit.font(Enum.FontWeight.ExtraBold, true)
-					word.TextSize = m.word
-					word.TextColor3 = Kit.C.inUseInk
 				end
 			elseif k == "price" then
 				word.FontFace = Parts.num()

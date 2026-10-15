@@ -6,8 +6,7 @@
 -- the coins, the column and the action never move between them.
 --
 --   SHOWCASE  the words down the left on a shade, the items in a graphite
---             column under the coins, the action under it. On a PC in
---             three sizes: SHOWCASE, BIGGER, WIDE (Showcase.Sizing).
+--             column under the coins, the action under it.
 --   GLASS     the same, the column see-through. A phone's only layout
 --             (2026-10-12), in three versions of its up/down control.
 --   FRAME     the same, the column on a shade, the items in a tray.
@@ -49,17 +48,11 @@ Layouts.phone = {
 	variant("glass", "GLASS", "glass", { reach = REACH, scroller = "rail" }),
 } :: { Types.Layout }
 
--- A PC has SHOWCASE in three sizes (the owner, 2026-10-14: "make a couple
--- variants of the customization UI, i feel like the text buttons on the
--- left side need to be a bit bigger and also the boxes in the right side
--- menu also could be bigger"; Showcase.Sizing) and DOCK. BIGGER is first,
--- so a PC gets it until it picks (the owner, 2026-10-14, after seeing the
--- three: "for box sizes - do bigger"). GLASS and FRAME are off a PC's
--- list (Showcase still draws them; GLASS is the phone's).
+-- A PC has SHOWCASE (at the bigger of three sizes tried, 2026-10-14;
+-- Showcase's PC) and DOCK. GLASS and FRAME are off a PC's list (Showcase
+-- still draws them; GLASS is the phone's).
 Layouts.pc = {
-	variant("bigger", "BIGGER", "column", { pc = Showcase.BIGGER }),
 	variant("showcase", "SHOWCASE", "column"),
-	variant("wide", "WIDE", "column", { pc = Showcase.WIDE }),
 	{ id = "dock", name = "DOCK", build = Dock.build },
 } :: { Types.Layout }
 
@@ -87,18 +80,6 @@ end
 function Layouts.after(): Types.Layout
 	local list = Layouts.all()
 	return list[(table.find(list, Layouts.current()) or 0) % #list + 1]
-end
-
--- The next SHOWCASE size round (a PC's BIGGER, SHOWCASE, WIDE; DOCK is
--- skipped, and from DOCK it goes to BIGGER), chosen: K in the garage
--- (the owner, 2026-10-14: "make k the shortcut for me to switch between
--- those 3").
-Layouts.SIZES = { "bigger", "showcase", "wide" }
-function Layouts.nextSize(): Types.Layout
-	local i = table.find(Layouts.SIZES, Layouts.current().id) or 0
-	local id = Layouts.SIZES[i % #Layouts.SIZES + 1]
-	Layouts.set(id)
-	return Layouts.current()
 end
 
 -- The one after the current, chosen.

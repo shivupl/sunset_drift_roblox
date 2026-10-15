@@ -34,13 +34,10 @@ local CLEAR_EDGE = 40
 
 export type Variant = "column" | "glass" | "frame"
 
--- A PC's sizes (the owner, 2026-10-14: "make a couple variants of the
--- customization UI, i feel like the text buttons on the left side need to
--- be a bit bigger and also the boxes in the right side menu also could be
--- bigger"): the rail's word and its chosen word, the most a row may be,
--- the rail's width, the column's width and how many blocks across, the
--- swatch, the name and the word on a block, the sub-tabs' height.
-export type Sizing = {
+-- A PC's sizes: the rail's word and its chosen word, the most a row may
+-- be, the rail's width, the column's width and how many blocks across,
+-- the swatch, the name and the word on a block, the sub-tabs' height.
+type Sizing = {
 	rail: number,
 	railOn: number,
 	rowMax: number,
@@ -51,27 +48,26 @@ export type Sizing = {
 	name: number,
 	word: number,
 	subH: number,
-	restyle: boolean?, -- its blocks take the price style picked (Parts.priceStyle)
 }
--- SHOWCASE as it was after the PC spacing pass: 16/21 words, 3 blocks of
--- 94 across a 332 column.
-Showcase.REGULAR = { rail = 16, railOn = 21, rowMax = 50, navW = 190, colW = 332, cols = 3, swatch = 56, name = 13, word = 11, subH = 32 } :: Sizing
--- BIGGER: 18/24 words in rows up to 56; 3 blocks of 108 across a 372
--- column, the swatch 66.
-Showcase.BIGGER = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 372, cols = 3, swatch = 66, name = 14, word = 12, subH = 34, restyle = true } :: Sizing
--- WIDE: the same words; 2 blocks of 156 across a 352 column, the swatch 88.
-Showcase.WIDE = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 352, cols = 2, swatch = 88, name = 15, word = 12, subH = 34, restyle = true } :: Sizing
+-- 18/24 words in rows up to 56; 3 blocks of 108 across a 372 column, the
+-- swatch 66. Of three sizes tried (the owner, 2026-10-14: "the text
+-- buttons on the left side need to be a bit bigger and also the boxes in
+-- the right side menu also could be bigger"; this was BIGGER, between
+-- SHOWCASE at 16/21 words with 94 px blocks across 332 and WIDE with
+-- 2 blocks of 156 across 352) the owner picked this one and had the
+-- others go, with the K that cycled them.
+local PC: Sizing = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 372, cols = 3, swatch = 66, name = 14, word = 12, subH = 34 }
 
 -- How a variant is fitted out beyond its look: how far past the coins'
 -- right edge the column reaches, the list's up/down control in place of
--- its fades (Parts.scroller), and a PC's sizes (REGULAR unless said).
-export type Options = { reach: number?, scroller: Parts.ScrollKind?, pc: Sizing? }
+-- its fades (Parts.scroller).
+export type Options = { reach: number?, scroller: Parts.ScrollKind? }
 
 function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, options: Options?): Types.View
 	local opts: Options = options or {}
 	local scrollKind: Parts.ScrollKind? = opts.scroller
 	local touch = ctx.touch
-	local pc: Sizing = opts.pc or Showcase.REGULAR
+	local pc = PC
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	-- The margin from the screen's edges: a phone's 8; a PC's 22 (the
 	-- owner, 2026-10-14, of the garage on a PC: "the spacing is off all
@@ -276,7 +272,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
-		else { name = pc.name, word = pc.word, swatch = pc.swatch, rows = false, inline = false, block = block, price = if pc.restyle then Parts.priceStyle() else nil }
+		else { name = pc.name, word = pc.word, swatch = pc.swatch, rows = false, inline = false, block = block, band = true }
 	if variant ~= "column" then
 		m.backdrop = "shade"
 	end

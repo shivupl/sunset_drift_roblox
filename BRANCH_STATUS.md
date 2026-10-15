@@ -37,9 +37,10 @@ top row's tabs go; the top bar on a desktop with the keys on its tabs, the CARS 
 owner picked DASH and asked for polish and variants, so the layouts are now DASH, DASH THIN and DASH
 FADE (`HudLab/Desk.luau`, K or Settings' PC LAYOUT rows): the dial bottom right in all, the key guide
 faint in three forms, the tabs' keys centred and light. UI_SYSTEM.md "The desktop HUD" has it; the canvas "Hajwala desktop
-HUD" the drawings. The garage on a PC: 22 px margins, SHOWCASE in three sizes (K) with the price on
-the blocks three ways (J); the owner picked BIGGER and BAND, so those are a PC's defaults
-(`Layouts.pc` order, `Parts.priceStyle`). UI_SYSTEM.md "On a PC" has the numbers.
+HUD" the drawings. The garage on a PC: 22 px margins; three sizes of SHOWCASE and three price
+styles for its blocks were tried (K and J cycled them, `c9c6646`); the owner picked BIGGER and
+BAND and had the others and the keys removed, so a PC's SHOWCASE is at BIGGER's numbers with the
+price on a band. UI_SYSTEM.md "On a PC" has the numbers.
 
 **`tweaks` (merged into `main` 2026-10-04 by fast-forward, pushed; the local branch is kept for now):
 auto-flip and tyre smoke.** A capsized car is rolled back onto its wheels by a real torque about its long
