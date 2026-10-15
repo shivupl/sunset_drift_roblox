@@ -329,6 +329,30 @@ foot (were y 560, 9 from it); the words and the cross both at x 36 (were
 23 and about 35); the column 312x503 (was 331x520) holding four rows of
 88 px blocks (were 92) and a sliver of the fifth, which fades.
 
+**A PC's SHOWCASE comes in three sizes** (`Showcase.Sizing`: REGULAR,
+BIGGER, WIDE; `Layouts.pc` lists them as SHOWCASE, BIGGER and WIDE
+beside DOCK, picked in Settings' SCREEN LAYOUT row; the owner,
+2026-10-14: "make a couple variants of the customization UI, i feel like
+the text buttons on the left side need to be a bit bigger and also the
+boxes in the right side menu also could be bigger"). GLASS and FRAME are
+off a PC's list. In drawing px:
+
+| | SHOWCASE | BIGGER | WIDE |
+|---|---|---|---|
+| Rail words, chosen word | 16, 21 | 18, 24 | 18, 24 |
+| Rows, at most | 50 | 56 | 56 |
+| Rail width | 190 | 200 | 200 |
+| Column, blocks across | 332, 3 of 94 | 372, 3 of 108 | 352, 2 of 156 |
+| Swatch, name, word | 56, 13, 11 | 66, 14, 12 | 88, 15, 12 |
+| Sub-tabs | 32 | 34 | 34 |
+
+Measured at 1257x683 (scaled 0.941): BIGGER's rows 52 with 18 px words,
+its column 350 wide with 101 px blocks, three rows whole and the fourth
+cut; WIDE's column 331 with 146 px blocks, two rows whole and the third
+cut (MY CARS' cards the same 146). The car sits a little further left
+under the wider columns (`GarageConfig.layoutOffset`: bigger -0.08, wide
+-0.07, showcase -0.06).
+
 **CARS and PLATES are the car picker's SHOWROOM** (`Menu/Looks/Showroom`;
 the owner, 2026-10-12: "the old layouts were internally a bit better the
 rhs boxes, the overall styling"; of PICKER, SHOWROOM and FRAME tried,

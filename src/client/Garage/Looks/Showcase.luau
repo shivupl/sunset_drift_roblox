@@ -34,15 +34,43 @@ local CLEAR_EDGE = 40
 
 export type Variant = "column" | "glass" | "frame"
 
+-- A PC's sizes (the owner, 2026-10-14: "make a couple variants of the
+-- customization UI, i feel like the text buttons on the left side need to
+-- be a bit bigger and also the boxes in the right side menu also could be
+-- bigger"): the rail's word and its chosen word, the most a row may be,
+-- the rail's width, the column's width and how many blocks across, the
+-- swatch, the name and the word on a block, the sub-tabs' height.
+export type Sizing = {
+	rail: number,
+	railOn: number,
+	rowMax: number,
+	navW: number,
+	colW: number,
+	cols: number,
+	swatch: number,
+	name: number,
+	word: number,
+	subH: number,
+}
+-- SHOWCASE as it was after the PC spacing pass: 16/21 words, 3 blocks of
+-- 94 across a 332 column.
+Showcase.REGULAR = { rail = 16, railOn = 21, rowMax = 50, navW = 190, colW = 332, cols = 3, swatch = 56, name = 13, word = 11, subH = 32 } :: Sizing
+-- BIGGER: 18/24 words in rows up to 56; 3 blocks of 108 across a 372
+-- column, the swatch 66.
+Showcase.BIGGER = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 372, cols = 3, swatch = 66, name = 14, word = 12, subH = 34 } :: Sizing
+-- WIDE: the same words; 2 blocks of 156 across a 352 column, the swatch 88.
+Showcase.WIDE = { rail = 18, railOn = 24, rowMax = 56, navW = 200, colW = 352, cols = 2, swatch = 88, name = 15, word = 12, subH = 34 } :: Sizing
+
 -- How a variant is fitted out beyond its look: how far past the coins'
--- right edge the column reaches, and the list's up/down control in place
--- of its fades (Parts.scroller).
-export type Options = { reach: number?, scroller: Parts.ScrollKind? }
+-- right edge the column reaches, the list's up/down control in place of
+-- its fades (Parts.scroller), and a PC's sizes (REGULAR unless said).
+export type Options = { reach: number?, scroller: Parts.ScrollKind?, pc: Sizing? }
 
 function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, options: Options?): Types.View
 	local opts: Options = options or {}
 	local scrollKind: Parts.ScrollKind? = opts.scroller
 	local touch = ctx.touch
+	local pc: Sizing = opts.pc or Showcase.REGULAR
 	local root, room = Parts.root(gui, ctx, "Showcase")
 	-- The margin from the screen's edges: a phone's 8; a PC's 22 (the
 	-- owner, 2026-10-14, of the garage on a PC: "the spacing is off all
@@ -51,7 +79,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local M = if touch then 8 else 22
 	-- Between the column's foot and the action.
 	local actGap = if touch then M else 12
-	local navW = if touch then 132 else 190
+	local navW = if touch then 132 else pc.navW
 	local actionH = if touch then 52 else 60
 	-- The action's height, so the bottom row lines up (the owner's phone,
 	-- 2026-10-12: 44 beside 52 read as two rows).
@@ -61,7 +89,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	-- "the right side menu needs to be compacted a bit"): 8 between
 	-- blocks, the sub-tabs 32, the blocks 92 (were 10, 36, 98).
 	local gap = 8
-	local subH = if touch then 30 else 32
+	local subH = if touch then 30 else pc.subH
 
 	-- The words' shade, reaching the screen's edge on any phone (the owner,
 	-- 2026-10-12: on a panel instead it looked "way worse").
@@ -79,12 +107,12 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local exitTop = room.Y - M - btnH
 	-- A PC's rows 50 (were up to 54: the owner, 2026-10-14, "the left side
 	-- menu options need to be adjusted better").
-	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else 50
+	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else pc.rowMax
 	local rowH = math.clamp(math.floor((exitTop - 12 - M) / math.max(#ctx.tabs, 1)), rowMin, rowMax)
 	-- The words two points bigger on a phone (the owner, 2026-10-12:
 	-- "slightly increase the font size of the left options").
-	local railSize = if touch then 15 else 16
-	local rail = Parts.wordRail(root, ctx, rowH, railSize, if touch then 19 else 21, true)
+	local railSize = if touch then 15 else pc.rail
+	local rail = Parts.wordRail(root, ctx, rowH, railSize, if touch then 19 else pc.railOn, true)
 	rail.root.Position = UDim2.fromOffset(M, M + math.floor((titleSize + 4) / 2) - math.floor(rowH / 2))
 	rail.root.Size = UDim2.fromOffset(navW, 0)
 	-- On a PC EXIT's cross starts where the words do (Parts.wordRail's
@@ -161,7 +189,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		right = to
 	end
 	local sideH = room.Y - M - actionH - actGap - sideTop
-	local cols = if touch then 2 else 3
+	local cols = if touch then 2 else pc.cols
 	local tray = variant == "frame"
 	local column: Frame -- what slides in from the right
 	local body: Frame
@@ -181,7 +209,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		body = side
 		column = side
 	else
-		local colW = (if touch then 252 else 332) + reach
+		local colW = (if touch then 252 else pc.colW) + reach
 		local pad = if touch then 8 else 10
 		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
 		sideLeft = right - colW
@@ -247,7 +275,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
-		else { name = 13, word = 11, swatch = 56, rows = false, inline = false, block = block }
+		else { name = pc.name, word = pc.word, swatch = pc.swatch, rows = false, inline = false, block = block }
 	if variant ~= "column" then
 		m.backdrop = "shade"
 	end
