@@ -28,7 +28,7 @@ one by one on `mobile-fixes` (deleted after merging): landscape lock, EXIT on th
 tabs 40 tall with the art at 2x, the garage doorway as a box you are in at any speed, and MY CARS boxes
 one size per tab.
 
-**`desktop-ui` (2026-10-14, branched from `main` at `71b0fda`; not merged): the PC screen.** The
+**`desktop-ui` (2026-10-14, branched from `main` at `71b0fda`; merged into `main` 2026-10-14 by fast-forward at `65b3ecd`, not pushed; the local branch is kept for now): the PC screen.** The
 owner: "put a small guide on which keys are for what", "the odometer and stuff should go on the
 right", "the buttons and everything needs to be redone and spaced for pc", "make a couple different
 full UI options ... implement them in game for me to switch between". Three desktop layouts (DASH,
