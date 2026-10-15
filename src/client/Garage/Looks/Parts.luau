@@ -268,7 +268,10 @@ end
 -- button is aligned properly and stylized appropriately"; a rounded box
 -- beside the slanted BUY read as two kits). It is the action's height on
 -- the action's line, so the bottom row reads as one.
-function Parts.exit(parent: Instance, w: number, h: number, size: number): ImageButton
+-- `indent`: the cross and the word set that far from the left edge
+-- instead of centred, so they line up under a rail's words (a PC's
+-- SHOWCASE, 2026-10-14).
+function Parts.exit(parent: Instance, w: number, h: number, size: number, indent: number?): ImageButton
 	local b = Instance.new("ImageButton")
 	b.Name = "Exit"
 	b.AutoButtonColor = false
@@ -284,7 +287,10 @@ function Parts.exit(parent: Instance, w: number, h: number, size: number): Image
 	local row = Kit.frame(b, "Row")
 	row.Size = UDim2.fromScale(1, 1)
 	local l = Kit.list(row, false, math.floor(size * 0.6), Enum.VerticalAlignment.Center)
-	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	l.HorizontalAlignment = if indent then Enum.HorizontalAlignment.Left else Enum.HorizontalAlignment.Center
+	if indent then
+		Kit.pad(row, 0, 0, 0, indent)
+	end
 	local x = Kit.text(row, "Cross", "×", math.floor(size * 1.5), Enum.FontWeight.Bold, false)
 	x.AutomaticSize = Enum.AutomaticSize.X
 	x.Size = UDim2.fromScale(0, 1)

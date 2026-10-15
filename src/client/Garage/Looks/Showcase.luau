@@ -44,15 +44,24 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local scrollKind: Parts.ScrollKind? = opts.scroller
 	local touch = ctx.touch
 	local root, room = Parts.root(gui, ctx, "Showcase")
-	local M = 8
+	-- The margin from the screen's edges: a phone's 8; a PC's 22 (the
+	-- owner, 2026-10-14, of the garage on a PC: "the spacing is off all
+	-- around ... the exit and buy buttons can be raised slightly"; they
+	-- sat 8 from the bottom, the words 7 from the left).
+	local M = if touch then 8 else 22
+	-- Between the column's foot and the action.
+	local actGap = if touch then M else 12
 	local navW = if touch then 132 else 190
 	local actionH = if touch then 52 else 60
 	-- The action's height, so the bottom row lines up (the owner's phone,
 	-- 2026-10-12: 44 beside 52 read as two rows).
 	local btnH = actionH
 	local exitW = if touch then 112 else 136
-	local gap = if touch then 8 else 10
-	local subH = if touch then 30 else 36
+	-- A PC's column a little tighter all through (the owner, 2026-10-14:
+	-- "the right side menu needs to be compacted a bit"): 8 between
+	-- blocks, the sub-tabs 32, the blocks 92 (were 10, 36, 98).
+	local gap = 8
+	local subH = if touch then 30 else 32
 
 	-- The words' shade, reaching the screen's edge on any phone (the owner,
 	-- 2026-10-12: on a panel instead it looked "way worse").
@@ -68,14 +77,19 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	-- they had sat a few pixels apart).
 	local titleSize = if touch then 15 else 19
 	local exitTop = room.Y - M - btnH
-	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else 54
+	-- A PC's rows 50 (were up to 54: the owner, 2026-10-14, "the left side
+	-- menu options need to be adjusted better").
+	local rowMin, rowMax = if touch then 38 else 46, if touch then 44 else 50
 	local rowH = math.clamp(math.floor((exitTop - 12 - M) / math.max(#ctx.tabs, 1)), rowMin, rowMax)
 	-- The words two points bigger on a phone (the owner, 2026-10-12:
 	-- "slightly increase the font size of the left options").
-	local rail = Parts.wordRail(root, ctx, rowH, if touch then 15 else 16, if touch then 19 else 21, true)
+	local railSize = if touch then 15 else 16
+	local rail = Parts.wordRail(root, ctx, rowH, railSize, if touch then 19 else 21, true)
 	rail.root.Position = UDim2.fromOffset(M, M + math.floor((titleSize + 4) / 2) - math.floor(rowH / 2))
 	rail.root.Size = UDim2.fromOffset(navW, 0)
-	local exit = Parts.exit(root, exitW, btnH, if touch then 13 else 15)
+	-- On a PC EXIT's cross starts where the words do (Parts.wordRail's
+	-- indent), one left edge down the side; a phone's EXIT stays centred.
+	local exit = Parts.exit(root, exitW, btnH, if touch then 13 else 15, if touch then nil else math.floor(railSize * 1.1))
 	exit.Position = UDim2.fromOffset(M, exitTop)
 	exit.Activated:Connect(function()
 		if not ctx.busy() then
@@ -146,7 +160,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		reach = math.floor(to - right)
 		right = to
 	end
-	local sideH = room.Y - 2 * M - actionH - sideTop
+	local sideH = room.Y - M - actionH - actGap - sideTop
 	local cols = if touch then 2 else 3
 	local tray = variant == "frame"
 	local column: Frame -- what slides in from the right
@@ -167,8 +181,8 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		body = side
 		column = side
 	else
-		local colW = (if touch then 252 else 352) + reach
-		local pad = if touch then 8 else 12
+		local colW = (if touch then 252 else 332) + reach
+		local pad = if touch then 8 else 10
 		local col, panelBody = Kit.panel(root, "Column", if touch then 14 else 16)
 		sideLeft = right - colW
 		col.Position = UDim2.fromOffset(sideLeft, sideTop)
@@ -187,8 +201,8 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 		inner = colW - 2 * pad
 		block = math.floor((inner - Parts.LIST_PAD_X - Parts.railRoom(scrollKind) - gap * (cols - 1)) / cols)
 	end
-	Kit.list(body, true, if touch then 7 else 10)
-	local sideW = if tray then inner else inner + 2 * (if touch then 8 else 12)
+	Kit.list(body, true, if touch then 7 else 8)
+	local sideW = if tray then inner else inner + 2 * (if touch then 8 else 10)
 
 	-- The room between the words and the items, under the name: the
 	-- subject's (the garage's car is the 3D one behind it).
@@ -233,7 +247,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 
 	local m: Parts.BoxMetrics = if touch
 		then { name = 11, word = 10, swatch = 54, rows = false, inline = false, block = block }
-		else { name = 13, word = 11, swatch = 60, rows = false, inline = false, block = block }
+		else { name = 13, word = 11, swatch = 56, rows = false, inline = false, block = block }
 	if variant ~= "column" then
 		m.backdrop = "shade"
 	end
@@ -270,7 +284,7 @@ function Showcase.build(gui: ScreenGui, ctx: Types.Ctx, variant: Variant, option
 	local rule = Kit.frame(body, "Rule", Color3.new(1, 1, 1), 0.9)
 	rule.LayoutOrder = 5
 	rule.Size = UDim2.new(1, 0, 0, 1)
-	local foot = Parts.footLine(body, if touch then 22 else 28, if touch then 13 else 16, if touch then 10 else 12)
+	local foot = Parts.footLine(body, if touch then 22 else 26, if touch then 13 else 16, if touch then 10 else 12)
 	foot.root.LayoutOrder = 6
 
 	local action = Parts.action(root, ctx, sideW, actionH, if touch then 17 else 21)

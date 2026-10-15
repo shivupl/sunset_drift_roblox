@@ -308,9 +308,26 @@ block size now.
 The bottom row is one line: EXIT is the action's slanted shape in graphite
 (`Parts.C.graphite`), the action's height on the action's foot, under the
 words; the words share the height down to it (38 to 44 drawing px a row on
-a phone), the first level with the title. The garage view hides the shell's
+a phone, 46 to 50 on a PC), the first level with the title. The garage view hides the shell's
 roof beams on this screen (`GarageConfig.viewHides`): they crossed right
 behind the coins and read as their shadow.
+
+**On a PC** (desktop-ui, 2026-10-14, the owner of the garage: "the
+spacing is off all around. the left side menu options need to be
+adjusted better also the right side menu needs to be compacted a bit so
+that the exit and buy buttons can be raised slightly"): the margin from
+the screen's edges is 22 drawing px (a phone's 8; EXIT and the action
+had sat 8 from the bottom, the words 7 from the left); EXIT's cross and
+word start where the rail's words do (`Parts.exit`'s indent, the rail's
+own `size * 1.1`), so the left side has one edge; the rows 50 at most
+(were 54); the column 332 wide with 10 of padding (were 352, 12), 8
+between its pieces and its blocks (were 10), the sub-tabs 32 (36), the
+swatch 56 (60), the item line 26 (28), 12 between the column's foot and
+the action. Measured in Studio's 1257x683 viewport (the layout scaled
+0.941): EXIT and the action 56 tall at y 547 of 625, 22 from the gui's
+foot (were y 560, 9 from it); the words and the cross both at x 36 (were
+23 and about 35); the column 312x503 (was 331x520) holding four rows of
+88 px blocks (were 92) and a sliver of the fifth, which fades.
 
 **CARS and PLATES are the car picker's SHOWROOM** (`Menu/Looks/Showroom`;
 the owner, 2026-10-12: "the old layouts were internally a bit better the
