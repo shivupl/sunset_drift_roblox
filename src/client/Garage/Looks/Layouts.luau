@@ -52,11 +52,13 @@ Layouts.phone = {
 -- A PC has SHOWCASE in three sizes (the owner, 2026-10-14: "make a couple
 -- variants of the customization UI, i feel like the text buttons on the
 -- left side need to be a bit bigger and also the boxes in the right side
--- menu also could be bigger"; Showcase.Sizing) and DOCK. GLASS and FRAME
--- are off a PC's list (Showcase still draws them; GLASS is the phone's).
+-- menu also could be bigger"; Showcase.Sizing) and DOCK. BIGGER is first,
+-- so a PC gets it until it picks (the owner, 2026-10-14, after seeing the
+-- three: "for box sizes - do bigger"). GLASS and FRAME are off a PC's
+-- list (Showcase still draws them; GLASS is the phone's).
 Layouts.pc = {
-	variant("showcase", "SHOWCASE", "column"),
 	variant("bigger", "BIGGER", "column", { pc = Showcase.BIGGER }),
+	variant("showcase", "SHOWCASE", "column"),
 	variant("wide", "WIDE", "column", { pc = Showcase.WIDE }),
 	{ id = "dock", name = "DOCK", build = Dock.build },
 } :: { Types.Layout }
@@ -87,11 +89,11 @@ function Layouts.after(): Types.Layout
 	return list[(table.find(list, Layouts.current()) or 0) % #list + 1]
 end
 
--- The next SHOWCASE size round (a PC's SHOWCASE, BIGGER, WIDE; DOCK is
--- skipped, and from DOCK it goes to SHOWCASE), chosen: K in the garage
+-- The next SHOWCASE size round (a PC's BIGGER, SHOWCASE, WIDE; DOCK is
+-- skipped, and from DOCK it goes to BIGGER), chosen: K in the garage
 -- (the owner, 2026-10-14: "make k the shortcut for me to switch between
 -- those 3").
-Layouts.SIZES = { "showcase", "bigger", "wide" }
+Layouts.SIZES = { "bigger", "showcase", "wide" }
 function Layouts.nextSize(): Types.Layout
 	local i = table.find(Layouts.SIZES, Layouts.current().id) or 0
 	local id = Layouts.SIZES[i % #Layouts.SIZES + 1]

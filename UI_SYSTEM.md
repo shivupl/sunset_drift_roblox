@@ -330,15 +330,17 @@ foot (were y 560, 9 from it); the words and the cross both at x 36 (were
 88 px blocks (were 92) and a sliver of the fifth, which fades.
 
 **A PC's SHOWCASE comes in three sizes** (`Showcase.Sizing`: REGULAR,
-BIGGER, WIDE; `Layouts.pc` lists them as SHOWCASE, BIGGER and WIDE
+BIGGER, WIDE; `Layouts.pc` lists them as BIGGER, SHOWCASE and WIDE
 beside DOCK, picked in Settings' SCREEN LAYOUT row or cycled with K in
 the garage (`Layouts.nextSize`, the three sizes round, DOCK skipped; the
 HUD's K, the desk layout, stands aside while the garage is up: the
 `GarageOpen` attribute); the owner,
 2026-10-14: "make a couple variants of the customization UI, i feel like
 the text buttons on the left side need to be a bit bigger and also the
-boxes in the right side menu also could be bigger"). GLASS and FRAME are
-off a PC's list. In drawing px:
+boxes in the right side menu also could be bigger"). **BIGGER is a PC's
+default** (first in the list, so what a player who never picks gets; the
+owner, 2026-10-14, after seeing the three: "for box sizes - do bigger").
+GLASS and FRAME are off a PC's list. In drawing px:
 
 | | SHOWCASE | BIGGER | WIDE |
 |---|---|---|---|
@@ -360,7 +362,10 @@ under the wider columns (`GarageConfig.layoutOffset`: bigger -0.08, wide
 (`Parts.BoxMetrics.price`, the LocalPlayer attribute `BoxStyle`, J in the
 garage cycles it with a `BOXES:` toast; the owner, 2026-10-14: "make a
 couple redesigned versions of the display boxes where the price is more
-visible"). PLAIN is the word under the name as it was. BAND puts the
+visible"). **BAND is the default** (`Parts.priceStyle` without the
+attribute; the owner, 2026-10-14, after seeing the three: "do boxes
+band for prices"); J goes BAND, TAG, PLAIN. PLAIN is the word under the
+name as it was. BAND puts the
 name over a dark band along the box's foot (`Kit.C.chip` 0.3
 see-through, inset 6 from the cut edge, the word's size plus 12 tall)
 with the coin and the price in Oswald a size up on the plain word's,

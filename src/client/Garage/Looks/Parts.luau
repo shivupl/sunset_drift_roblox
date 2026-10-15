@@ -383,22 +383,25 @@ export type BoxMetrics = {
 	-- How a block shows its price (the owner, 2026-10-14, of BIGGER and
 	-- WIDE: "make a couple redesigned versions of the display boxes where
 	-- the price is more visible"; Parts.PRICE_STYLES, J in the garage):
-	--   plain  the word under the name, as it was
 	--   band   a dark band along the box's foot with a coin and the price
+	--          (the pick, so the default)
+	--   plain  the word under the name, as it was
 	--   tag    a sodium tag in the box's top right corner, the name alone
 	--          at the foot
 	price: PriceStyle?,
 }
 
 export type PriceStyle = "plain" | "band" | "tag"
-local PRICE_STYLES: { PriceStyle } = { "plain", "band", "tag" }
+local PRICE_STYLES: { PriceStyle } = { "band", "tag", "plain" }
 Parts.PRICE_STYLES = PRICE_STYLES
 Parts.PRICE_ATTRIBUTE = "BoxStyle"
 
--- The style picked (the LocalPlayer attribute BoxStyle; plain unless set).
+-- The style picked (the LocalPlayer attribute BoxStyle): BAND unless set
+-- (the owner, 2026-10-14, after seeing the three: "do boxes band for
+-- prices").
 function Parts.priceStyle(): PriceStyle
 	local v = Players.LocalPlayer:GetAttribute(Parts.PRICE_ATTRIBUTE)
-	return if v == "band" or v == "tag" then v else "plain"
+	return if v == "plain" or v == "tag" then v else "band"
 end
 
 -- The next style round, chosen.
