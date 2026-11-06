@@ -7,7 +7,8 @@
 -- driftmodes we made different tire options in the garage instead of drift
 -- options in the car menu"). A tyre fitted while driving takes at once.
 --
--- In Studio only, O cycles the current car's modes (the LocalPlayer
+-- In Studio only, I cycles the arcade drive's feel (ArcadeFeels; the
+-- attribute ArcadeFeel), and O cycles the current car's modes (the LocalPlayer
 -- attributes DriftStyle_RWD, DriftStyle_FWD, DriftStyle_AWD, which win
 -- over the tyre) and Shift+O every mode, any drivetrain (for comparing them
 -- on one car: the DriftStyleAny attribute, which O clears), each shown at
@@ -22,6 +23,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
 local CarLook = require(Shared:WaitForChild("CarLook"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
+local ArcadeFeels = require(Shared:WaitForChild("ArcadeFeels"))
 
 local DriftStyle = {}
 
@@ -38,6 +40,8 @@ local ANY_ATTRIBUTE = "DriftStyleAny"
 -- Studio only: a JSON partial config merged over the styled config, for
 -- trying numbers live (`{"line":{"hold":0.8}}`); empty or unset is off.
 local LAB_ATTRIBUTE = "DriftLab"
+-- The arcade drive's side variant (ArcadeFeels; Studio's I cycles it).
+local FEEL_ATTRIBUTE = "ArcadeFeel"
 -- The Studio switch's label: how long it stays up.
 local LABEL_SECONDS = 1.5
 
@@ -98,6 +102,10 @@ function DriftStyle.configFor(carId: string?): ConfigLoader.Config
 		cfg = S().apply(ConfigLoader.forCar(id), styleId) :: ConfigLoader.Config
 		cache[key] = cfg
 	end
+	local feel = ArcadeFeels.feels[ArcadeFeels.resolve(Players.LocalPlayer:GetAttribute(FEEL_ATTRIBUTE))]
+	if next(feel.over) ~= nil then
+		cfg = S().merge(cfg, feel.over) :: ConfigLoader.Config
+	end
 	local lab = if RunService:IsStudio() then Players.LocalPlayer:GetAttribute(LAB_ATTRIBUTE) else nil
 	if type(lab) == "string" and lab ~= "" then
 		local ok, over = pcall(HttpService.JSONDecode, HttpService, lab)
@@ -157,7 +165,7 @@ end
 
 -- The Studio switch's label, top centre for a moment (the flames' look).
 local labelToken = 0
-local function showLabel(id: string)
+local function showText(message: string)
 	local gui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	if not gui then
 		return
@@ -191,9 +199,8 @@ local function showLabel(id: string)
 		s.Parent = gui
 		screen = s
 	end
-	local style = S().styles[id]
 	local label = (screen :: ScreenGui):FindFirstChild("Text") :: TextLabel
-	label.Text = `DRIFT: {string.upper(style.name)} ({style.layout})`
+	label.Text = message
 	;(screen :: ScreenGui).Enabled = true
 	labelToken += 1
 	local mine = labelToken
@@ -202,6 +209,22 @@ local function showLabel(id: string)
 			screen.Enabled = false
 		end
 	end)
+end
+
+local function showLabel(id: string)
+	local style = S().styles[id]
+	showText(`DRIFT: {string.upper(style.name)} ({style.layout})`)
+end
+
+-- I: the next arcade feel.
+local function cycleFeel()
+	local player = Players.LocalPlayer
+	local current = ArcadeFeels.resolve(player:GetAttribute(FEEL_ATTRIBUTE))
+	local i = table.find(ArcadeFeels.order, current) or 0
+	local nextId = ArcadeFeels.order[i % #ArcadeFeels.order + 1]
+	player:SetAttribute(FEEL_ATTRIBUTE, nextId)
+	local feel = ArcadeFeels.feels[nextId]
+	showText(`FEEL: {string.upper(feel.name)} ({feel.blurb})`)
 end
 
 -- O: the next style of the car's drivetrain. Shift+O: the next of all.
@@ -225,8 +248,13 @@ function DriftStyle.start()
 	end
 	player:GetAttributeChangedSignal(ANY_ATTRIBUTE):Connect(notify)
 	player:GetAttributeChangedSignal(LAB_ATTRIBUTE):Connect(notify)
+	player:GetAttributeChangedSignal(FEEL_ATTRIBUTE):Connect(notify)
 	if RunService:IsStudio() then
 		UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
+			if not processed and input.KeyCode == Enum.KeyCode.I then
+				cycleFeel()
+				return
+			end
 			if processed or input.KeyCode ~= Enum.KeyCode.O then
 				return
 			end

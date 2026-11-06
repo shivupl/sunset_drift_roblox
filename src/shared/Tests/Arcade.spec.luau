@@ -84,4 +84,19 @@ return function(t: T)
 	})
 	t.near(still.yawAccelDeg, 0, 1e-9, "parked, the lever and the wheel do not spin it")
 	t.ok(not still.drifting, "parked is not a slide")
+
+	-- Every side variant only names arcade keys that exist, with the type
+	-- the main tune gives them: a typo would merge in silently and do nothing.
+	local ArcadeFeels = require(script.Parent.Parent.ArcadeFeels)
+	for _, id in ArcadeFeels.order do
+		local feel = ArcadeFeels.feels[id]
+		t.ok(feel ~= nil, `feel {id} is defined`)
+		for section, values in feel.over do
+			t.ok(section == "arcade", `feel {id} only changes arcade (found {section})`)
+			for k, v in values do
+				t.ok(type((cfg :: any)[k]) == type(v), `feel {id}: arcade.{k} exists and is a {type(v)}`)
+			end
+		end
+	end
+	t.ok(ArcadeFeels.resolve("nope") == "main" and ArcadeFeels.resolve(nil) == "main", "an unknown feel is the main one")
 end

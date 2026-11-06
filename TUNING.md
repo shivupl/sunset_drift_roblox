@@ -154,6 +154,15 @@ Measured on the Kamri (front drive), Play, fixed inputs from 100 km/h (2026-11-0
 
 Earlier passes: a single `driftG` 0.3 bent a full-lock slide at 50 km/h only 12°/s, into a town wall sideways (now `driftGSlow` 0.75 under `slowKmh`); `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
 
+Side variants to compare by driving (`src/shared/ArcadeFeels.luau`; Studio's I cycles them, or set the LocalPlayer attribute `ArcadeFeel`), same inputs (full lock 2 s, full the other way 2 s, centred) from 100 km/h:
+
+| Feel | Held | Swung across | Speed after 5.5 s |
+|---|---|---|---|
+| Main | +49° | -51° | 146 km/h |
+| Wide (`driftAngleDeg` 70, `angleResponseSeconds` 0.55, `driftG` 0.22) | +61° | -63° | 138 km/h |
+| Snappy (`driftAngleDeg` 45, `angleResponseSeconds` 0.25) | +40° | -41° | 154 km/h |
+| Old tyres (`arcade.enabled` false) | +1° (no slide) | spun out to ±175° | 88 km/h |
+
 Knobs for feel: wider or tighter slides `driftAngleDeg`; how fast the angle settles `angleResponseSeconds`; how much the path bends in a slide `driftG`; how much wheel starts a slide `slideFromSteer`; how hard the lever spins it `handbrakeSpinDegPerSec`; speed kept in a slide `keepSpeed` and `driftDragG`.
 
 ## tires.front / tires.rear
