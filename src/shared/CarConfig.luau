@@ -1669,6 +1669,13 @@ local config = {
 		-- run down the highway.
 		gripG = 1.1,
 		driftG = 0.3,
+		-- ...that is the highway's (fastKmh and up). In town (slowKmh and
+		-- under) a slide bends at driftGSlow so it still takes a corner: at
+		-- 0.3 a full-lock slide at 50 km/h turned 12 deg/s and went into the
+		-- wall sideways.
+		driftGSlow = 0.75,
+		slowKmh = 50,
+		fastKmh = 110,
 		-- How fast the path swings round to follow the nose, per second.
 		-- Higher alignRate = a tighter road car; lower driftAlignRate =
 		-- floatier slides that keep their angle longer with the wheel let go.

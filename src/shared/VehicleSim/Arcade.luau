@@ -35,6 +35,9 @@ export type Config = {
 	enabled: boolean,
 	gripG: number,
 	driftG: number,
+	driftGSlow: number,
+	slowKmh: number,
+	fastKmh: number,
 	alignRate: number,
 	driftAlignRate: number,
 	keepSpeed: number,
@@ -132,7 +135,12 @@ function Arcade.step(cfg: Config, state: State, inp: Input): Output
 	-- the tyres can do. Sliding, most of what it takes is handed back along
 	-- the path so the slide keeps its speed.
 	local rate = lerp(cfg.driftAlignRate, cfg.alignRate, grip)
-	local capG = lerp(cfg.driftG, cfg.gripG, grip)
+	-- Sliding grip by speed: in town (slowKmh and under) a slide still takes
+	-- the corner (driftGSlow); on the highway (fastKmh and over) it runs on
+	-- down the road (driftG).
+	local fast = math.clamp((kmh - cfg.slowKmh) / math.max(cfg.fastKmh - cfg.slowKmh, 1), 0, 1)
+	local slideG = lerp(cfg.driftGSlow, cfg.driftG, fast)
+	local capG = lerp(slideG, cfg.gripG, grip)
 	-- Past 60 degrees the tyres are scrubbing sideways and bite harder, so
 	-- the car comes round to follow its nose rather than skate backwards.
 	local scrub = math.clamp((slideAngle - 60) / 60, 0, 1)
@@ -169,7 +177,13 @@ function Arcade.step(cfg: Config, state: State, inp: Input): Output
 	local mag = math.abs(steer)
 	local over = math.clamp((mag - cfg.slideFromSteer) / math.max(1 - cfg.slideFromSteer, 1e-3), 0, 1)
 	over = over * over * (3 - 2 * over)
-	local limit = math.min(cfg.maxYawRateDegPerSec, mag * follow * (1 + (cfg.steerAsk - 1) * over))
+	-- Reversing never asks past what the tyres follow: full lock backwards
+	-- slid 45 degrees at 46 km/h.
+	local reach = 1 + (cfg.steerAsk - 1) * over
+	if not forward then
+		reach = 0.7
+	end
+	local limit = math.min(cfg.maxYawRateDegPerSec, mag * follow * reach)
 	local gripYaw = math.clamp(geometric, -limit, limit)
 	-- The gas widens it: full throttle holds driftAngle, a lift tightens it
 	-- toward liftAngleScale of that, so the angle breathes with the pedal.

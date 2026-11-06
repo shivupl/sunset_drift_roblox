@@ -148,8 +148,11 @@ Measured on the Kamri (front drive), Play, fixed inputs from 100 km/h (2026-11-0
 | full lock, then full the other way | +50° → -53° in 1.0 s, yaw peak 145°/s | the swing |
 | lever 0.3 s + full lock, then 0.6 steer | 35°, held 28-34° | |
 | lever + full lock held from 80 km/h | 360 in 1.8 s; let go at 443°, it finished at 720° | 80 → 56 km/h by the first 360 |
+| full lock 2.5 s from 50 / 75 / 120 km/h, gas 0.5 | path turned 59° / 41° / 21° | sliding grip by speed (`driftGSlow` in town, `driftG` on the highway) |
+| reverse, full lock, 3 s | nose within 8° of straight back | reverse never asks past what the tyres follow |
+| launch, full gas | 0-60 2.0 s, 0-100 3.3 s | |
 
-Earlier passes: `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
+Earlier passes: a single `driftG` 0.3 bent a full-lock slide at 50 km/h only 12°/s, into a town wall sideways (now `driftGSlow` 0.75 under `slowKmh`); `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
 
 Knobs for feel: wider or tighter slides `driftAngleDeg`; how fast the angle settles `angleResponseSeconds`; how much the path bends in a slide `driftG`; how much wheel starts a slide `slideFromSteer`; how hard the lever spins it `handbrakeSpinDegPerSec`; speed kept in a slide `keepSpeed` and `driftDragG`.
 
