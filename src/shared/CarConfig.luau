@@ -1653,6 +1653,81 @@ local config = {
 		enabled = true,
 	},
 
+	-- The arcade drive (VehicleSim/Arcade.luau; the owner, 2026-11-06: "it
+	-- needs to feel really good for like the 10 year olds that are going to
+	-- play this"). In place of the tyres and every drift assist while it is
+	-- on; two-wheel driving still runs on the tyres. Studio: DriftLab
+	-- `{"arcade":{"enabled":false}}` drives the old model for comparison.
+	-- Accelerations are in g and per second, so every car shares them and
+	-- keeps its own engine, gearbox, brakes, springs and weight.
+	arcade = {
+		enabled = true,
+		-- Sideways grip in g. Gripping the car corners up to gripG and then
+		-- slides; sliding the path bends at driftG. Lower driftG = wider,
+		-- longer slides; higher = tighter ones that turn more. 0.55 bent a held
+		-- slide 34 m across the road in 2.5 s at 127 km/h; hajwala slides
+		-- run down the highway.
+		gripG = 1.1,
+		driftG = 0.3,
+		-- How fast the path swings round to follow the nose, per second.
+		-- Higher alignRate = a tighter road car; lower driftAlignRate =
+		-- floatier slides that keep their angle longer with the wheel let go.
+		alignRate = 9,
+		driftAlignRate = 1.6,
+		-- The share of the sideways speed the tyres take that is handed back
+		-- along the path. Sliding 0.85: a drift keeps its speed (kids lose
+		-- interest in a slide that stops the car); gripping 0.25.
+		keepSpeed = 0.85,
+		gripKeepSpeed = 0.25,
+		-- Gripping, the wheel asks for the yaw a car at that steer angle
+		-- makes, capped here. Hard over at speed this is more than the
+		-- tyres can follow, which is how a slide starts with no button.
+		maxYawRateDegPerSec = 75,
+		-- Up to slideFromSteer of the wheel it asks no more yaw than the
+		-- tyres can follow at that speed: a clean turn. From there the ask
+		-- climbs to steerAsk times that at full lock, so holding the key down
+		-- swings the tail out at once. A flat 1.7 slid nothing at 0.5,
+		-- crept to 9 degrees in 1.5 s at 0.7, and made full lock sluggish.
+		-- Lower slideFromSteer = slides start with less wheel.
+		steerAsk = 3.5,
+		slideFromSteer = 0.5,
+		-- How quickly the nose reaches what the wheel asks, seconds: the
+		-- car's weight. Sliding it is heavier, so the swing reads.
+		yawResponseSeconds = 0.12,
+		driftYawResponseSeconds = 0.2,
+		maxYawAccelDegPerSec2 = 400,
+		-- Sliding, full lock holds the nose this far off the path; half lock
+		-- half of it. The other way swings it across; centred straightens.
+		driftAngleDeg = 55,
+		-- Off the gas the angle tightens to this share of it; on the gas it
+		-- opens back out. Lower = the pedal matters more.
+		liftAngleScale = 0.65,
+		-- How long the nose takes to settle on that angle. Shorter is
+		-- twitchier, longer is lazier and more swingy.
+		angleResponseSeconds = 0.4,
+		-- A slide starts past slideStartDeg above slideMinKmh and ends under
+		-- slideKeepDeg. Only the tyres' grip moves with it, and it eases:
+		-- lost over gripLoseSeconds, back over gripReturnSeconds.
+		slideStartDeg = 9,
+		slideKeepDeg = 5,
+		slideMinKmh = 35,
+		gripLoseSeconds = 0.1,
+		gripReturnSeconds = 0.4,
+		-- The lever: the wheel spins the car at up to this rate (a held lever
+		-- goes all the way round), and it slows the car by handbrakeDecel m/s².
+		handbrakeSpinDegPerSec = 200,
+		handbrakeDecel = 2.5,
+		-- Past this angle and still turning, a let-go finishes the turn the
+		-- way it was going rather than unwinding it (a 360, not a 180 back).
+		finishTurnFromDeg = 110,
+		-- Speed a slide bleeds sideways, in g at 90 degrees. 0.08 let a held
+		-- 52 degree slide on 0.8 gas gain 14 km/h, which reads as ice.
+		driftDragG = 0.3,
+		-- The most the engine and the brakes put down, in g.
+		launchG = 0.95,
+		brakeG = 1.1,
+	},
+
 	debug = {
 		enabled = true,
 		showOnTouch = false, -- the panel on phones too

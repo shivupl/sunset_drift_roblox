@@ -24,6 +24,7 @@ local TwoWheel = require(script.TwoWheel)
 local Throw = require(script.Throw)
 local DriftControl = require(script.DriftControl)
 local Line = require(script.Line)
+local Arcade = require(script.Arcade)
 
 type Config = CarConfig.Config
 type InputState = Types.InputState
@@ -88,6 +89,9 @@ export type Sim = typeof(setmetatable(
 		spinCount: number,
 		lastDriftDeg: number,
 		spinStraight: number, -- seconds the car has been under spinSlipDeg
+		arcade: Arcade.State, -- the arcade drive's grip (Arcade.luau)
+		yawInertia: number, -- kg·m², about the car's up axis, estimated from its parts
+		inertiaAge: number, -- seconds since yawInertia was worked out
 		lastState: VehicleState,
 	},
 	VehicleSim
@@ -197,9 +201,34 @@ function VehicleSim.new(model: Model, config: Config): Sim
 		spinCount = 0,
 		lastDriftDeg = 0,
 		spinStraight = 0,
+		arcade = Arcade.new(),
+		yawInertia = 0,
+		inertiaAge = math.huge,
 		lastState = emptyState(wheels),
 	}, VehicleSim)
 	return self
+end
+
+-- The assembly's moment of inertia about the car's up axis, kg·m². Roblox
+-- does not expose it, and the arcade drive turns the car by a torque, so it
+-- needs it to mean a yaw acceleration: every part's mass at its distance
+-- from the centre of mass, plus each part's own box. The seated character
+-- is welded in and counts.
+local function yawInertia(chassis: BasePart, mps: number): number
+	local cf = chassis.CFrame
+	local up = cf.UpVector
+	local com = chassis.AssemblyCenterOfMass
+	local total = 0
+	for _, part in chassis:GetConnectedParts(true) do
+		if part:IsA("BasePart") and not part.Massless then
+			local m = part:GetMass()
+			local d = part.Position - com
+			local flat = (d - up * d:Dot(up)).Magnitude * mps
+			local size = part.Size * mps
+			total += m * flat * flat + m * (size.X * size.X + size.Z * size.Z) / 12
+		end
+	end
+	return math.max(total, 1)
 end
 
 function VehicleSim.setConfig(self: Sim, config: Config)
@@ -209,6 +238,106 @@ end
 -- The seated character is welded into the assembly; keep it out of the rays.
 function VehicleSim.setCharacter(self: Sim, character: Model?)
 	self.rayParams.FilterDescendantsInstances = if character then { self.model, character } else { self.model }
+end
+
+-- The arcade drive's forces (Arcade.luau), in place of the tyres: the
+-- path's pull toward the nose and the engine and brakes at the ground under
+-- the centre of mass (so the body leans and squats on its springs, but no
+-- yaw comes from them), the nose turned by a torque, and the springs at
+-- their hardpoints as ever. Each car keeps its engine, gearbox and brakes
+-- (Drivetrain), so a pickup is still slow off the line and a sports car
+-- quick. Wheel hubs and the effects' wheel state are filled in from it.
+function VehicleSim.arcadeForces(
+	self: Sim,
+	ac: Arcade.Config,
+	input: InputState,
+	contacts: { any },
+	drive: Drivetrain.Output,
+	groundCount: number,
+	dt: number,
+	applyAt: (Vector3, Vector3) -> (),
+	addTorque: (Vector3) -> ()
+): Arcade.Output
+	local cfg = self.config
+	local mps = cfg.units.metersPerStud
+	local chassis = self.chassis
+	local cf = chassis.CFrame
+	local up, forward, right = cf.UpVector, cf.LookVector, cf.RightVector
+	local comM = chassis.AssemblyCenterOfMass * mps
+	local vel = chassis.AssemblyLinearVelocity * mps
+	local angVel = chassis.AssemblyAngularVelocity
+	local mass = chassis.AssemblyMass
+	local g = cfg.units.gravity
+	local vLong, vLat = vel:Dot(forward), vel:Dot(right)
+	local grounded = groundCount / 4
+
+	self.inertiaAge += dt
+	if self.inertiaAge >= 2 then
+		self.inertiaAge = 0
+		self.yawInertia = yawInertia(chassis, mps)
+	end
+
+	local out = Arcade.step(ac, self.arcade, {
+		throttle = input.throttle,
+		steer = input.steer,
+		handbrake = input.handbrake,
+		vLong = vLong,
+		vLat = vLat,
+		yawRateDeg = -math.deg(angVel:Dot(up)),
+		lockDeg = cfg.steering.maxSteerDeg,
+		wheelbaseM = cfg.body.wheelbase,
+		gravity = g,
+		grounded = grounded,
+		dt = dt,
+	})
+
+	-- Engine and brakes, from the car's own drivetrain. The launch is
+	-- capped at launchG (what the tyres put down), the brakes at brakeG.
+	local driveCap = ac.launchG * mass * g * grounded
+	local driveN = math.clamp(2 * drive.drivePerRearWheel, -driveCap, driveCap)
+	local brakeFade = math.clamp(math.abs(vLong) / cfg.drivetrain.brakeFadeMps, 0, 1)
+	local brakeN = 2 * (drive.brakePerFrontWheel + drive.brakePerRearWheel + drive.engineBrakePerRearWheel)
+	brakeN = math.min(brakeN, ac.brakeG * mass * g * grounded) * brakeFade
+	local longN = driveN - (if vLong >= 0 then 1 else -1) * brakeN + out.longAccel * mass
+	-- Parked: hold still rather than creep on a slope or a spring's push.
+	if input.throttle < 0.05 and input.brake < 0.05 and not input.handbrake and vel.Magnitude < 1 then
+		longN -= vLong * mass * 4 * grounded
+	end
+	local ground = comM - up * self.comHeightM
+	applyAt(forward * longN + right * (out.latAccel * mass), ground)
+	-- + yaw = right = a negative rotation about up.
+	addTorque(-up * (math.rad(out.yawAccelDeg) * self.yawInertia))
+
+	-- Springs, and the wheels as drawn and as the effects read them.
+	local driftDeg = -out.noseDeg
+	local sliding = out.drifting or input.handbrake
+	for _, c in contacts do
+		local w = c.wheel
+		applyAt(up * c.susp.force, c.hpM)
+		local steerDeg = if w.front then out.visualSteerDeg else 0
+		local ws = w.state
+		ws.grounded = c.susp.grounded
+		ws.compression = c.susp.compression
+		ws.load = c.susp.force
+		ws.slipAngleDeg = if w.front then driftDeg - steerDeg else driftDeg
+		ws.saturated = c.susp.grounded and not w.front and sliding and math.abs(driftDeg) >= ac.slideKeepDeg
+		ws.locked = not w.front and input.handbrake and c.susp.grounded
+		ws.steerDeg = steerDeg
+		ws.fx = 0
+		ws.fy = 0
+		-- The hub: at the ray hit, steered, rolling with the road (a
+		-- locked rear stops). The slip model's spin is kept at the road's
+		-- speed so a hand-back to the tyres starts clean.
+		local omega = if ws.locked then 0 else c.vLong / cfg.body.wheelRadius
+		w.omega = omega
+		ws.visualOmega = omega
+		w.spinAngle -= omega * dt
+		local dropM = cfg.suspension.restLength - c.susp.compression
+		w.weld.C0 = CFrame.new(w.attachment.Position - Vector3.new(0, dropM / mps, 0))
+			* CFrame.Angles(0, -math.rad(steerDeg), 0)
+			* CFrame.Angles(w.spinAngle, 0, 0)
+	end
+	return out
 end
 
 function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
@@ -262,6 +391,11 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- and brings it down on its own. Balance is the lean axis; the steer the
 	-- player holds up there is theirs, for correcting yaw.
 	local twoWheelActive = TwoWheel.isActive(self.twoWheel)
+	-- The arcade drive (Arcade.luau) replaces the tyres and every drift
+	-- assist. On two wheels, and while a lift or a landing is going on, the
+	-- tyre model drives: the natl's balance lives in the tyres' patch forces.
+	local arcadeCfg = cfg.arcade
+	local arcadeOn = arcadeCfg ~= nil and arcadeCfg.enabled and self.twoWheel.mode == "idle"
 	local assistGain = if twoWheelActive then 0 else cfg.steering.driftAssist
 	local vLongBody = vel:Dot(forward)
 	local vLatBody = vel:Dot(right)
@@ -500,7 +634,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- on two wheels (tractionAllowed), so no drift number moves.
 	local launchGrip = Drivetrain.launchGrip(cfg.drivetrain, Units.mpsToKmh(speed), tractionAllowed)
 	local throttle = input.throttle
-	if slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
+	if not arcadeOn and slipModel and tractionAllowed and self.drivetrain.gear >= 1 and Units.mpsToKmh(speed) < cfg.drivetrain.tractionControlBelowKmh then
 		local sc = slipCfg :: Wheel.SlipConfig
 		local staticLoad = mass * g / 4
 		-- What one wheel of the axle (contacts first and first + 1) can put
@@ -572,7 +706,18 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- slide momentum relief after the loop.
 	local vHat = if speed > 1 then vel.Unit else Vector3.zero
 	local scrubAlong, tireAlong = 0, 0
-	for _, c in contacts do
+	local arcadeOut: Arcade.Output? = nil
+	if arcadeOn then
+		arcadeOut = self:arcadeForces(arcadeCfg, input, contacts, drive, groundCount, dt, applyAt, function(t: Vector3)
+			totalTorque += t
+		end)
+		-- The engine's own idea of a slide, for the gearbox.
+		if (arcadeOut :: Arcade.Output).drifting then
+			self.slideHold = cfg.drivetrain.slideShiftHoldSeconds
+		end
+	end
+	local tyreContacts: { Contact } = if arcadeOn then {} else contacts
+	for _, c in tyreContacts do
 		local w = c.wheel
 		local brakeFade = math.clamp(math.abs(c.vLong) / cfg.drivetrain.brakeFadeMps, 0, 1)
 		local brakeDir = -math.sign(c.vLong)
@@ -710,7 +855,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- centre of mass so no yaw moment changes. Capped so the tyres alone
 	-- never push the car along faster: a slide can hold its speed on the
 	-- gas, it cannot gain it. See Tire.scrubRelief.
-	if speed > 1 and scrubAlong < 0 and not twoWheelActive then
+	if not arcadeOn and speed > 1 and scrubAlong < 0 and not twoWheelActive then
 		-- A style may carry more or less speed sideways
 		-- (drift.slideReliefScale); the lever's relief is its own.
 		local momentum = table.clone(cfg.tires.slideMomentum)
@@ -735,7 +880,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- a 360 or a lift runs straight on too: a lever 360's path held at 0
 	-- degrees all the way round and then turned 7 to 15 in the wobble after
 	-- the lever was let go (Play, 2026-10-05).
-	if speed > 1 and not twoWheelActive and throwing > 0 then
+	if not arcadeOn and speed > 1 and not twoWheelActive and throwing > 0 then
 		local flat = Vector3.new(vel.X, 0, vel.Z)
 		if flat.Magnitude > 1 then
 			local side = flat.Unit:Cross(Vector3.yAxis) -- right of the velocity
@@ -814,7 +959,11 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	-- The wheel's dial on a slide held without the lever or a flick: the
 	-- gas hold's ceiling and its slower "into" (DriftControl's knobs).
 	local gasDial = hbLevel <= 0 and self.flickTimer <= 0
-	if not twoWheelActive then
+	if arcadeOn then
+		-- Nothing of a held throw carries into a hand-back to the tyres (a natl).
+		self.throw.holdLatched = false
+		self.throw.holdAngleDeg = 0
+	elseif not twoWheelActive then
 		totalTorque -= up * Throw.step(self.throw, cfg.steering, {
 			steer = input.steer,
 			permission = throwNow,
@@ -893,7 +1042,7 @@ function VehicleSim.step(self: Sim, input: InputState, dt: number): VehicleState
 	st.throttle = input.throttle
 	st.brake = input.brake
 	st.steer = input.steer
-	st.steerDeg = effectiveSteerDeg
+	st.steerDeg = if arcadeOut then arcadeOut.visualSteerDeg else effectiveSteerDeg
 	st.steerLock = lockFactor
 	st.lean = input.lean
 	st.driftAngleDeg = driftAngleDeg

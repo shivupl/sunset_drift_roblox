@@ -131,6 +131,28 @@ Every difference is within run-to-run spread, so the numbers above still describ
 | antiRollFront | Stiffer front bar = front loses grip first = understeer. | ↓ | ↓ | — |
 | antiRollRear | Stiffer rear bar = rear loses grip first = oversteer. | ↑ | ↑ | — |
 
+## arcade (the drive; `VehicleSim/Arcade.luau`)
+
+The drive since 2026-11-06 (the owner: "it needs to feel really good for like the 10 year olds that are going to play this"). While `arcade.enabled` is on it replaces the tyres and every drift assist below it (steering's throw and flick, handbrake grip, drift, line, the slip model); suspension, the engine and gearbox, brakes, effects and scoring are unchanged, and two-wheel driving (any `twoWheel` mode but idle) still runs on the tyres. Studio comparison: DriftLab `{"arcade":{"enabled":false}}` drives the old model.
+
+How it drives: the car goes where its nose points as fast as the tyres let it (`alignRate`, capped at `gripG`); the wheel turns the nose. Up to `slideFromSteer` of the wheel the car only asks for the turn the tyres can follow; past it the ask climbs to `steerAsk` times that, so holding the key down steps the tail out with no button. Sliding, the tyres hold `driftG`, the wheel sets the angle (`driftAngleDeg` at full lock and full gas, `liftAngleScale` of it off the gas), the other way swings it across, centred straightens. The handbrake spins it (`handbrakeSpinDegPerSec`); let go far round and it finishes the turn (`finishTurnFromDeg`).
+
+Measured on the Kamri (front drive), Play, fixed inputs from 100 km/h (2026-11-06):
+
+| Input | Nose angle | Notes |
+|---|---|---|
+| steer 0.3 / 0.5, gas 0.6 | 1° / 1-2° | clean turn |
+| steer 0.75, gas 0.7 | 36° after 1.5 s | slide |
+| full lock, gas 0.7 | 21° at 0.5 s, 47-48° held | speed 100 → 115-117 km/h held |
+| full lock then centred | 46° → 1° in 0.7 s | no overshoot |
+| full lock, then full the other way | +50° → -53° in 1.0 s, yaw peak 145°/s | the swing |
+| lever 0.3 s + full lock, then 0.6 steer | 35°, held 28-34° | |
+| lever + full lock held from 80 km/h | 360 in 1.8 s; let go at 443°, it finished at 720° | 80 → 56 km/h by the first 360 |
+
+Earlier passes: `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
+
+Knobs for feel: wider or tighter slides `driftAngleDeg`; how fast the angle settles `angleResponseSeconds`; how much the path bends in a slide `driftG`; how much wheel starts a slide `slideFromSteer`; how hard the lever spins it `handbrakeSpinDegPerSec`; speed kept in a slide `keepSpeed` and `driftDragG`.
+
 ## tires.front / tires.rear
 Part 2 set the rear (1.06) above the front (1.05): a rear that out-grips the front pushes wide
 at speed instead of stepping out, which is what "planted" means. Initiation is paid for with
