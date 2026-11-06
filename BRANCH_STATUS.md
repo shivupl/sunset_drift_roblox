@@ -12,6 +12,14 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`drift-mechanics` (2026-11-06, branched from `main` at `24b259d`; local, not pushed or merged):
+the arcade drive.** The owner: "please just perfect the drifting here ... it needs to feel really
+good for like the 10 year olds that are going to play this". `VehicleSim/Arcade.luau` replaces the
+tyre model and every drift assist with a few continuous laws (TUNING.md "arcade"); two-wheel
+driving still runs on the tyres. Side variants Main, Wide, Snappy and the old tyres
+(`ArcadeFeels.luau`, I in Studio). The earlier drive experiments (`five-drives`, `physics-drives`,
+`natural-drift`) and the monetization work (`monetization`) are separate local branches.
+
 **`ui-flow` (2026-10-12, branched from `tweaks-2` at `b2166f3`; merged into `main` by fast-forward
 on 2026-10-14 at `9e46cea`, not yet pushed; the local branch is kept for now): the whole phone UI as
 one frame.** The owner: "string together the entire UI from here for mobile. make
