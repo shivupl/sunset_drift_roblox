@@ -151,6 +151,7 @@ Measured on the Kamri (front drive), Play, fixed inputs from 100 km/h (2026-11-0
 | full lock 2.5 s from 50 / 75 / 120 km/h, gas 0.5 | path turned 59° / 41° / 21° | sliding grip by speed (`driftGSlow` in town, `driftG` on the highway) |
 | reverse, full lock, 3 s | nose within 8° of straight back | reverse never asks past what the tyres follow |
 | launch, full gas | 0-60 2.0 s, 0-100 3.3 s | |
+| every car, full lock 2 s then full the other way 2 s | held +49 to +50°, swung -49 to -53°, straight after letting go | body roll 3° (Hatch) to 7° (Kruzer 80); half steer slips 1-2° on all; Lekzas (rear), Kruzer 80 and Batrol (all-wheel), Pickup, Hatch, Kamri |
 
 Earlier passes: a single `driftG` 0.3 bent a full-lock slide at 50 km/h only 12°/s, into a town wall sideways (now `driftGSlow` 0.75 under `slowKmh`); `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
 
