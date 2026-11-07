@@ -155,7 +155,7 @@ Measured on the Kamri (front drive), Play, fixed inputs from 100 km/h (2026-11-0
 
 Earlier passes: a single `driftG` 0.3 bent a full-lock slide at 50 km/h only 12°/s, into a town wall sideways (now `driftGSlow` 0.75 under `slowKmh`); `driftG` 0.55 bent a held slide 34 m across the road in 2.5 s (now 0.3: 23 m); `driftDragG` 0.08 let a held slide gain 14 km/h (now 0.3: holds); a flat `steerAsk` 1.7 slid every lane change at 0.3 steer when it was the raw wheel geometry, and crept at 0.7.
 
-Side variants to compare by driving (`src/shared/ArcadeFeels.luau`; Studio's I cycles them, or set the LocalPlayer attribute `ArcadeFeel`), same inputs (full lock 2 s, full the other way 2 s, centred) from 100 km/h:
+Side variants to compare by driving (`src/shared/ArcadeFeels.luau`; Studio's I cycles them, on a phone the top row's DRIFT tab while driving, in any server while `ArcadeFeels.phoneButton` is true (false takes the tab away once a feel is picked), or set the LocalPlayer attribute `ArcadeFeel`), same inputs (full lock 2 s, full the other way 2 s, centred) from 100 km/h:
 
 | Feel | Held | Swung across | Speed after 5.5 s |
 |---|---|---|---|

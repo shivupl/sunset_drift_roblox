@@ -9,6 +9,7 @@ local submitSlide = remotes:WaitForChild("SubmitSlide") :: RemoteEvent
 local slideResult = remotes:WaitForChild("SlideResult") :: RemoteEvent
 local ConfigLoader = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ConfigLoader"))
 local ExitSpot = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ExitSpot"))
+local ArcadeFeels = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArcadeFeels"))
 local VehicleController = require(script.VehicleController)
 local Input = require(script.Input)
 local DebugPanel = require(script.DebugPanel)
@@ -163,8 +164,8 @@ Sky.start(remotes)
 SpawnMenu.start(remotes)
 -- The top bar, right of Roblox's buttons: STORE (the plates page, until a
 -- store exists), GARAGE (the car menu) and SETTINGS always, EXIT while
--- driving (CAMERA and STYLE too on a desktop; off the phone's row for
--- now); a page's button closes it when it is the one up. RESET left the
+-- driving (DRIFT too on a phone, the drift mode switch; CAMERA and STYLE
+-- too on a desktop, off the phone's row for now); a page's button closes it when it is the one up. RESET left the
 -- row (2026-10-13). A desktop's tabs wear their keys (M, F, V, U) and the
 -- CARS button went (desktop-ui, 2026-10-14).
 TopBar.start({
@@ -183,6 +184,8 @@ TopBar.start({
 	settings = function()
 		SpawnMenu.toggleTab("settings")
 	end,
+	-- DRIFT on a phone's row while driving: the next arcade feel.
+	drift = if ArcadeFeels.phoneButton then DriftStyle.cycleFeel else nil,
 })
 -- Walking into the garage opens the customisation view; the lift bay's
 -- raised car is built once the garage is here.

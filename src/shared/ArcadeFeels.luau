@@ -43,6 +43,13 @@ ArcadeFeels.feels = {
 
 ArcadeFeels.order = { "main", "wide", "snappy", "classic" }
 
+-- The phone's switch: a DRIFT tab on the top row while driving on a phone
+-- (TopBar), cycling the feels as I does in Studio, but in any server, so
+-- the owner can compare them on their phone (2026-11-07: "make a switch
+-- drift mode button for mobile first"). Players see it too while it is on;
+-- false takes the tab away once a feel is picked.
+ArcadeFeels.phoneButton = true
+
 function ArcadeFeels.resolve(id: any): string
 	if type(id) == "string" and ArcadeFeels.feels[id] then
 		return id

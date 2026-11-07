@@ -7,12 +7,14 @@
 -- driftmodes we made different tire options in the garage instead of drift
 -- options in the car menu"). A tyre fitted while driving takes at once.
 --
--- In Studio only, I cycles the arcade drive's feel (ArcadeFeels; the
--- attribute ArcadeFeel), and O cycles the current car's modes (the LocalPlayer
--- attributes DriftStyle_RWD, DriftStyle_FWD, DriftStyle_AWD, which win
--- over the tyre) and Shift+O every mode, any drivetrain (for comparing them
--- on one car: the DriftStyleAny attribute, which O clears), each shown at
--- the top of the screen for a moment, like the flames' P.
+-- In Studio, I cycles the arcade drive's feel (ArcadeFeels; the attribute
+-- ArcadeFeel); on a phone the top row's DRIFT tab does (TopBar, any
+-- server, while ArcadeFeels.phoneButton). In Studio only, O cycles the
+-- current car's modes (the LocalPlayer attributes DriftStyle_RWD,
+-- DriftStyle_FWD, DriftStyle_AWD, which win over the tyre) and Shift+O
+-- every mode, any drivetrain (for comparing them on one car: the
+-- DriftStyleAny attribute, which O clears), each shown at the top of the
+-- screen for a moment, like the flames' P.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -40,7 +42,8 @@ local ANY_ATTRIBUTE = "DriftStyleAny"
 -- Studio only: a JSON partial config merged over the styled config, for
 -- trying numbers live (`{"line":{"hold":0.8}}`); empty or unset is off.
 local LAB_ATTRIBUTE = "DriftLab"
--- The arcade drive's side variant (ArcadeFeels; Studio's I cycles it).
+-- The arcade drive's side variant (ArcadeFeels; Studio's I and the phone's
+-- DRIFT tab cycle it).
 local FEEL_ATTRIBUTE = "ArcadeFeel"
 -- The Studio switch's label: how long it stays up.
 local LABEL_SECONDS = 1.5
@@ -216,15 +219,15 @@ local function showLabel(id: string)
 	showText(`DRIFT: {string.upper(style.name)} ({style.layout})`)
 end
 
--- I: the next arcade feel.
-local function cycleFeel()
+-- I, or the phone's DRIFT tab: the next arcade feel.
+function DriftStyle.cycleFeel()
 	local player = Players.LocalPlayer
 	local current = ArcadeFeels.resolve(player:GetAttribute(FEEL_ATTRIBUTE))
 	local i = table.find(ArcadeFeels.order, current) or 0
 	local nextId = ArcadeFeels.order[i % #ArcadeFeels.order + 1]
 	player:SetAttribute(FEEL_ATTRIBUTE, nextId)
 	local feel = ArcadeFeels.feels[nextId]
-	showText(`FEEL: {string.upper(feel.name)} ({feel.blurb})`)
+	showText(`DRIFT MODE: {string.upper(feel.name)} ({feel.blurb})`)
 end
 
 -- O: the next style of the car's drivetrain. Shift+O: the next of all.
@@ -252,7 +255,7 @@ function DriftStyle.start()
 	if RunService:IsStudio() then
 		UserInputService.InputBegan:Connect(function(input: InputObject, processed: boolean)
 			if not processed and input.KeyCode == Enum.KeyCode.I then
-				cycleFeel()
+				DriftStyle.cycleFeel()
 				return
 			end
 			if processed or input.KeyCode ~= Enum.KeyCode.O then

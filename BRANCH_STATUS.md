@@ -17,7 +17,7 @@ the arcade drive.** The owner: "please just perfect the drifting here ... it nee
 good for like the 10 year olds that are going to play this". `VehicleSim/Arcade.luau` replaces the
 tyre model and every drift assist with a few continuous laws (TUNING.md "arcade"); two-wheel
 driving still runs on the tyres. Side variants Main, Wide, Snappy and the old tyres
-(`ArcadeFeels.luau`, I in Studio). The earlier drive experiments (`five-drives`, `physics-drives`,
+(`ArcadeFeels.luau`, I in Studio, the DRIFT tab on a phone). The earlier drive experiments (`five-drives`, `physics-drives`,
 `natural-drift`) and the monetization work (`monetization`) are separate local branches.
 
 **`ui-flow` (2026-10-12, branched from `tweaks-2` at `b2166f3`; merged into `main` by fast-forward

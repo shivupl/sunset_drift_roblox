@@ -69,6 +69,8 @@ export type Actions = {
 	view: () -> (),
 	style: () -> (),
 	settings: () -> (),
+	-- The phone's drift mode switch (ArcadeFeels.phoneButton); nil: no tab.
+	drift: (() -> ())?,
 }
 
 -- art/topbar/out/topbar_icons.png: GARAGE, RESET, VIEW, STYLE, SETTINGS, EXIT.
@@ -80,8 +82,8 @@ local ICON_CELL = 128
 -- `page`: the menu page this button opens (lit while it shows); `driving`:
 -- only while driving; `tool`: CAMERA and STYLE, the icon alone, off the
 -- phone's row for now (toolsUp); `key`: the keyboard key, worn as a
--- keycap on a desktop's tab.
-type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean, tool: boolean, key: string? }
+-- keycap on a desktop's tab; `phone`: on a phone's row only.
+type Spec = { id: string, label: string, icon: number, sheet: string, page: string?, driving: boolean, tool: boolean, key: string?, phone: boolean? }
 local SPECS: { Spec } = {
 	{ id = "store", label = "STORE", icon = 3, sheet = GARAGE_ICONS, page = "plates", driving = false, tool = false },
 	{ id = "garage", label = "GARAGE", icon = 0, sheet = ICONS, page = "cars", driving = false, tool = false, key = "M" },
@@ -89,6 +91,11 @@ local SPECS: { Spec } = {
 	-- Out of the car (the owner, 2026-10-14: "on mobile - need an exit car
 	-- button"; a desktop has F): the first driving tab, a group apart.
 	{ id = "exit", label = "EXIT", icon = 5, sheet = ICONS, driving = true, tool = false, key = "F" },
+	-- The drift mode switch (the owner, 2026-11-07: "make a switch drift
+	-- mode button for mobile first"): the arcade feels in turn, the new one
+	-- named on screen. RESET's circling arrow, free since RESET left. A
+	-- phone's only for now (Studio's keyboard has I).
+	{ id = "drift", label = "DRIFT", icon = 1, sheet = ICONS, driving = true, tool = false, phone = true },
 	{ id = "view", label = "CAMERA", icon = 2, sheet = ICONS, driving = true, tool = true, key = "V" },
 	{ id = "style", label = "STYLE", icon = 3, sheet = ICONS, driving = true, tool = true, key = "U" },
 }
@@ -182,6 +189,12 @@ local MARGIN = 8
 -- Whether a tab belongs on the row now: a driving tab only while the
 -- phone controls are up, a tool only with TOOLS.
 local function up(spec: Spec): boolean
+	if spec.phone and not Kit.isTouch() then
+		return false
+	end
+	if spec.id == "drift" and not (actions and actions.drift) then
+		return false
+	end
 	return (not spec.driving or driving) and (not spec.tool or toolsUp())
 end
 
@@ -281,7 +294,7 @@ local function slice(o: any)
 	o.SliceScale = h / Art.tabH
 end
 
--- STORE, GARAGE and EXIT carry their words; SETTINGS is the gear alone, a
+-- STORE, GARAGE, EXIT and DRIFT carry their words; SETTINGS is the gear alone, a
 -- tool its icon alone. On a desktop every tab but SETTINGS has its word.
 local function wordsFor(spec: Spec): boolean
 	if spec == SETTINGS_SPEC then
@@ -522,6 +535,7 @@ local function rebuild()
 		exit = a.exit,
 		view = a.view,
 		style = a.style,
+		drift = a.drift or function() end,
 	}
 	for i, spec in SPECS do
 		local it = slantTab(r, spec, i, fns[spec.id], wordsFor(spec))
