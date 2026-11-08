@@ -273,7 +273,7 @@ every piece an object named `<Car>_<Piece>`, decoded from the same buffers the
 game reads, centred, and turned half round about Y beforehand because the
 importer turns an OBJ half round on the way in.
 
-1. Studio: File > Import 3D, pick the file, keep Studio Default (each object
+1. Studio: File > Import 3D, pick `AllCars.obj` (every car at once) or one car's file, keep Studio Default (each object
    stays its own MeshPart), import. The importer uploads each mesh.
 2. Run `tools/carbody/upload_ids.luau` in Edit: one line per piece with its
    new mesh id, its MeshSize and the generated sizeM to compare.

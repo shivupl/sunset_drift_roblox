@@ -16,7 +16,9 @@ the game draws:
   so it lands the right way round;
 - v flipped as meshkit.write_obj does (OBJ counts v from the bottom).
 
-Import each file once (File > Import 3D, Studio Default, so each object
+It also writes AllCars.obj, all of them in one file.
+
+Import once (File > Import 3D, Studio Default, so each object
 stays its own MeshPart), then wire the ids with upload_ids.luau
 (tools/carbody/README.md, "Uploading generated pieces").
 
@@ -93,7 +95,37 @@ def write(car: str) -> list[str]:
     return report
 
 
+def write_all(cars: list[str]):
+    """AllCars.obj: every car's file in one, so the owner imports once
+    (2026-11-07: "do i have to upload 1 by 1"). Object names carry the car,
+    so they stay unique."""
+    out = ["# Every car's generated pieces in one file (tools/carbody/upload_objs.py)"]
+    vb = nb = tb = 0
+    for car in cars:
+        nv = nn = nt = 0
+        for line in (OUT / f"{car}.obj").read_text().splitlines():
+            if line.startswith("v "):
+                nv += 1
+            elif line.startswith("vn "):
+                nn += 1
+            elif line.startswith("vt "):
+                nt += 1
+            elif line.startswith("f "):
+                corners = []
+                for c in line[2:].split():
+                    v, t, n = (int(x) for x in c.split("/"))
+                    corners.append(f"{v + vb}/{t + tb}/{n + nb}")
+                line = "f " + " ".join(corners)
+            elif not line.startswith("o "):
+                continue
+            out.append(line)
+        vb, nb, tb = vb + nv, nb + nn, tb + nt
+    (OUT / "AllCars.obj").write_text("\n".join(out) + "\n")
+
+
 if __name__ == "__main__":
-    for car in sys.argv[1:] or wanted_from_catalog():
+    cars = sys.argv[1:] or wanted_from_catalog()
+    for car in cars:
         for line in write(car):
             print(line)
+    write_all(cars)
