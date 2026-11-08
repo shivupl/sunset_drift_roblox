@@ -284,6 +284,28 @@ local shapes: { [string]: Shape } = {
 			{ centreM = { 0.4483, 1.3228, -0.4102 }, normal = { 0.1152, 0.8889, -0.4434 }, right = { 0.8747, 0.1208, 0.4693 }, widthM = 0.0836, heightM = 0.12, fromM = 0 },
 		},
 	},
+	-- akord: store mesh 2011698704 (cache db:FB7DD8D431F8C824D90A1F3EE5EBDC7B), inside the glass, ends at the glass's outline
+	akord = {
+		lengthM = 1.2713,
+		heightM = 0.12,
+		side = "inside",
+		slats = {
+			{ centreM = { -0.5811, 1.2942, -0.3937 }, normal = { -0.1794, 0.8859, -0.4277 }, right = { 0.9675, 0.0803, -0.2396 }, widthM = 0.0978, heightM = 0.12, fromM = 1.1734 },
+			{ centreM = { -0.4937, 1.3014, -0.414 }, normal = { -0.1668, 0.8867, -0.4313 }, right = { 0.9741, 0.0803, -0.2116 }, widthM = 0.1017, heightM = 0.12, fromM = 1.0814 },
+			{ centreM = { -0.4042, 1.3079, -0.4316 }, normal = { -0.1322, 0.892, -0.4323 }, right = { 0.983, 0.0618, -0.1731 }, widthM = 0.1008, heightM = 0.12, fromM = 0.9904 },
+			{ centreM = { -0.3147, 1.3119, -0.4451 }, normal = { -0.0786, 0.8977, -0.4334 }, right = { 0.9918, 0.0265, -0.1251 }, widthM = 0.1002, heightM = 0.12, fromM = 0.9001 },
+			{ centreM = { -0.2252, 1.3138, -0.4547 }, normal = { -0.0509, 0.8994, -0.4341 }, right = { 0.9961, 0.0142, -0.0873 }, widthM = 0.0999, heightM = 0.12, fromM = 0.8102 },
+			{ centreM = { -0.1355, 1.3146, -0.4609 }, normal = { -0.0254, 0.9, -0.4351 }, right = { 0.9987, 0.0039, -0.0502 }, widthM = 0.0997, heightM = 0.12, fromM = 0.7204 },
+			{ centreM = { -0.0459, 1.3152, -0.464 }, normal = { -0.0175, 0.8999, -0.4358 }, right = { 0.9997, 0.0094, -0.0207 }, widthM = 0.0997, heightM = 0.12, fromM = 0.6307 },
+			{ centreM = { 0.0439, 1.3152, -0.464 }, normal = { 0.0175, 0.8999, -0.4358 }, right = { 0.9997, -0.0094, 0.0207 }, widthM = 0.0997, heightM = 0.12, fromM = 0.5409 },
+			{ centreM = { 0.1335, 1.3146, -0.4609 }, normal = { 0.0254, 0.9, -0.4351 }, right = { 0.9987, -0.0039, 0.0502 }, widthM = 0.0997, heightM = 0.12, fromM = 0.4512 },
+			{ centreM = { 0.2232, 1.3138, -0.4547 }, normal = { 0.0509, 0.8994, -0.4341 }, right = { 0.9961, -0.0142, 0.0873 }, widthM = 0.0999, heightM = 0.12, fromM = 0.3612 },
+			{ centreM = { 0.3127, 1.3119, -0.4451 }, normal = { 0.0786, 0.8977, -0.4334 }, right = { 0.9918, -0.0265, 0.1251 }, widthM = 0.1002, heightM = 0.12, fromM = 0.271 },
+			{ centreM = { 0.4022, 1.3079, -0.4316 }, normal = { 0.1322, 0.892, -0.4323 }, right = { 0.983, -0.0618, 0.1731 }, widthM = 0.1008, heightM = 0.12, fromM = 0.18 },
+			{ centreM = { 0.4917, 1.3014, -0.414 }, normal = { 0.1668, 0.8867, -0.4313 }, right = { 0.9741, -0.0803, 0.2116 }, widthM = 0.1017, heightM = 0.12, fromM = 0.0881 },
+			{ centreM = { 0.5791, 1.2942, -0.3937 }, normal = { 0.1794, 0.8859, -0.4277 }, right = { 0.9675, -0.0803, 0.2396 }, widthM = 0.0978, heightM = 0.12, fromM = 0 },
+		},
+	},
 }
 
 return shapes

@@ -10,5 +10,6 @@
   "8941426631": { "car": "batrol", "piece": "Glass", "meshSize": [15.881194, 3.972329, 6.068004], "faces": 520 },
   "7183513741": { "car": "kruzer80", "piece": "Glass_7", "meshSize": [1.620489, 0.530043, 0.569341], "faces": 48 },
   "1225114166": { "car": "tahu", "piece": "Glass_8", "meshSize": [15.192533, 4.457821, 6.852142], "faces": 232 },
-  "2114248915": { "car": "sonatta", "piece": "Glass", "meshSize": [42.056801, 27.172009, 99.678101], "faces": 570 }
+  "2114248915": { "car": "sonatta", "piece": "Glass", "meshSize": [42.056801, 27.172009, 99.678101], "faces": 570 },
+  "2011698704": { "car": "akord", "piece": "Glass_5", "meshSize": [194.179398, 65.894882, 394.162292], "faces": 80 }
 }

@@ -18,6 +18,12 @@ export type Mounts = { front: Spot?, rear: Spot? }
 local CarPlateMounts = {}
 
 CarPlateMounts.cars = {
+	-- Store plate parts 111 (front) and 116 (rear, the boot recess leans
+	-- 16°), storecar.py --spots.
+	akord = {
+		front = { posM = { 0.004, 0.476, -2.43 }, format = "short" },
+		rear = { posM = { -0.008, 0.862, 2.428 }, format = "short", tiltDeg = 16 },
+	},
 	-- Store plate parts Front and Rear (the boot recess leans 23.5°),
 	-- storecar.py --spots.
 	sonatta = {

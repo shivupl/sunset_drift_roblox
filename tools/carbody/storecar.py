@@ -220,6 +220,32 @@ def role_sonatta(p):
     return "Trim", {}
 
 
+def role_akord(p):
+    i, tr, col, tex, mat = p["i"], p["tr"], tuple(p["col"]), p.get("tex"), p["mat"]
+    # Its lamps: the clear headlamp covers (91) are the whole lamp face; at
+    # the back the red cluster lenses (56, 88) with their cover (89), the
+    # round lamps in them (R), the red bars on the boot lid (52); Rev the
+    # white reverse lamps; the amber front markers and mirror lamps are
+    # indicators. The kit's Light box inside the headlamps stays trim.
+    lamp = {91: "HeadLamps", 56: "TailLamps", 88: "TailLamps", 89: "TailLamps", 58: "TailLamps", 52: "TailLamps",
+            64: "ReverseLamps", 66: "Indicators", 61: "Indicators", 63: "Indicators"}
+    if i in lamp:
+        return lamp[i], {"castShadow": False}
+    if p["p"] == "SW":
+        return "SteeringWheel", {"castShadow": False}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    if col == (205, 205, 205) and not tex:
+        return "Body", {"paint": True}
+    if tex or col in ((86, 66, 54), (35, 35, 35), (25, 25, 25)):
+        return "Interior", {"castShadow": False}
+    if col == (163, 162, 165) and mat == "SmoothPlastic":
+        return "Chrome", {}
+    if i == 85:  # the floor pan
+        return "Underbody", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -422,6 +448,29 @@ CARS = {
             9: {"source": "steering_source.obj", "uvFlatten": [((0.75, 0.76, 0.83, 0.86), (0.744, 0.812))]},
         },
         "role": role_sonatta,
+        "paint": (240, 240, 236),
+    },
+    "akord": {
+        "title": "The late-2000s Japanese family saloon (store 4913850907), with its interior",
+        "wheelbaseM": 2.8,
+        "dropGroups": set(),
+        # The wheels (the front-left becomes wheelPieces).
+        "dropParts": {41, 42, 44, 45, 47, 48, 50, 51},
+        "dropTextures": set(),
+        "tyres": [42, 45, 48, 51],
+        "wheelParts": {42: "Tyre", 41: "Rim"},
+        "frontPart": 72,  # the grille
+        "cuts": {
+            # The grille chrome carries the maker's badge and its surround as
+            # two islands of their own at its middle; the boot chrome the badge
+            # and the model's script name. Boxes in each mesh's space.
+            72: {"source": "grille_source.obj", "badges": [((-7.5, -8.6, 4.1), (7.5, 2.9, 12.0))]},
+            54: {"source": "chrome_source.obj", "badges": [
+                ((-7.3, -7.3, -41.3), (7.3, 3.4, -32.8)),  # boot badge
+                ((43.4, -7.3, -37.5), (70.4, -4.0, -28.1)),  # script name
+            ]},
+        },
+        "role": role_akord,
         "paint": (240, 240, 236),
     },
     "kruzer100": {
