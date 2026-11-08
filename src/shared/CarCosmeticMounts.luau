@@ -450,6 +450,27 @@ CarCosmeticMounts.cars = {
 			riseM = 0.07,
 		},
 	},
+	kruzer300 = {
+		-- Windows: Glass_10 the windscreen; Glass, Glass_3, Glass_5 and
+		-- Glass_6 the doors; Glass_8 and Glass_12 the tailgate and the rear
+		-- quarters. The other glass pieces are mirror glass, lamp covers and
+		-- the sunroof.
+		windows = { side = { "Glass", "Glass_3", "Glass_5", "Glass_6", "Glass_8", "Glass_12" }, screen = { "Glass_10" } },
+		windscreen = { piece = "Glass_10", side = "inside", heightM = 0.12, topGapM = 0.06, ends = "mesh" },
+		-- Exhaust: no pipe in its meshes, so a factory one on the left under
+		-- the rear bumper, whose lower edge is about 0.41 m up; the face
+		-- above the tips reaches 2.55 m (0.44 m up), tips 3 cm past. The
+		-- underside over the pipes' ends (z 2.12) is 0.46 m up on the left
+		-- and 0.35 m on the right: riseM 0.15 ends both inside. Measured with
+		-- carprobe.py, 2026-11-07.
+		exhaust = {
+			stock = { { posM = { -0.6, 0.33, 2.5 }, factory = true, pipeLengthM = 0.35, riseM = 0.13 } },
+			tips = { posM = { 0, 0.31, 2.58 }, spreadM = 1.2, pipeLengthM = 0.3 },
+			quadSpreadM = 1.0,
+			bumperZ = 2.55,
+			riseM = 0.15,
+		},
+	},
 } :: { [string]: Mounts }
 
 -- The aftermarket tips' centre x, metres, for n tips (0, 1, 2 or 4): a twin

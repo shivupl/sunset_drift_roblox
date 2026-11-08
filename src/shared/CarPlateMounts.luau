@@ -18,6 +18,13 @@ export type Mounts = { front: Spot?, rear: Spot? }
 local CarPlateMounts = {}
 
 CarPlateMounts.cars = {
+	-- The store model has no plate parts. Rear: the tailgate recess, 0.85
+	-- to 1.07 m up, its face 2.51 m back (carprobe.py); front: the bumper
+	-- face under the grille, 2.37 m forward. Checked by eye in Studio.
+	kruzer300 = {
+		front = { posM = { 0, 0.56, -2.375 }, format = "short" },
+		rear = { posM = { 0, 0.96, 2.515 }, format = "short" },
+	},
 	-- Store plate parts 130 (front) and 177 (rear, the boot recess leans
 	-- 15°), storecar.py --spots.
 	kamri12 = {

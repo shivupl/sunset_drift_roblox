@@ -266,6 +266,38 @@ def role_kamri12(p):
     return "Trim", {}
 
 
+def role_kruzer300(p):
+    n, i, tr, col, grp = p["n"], p["i"], p["tr"], tuple(p["col"]), p["p"]
+    # Its lamps are the kit's own lamp parts: the low and high beam units,
+    # the light strips (DRL), the fog lamps; at the back the red cluster
+    # parts (RRL, BRAKE, BRAKE2 the high one), with their red lenses (Lense
+    # 124, 162) lit as the whole lamp face; REVERSE; the ambers (LI, RI).
+    if n in ("Lowbeam1", "Lowbeam2", "HB1", "DRL"):
+        return "HeadLamps", {"castShadow": False}
+    if n == "Fog":
+        return "FogLamps", {"castShadow": False}
+    if n in ("RRL", "BRAKE", "BRAKE2") or (grp == "Lense" and col == (117, 0, 0)):
+        return "TailLamps", {"castShadow": False}
+    if n == "REVERSE":
+        return "ReverseLamps", {"castShadow": False}
+    if n in ("LI", "RI", "LI1", "RI1", "LI2", "RI2"):
+        return "Indicators", {"castShadow": False}
+    if grp == "SW":
+        return "SteeringWheel", {"castShadow": False}
+    if n == "COLOR":
+        return "Body", {"paint": True}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    # The cabin; the door cards (textured parts of the doors). Textured
+    # parts elsewhere are outside: the black plastic bumpers, the lamp
+    # housings, the tailgate trim.
+    if grp in ("Interior", "Seat", "DoorDash", "Display") or (grp == "Door" and p.get("tex")):
+        return "Interior", {"castShadow": False}
+    if grp == "Chrome" or (col == (163, 162, 165) and grp in ("Mirror", "Door", "Other")):
+        return "Chrome", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -531,6 +563,37 @@ CARS = {
             179: {"source": "steering_source.obj", "uvFlatten": [((0.425, 0.475, 0.473, 0.537), (0.416, 0.507))]},
         },
         "role": role_kamri12,
+        "paint": (240, 240, 236),
+    },
+    "kruzer300": {
+        "title": "The 2020s Japanese full-size 4x4 (store 116150803764919), with its interior",
+        "wheelbaseM": 2.85,
+        # The kit's colliders, seat and lamp markers and the invisible
+        # interior lights and airbags.
+        "dropGroups": {"InteriorLights", "Airbags"},
+        # The wheels (the front-left becomes wheelPieces) and their fixed
+        # brakes; the maker's emblem on the grille (138), the tailgate (120)
+        # and the airbag (103); the model name across the tailgate (123); the
+        # trim badge on the side (133); the wheel-centre emblems (248, 255,
+        # 262, 269); the gauge display (219) and an ambient strip (216, 217).
+        "dropParts": {245, 246, 247, 248, 249, 250, 252, 253, 254, 255, 256, 257, 259, 260, 261, 262, 263, 264,
+                      266, 267, 268, 269, 270, 271, 138, 120, 103, 123, 133, 219, 216, 217},
+        "dropTextures": set(),
+        "tyres": [249, 256, 263, 270],
+        "wheelParts": {249: "Tyre", 247: "Rim", 245: "Rim_Nuts"},
+        # The tyre's texture carries the maker's name on the sidewall.
+        "wheelLook": {249: ((28, 28, 30), "Rubber")},
+        "frontPart": 186,  # a headlamp
+        "cuts": {
+            # The black oval the grille emblem sat on: with the emblem gone it
+            # read as a hole (the owner's "black hole" on the Kamri), so its
+            # two islands are split out of the textured grille plastic and
+            # painted body colour, a plain debadged spot.
+            178: {"source": "grille_source.obj", "split": [
+                {"role": "Body", "paint": True, "boxes": [((-0.95, 1.0, -24.45), (0.95, 2.4, -23.95))]},
+            ]},
+        },
+        "role": role_kruzer300,
         "paint": (240, 240, 236),
     },
     "kruzer100": {
