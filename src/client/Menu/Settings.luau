@@ -13,6 +13,9 @@
 --                  as rows (HudLab/Desk; K cycles it).
 --   CAMERA         the right, first: the driving views as slanted choices
 --                  (CameraViews; VIEW or V cycle it).
+--   WHEEL TURN     under it: how far the steering wheel turns at full lock
+--                  (SteeringWheels; the owner, 2026-11-07, REAL by default
+--                  with HALF and QUARTER to compare).
 --   HUD LAYOUT     under it: the HUD's versions as rows, a word on each
 --                  (HudLab; Y cycles it).
 --   CLEAR UI       under them, one row that switches (ClearUi; the owner,
@@ -33,6 +36,7 @@ local Sky = require(Client:WaitForChild("Sky"))
 local HudLab = require(Client:WaitForChild("HudLab"))
 local Finishes = require(Client:WaitForChild("HudLab"):WaitForChild("Finishes"))
 local CameraViews = require(Client:WaitForChild("CameraViews"))
+local SteeringWheels = require(Client:WaitForChild("SteeringWheels"))
 local ClearUi = require(Client:WaitForChild("ClearUi"))
 local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
@@ -89,6 +93,21 @@ local CAMERA: Row = {
 		return CameraViews.current().id
 	end,
 	pick = CameraViews.set,
+}
+
+local WHEEL: Row = {
+	title = "WHEEL TURN",
+	options = function()
+		local out: { Option } = {}
+		for _, t in SteeringWheels.turns() do
+			table.insert(out, { id = t.id, label = t.name })
+		end
+		return out
+	end,
+	current = function()
+		return SteeringWheels.current().id
+	end,
+	pick = SteeringWheels.set,
 }
 
 local VERSION: Row = {
@@ -587,16 +606,18 @@ function Settings.new(shell: Page.Shell): Page.Page
 					rows(mid, DESK, 3, touch)
 				end
 
-				-- CAMERA, HUD LAYOUT and (a PC) SCREEN LAYOUT down the right.
+				-- CAMERA, WHEEL TURN, HUD LAYOUT and (a PC) SCREEN LAYOUT down
+				-- the right.
 				local right = Kit.frame(holder, "Choices")
 				right.LayoutOrder = 3
 				right.Size = UDim2.new(0, rightW, 1, 0)
 				Kit.list(right, true, colGap)
 				segment(right, CAMERA, 1, rightW, touch)
-				rows(right, VERSION, 2, touch)
-				switchRow(right, 3, "CLEAR UI", "On: only the gear stays", "Everything goes but a gear", ClearUi.on, ClearUi.set, touch)
+				segment(right, WHEEL, 2, rightW, touch)
+				rows(right, VERSION, 3, touch)
+				switchRow(right, 4, "CLEAR UI", "On: only the gear stays", "Everything goes but a gear", ClearUi.on, ClearUi.set, touch)
 				if #SCREEN.options() > 1 then
-					segment(right, SCREEN, 4, rightW, touch)
+					segment(right, SCREEN, 5, rightW, touch)
 				end
 
 				paint()

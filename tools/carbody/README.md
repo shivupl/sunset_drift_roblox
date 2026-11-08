@@ -265,6 +265,20 @@ reads) share the 8, count their users the same way, and back off below a
 reserve so bodies come first. **Uploading a car's pieces is the real fix**: an
 uploaded mesh takes no slot at all.
 
+## First person (CarCockpits)
+
+A car with a cabin gets an entry in `src/shared/CarCockpits.luau`: the
+steering wheel's pieces (role `SteeringWheel`, or an older car's cabin piece
+that is the wheel), the pivot and column axis they turn about, and the eye.
+Fit the wheel from its triangles: the axis is the direction they spread
+least along (pointing back at the driver), the pivot the centre of their
+extent across the face. Store meshes come from `carprobe.soup(car)` (Studio's
+mesh cache); a generated piece from its own buffers. Then look from the seat
+in Play (`CamView = "driver"`, the car on open road; the spawn bay puts some
+cars through the sign posts) and lower the eye where the roof lining fills
+the top of the view. The spec checks the pieces exist and the pivot sits
+inside them. A car with no cabin has no entry, and the DRIVER view skips it.
+
 ## Uploading generated pieces
 
 `python3 tools/carbody/upload_objs.py` writes `assets/cars/upload/<Car>.obj`,

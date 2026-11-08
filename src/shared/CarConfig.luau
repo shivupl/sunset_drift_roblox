@@ -930,10 +930,65 @@ local config = {
 		-- Parked, top to bottom of the screen: CHASE car 0.41-0.88, horizon
 		-- at 0.30; CLOSE 0.34-0.96, 0.26; FAR 0.49-0.83, 0.33. A wider FOV
 		-- with speed shrinks the car.
+		--
+		-- DRIVER is first person from the driver's seat (camera.firstPerson;
+		-- the owner, 2026-11-07). Its distance and heights are unused; only
+		-- the cars in CarCockpits have it, and V skips it on the rest.
 		views = {
-			{ id = "chase", name = "CHASE", distance = 6.2, height = 1.75, lookHeight = 0.15, baseFov = 66, maxFov = 88 },
-			{ id = "close", name = "CLOSE", distance = 5.3, height = 1.35, lookHeight = -0.25, baseFov = 64, maxFov = 84 },
-			{ id = "far", name = "FAR", distance = 7.5, height = 2.6, lookHeight = 0.8, baseFov = 70, maxFov = 96 },
+			{ id = "chase", name = "CHASE", distance = 6.2, height = 1.75, lookHeight = 0.15, baseFov = 66, maxFov = 88, firstPerson = false },
+			{ id = "close", name = "CLOSE", distance = 5.3, height = 1.35, lookHeight = -0.25, baseFov = 64, maxFov = 84, firstPerson = false },
+			{ id = "far", name = "FAR", distance = 7.5, height = 2.6, lookHeight = 0.8, baseFov = 70, maxFov = 96, firstPerson = false },
+			{ id = "driver", name = "DRIVER", distance = 6.2, height = 1.75, lookHeight = 0.15, baseFov = 66, maxFov = 88, firstPerson = true },
+		},
+		-- The DRIVER view (CameraRig; the owner, 2026-11-07: "work on the
+		-- first person view for all of them and the steering wheel moving
+		-- also in first person"). The eye sits where CarCockpits puts it and
+		-- moves rigidly with the car, roll and pitch included: the cabin is
+		-- the frame, and a lagging eye showed the dash swimming about.
+		firstPerson = {
+			-- Vertical degrees, up to maxFov with speed at fovPerKmh. Wider
+			-- than the chase views' 66 because the dash and pillars take the
+			-- screen's edges; at 74 the roof lining took the top third in the
+			-- sedans (Studio, 2026-11-07).
+			baseFov = 70,
+			fovPerKmh = 0.05,
+			maxFov = 82,
+			-- The car's own glass while in first person, as a
+			-- LocalTransparencyModifier (0 as it is, 1 gone): a tint that
+			-- reads as glass from outside is a milky sheet from a few
+			-- centimetres away (the Krown Vik's, 2026-11-07). Other players
+			-- still see it tinted.
+			glassClear = 0.6,
+			-- How far the view turns toward the way the car is travelling in
+			-- a slide, as a fraction of the slide angle, up to
+			-- lookIntoSlideMaxDeg: a driver looks where the car is going, not
+			-- out of the windscreen at the verge. 0 keeps it on the bonnet.
+			lookIntoSlide = 0.5,
+			lookIntoSlideMaxDeg = 40,
+			-- How fast the look into the slide follows (1/s).
+			lookIntoSlideRate = 6,
+			-- Free look (mouse right button, touch drag) turns the head this
+			-- far each way, and up and down.
+			maxLookYawDeg = 140,
+			maxLookPitchDeg = 50,
+			-- The speed shake, as a fraction of the chase camera's: the eye
+			-- is fixed to the car, which already carries the road.
+			shakeScale = 0.4,
+			-- How far the steering wheel turns at full lock, each way: picked
+			-- in SETTINGS (WHEEL TURN) and kept on the LocalPlayer attribute
+			-- WheelTurn. The first is the default: REAL, a road car's turn
+			-- (the owner, 2026-11-07, over HALF and QUARTER, which stay as
+			-- choices: keep-design-variations). The wheel follows the front
+			-- wheels' angle over steering.maxSteerDeg, so it counter-steers
+			-- in a slide as the tyres do.
+			wheelTurns = {
+				{ id = "real", name = "REAL", deg = 450 },
+				{ id = "half", name = "HALF", deg = 180 },
+				{ id = "quarter", name = "QUARTER", deg = 90 },
+			},
+			-- Steering wheels turn only on cars this near the camera (m):
+			-- from further no one can see one.
+			wheelDrawDistanceM = 40,
 		},
 		-- Free look (FreeLook; the owner, 2026-10-10: "allow me to freelook
 		-- while driving, resets after i a) on phone let go or b) on pc resets

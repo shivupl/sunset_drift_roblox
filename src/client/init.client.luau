@@ -26,6 +26,7 @@ local CarBodies = require(script.CarBodies)
 local CarLights = require(script.CarLights)
 local CarPlates = require(script.CarPlates)
 local WheelVisuals = require(script.WheelVisuals)
+local SteeringWheels = require(script.SteeringWheels)
 local LoadCover = require(script.LoadCover)
 local Sky = require(script.Sky)
 local EngineAudio = require(script.EngineAudio)
@@ -75,6 +76,7 @@ ExhaustPops.start(remotes)
 DriftStyle.start()
 WheelVisuals.localCar = VehicleController.currentCar
 WheelVisuals.start()
+SteeringWheels.start()
 -- Tyre smoke: the car this client drives sends its levels through this
 -- remote; every other car's smoke comes from the levels its driver sent.
 TireSmoke.setRemotes(remotes)

@@ -400,6 +400,22 @@ Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fle
 
 Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view.
 
+**DRIVER** is the fourth view, first person (`camera.firstPerson` below). It is only for cars in `CarCockpits`; on any other car (Hatch, Pickup, Cruiser, the generated Kamri, and for now Lekzas, Batrol and Kamri 07) the view in use is CHASE and V skips DRIVER, while `CamView` keeps it for the next car with a cabin.
+
+### camera.firstPerson (client `CameraRig`, `SteeringWheels`; `CarCockpits`)
+First person from the driver's seat, with the steering wheel turning (the owner, 2026-11-07: "work on the first person view for all of them and the steering wheel moving also in first person"). The eye sits at the car's `CarCockpits.eyeM` and moves rigidly with the cabin, roll and pitch included. The local character is hidden on this client only. The chase camera keeps following underneath, so switching back is seamless.
+| Field | What it does |
+|---|---|
+| baseFov / fovPerKmh / maxFov | Vertical degrees (70, +0.05 per km/h, up to 82). At 74 the roof lining took the top third of the screen in the sedans. Narrower = less roof and dash, more road. |
+| glassClear | The car's own glass while in first person, as a LocalTransparencyModifier (0.6): the Krown Vik's tint was a milky sheet from the seat. Higher = clearer. Others still see it tinted. |
+| lookIntoSlide / lookIntoSlideMaxDeg / lookIntoSlideRate | In a slide the view turns toward the way the car is travelling, by this fraction of the slide angle (0.5), at most 40°, following at 6/s. 0 keeps it on the bonnet. |
+| maxLookYawDeg / maxLookPitchDeg | How far free look turns the head (140 each way, 50 up and down). The same drag that raises the chase camera looks down here. |
+| shakeScale | The speed shake as a fraction of the chase camera's (0.4): the eye is fixed to the car, which already carries the road. |
+| wheelTurns | How far the steering wheel turns at full lock, each way: REAL 450° (the owner's pick), HALF 180°, QUARTER 90°. Chosen in SETTINGS (WHEEL TURN), kept on the LocalPlayer attribute `WheelTurn`. The wheel follows the front hubs' angle over `steering.maxSteerDeg`, so it counter-steers in a slide as the tyres do, on every car this client sees. |
+| wheelDrawDistanceM | Steering wheels turn only on cars this near the camera (40 m). |
+
+Per car (`src/shared/CarCockpits.luau`): `eyeM` (0.29 m above and 0.62 m behind the wheel's centre, lowered where the lining still filled the view: Akord 0.05, Kamri SE 0.03, Krown Vik 0.04), and `wheel` (the pieces, the pivot and the column axis, fitted from the pieces' own triangles; every column leans back 18 to 28°). Higher eye: more bonnet and roof. Further back: smaller wheel.
+
 ### camera.freeLook (client `FreeLook`)
 Looking around while driving (the owner, 2026-10-10: "allow me to freelook while driving, resets after i a) on phone let go or b) on pc resets after a seccond or 2 in the same mouse position"). The camera swings round the car from where the follow put it: yaw all the way round, pitch from minPitchDeg (lower, looking up) to maxPitchDeg (higher, looking down). The follow carries on underneath, so the glide home lands on a camera that kept up. The glide starts and ends slowly (smoothstep), so it never snaps.
 | Field | What it does |
