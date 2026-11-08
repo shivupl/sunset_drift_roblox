@@ -11,7 +11,8 @@
 -- draws them. Each frame (CameraRig) every arm reaches from a shoulder under
 -- the eye to its grip on the rim with a two-bone bend: the elbow drops and
 -- swings out, the wrist stays straight. The grips turn with the wheel up to
--- arms.followDeg, then the rim slides through the hands.
+-- arms.followDeg (past every wheel turn, so the hands hold on and the arms
+-- cross over).
 --
 -- Settings: camera.firstPerson.arms; on or off in SETTINGS (ARMS), the
 -- LocalPlayer attribute FirstPersonArms.

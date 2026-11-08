@@ -1015,12 +1015,12 @@ local config = {
 				-- (60: ten to two).
 				gripDeg = 60,
 				-- The hands turn with the wheel up to this far, then let the
-				-- rim slide through them: at REAL's 450 degrees they would
-				-- otherwise cross over and twist round each other. At 90 the
-				-- left hand was already over the top with the right out of
-				-- sight (Sonatta, 2026-11-07); at 60 ten-to-two turns to
-				-- twelve-and-four.
-				followDeg = 60,
+				-- rim slide through them. Past every wheel turn (REAL is 450),
+				-- so they hold on all the way and cross over (the owner,
+				-- 2026-11-07: "make sure the arms follow the wheels all the way
+				-- ... even if they cross over"). 60 let the rim slide past ten
+				-- to two turning to twelve and four, which kept the arms apart.
+				followDeg = 720,
 			},
 		},
 		-- Free look (FreeLook; the owner, 2026-10-10: "allow me to freelook

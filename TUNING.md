@@ -421,7 +421,7 @@ First person from the driver's seat, with the steering wheel turning (the owner,
 | upperArmM / forearmM / handM | Segment lengths (0.30 / 0.27 / 0.09 m, an adult's). Longer arms bend less at the elbow. |
 | thickness | The avatar's arm thickness times this (0.7; 0.8 read chunky across a turn). |
 | gripDeg | Where the hands hold the rim, degrees each side of the top (60: ten to two). |
-| followDeg | The hands turn with the wheel this far (60), then the rim slides through them; at 90 the left hand was over the top with the right out of sight. |
+| followDeg | The hands turn with the wheel this far, then the rim slides through them. 720: past every wheel turn, so they hold on all the way and the arms cross over (the owner: "make sure the arms follow the wheels all the way ... even if they cross over"). Checked at 180°, 270° and full lock (450°) on the Sonatta. 60 keeps the arms apart (ten to two turns only to twelve and four). |
 
 Per car (`src/shared/CarCockpits.luau`): `eyeM` (0.29 m above and 0.62 m behind the wheel's centre, lowered where the lining still filled the view: Akord 0.05, Kamri SE 0.03, Krown Vik 0.04), and `wheel` (the pieces, the pivot and the column axis, fitted from the pieces' own triangles; every column leans back 18 to 28°). Higher eye: more bonnet and roof. Further back: smaller wheel.
 
