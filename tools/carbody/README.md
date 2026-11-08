@@ -170,6 +170,62 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
    behind and in front, and add its plate spots to CarPlateMounts
    ("Plates" above) and check them front and behind, before calling it done.
 
+## Finding store cars
+Since 2026-11-07 every new car must also work in the first-person view
+(the owner: "since i want a first person view also available for players i
+need to redo the car search from ground up i think to make sure the interior
+is there and the wheel and whatnot can move", and keep "the
+triangle/vertices ... not too too much"). What a candidate needs:
+- **A cabin seen from the driver's seat:** dash, dials, seats. Store cars
+  often have seat parts but no cabin (the Land Cruiser 300 Sahara is a hollow
+  shell), so look from the seat; the seat count proves nothing.
+- **A steering wheel of its own,** so it can turn with the wheel. A-Chassis
+  cars usually carry it as `Misc.SW`. A wheel built into the cabin mesh can be
+  cut out by its islands the way badges are (`cuts` in `storecar.py`), at the
+  cost of a generated piece until it is uploaded.
+- **Left-hand drive** (Saudi roads).
+- **Triangles:** body under about 100,000 at full detail, compared with the
+  Kruzer 80's 137,884 (about 87,500 once its wheels are uploaded), the Lekzas'
+  47,070 and the Krown Vik's 31,890. Wheels do not count against this: the
+  standard simplifies them.
+
+**Scanning.** Search the store (Studio MCP `search_asset`, free models; the
+Arabic words for hajwala, هجولة, also find Saudi uploads), then:
+1. Put `storescan.luau` in a ModuleScript in ServerStorage (Edit) and call it
+   with about six ids at a time. Studio runs one script at a time, so calls
+   go one after another.
+2. Run `storescan.py` (the `rbxcache.py` venv) for each car's body and wheel
+   triangles from Studio's own mesh cache. Studio will not give a script
+   another creator's mesh (EditableMesh "no permission"), so the cache is the
+   only way to count them.
+3. Look at the survivors from outside and from the driver's seat in Studio,
+   midday light (`Lighting.ClockTime`, put back after).
+
+**Shortlist, 2026-11-07** (about 60 scanned; 16 kept their body under 160,000;
+body and wheel triangles at full detail; "own part" means the steering wheel
+is a separate part):
+
+| Store model | Asset | Body | Wheels | Steering wheel | Cabin |
+|---|---|---|---|---|---|
+| 2012 Chevrolet Tahoe LTZ | 1370195897 | 38,752 | 5,360 | own part | full dash |
+| 2006 Hyundai Sonata V6 | 9547275128 | 64,800 | (in body) | own part | photo-textured dash and dials |
+| 2008 Honda Accord | 4913850907 | 67,801 | 21,996 | own part | full dash and dials |
+| 2018 Lexus LX 570 V8 | 5882014754 | 70,042 | (in body) | own part | wood and leather, dials, screen |
+| 2017 Nissan Patrol | 8255487895 | 71,818 | 15,816 | built in | basic, dark |
+| 2012 Toyota Camry SE | 17767054086 | 73,965 | 14,460 | own part | textured dash, lit dials, screen |
+| 2022 Toyota Land Cruiser 300 | 116150803764919 | 83,089 | 12,716 | own part | full dash, flat shading |
+| 2013 Chevrolet Caprice | 106538814504056 | 86,978 | 3,360 | store page says it turns; not found by name | wood trim, dials; police box on the dash |
+| 2019 Toyota Land Cruiser VXR | 16431614375 | 94,379 | 5,596 | built in | full dash and screen |
+| 2023 Dodge Challenger SRT | 13904284505 | 133,157 | 33,060 | own part | excellent; heavy |
+| Toyota Land Cruiser 200 | 14083131046 | 146,761 | 33,024 | own part | the best cabin found; heavy |
+
+Turned down: the Land Cruiser 300 Sahara (10789549372, no cabin), the 1995
+Supra (14947487233, right-hand drive), a Camry hajwala build (14322757408,
+plain dash, the same Camry as the Kamri), the 2022 Hilux GR-S (15680293902,
+its seat part is in the wrong place; not checked by hand), and the rest for
+weight: most store Patrols, Super Safaris, LX570s, Caprices and newer Camrys
+run 160,000 to 1,000,000 triangles.
+
 ## Generated pieces and EditableMesh
 
 A generated piece is decoded into an EditableMesh on each client. That needs
