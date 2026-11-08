@@ -71,7 +71,11 @@ def write(car: str) -> list[str]:
     report = []
     for name, tri, size, counts, pos, nrm, uv, tris in pieces_of(car):
         hx, hy, hz = size[0] / 2, size[1] / 2, size[2] / 2
+        # Studio's importer splits an OBJ by groups (g), not objects (o):
+        # with o alone every piece came in merged as one mesh, "default"
+        # (2026-11-07). Both, so other tools name it too.
         lines.append(f"o {car}_{name}")
+        lines.append(f"g {car}_{name}")
         for i in range(counts[0]):
             x, y, z = struct.unpack_from("<hhh", pos, i * 6)
             # Half turn about Y: (x, z) -> (-x, -z).
@@ -116,7 +120,7 @@ def write_all(cars: list[str]):
                     v, t, n = (int(x) for x in c.split("/"))
                     corners.append(f"{v + vb}/{t + tb}/{n + nb}")
                 line = "f " + " ".join(corners)
-            elif not line.startswith("o "):
+            elif not line.startswith(("o ", "g ")):
                 continue
             out.append(line)
         vb, nb, tb = vb + nv, nb + nn, tb + nt

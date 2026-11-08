@@ -1,5 +1,6 @@
 # Akord: generated pieces for Studio's 3D Importer (tools/carbody/upload_objs.py)
 o Akord_Chrome_2
+g Akord_Chrome_2
 v -0.62168 -0.02671 -0.16900
 v -0.61800 -0.06672 -0.19162
 v -0.62214 -0.02786 -0.16046
@@ -181,6 +182,7 @@ f 46/46/46 42/42/42 41/41/41
 f 46/46/46 41/41/41 47/47/47
 f 48/48/48 47/47/47 41/41/41
 o Akord_Chrome_6
+g Akord_Chrome_6
 v -0.44983 0.05872 -0.05224
 v -0.46059 0.08362 -0.08027
 v -0.44983 0.05872 -0.08323
