@@ -77,48 +77,66 @@ function BodyBuilder.meshData(path: string): MeshData.Piece?
 end
 
 local warnedEditable = false
+local warnedBudget = false
 
-local function dataTemplate(path: string): MeshPart?
+-- Holds the generated mesh at path for one car: its template, or nil (the
+-- piece is left off). Each non-nil answer is one hold, given back by
+-- releaseData. A broken piece is remembered and not tried again; a full
+-- EditableMesh budget is not, because a slot comes free when a car goes.
+local function acquireData(path: string): MeshPart?
 	if failed[path] then
 		return nil
 	end
-	local ok, result = pcall(function()
-		local piece = BodyBuilder.meshData(path)
-		assert(piece, "no such generated mesh")
-		return MeshData.template(piece)
-	end)
+	local piece = BodyBuilder.meshData(path)
+	if not piece then
+		failed[path] = "no such generated mesh"
+		warn(`[BodyBuilder] no generated mesh {path}; the piece is left off`)
+		return nil
+	end
+	local ok, result = pcall(MeshData.acquire, piece)
 	if ok then
 		return result
 	end
-	failed[path] = tostring(result)
-	if string.find(tostring(result), "EditableMesh is not accessible", 1, true) then
+	local why = tostring(result)
+	if string.find(why, MeshData.BUDGET_ERROR, 1, true) then
+		if not warnedBudget then
+			warnedBudget = true
+			warn(
+				`[BodyBuilder] out of EditableMesh slots (8 per client) at {path}: generated pieces are left off`
+					.. " until a car goes. Upload them and give each its meshId (tools/carbody/README.md) to need none."
+			)
+		end
+		return nil
+	end
+	failed[path] = why
+	if string.find(why, "EditableMesh is not accessible", 1, true) then
 		if not warnedEditable then
 			warnedEditable = true
 			warn(
 				"[BodyBuilder] generated car meshes need EditableMesh, which this experience has off. Turn on"
 					.. " 'Allow Mesh / Image APIs' (Studio: File > Game Settings > Security; published: Creator"
-					.. " Dashboard), or import assets/cars/<car>/*.obj with the 3D Importer and give each piece"
-					.. " its meshId (RIG_SPEC.md 7). Those pieces are left off until then."
+					.. " Dashboard), or import assets/cars/<car>/upload/<Car>.obj with the 3D Importer and give each"
+					.. " piece its meshId (RIG_SPEC.md 7). Those pieces are left off until then."
 			)
 		end
 	else
-		warn(`[BodyBuilder] generated mesh {path} failed ({result}); the piece is left off`)
+		warn(`[BodyBuilder] generated mesh {path} failed ({why}); the piece is left off`)
 	end
 	return nil
 end
 
--- An uploaded asset wins over generated data: it needs no EditableMesh.
-local function template(piece: BodyPiece): MeshPart?
-	if piece.meshId then
-		return assetTemplate(piece.meshId)
+local function releaseData(path: string)
+	local piece = BodyBuilder.meshData(path)
+	if piece then
+		MeshData.release(piece)
 	end
-	return dataTemplate(piece.mesh :: string)
 end
 
--- Loads (or decodes) every mesh a car needs, up front, so building never
--- yields halfway. Asset meshes are fetched all at once: one at a time, a
--- store car's 90-odd meshes took most of a minute and the car sat there as
--- a bare rig.
+-- Loads every uploaded mesh a car needs, up front, so building never yields
+-- halfway. Asset meshes are fetched all at once: one at a time, a store car's
+-- 90-odd meshes took most of a minute and the car sat there as a bare rig.
+-- Generated pieces are made by mount, which holds them for the car's life.
+-- Returns how many pieces have a mesh ready or generated data to make one.
 function BodyBuilder.preload(entry: VehicleRig.CarEntry): number
 	local pending = 0
 	local wanted: { [number]: boolean } = {}
@@ -142,7 +160,10 @@ function BodyBuilder.preload(entry: VehicleRig.CarEntry): number
 	local n = 0
 	for _, list in { entry.body.pieces, entry.body.wheelPieces } do
 		for _, piece in list do
-			if template(piece) then
+			local ready = if piece.meshId
+				then (if assetTemplates[piece.meshId] then true else false)
+				else piece.mesh ~= nil and not failed[piece.mesh :: string] and BodyBuilder.meshData(piece.mesh :: string) ~= nil
+			if ready then
 				n += 1
 			end
 		end
@@ -152,9 +173,8 @@ end
 
 local LAMP_OFF_TRANSPARENCY = 0.65 -- unlit: a clear lens, the housing shows through
 
-local function makePiece(piece: BodyPiece, body: VehicleRig.BodySpec, mps: number, k: number, name: string): BasePart
+local function makePiece(piece: BodyPiece, t: MeshPart?, body: VehicleRig.BodySpec, mps: number, k: number, name: string): BasePart
 	local paint = body.paint
-	local t = template(piece)
 	local part: BasePart
 	if t then
 		local m = t:Clone()
@@ -224,25 +244,74 @@ function BodyBuilder.mount(model: Model, cfg: Config, entry: VehicleRig.CarEntry
 	local k = VehicleRig.scaleOf(entry)
 	local folder = Instance.new("Folder")
 	folder.Name = VehicleRig.BODY
+	-- The generated pieces this car holds (MeshData.acquire), one hold per
+	-- path, given back when the car goes so its EditableMesh slots come free.
+	local held: { [string]: MeshPart } = {}
+	local asked: { [string]: boolean } = {}
+	local function templateFor(piece: BodyPiece): MeshPart?
+		if piece.meshId then
+			return assetTemplate(piece.meshId)
+		end
+		local path = piece.mesh :: string
+		if not asked[path] then
+			asked[path] = true
+			local t = acquireData(path)
+			if t then
+				held[path] = t
+			end
+		end
+		return held[path]
+	end
 	for _, piece in entry.body.pieces do
-		-- A generated piece that cannot load (EditableMesh off, no uploaded
-		-- meshId yet) is left off: a stand-in box the size of a whole-car
-		-- chrome piece covered the Batrol (the owner, 2026-09-25: no chrome
-		-- until the upload rather than a box).
-		if not piece.meshId and piece.mesh and not template(piece) then
+		-- A generated piece that cannot load (EditableMesh off or out of
+		-- slots, no uploaded meshId yet) is left off: a stand-in box the size
+		-- of a whole-car chrome piece covered the Batrol (the owner,
+		-- 2026-09-25: no chrome until the upload rather than a box).
+		local t = templateFor(piece)
+		if not piece.meshId and piece.mesh and not t then
 			continue
 		end
-		local part = makePiece(piece, entry.body, mps, k, piece.name)
+		local part = makePiece(piece, t, entry.body, mps, k, piece.name)
 		mount(part, handles.bodyMount, VehicleRig.pieceCFrame(piece, mps, false, k), folder)
 	end
 	for _, w in VehicleRig.WHEELS do
 		local hub = handles.hubs[w.name]
 		for _, piece in entry.body.wheelPieces do
-			if not piece.meshId and piece.mesh and not template(piece) then
+			local t = templateFor(piece)
+			if not piece.meshId and piece.mesh and not t then
 				continue
 			end
-			local part = makePiece(piece, entry.body, mps, k, `{piece.name}_{w.name}`)
+			local part = makePiece(piece, t, entry.body, mps, k, `{piece.name}_{w.name}`)
 			mount(part, hub.mount, VehicleRig.pieceCFrame(piece, mps, not w.left, k), folder)
+		end
+	end
+	if next(held) then
+		local released = false
+		local function release()
+			if released then
+				return
+			end
+			released = true
+			for path in held do
+				releaseData(path)
+			end
+		end
+		-- A car swap destroys the old model; a body rebuilt in place drops its
+		-- folder. Either way nothing shows these clones any more.
+		model.Destroying:Connect(release)
+		folder.Destroying:Connect(release)
+		model.AncestryChanged:Connect(function()
+			if not model:IsDescendantOf(game) then
+				release()
+			end
+		end)
+		folder.AncestryChanged:Connect(function()
+			if not folder:IsDescendantOf(model) then
+				release()
+			end
+		end)
+		if not model.Parent then
+			release() -- the car went while its pieces were being made
 		end
 	end
 	-- Plates: a thin quad on each plate mount with the texture on its outer

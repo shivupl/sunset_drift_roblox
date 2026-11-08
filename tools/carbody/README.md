@@ -253,12 +253,18 @@ is needed.
 
 A client can hold only 8 EditableMeshes at once, whatever their size
 (BEHAVIOURS.md, measured 2026-09-28), and a MeshPart made from one goes blank
-when it is destroyed, so every generated body piece's template keeps its slot
-for as long as the client holds it. The garage's modelled exhaust tips
-(`tools/cosmetics`, the same buffers plus an optional per-position `colors`
-buffer that `MeshData` reads) share the 8, but count their users and free a
-style's slot when no car wears it, and back off below a reserve so bodies
-come first. Uploading a car's pieces frees its slots.
+when it is destroyed. So a generated piece's template (`MeshData.acquire`)
+holds its slot while any car on that client shows it, and the last car to let
+go frees it (`MeshData.release`, from `BodyBuilder.mount`). One car fits (the
+most is the Kamri SE's 6), but a server with a few generated-piece cars in
+view runs out, and the pieces that missed stay off those cars (one warning;
+the next car tries again). Until 2026-11-07 every template was kept for the
+session, and the fifth new store car spawned in a row came up without its
+tail lamps and grille. The garage's modelled exhaust tips (`tools/cosmetics`,
+the same buffers plus an optional per-position `colors` buffer that `MeshData`
+reads) share the 8, count their users the same way, and back off below a
+reserve so bodies come first. **Uploading a car's pieces is the real fix**: an
+uploaded mesh takes no slot at all.
 
 ## Cars
 

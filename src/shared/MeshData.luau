@@ -2,8 +2,9 @@
 -- Turns a generated mesh module (tools/carbody, src/shared/CarMeshes) into
 -- MeshParts. Roblox cannot import a mesh from a script, so a car body made
 -- in the repo ships as data: quantised vertex, normal, UV and triangle
--- buffers in base64. Each client decodes them once into an EditableMesh and
--- makes one template MeshPart per mesh; every car clones the template.
+-- buffers in base64. Each client decodes them into an EditableMesh and makes
+-- one template MeshPart per mesh while any car shows it; every car clones the
+-- template (MeshData.acquire / release).
 --
 -- EditableMesh does not replicate, which suits a body: it is visual only and
 -- every client builds its own (BodyBuilder). In a published game it needs
@@ -68,7 +69,7 @@ end
 -- bounding box.
 function MeshData.editable(piece: Piece): EditableMesh
 	local em = AssetService:CreateEditableMesh()
-	assert(em, "[MeshData] editable mesh budget exhausted")
+	assert(em, `[MeshData] {MeshData.BUDGET_ERROR}`)
 	-- A client holds only 8 EditableMeshes (BEHAVIOURS.md): if filling this
 	-- one fails (a bad buffer, an engine limit), destroy it before passing the
 	-- error on, or its slot is gone for the session (garage round 3 final
@@ -131,22 +132,105 @@ function MeshData.editable(piece: Piece): EditableMesh
 	return em
 end
 
-local templates: { [Piece]: MeshPart } = {}
+-- The message a full budget fails with: callers tell it apart from a broken
+-- piece, because a slot can come free again (MeshData.release) and the piece
+-- is worth asking for on the next car.
+MeshData.BUDGET_ERROR = "editable mesh budget exhausted"
 
--- One template MeshPart per piece, made the first time it is asked for.
--- Clone it; do not parent it.
-function MeshData.template(piece: Piece): MeshPart
+type Template = {
+	part: MeshPart?,
+	em: EditableMesh?,
+	users: number,
+	pending: boolean,
+	done: BindableEvent,
+	err: string?,
+}
+local templates: { [Piece]: Template } = {}
+
+local function destroyTemplate(piece: Piece, t: Template)
+	if templates[piece] == t then
+		templates[piece] = nil
+	end
+	if t.part then
+		t.part:Destroy()
+	end
+	if t.em then
+		t.em:Destroy()
+	end
+end
+
+-- One template MeshPart per piece, shared by every car showing it, made the
+-- first time it is asked for. Clone it; do not parent it. Each acquire must
+-- be matched by one release once nothing shows a clone any more: a template
+-- holds one of the client's 8 EditableMesh slots (BEHAVIOURS.md), and a
+-- MeshPart made from an EditableMesh goes blank when it is destroyed, so the
+-- slot is only given back when the last user lets go (2026-11-07: with every
+-- template kept for the session, the fifth new store car in a row came up
+-- without its tail lamps and grille). Errors when it cannot be made; an
+-- error containing BUDGET_ERROR means no slot was free.
+--
+-- Making one yields (CreateMeshPartAsync) and two cars can ask at once, so a
+-- build is single-flight, as the garage's exhaust tips are (CarCosmetics):
+-- later askers count themselves on the pending entry and wait for it.
+function MeshData.acquire(piece: Piece): MeshPart
 	local t = templates[piece]
 	if t then
-		return t
+		t.users += 1
+		if t.pending then
+			t.done.Event:Wait()
+		end
+		if t.part then
+			return t.part
+		end
+		t.users -= 1 -- the build this caller waited on failed
+		error(t.err or "template failed", 0)
 	end
-	local em = MeshData.editable(piece)
-	local part = AssetService:CreateMeshPartAsync(Content.fromObject(em), {
-		CollisionFidelity = Enum.CollisionFidelity.Box,
-		RenderFidelity = Enum.RenderFidelity.Precise,
-	})
-	templates[piece] = part
-	return part
+	local entry: Template = { part = nil, em = nil, users = 1, pending = true, done = Instance.new("BindableEvent"), err = nil }
+	templates[piece] = entry
+	local ok, err = pcall(function()
+		local em = MeshData.editable(piece)
+		entry.em = em
+		entry.part = AssetService:CreateMeshPartAsync(Content.fromObject(em), {
+			CollisionFidelity = Enum.CollisionFidelity.Box,
+			RenderFidelity = Enum.RenderFidelity.Precise,
+		})
+	end)
+	entry.pending = false
+	if not ok then
+		entry.err = tostring(err)
+		entry.part = nil
+		destroyTemplate(piece, entry) -- a failed build must not keep its slot
+		entry.done:Fire()
+		error(entry.err, 0)
+	end
+	entry.done:Fire()
+	if entry.users <= 0 then
+		-- Everyone who asked let go while it was being made.
+		destroyTemplate(piece, entry)
+		error("released while it was being made", 0)
+	end
+	return entry.part :: MeshPart
+end
+
+-- Lets go of one acquire. The last one frees the template and its slot.
+function MeshData.release(piece: Piece)
+	local t = templates[piece]
+	if not t then
+		return
+	end
+	t.users -= 1
+	if t.users <= 0 and not t.pending then
+		destroyTemplate(piece, t)
+	end
+end
+
+-- How many templates are alive: one EditableMesh slot each.
+function MeshData.liveTemplates(): number
+	local n = 0
+	for _ in templates do
+		n += 1
+	end
+	return n
 end
 
 return MeshData
