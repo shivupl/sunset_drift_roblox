@@ -173,6 +173,32 @@ def role_krownvikfleet(p):
     return "Trim", {}
 
 
+def role_tahu(p):
+    n, i, tr, col, mat = p["n"], p["i"], p["tr"], tuple(p["col"]), p["mat"]
+    # Its lamps are the kit's own lamp parts (Lights): F is the outer headlamp
+    # and the strip under it, 99 the inner headlamp, 97 the fog lamps; the
+    # front ambers (FLI, FRI) and the amber side markers (90) are
+    # indicators; at the back R is the upper red section, RLI and RRI the
+    # lower, 53 the high brake light, RV the white reverse band between.
+    lamp = {121: "HeadLamps", 99: "HeadLamps", 97: "FogLamps", 122: "Indicators", 123: "Indicators", 90: "Indicators",
+            126: "TailLamps", 124: "TailLamps", 127: "TailLamps", 53: "TailLamps", 125: "ReverseLamps"}
+    if i in lamp:
+        return lamp[i], {"castShadow": False}
+    if p["p"] == "SW":
+        return "SteeringWheel", {"castShadow": False}
+    if n == "Color":
+        return "Body", {"paint": True}
+    if 0 < tr < 1:  # windows, and the red covers over the tail lamps
+        return "Glass", {"castShadow": False}
+    if col == (49, 49, 49) or (col == (49, 49, 4) and mat == "Sand"):
+        return "Interior", {"castShadow": False}
+    if col in ((202, 203, 209), (231, 231, 236)) or (col == (163, 162, 165) and mat == "Metal"):
+        return "Chrome", {}
+    if i == 96:  # the frame and floor pan
+        return "Underbody", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -297,6 +323,37 @@ CARS = {
         },
         "role": role_krownvikfleet,
         "paint": (240, 240, 236),
+    },
+    "tahu": {
+        "title": "The late-2000s American full-size SUV (store 1370195897), with its interior",
+        "wheelbaseM": 2.946,
+        # The engine under the bonnet (never seen) and the kit's colliders
+        # and seat markers.
+        "dropGroups": {"ENGINE", "COLLIDERS", "GS"},
+        # The wheels (the front-left becomes wheelPieces); the maker's bowtie
+        # on the grille (116) and on the tailgate (46); the model and trim
+        # names across the tailgate (51); two invisible parts (140, 144).
+        "dropParts": {58, 59, 61, 62, 64, 65, 67, 68, 116, 46, 51, 140, 144},
+        # The rim's texture carries the bowtie on the centre cap: plain
+        # metal instead (wheelLook).
+        "dropTextures": set(),
+        "tyres": [58, 61, 64, 67],
+        "wheelParts": {58: "Tyre", 59: "Rim"},
+        "wheelLook": {59: ((200, 202, 206), "Metal")},
+        "frontPart": 115,  # the front bumper
+        "cuts": {
+            # The front doors' chrome (mirror caps, the moulding strip) carries
+            # the model name in raised letters above the strip: six islands
+            # each, cut. Boxes in each mesh's space.
+            20: {"source": "chromel_source.obj", "badges": [((-0.1, -3.2, 3.5), (0.2, -2.7, 6.6))]},
+            34: {"source": "chromer_source.obj", "badges": [((-0.3, -3.5, 3.5), (-0.05, -3.1, 6.6))]},
+            # The bowtie in the middle of the airbag, painted into the wheel's
+            # texture (u 0.16-0.30, v 0.22-0.375, the ten hub faces): they
+            # sample a plain spot of the pad.
+            56: {"source": "steering_source.obj", "uvFlatten": [((0.16, 0.22, 0.30, 0.375), (0.166, 0.615))]},
+        },
+        "role": role_tahu,
+        "paint": (236, 236, 232),
     },
     "kruzer100": {
         "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
@@ -609,6 +666,10 @@ def build(key):
                 R = np.diag([-1.0, 1.0, -1.0]) @ R
             pos = B.T @ (np.array(p["cf"][:3], dtype=float) - hub) * mps
             f = [f'name = "{wname}"', f"meshId = {p['mesh']}"]
+            look = car.get("wheelLook", {}).get(i)
+            if look:
+                # A wheel piece made plain (its texture carried a badge).
+                p = dict(p, col=look[0], mat=look[1], tex=None)
             if p.get("tex") and p["tex"] not in car["dropTextures"]:
                 f.append(f"textureId = {p['tex']}")
             f.append(f"color = {colour(p['col'])}")

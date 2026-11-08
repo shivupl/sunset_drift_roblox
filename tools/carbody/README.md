@@ -21,6 +21,7 @@ code.
 | `Trim` | Black and grey plastic, grilles, lamp housings | the store's colour |
 | `Underbody` | Floor, arch liners, suspension parts seen through the arches | the store's colour |
 | `Interior` | The cabin, kept whole (the owner's rule) | `castShadow = false` |
+| `SteeringWheel` | The steering wheel, a piece of its own so the first-person view can turn it (2026-11-07). Cut out of the cabin mesh where the store model has it built in | `castShadow = false` |
 | `Tyre`, `Rim`, `Rim_Face` | Wheel pieces, one left wheel mirrored to all four | tyre `Rubber` |
 
 **Debadging.** Every maker's logo and every piece of model lettering goes:
@@ -131,7 +132,11 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
 1. Render the model in Studio (Edit, loaded with `game:GetObjects`, never
    inserted into the place) and dump every MeshPart to
    `assets/cars/<car>/parts.json`: mesh id, texture, colour, material,
-   transparency, Size, CFrame, MeshSize.
+   transparency, Size, CFrame, MeshSize. `storedump.luau` (a ModuleScript in
+   Studio) prints them to Studio's log and leaves the model at the show spot
+   with each part's index as its `DumpIndex` attribute (to colour or hide
+   parts by index); `storedump.py <car>` writes parts.json with each mesh's
+   triangles from the cache.
 2. Look for badges: colour one part at a time and take screen captures.
 3. If a badge is inside a mesh, get that mesh from Studio's asset cache:
    `rbxcache.py <Size x y z>` finds it by proportions. Save it as
@@ -159,6 +164,8 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
    lettering is often a thin strip of its own, or in a shared texture.
    Heavy meshes that must stay (wheels) are simplified with `simplify.py`
    into OBJs for upload; until then the store mesh is used.
+   A wheel piece whose texture carries a badge (a logo on the centre cap)
+   is drawn plain instead: `wheelLook` gives its colour and material.
 5. Read its scripts (above) and take the engine set, horn and ignition ids
    into the entry's `tuning.effects`. Work `refRpm` out from the kit's own
    pitch rule. Check each id loads in Play: store sounds can be private
@@ -169,6 +176,13 @@ the plate from the car's `Plate` attribute (`src/client/CarPlates.luau`,
    (`wheelFlip` in `storecar.py`). Check the lamps lit, braking and reversing from
    behind and in front, and add its plate spots to CarPlateMounts
    ("Plates" above) and check them front and behind, before calling it done.
+7. The garage spots (CarCosmeticMounts: windows, the windscreen strip,
+   the exhaust). `carprobe.py <car>` measures the body in car space with
+   rays from the store meshes: `rear x y` for the bumper face over the tips,
+   `up x z y0` for the underside over the pipe's end (riseM), `near` for the
+   pieces round a point. Then `tools/cosmetics/strip_shapes.py --only <car>`
+   (with the windscreen's MeshSize and faces in glass_meshes.json) fits the
+   strip and leaves the other cars' strips alone.
 
 ## Finding store cars
 Since 2026-11-07 every new car must also work in the first-person view
@@ -256,6 +270,7 @@ come first. Uploading a car's pieces frees its slots.
 | Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (a generated piece, `Chrome_3`, until its OBJ is uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles. Plate spots by eye (boot recess, front bumper band) |
 | Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles. Plate spots exact (`--spots`, the store plate parts) |
 | Krown Vik Fleet (`krownvikfleet`) | 14407499990 | `storecar.py` | The fleet-trim Crown Vic (black grille, steel wheels); the owner asked for both. Store meshes by id, interior kept; grille and boot badges and both plates are parts of their own and dropped; the airbag's oval painted out (`uvFlatten`); the engine under the bonnet dropped. Its lamps are parts of their own: headlamp, lens, corner parking lamps and tinted covers light as the whole front lamp. No scripts or sounds in the model: the Krown Vik's engine, startup and horn. Its left rims and caps face into the car in the store model, so they are turned to face out (`wheelFlip`). Wheel SurfaceAppearances do not carry over. 27,355 to 27,017 triangles. Plate spots exact (`--spots`, the store plate brackets) |
+| Tahu (`tahu`) | 1370195897 | `storecar.py` | Store meshes by id, interior kept; engine bay dropped; grille and tailgate bowties and the tailgate lettering are parts of their own and dropped; the model name over each front door's moulding cut out of the door chrome (generated `Chrome_3`, `Chrome_5`), the airbag's bowtie painted out (`uvFlatten`, generated `SteeringWheel`); the rims' texture (a bowtie on the cap) left off for plain metal (`wheelLook`). Its lamps are the kit's own lamp parts (F, FLI/FRI, R, RLI/RRI, RV, the fog and high brake lamps). Its own engine loop (refRpm 6936 from its kit's pitch rule), startup and horn. 44,112 to 31,321 triangles. Plate spots exact (`--spots`, the store plate parts) |
 
 The pack cars (Hatch `hatch`, Pickup `pickup`, Cruiser `cruiser`) are older
 single-mesh bodies, not store cars, so they are not in the table. Their plate

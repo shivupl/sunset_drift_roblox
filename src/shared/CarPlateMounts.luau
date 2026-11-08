@@ -18,6 +18,12 @@ export type Mounts = { front: Spot?, rear: Spot? }
 local CarPlateMounts = {}
 
 CarPlateMounts.cars = {
+	-- Store plate parts 120 (front, on the bumper below the grille) and 54
+	-- (rear, the tailgate recess), storecar.py --spots.
+	tahu = {
+		front = { posM = { 0, 0.39, -2.319 }, format = "short", tiltDeg = -13.8 },
+		rear = { posM = { 0, 0.931, 2.485 }, format = "short" },
+	},
 	-- Store plate parts 16 (front) and 82 (rear), storecar.py --spots.
 	krownvik = {
 		front = { posM = { -0.007, 0.421, -2.549 }, format = "short" },

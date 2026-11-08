@@ -353,6 +353,39 @@ CarCosmeticMounts.cars = {
 			riseM = 0.3,
 		},
 	},
+	tahu = {
+		-- Windows: Glass_8 the windscreen; Glass to Glass_4 the doors,
+		-- Glass_7 and Glass_9 the rear quarters (two layers), Glass_5 and
+		-- Glass_6 the tailgate (two layers). Glass_10 is the red cover over
+		-- the tail lamps, Glass_11 the faint shade under the windows.
+		windows = { side = { "Glass", "Glass_2", "Glass_3", "Glass_4", "Glass_5", "Glass_6", "Glass_7", "Glass_9" }, screen = { "Glass_8" } },
+		-- Strip 6 cm under the glass's top edge: the edge dips about 5 cm at
+		-- the middle, under the header the strip generator fits across it
+		-- (2 and 4 cm left the band above the glass there).
+		windscreen = { piece = "Glass_8", side = "inside", heightM = 0.12, topGapM = 0.06, ends = "mesh" },
+		-- Exhaust: its own single pipe (Chrome_9) ends under the right of the
+		-- rear bumper at (0.71, 0.25, 2.21), turned out to the side and down
+		-- (its last 20 cm run 0.84 out, 0.25 down, 0.48 back); dir here leans
+		-- it back to 0.81 so its flame points out the back like every car's.
+		-- Measured with carprobe.py from its store meshes, 2026-11-07.
+		exhaust = {
+			stock = { { posM = { 0.71, 0.25, 2.21 }, dir = { 0.55, -0.2, 0.81 } } },
+			-- Tips over it and its mirror (spread 1.42: a single tip lands on
+			-- its x), tops at 0.31 m under the bumper's lower edge (0.32 m).
+			-- The bumper face above slopes back from 2.41 m (0.33 m up) to
+			-- 2.47 m (0.37 m): bumperZ is the furthest back, tips 3 cm past.
+			-- The run is 0.25 m: its own pipe sits in line with the rear tyre
+			-- (x 0.71, the tyre's inner face 0.68), so the riser must end
+			-- behind it (0.35 m put the bend into it).
+			tips = { posM = { 0, 0.22, 2.5 }, spreadM = 1.42, pipeLengthM = 0.25 },
+			-- Quad pairs at ±0.61, so the outer right tip sits over its pipe.
+			quadSpreadM = 1.22,
+			bumperZ = 2.47,
+			-- riseM: the floor pan (Underbody) is 0.354 m up over the run's
+			-- end (z 2.09, x ±0.71), 13 cm over the pipe's centre.
+			riseM = 0.12,
+		},
+	},
 } :: { [string]: Mounts }
 
 -- The aftermarket tips' centre x, metres, for n tips (0, 1, 2 or 4): a twin

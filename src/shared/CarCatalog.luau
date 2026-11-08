@@ -1115,6 +1115,157 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 	},
+	-- THE TAHU. A late-2000s American full-size SUV from the Creator Store
+	-- (asset 1370195897, an A-Chassis car), brought to the store-car standard
+	-- (tools/carbody/README.md) by storecar.py tahu: store meshes by id,
+	-- interior kept, 31,321 triangles of the store model's 44,112. Dropped:
+	-- the engine under the bonnet, the maker's bowtie on the grille and the
+	-- tailgate, the model and trim names across the tailgate; the model name
+	-- above each front door's moulding is cut out of the door chrome
+	-- (generated Chrome_3 and Chrome_5), the bowtie on the airbag painted out
+	-- (generated SteeringWheel), and the rims' texture (a bowtie on the cap)
+	-- left off for plain metal. The steering wheel is a piece of its own for
+	-- the first-person view (the owner, 2026-11-07: "the wheel and whatnot
+	-- can move"). Its own lamp parts, horn, startup and engine loop.
+	--
+	-- Placed at 0.2522 m a model stud, so its wheel centres sit on the real
+	-- 2.946 m wheelbase: 5.08 m long, 1.60 m track, 0.78 m tyres.
+	tahu = {
+		displayName = "Tahu",
+		blurb = "The big family hauler. Wide, tall and smooth across the sand.",
+		order = 10,
+		scale = 1.2,
+		rig = {
+			massKg = 2400,
+			-- Nose at -2.40 m, tail at +2.68 m.
+			collisionSizeM = { 1.95, 1.25, 4.9 },
+			centerOfMassM = { 0, -0.25, -0.1 },
+			shellMassFraction = 0.55,
+			wheelbaseM = 2.946,
+			trackWidthM = 1.5963,
+			wheelRadiusM = 0.3885,
+			wheelWidthM = 0.2433,
+			-- The store model's driver seat (0.43 m left of centre), 0.55 m off
+			-- the ground so a seated head clears the 1.82 m roof.
+			seatM = { -0.43, -0.46, -0.18 },
+		},
+		body = {
+			paint = Color3.fromRGB(236, 236, 232),
+			pieces = {
+				{ name = "Interior", meshId = 1225124666, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.2183, 1.3735, 1.009 }, offsetM = { -0.7057, 1.002, 0.7504 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim", meshId = 1225124779, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.1796, 0.5096, 0.8153 }, offsetM = { -0.7328, 1.3848, 0.7214 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_2", meshId = 1225124448, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.354, 1.3736, 1.0126 }, offsetM = { -0.7725, 1.0019, 0.7521 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body", meshId = 1225124027, paint = true, sizeM = { 0.3542, 1.3735, 1.0126 }, offsetM = { -0.7726, 1.002, 0.7521 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome", meshId = 1225124544, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.0511, 0.3456, 0.8684 }, offsetM = { -0.9054, 0.8436, 0.7444 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass", meshId = 1225124141, textureId = 1225156333, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.3, castShadow = false, sizeM = { 0.1637, 0.5094, 0.8545 }, offsetM = { -0.7423, 1.3643, 0.7372 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_2", meshId = 1225121440, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.6, castShadow = false, sizeM = { 0.175, 0.5211, 1.0962 }, offsetM = { -0.7395, 1.3426, -0.3472 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_2", meshId = 1225122259, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.2338, 1.3696, 1.2013 }, offsetM = { -0.7122, 0.9872, -0.3528 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_3", meshId = 1225121118, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.4643, 0.5023, 1.0244 }, offsetM = { -0.8752, 1.3571, -0.3137 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_4", meshId = 1225120668, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 0.2498, 0.1502, 0.0772 }, offsetM = { -0.9699, 1.2077, -0.6601 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_5", meshId = 1225120840, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.3323, 1.3697, 1.2674 }, offsetM = { -0.7615, 0.9871, -0.3621 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_2", meshId = 1225120054, paint = true, sizeM = { 0.3412, 1.3697, 1.2674 }, offsetM = { -0.7659, 0.9871, -0.3621 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_2", meshId = 1225120354, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.0312, 0.0509, 0.241 }, offsetM = { -0.8883, 0.9774, 0.1163 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_3", mesh = "Tahu/Chrome_3", color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.3783, 0.6432, 1.1581 }, offsetM = { -0.917, 0.9817, -0.3206 } },
+				{ name = "Interior_3", meshId = 1225126108, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.547, 0.2011, 1.1549 }, offsetM = { -0.0032, 1.0685, -1.7025 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_3", meshId = 1225125948, paint = true, sizeM = { 1.547, 0.2011, 1.1549 }, offsetM = { -0.0032, 1.0685, -1.7025 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_3", meshId = 1225122881, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.6, castShadow = false, sizeM = { 0.1701, 0.5242, 1.0962 }, offsetM = { 0.7374, 1.3452, -0.3472 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_4", meshId = 1225123512, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.1762, 0.8248, 1.203 }, offsetM = { 0.7335, 0.7149, -0.3502 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_6", meshId = 1225123213, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.4645, 0.5023, 1.0244 }, offsetM = { 0.8675, 1.3572, -0.3136 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_7", meshId = 1225123086, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 0.2497, 0.1587, 0.0772 }, offsetM = { 0.9623, 1.212, -0.6601 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_8", meshId = 1225123362, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.3329, 1.3696, 1.2674 }, offsetM = { 0.7539, 0.9872, -0.3621 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_4", meshId = 1225122783, paint = true, sizeM = { 0.3564, 1.3696, 1.2674 }, offsetM = { 0.7657, 0.9872, -0.3621 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_4", meshId = 1225123706, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.0312, 0.0509, 0.2411 }, offsetM = { 0.8807, 0.9775, 0.1164 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_5", mesh = "Tahu/Chrome_5", color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.4022, 0.7083, 1.182 }, offsetM = { 0.8975, 1.0177, -0.3215 } },
+				{ name = "Interior_5", meshId = 1225170657, textureId = 1225159452, color = Color3.fromRGB(49, 49, 4), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.2309, 0.5779, 1.1969 }, offsetM = { 0.7046, 1.3728, -0.3626 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_6", meshId = 1225125645, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.2183, 1.3735, 1.009 }, offsetM = { 0.6968, 1.002, 0.7504 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_9", meshId = 1225125557, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.1798, 0.5096, 0.8154 }, offsetM = { 0.7249, 1.3848, 0.7215 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_6", meshId = 1225125730, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.0479, 0.3353, 0.8811 }, offsetM = { 0.896, 0.8487, 0.7381 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_10", meshId = 1225125408, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.3541, 1.3735, 1.0127 }, offsetM = { 0.7647, 1.002, 0.7522 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_5", meshId = 1225125303, paint = true, sizeM = { 0.3543, 1.3735, 1.0127 }, offsetM = { 0.7648, 1.002, 0.7522 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_4", meshId = 1225125203, textureId = 1225156333, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.3, castShadow = false, sizeM = { 0.1638, 0.5094, 0.8545 }, offsetM = { 0.7274, 1.3663, 0.7373 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_7", meshId = 1225129015, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.5232, 0.561, 0.1538 }, offsetM = { -0.0033, 0.9289, 2.4253 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_11", meshId = 1225128872, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 0.5504, 0.1116, 0.0904 }, offsetM = { -0.0108, 1.2117, 2.5037 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_5", meshId = 1225128582, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.1, castShadow = false, sizeM = { 1.5151, 0.46, 0.3482 }, offsetM = { -0.003, 1.4309, 2.3199 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_6", meshId = 1225129242, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.5, castShadow = false, sizeM = { 1.5151, 0.46, 0.3482 }, offsetM = { -0.003, 1.4309, 2.3199 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_6", meshId = 1225128366, paint = true, sizeM = { 1.5232, 1.0429, 0.4211 }, offsetM = { -0.0033, 1.1688, 2.3356 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "TailLamps", meshId = 1225126758, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.5346, 0.0325, 0.0376 }, offsetM = { -0.0038, 1.652, 2.2326 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "SteeringWheel", mesh = "Tahu/SteeringWheel", textureId = 1225158869, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 0.3982, 0.3599, 0.1937 }, offsetM = { -0.4043, 1.1295, -0.6711 } },
+				{ name = "Interior_8", meshId = 1225118070, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.1721, 1.0418, 0.6367 }, offsetM = { 0.0055, 0.9659, 1.6457 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_12", meshId = 1225139641, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 1.8504, 0.9249, 0.8057 }, offsetM = { 0.0126, 0.7415, 2.2632 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_7", meshId = 1225114685, textureId = 1225156333, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.1, castShadow = false, sizeM = { 1.691, 0.4571, 1.1178 }, offsetM = { -0.0032, 1.417, 1.7355 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_9", meshId = 1225118070, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.3883, 1.0418, 0.889 }, offsetM = { -0.0125, 0.9553, 0.7809 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_13", meshId = 1225139502, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.7403, 0.4177, 0.1683 }, offsetM = { -0.0016, 0.9613, 2.3718 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_14", meshId = 1225115831, color = Color3.fromRGB(0, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.4821, 0.4607, 0.7446 }, offsetM = { -0.0029, 1.4018, -0.765 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_10", meshId = 1225117078, textureId = 1225162571, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.5239, 0.9104, 1.3282 }, offsetM = { -0.0207, 0.7844, -0.4569 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_7", meshId = 1225137000, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 1.5157, 0.0203, 0.1038 }, offsetM = { -0.0081, 0.6447, 2.6154 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_8", meshId = 1225114166, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.5, castShadow = false, sizeM = { 1.3686, 0.4016, 0.6173 }, offsetM = { -0.0029, 1.4107, -0.7463 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_15", meshId = 1225116638, textureId = 1225159452, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 1.6758, 1.3541, 3.5846 }, offsetM = { -0.0703, 0.9738, 0.8454 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_9", meshId = 1225114943, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.6, castShadow = false, sizeM = { 1.691, 0.4571, 1.1178 }, offsetM = { -0.0032, 1.417, 1.7355 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_11", meshId = 1225130226, textureId = 1225159452, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.Sand, castShadow = false, sizeM = { 1.8826, 1.3785, 3.6175 }, offsetM = { -0.0031, 0.9978, 0.5814 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_16", meshId = 1225112574, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Plastic, sizeM = { 1.1538, 0.1345, 1.7175 }, offsetM = { -0.0008, 1.7381, 1.1988 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_10", meshId = 1225139189, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, transparency = 0.6, castShadow = false, sizeM = { 1.7824, 0.4611, 0.1804 }, offsetM = { -0.004, 0.9765, 2.3803 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_7", meshId = 1225114513, paint = true, sizeM = { 1.913, 1.4913, 4.7909 }, offsetM = { -0.0031, 1.0004, 0.278 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_17", meshId = 1225136025, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 1.7307, 0.3453, 0.0867 }, offsetM = { -0.0016, 0.9947, 2.3316 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_18", meshId = 1225115671, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Sand, sizeM = { 1.913, 1.4104, 3.683 }, offsetM = { -0.0031, 0.9641, 0.6145 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Glass_11", meshId = 1225137226, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, transparency = 0.6, castShadow = false, sizeM = { 1.7222, 0.6137, 4.7116 }, offsetM = { -0.004, 0.7055, 0.1175 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_8", meshId = 1225112827, color = Color3.fromRGB(231, 231, 236), material = Enum.Material.Metal, sizeM = { 0.9426, 0.0348, 1.1786 }, offsetM = { 0.0002, 1.7877, 1.1776 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_19", meshId = 1225138625, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.7398, 0.0616, 0.0897 }, offsetM = { -0.0016, 0.7803, 2.3382 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Indicators", meshId = 1225138906, color = Color3.fromRGB(226, 155, 64), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.639, 0.2035, 0.1011 }, offsetM = { -0.0031, 0.8576, -1.9833 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_20", meshId = 1225113509, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Sand, sizeM = { 0.1759, 0.07, 0.0795 }, offsetM = { 0.6784, 0.2503, 2.1952 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_9", meshId = 1225113233, textureId = 1225177609, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.6057, 0.1826, 1.234 }, offsetM = { 0.4635, 0.2995, 1.6173 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_21", meshId = 1225116408, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 1.5952, 1.2978, 3.5882 }, offsetM = { -0.0029, 0.9627, 0.5812 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Interior_12", meshId = 1225138056, color = Color3.fromRGB(49, 49, 49), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6614, 0.2702, 0.3235 }, offsetM = { -0.0031, 0.8542, -2.079 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_10", meshId = 1225113792, textureId = 1225177609, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.Metal, sizeM = { 1.5833, 0.7556, 3.3067 }, offsetM = { -0.0052, 0.5636, 0.1268 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Underbody", meshId = 1225115494, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Metal, sizeM = { 1.7451, 0.0625, 4.6384 }, offsetM = { -0.0021, 0.3339, 0.0976 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "FogLamps", meshId = 1225137896, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.5163, 0.0912, 0.0286 }, offsetM = { -0.0015, 0.4168, -2.1011 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_22", meshId = 1225133321, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.SmoothPlastic, sizeM = { 1.5195, 0.2672, 0.2101 }, offsetM = { -0.0031, 1.0127, -1.2544 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "HeadLamps", meshId = 1225138287, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.3156, 0.1106, 0.0155 }, offsetM = { -0.0031, 0.8812, -2.1071 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_23", meshId = 1197442933, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Plastic, sizeM = { 0.1736, 0.0601, 0.0671 }, offsetM = { -0.0103, 1.4938, -0.442 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_24", meshId = 1225112280, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Plastic, sizeM = { 1.2322, 0.0689, 0.3581 }, offsetM = { -0.0032, 0.9974, -2.0894 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_25", meshId = 1225110341, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Sand, sizeM = { 1.7459, 0.7138, 0.3446 }, offsetM = { 0.0003, 0.6422, -1.9632 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_11", meshId = 1225111872, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 1.0484, 0.3013, 0.1134 }, offsetM = { -0.0032, 0.8297, -2.2587 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Body_8", meshId = 1225110995, paint = true, sizeM = { 1.7571, 0.7135, 0.6034 }, offsetM = { 0.0003, 0.6405, -2.0926 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Chrome_12", meshId = 1225110825, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Metal, sizeM = { 1.2201, 0.0294, 0.1673 }, offsetM = { -0.0032, 0.992, -2.1087 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_26", meshId = 1225111350, color = Color3.fromRGB(32, 32, 32), material = Enum.Material.Sand, sizeM = { 1.5634, 0.7477, 0.4109 }, offsetM = { -0.0032, 0.6579, -2.0653 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Trim_27", meshId = 1043179032, textureId = 1225179077, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Sand, sizeM = { 1.106, 0.2816, 0.1025 }, offsetM = { -0.0033, 0.8309, -2.2538 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "HeadLamps_2", meshId = 1225138423, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.5864, 0.2169, 0.1599 }, offsetM = { -0.0031, 0.8531, -2.1223 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Indicators_2", meshId = 1225137800, color = Color3.fromRGB(218, 133, 65), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.1158, 0.0486, 0.0893 }, offsetM = { 0.7312, 0.7712, -2.1169 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "Indicators_3", meshId = 1225137651, color = Color3.fromRGB(218, 133, 65), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.1158, 0.0486, 0.0893 }, offsetM = { -0.7375, 0.7712, -2.1169 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "TailLamps_2", meshId = 1225136498, color = Color3.fromRGB(196, 40, 28), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.0932, 0.1099, 0.0442 }, offsetM = { -0.817, 0.8841, 2.3948 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "ReverseLamps", meshId = 1225136725, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.7157, 0.0751, 0.0283 }, offsetM = { -0.0016, 0.987, 2.3846 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "TailLamps_3", meshId = 1225136193, color = Color3.fromRGB(196, 40, 28), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.7013, 0.1285, 0.0444 }, offsetM = { -0.0016, 1.101, 2.3713 }, rotationDeg = { 0.701, 180, 0 } },
+				{ name = "TailLamps_4", meshId = 1225136430, color = Color3.fromRGB(196, 40, 28), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.0932, 0.1099, 0.0442 }, offsetM = { 0.8139, 0.8841, 2.3948 }, rotationDeg = { 0.701, 180, 0 } },
+			},
+			wheelPieces = {
+				{ name = "Tyre", meshId = 1225119407, color = Color3.fromRGB(0, 0, 0), material = Enum.Material.Concrete, sizeM = { 0.2433, 0.7769, 0.7767 }, offsetM = { 0, 0, 0 }, rotationDeg = { -0.701, 0, 0 } },
+				{ name = "Rim", meshId = 1225119013, color = Color3.fromRGB(200, 202, 206), material = Enum.Material.Metal, sizeM = { 0.2381, 0.5367, 0.5365 }, offsetM = { 0.0026, 0, 0 }, rotationDeg = { -0.701, 0, 0 } },
+			},
+		},
+		tuning = {
+			-- Four-wheel drive, as its A-Chassis tune (Config "AWD").
+			drivetrain = { layout = "AWD" },
+			-- The Kruzer 80's, scaled to its 2.4 t.
+			suspension = { stiffness = 49000, damping = 4600, antiRollFront = 9800, antiRollRear = 6500 },
+			twoWheel = { liftTorque = 18000, leanInTorque = 6500, leanOutTorque = 6000, balanceSpring = 160 },
+			effects = {
+				-- The store model's own horn (it plays it at 0.95 speed) and
+				-- startup.
+				horn = { soundId = "rbxassetid://787905239" },
+				-- Its A-Chassis stock "Rev" loop, one file for every layer. The
+				-- plugin plays it at pitch 0.12 + 0.85 x rpm / 6700 (its
+				-- redline), which is 1 at 6936 rpm: that is refRpm.
+				engineAudio = {
+					startSoundId = "rbxassetid://385436327",
+					layers = {
+						idle = { soundId = "rbxassetid://296747872", refRpm = 6936, volume = 0.5, eq = { 0, 0, -6 } },
+						lowLoad = { soundId = "rbxassetid://296747872", refRpm = 6936, volume = 0.8, eq = { 3, 0, -3 } },
+						highLoad = { soundId = "rbxassetid://296747872", refRpm = 6936, volume = 1, eq = { 0, 2, 2 } },
+						overrun = { soundId = "rbxassetid://296747872", refRpm = 6936, volume = 0.5, eq = { 0, -2, -8 } },
+					},
+				},
+			},
+		},
+	},
 
 }
 
