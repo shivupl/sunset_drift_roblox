@@ -1266,6 +1266,92 @@ local cars: { [string]: CarEntry } = {
 			},
 		},
 	},
+	-- THE SONATTA. A mid-2000s Korean family saloon from the Creator Store
+	-- (asset 9547275128, an A-Chassis car), brought to the store-car standard
+	-- (tools/carbody/README.md) by storecar.py sonatta: store meshes by id,
+	-- interior kept, the engine dropped. The maker's badge front and back,
+	-- its name, the model name and the engine badge are cut out of the
+	-- chrome (generated Chrome), the grille badge's backing out of the window
+	-- trim, whose texture also carries the tail lamps: they are split out as
+	-- their own piece (generated Trim_2 and TailLamps). The badge on the
+	-- airbag is painted out (generated SteeringWheel), the steering wheel a
+	-- piece of its own for the first-person view. Its wheels are plain parts
+	-- with decals in the store model, so it has the Batrol's wheel. Its own
+	-- horn, startup and engine loop.
+	--
+	-- Placed at 0.2487 m a model stud, so its wheel centres sit on the real
+	-- 2.73 m wheelbase: 4.70 m long, 1.61 m track, 0.68 m tyres.
+	sonatta = {
+		displayName = "Sonatta",
+		blurb = "The quiet family saloon. Light, front-driven and quick to swing.",
+		order = 11,
+		scale = 1.2,
+		rig = {
+			massKg = 1550,
+			-- Nose at -2.26 m, tail at +2.43 m.
+			collisionSizeM = { 1.78, 1.15, 4.5 },
+			centerOfMassM = { 0, -0.3, -0.15 },
+			shellMassFraction = 0.35,
+			wheelbaseM = 2.73,
+			trackWidthM = 1.6073,
+			wheelRadiusM = 0.3375,
+			wheelWidthM = 0.2277,
+			-- The store model's driver seat (0.44 m left of centre), 0.28 m off
+			-- the ground so a seated head clears the 1.53 m roof.
+			seatM = { -0.44, -0.63, -0.22 },
+		},
+		body = {
+			paint = Color3.fromRGB(240, 240, 236),
+			pieces = {
+				{ name = "Chrome", mesh = "Sonatta/Chrome", color = Color3.fromRGB(202, 203, 209), material = Enum.Material.Metal, sizeM = { 1.8308, 0.6374, 2.5914 }, offsetM = { 0.0068, 0.601, -0.1398 } },
+				{ name = "Trim", meshId = 2114250357, textureId = 2114276920, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 1.6589, 0.3886, 0.4924 }, offsetM = { 0.0942, 0.3845, -1.9339 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Body", meshId = 2114228112, paint = true, sizeM = { 2.0466, 1.2963, 2.9161 }, offsetM = { 0.0069, 0.8754, 0.4931 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Body_2", meshId = 2114229783, paint = true, sizeM = { 1.829, 1.103, 1.2729 }, offsetM = { 0.0262, 0.84, 1.7952 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Body_3", meshId = 2114227243, paint = true, sizeM = { 1.1949, 0.7931, 1.4598 }, offsetM = { 0.3356, 0.6279, -1.5306 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Body_4", meshId = 2114222485, paint = true, sizeM = { 1.8352, 0.8469, 1.9271 }, offsetM = { -0.0013, 0.6713, -1.2916 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Interior", meshId = 2114255780, textureId = 2114280192, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.8646, 1.13, 2.357 }, offsetM = { 0.0066, 0.8961, 0.1325 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Interior_2", meshId = 2114256299, textureId = 2114272240, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.6045, 1.2563, 2.8637 }, offsetM = { 0.0103, 0.8695, 0.4189 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "SteeringWheel", mesh = "Sonatta/SteeringWheel", textureId = 2114280192, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.4085, 0.3821, 0.1977 }, offsetM = { -0.4035, 0.8779, -0.4069 } },
+				{ name = "Interior_3", meshId = 2114248045, textureId = 2114272240, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.8646, 1.2185, 2.2005 }, offsetM = { 0.0061, 0.8519, 0.2109 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Interior_4", meshId = 2114245655, textureId = 2114272240, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.1082, 1.2185, 1.5043 }, offsetM = { -0.3467, 0.8542, -0.1378 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Glass", meshId = 2114248915, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Glass, transparency = 0.6, castShadow = false, sizeM = { 1.6718, 1.0801, 3.9623 }, offsetM = { 0.007, 0.8872, -0.1759 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Trim_2", mesh = "Sonatta/Trim_2", textureId = 2114274207, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 2.0272, 1.1952, 3.4888 }, offsetM = { 0.0098, 0.9016, 0.6524 } },
+				{ name = "TailLamps", mesh = "Sonatta/TailLamps", textureId = 2114274207, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, castShadow = false, sizeM = { 1.6926, 0.1585, 0.3494 }, offsetM = { 0.0035, 0.9026, 2.1483 } },
+				{ name = "Underbody", meshId = 2114249911, textureId = 2114276920, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 1.8762, 0.5483, 4.2575 }, offsetM = { 0.0033, 0.4629, 0.2157 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Trim_3", meshId = 2114251075, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 1.5916, 0.0505, 0.4218 }, offsetM = { 0.0051, 0.2689, -1.9785 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Trim_4", meshId = 2114252168, textureId = 2114277567, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Plastic, sizeM = { 1.8328, 0.5707, 0.57 }, offsetM = { 0.0076, 0.6157, -1.9563 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "Chrome_2", meshId = 2114251472, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.Metal, sizeM = { 1.8688, 1.1598, 3.3454 }, offsetM = { 0.0057, 0.8832, 0.6896 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "HeadLamps", meshId = 2114252527, textureId = 2114277567, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.Metal, castShadow = false, sizeM = { 1.6777, 0.4576, 0.359 }, offsetM = { 0.0073, 0.5727, -1.9786 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "HeadLamps_2", meshId = 2114250663, textureId = 2114277567, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.Metal, castShadow = false, sizeM = { 1.4568, 0.413, 0.1425 }, offsetM = { 0.0072, 0.5559, -1.9879 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+				{ name = "TailLamps_2", meshId = 2114230992, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.Metal, castShadow = false, sizeM = { 1.2065, 0.0803, 0.055 }, offsetM = { 0.0037, 0.9095, 2.2739 }, rotationDeg = { -0.049, -0.081, -0.416 } },
+			},
+			wheelPieces = {
+				{ name = "Rim_Face", meshId = 8941522368, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, sizeM = { 0.4211, 0.4006, 0.0301 }, offsetM = { -0.1077, 0.0173, -0.0004 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Rim", meshId = 8941509678, color = Color3.fromRGB(202, 203, 209), material = Enum.Material.SmoothPlastic, sizeM = { 0.446, 0.4475, 0.2479 }, offsetM = { -0.0009, 0.003, -0.0004 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Tyre", meshId = 8941514489, color = Color3.fromRGB(25, 25, 25), material = Enum.Material.Rubber, sizeM = { 0.6746, 0.675, 0.2277 }, offsetM = { 0, 0, 0 }, rotationDeg = { 0, 90, 0 } },
+			},
+		},
+		tuning = {
+			-- Front-wheel drive, as the real car (its A-Chassis tune says RWD).
+			drivetrain = { layout = "FWD" },
+			effects = {
+				-- The store model's own horn and startup.
+				horn = { soundId = "rbxassetid://858930850" },
+				-- Its A-Chassis "Rev" loop, one file for every layer. Its kit's
+				-- pitch values give no clear reference rpm, so refRpm is a first
+				-- guess to tune by ear.
+				engineAudio = {
+					startSoundId = "rbxassetid://538664949",
+					layers = {
+						idle = { soundId = "rbxassetid://785952066", refRpm = 4500, volume = 0.5, eq = { 0, 0, -6 } },
+						lowLoad = { soundId = "rbxassetid://785952066", refRpm = 4500, volume = 0.8, eq = { 3, 0, -3 } },
+						highLoad = { soundId = "rbxassetid://785952066", refRpm = 4500, volume = 1, eq = { 0, 2, 2 } },
+						overrun = { soundId = "rbxassetid://785952066", refRpm = 4500, volume = 0.5, eq = { 0, -2, -8 } },
+					},
+				},
+			},
+		},
+	},
 
 }
 

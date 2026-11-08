@@ -199,6 +199,27 @@ def role_tahu(p):
     return "Trim", {}
 
 
+def role_sonatta(p):
+    n, i, tr = p["n"], p["i"], p["tr"]
+    if n == "Paint":
+        return "Body", {"paint": True}
+    if p["p"] == "Headlights":  # the headlamp and fog lamp units, lens and all
+        return "HeadLamps", {"castShadow": False}
+    if n.startswith("Taillights"):  # the red strips on the boot lid
+        return "TailLamps", {"castShadow": False}
+    if n == "Steering Wheel":
+        return "SteeringWheel", {"castShadow": False}
+    if p["p"] == "Interior":
+        return "Interior", {"castShadow": False}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    if n in ("Chrome Trim", "Exhausts"):
+        return "Chrome", {}
+    if n == "Chassis":
+        return "Underbody", {}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -355,6 +376,54 @@ CARS = {
         "role": role_tahu,
         "paint": (236, 236, 232),
     },
+    "sonatta": {
+        "title": "The mid-2000s Korean family saloon (store 9547275128), with its interior",
+        "wheelbaseM": 2.73,
+        # The engine under the bonnet, never seen.
+        "dropGroups": set(),
+        "dropParts": {18},
+        "dropTextures": set(),
+        # Its wheels are plain parts with decals (no meshes): the Batrol's
+        # wheel instead (no wheelParts).
+        "tyres": [30, 32, 33, 31],
+        "frontPart": 16,  # the grille
+        "cuts": {
+            # The chrome (window surrounds, door strips, the badges) carries
+            # the maker's badge front and back, its name left of the boot,
+            # the model name right of it and the engine badge under it, as
+            # islands of their own. Boxes in the mesh's space.
+            1: {
+                "source": "chrome_source.obj",
+                "badges": [
+                    ((-2.2, -0.9, -57.5), (2.2, 1.2, -56.2)),  # grille badge, 476 faces
+                    ((-2.3, 7.6, 55.6), (2.3, 10.0, 56.7)),  # boot badge, 528 faces
+                    ((-14.7, 8.4, 54.7), (-10.5, 9.5, 56.0)),  # maker's name
+                    ((10.0, 8.4, 54.7), (15.1, 9.5, 56.0)),  # model name
+                    ((11.5, 1.3, 56.8), (13.4, 2.1, 57.5)),  # engine badge
+                ],
+            },
+            # The window trim's texture also carries the grille badge's
+            # backing (cut) and the tail lamps: the outer clusters on the wings
+            # and the inner ones on the boot lid are islands of their own and
+            # become the TailLamps piece (red, amber and reverse in one, so
+            # it glows as one).
+            13: {
+                "source": "trim_source.obj",
+                "badges": [((-2.2, -6.5, -58.3), (2.2, -4.3, -56.9))],
+                "split": [{"role": "TailLamps", "boxes": [
+                    ((-21.4, -2.0, 47.3), (-14.4, 2.0, 55.8)),
+                    ((14.3, -2.0, 47.3), (21.4, 2.0, 55.8)),
+                    ((-15.5, -2.0, 53.6), (-7.4, 1.8, 56.4)),
+                    ((7.4, -2.0, 53.6), (15.4, 1.8, 56.4)),
+                ]}],
+            },
+            # The maker's badge in the middle of the airbag, in the wheel's
+            # texture (u 0.75-0.83, v 0.76-0.86): a plain spot of the pad.
+            9: {"source": "steering_source.obj", "uvFlatten": [((0.75, 0.76, 0.83, 0.86), (0.744, 0.812))]},
+        },
+        "role": role_sonatta,
+        "paint": (240, 240, 236),
+    },
     "kruzer100": {
         "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
         "wheelbaseM": 2.85,
@@ -455,8 +524,22 @@ def cut_faces(folder, cut):
     gone |= in_boxes(cut.get("uvBoxes", []))
     taken = gone.copy()
     splits = []
+
+    def islands_in(boxes):
+        m = np.zeros(len(F), dtype=bool)
+        for isl in np.unique(island):
+            pts = P[F[island == isl].ravel()]
+            lo, hi = pts.min(0), pts.max(0)
+            for blo, bhi in boxes:
+                if np.all(lo >= np.array(blo)) and np.all(hi <= np.array(bhi)):
+                    m |= island == isl
+        return m
+
     for sp in cut.get("split", []):
-        m = in_boxes(sp["uvBoxes"]) & ~taken
+        # A split takes the faces textured from its uvBoxes, or the whole
+        # islands inside its mesh-space boxes (lamps that are islands of a
+        # trim mesh, the Sonatta's tail lamps).
+        m = (in_boxes(sp.get("uvBoxes", [])) | islands_in(sp.get("boxes", []))) & ~taken
         taken |= m
         splits.append((sp["role"], F[m]))
     # A badge painted in the middle of a surface that must stay (the logo on

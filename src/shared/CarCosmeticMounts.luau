@@ -386,6 +386,29 @@ CarCosmeticMounts.cars = {
 			riseM = 0.12,
 		},
 	},
+	sonatta = {
+		-- Windows: Glass is every window in one piece.
+		windows = { side = {}, screen = {}, whole = { "Glass" } },
+		-- Strip 6 cm under the glass's top edge, which dips at the middle
+		-- under the header the strip generator fits (as on the Tahu).
+		windscreen = { piece = "Glass", side = "inside", heightM = 0.12, topGapM = 0.06, ends = "mesh" },
+		-- Exhaust: its own twin chrome pipes (Chrome_2) end under the rear
+		-- bumper at x ±0.51, 2.34 m back, about 0.38 m up. Tips over them,
+		-- tops at 0.30 m under the bumper's lower edge (0.31 m); the face
+		-- above them reaches 2.39 m (0.5 m up), tips 3 cm past. Measured
+		-- with carprobe.py, 2026-11-07.
+		exhaust = {
+			stock = {
+				{ posM = { -0.51, 0.38, 2.34 }, dir = { 0, -0.15, 0.99 } },
+				{ posM = { 0.51, 0.38, 2.34 }, dir = { 0, -0.15, 0.99 } },
+			},
+			tips = { posM = { 0, 0.21, 2.42 }, spreadM = 1.02, pipeLengthM = 0.3 },
+			bumperZ = 2.39,
+			-- riseM: the floor pan (Underbody) is 0.30 m up over the run's end
+			-- (z 1.96, x ±0.51), 9 cm over the pipe's centre.
+			riseM = 0.08,
+		},
+	},
 } :: { [string]: Mounts }
 
 -- The aftermarket tips' centre x, metres, for n tips (0, 1, 2 or 4): a twin
