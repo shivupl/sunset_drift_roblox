@@ -246,6 +246,26 @@ def role_akord(p):
     return "Trim", {}
 
 
+def role_kamri12(p):
+    n, i, tr, col = p["n"], p["i"], p["tr"], tuple(p["col"])
+    # Its lamps: the headlamp units (159) and the daytime lamp strip (DRL);
+    # the tail lamps and fog lamps are islands of the textured trim (145),
+    # split out ("cuts"); the high brake lamp inside the rear window (169).
+    lamp = {159: "HeadLamps", 176: "HeadLamps", 169: "TailLamps"}
+    if i in lamp:
+        return lamp[i], {"castShadow": False}
+    if p["p"] == "SW":
+        return "SteeringWheel", {"castShadow": False}
+    if n == "paint":
+        return "Body", {"paint": True}
+    low = n.lower()
+    if any(k in low for k in ("interior", "door", "seat", "leat", "salon")) or n == "lol":
+        return "Interior", {"castShadow": False}
+    if 0 < tr < 1:
+        return "Glass", {"castShadow": False}
+    return "Trim", {}
+
+
 CARS = {
     "kruzer80": {
         "title": "The early-90s Japanese full-size 4x4 (store 13118106368), with its interior",
@@ -473,6 +493,46 @@ CARS = {
         "role": role_akord,
         "paint": (240, 240, 236),
     },
+    "kamri12": {
+        "title": "The early-2010s Japanese family saloon in sport trim (store 17767054086), with its interior",
+        "wheelbaseM": 2.775,
+        "dropGroups": set(),
+        # The wheels (the front-left becomes wheelPieces) and their brake
+        # calipers, fixed to the hub (they would spin as wheel pieces); the
+        # invisible kit parts (airbags, a second steering wheel, SS); the
+        # horns behind the bumper; the shark-fin aerial (175: 5,081
+        # triangles in a part 8 cm long); and the badges (150 is nothing but
+        # the maker's emblem front and back, the model name and the trim
+        # badge: six islands, 1,292 faces).
+        "dropParts": {3, 4, 5, 6, 7, 20, 21, 22, 23, 24, 37, 38, 39, 40, 41, 54, 55, 56, 57, 58,
+                      79, 80, 81, 82, 129, 178, 89, 90, 175, 150},
+        "dropTextures": set(),
+        "tyres": [38, 21, 4, 55],
+        "wheelParts": {38: "Tyre", 41: "Rim", 37: "Rim_Hub", 40: "Rim_Disc"},
+        # The tyre's texture carries the maker's lettering on the sidewall:
+        # plain rubber.
+        "wheelLook": {38: ((28, 28, 30), "Rubber")},
+        "frontPart": 176,  # the daytime lamps
+        "cuts": {
+            # The emblem's backing in the grille: cut, it left a black oval
+            # (the owner's "black hole" on the Kamri, 2026-09-27), so it stays
+            # as a piece of its own in the body colour, a plain debadged spot.
+            156: {"source": "trim_source.obj", "split": [
+                {"role": "Body", "paint": True, "boxes": [((-0.85, -1.65, -24.3), (0.85, -0.55, -23.95))]},
+            ]},
+            # The textured trim's islands at the back corners are the tail
+            # lamps, the four at the front corners the fog lamps.
+            145: {"source": "lamps_source.obj", "split": [
+                {"role": "TailLamps", "boxes": [((-8.5, 1.7, 21.2), (-3.4, 3.8, 23.3)), ((3.4, 1.7, 21.2), (8.5, 3.8, 23.3))]},
+                {"role": "FogLamps", "boxes": [((-8.3, -3.8, -23.3), (-6.9, -2.4, -22.5)), ((6.9, -3.8, -23.3), (8.3, -2.4, -22.5))]},
+            ]},
+            # The maker's emblem in the middle of the airbag, in the wheel's
+            # texture (u 0.425-0.473, v 0.475-0.537): a plain spot of the pad.
+            179: {"source": "steering_source.obj", "uvFlatten": [((0.425, 0.475, 0.473, 0.537), (0.416, 0.507))]},
+        },
+        "role": role_kamri12,
+        "paint": (240, 240, 236),
+    },
     "kruzer100": {
         "title": "The late-90s Japanese full-size 4x4 (store 12753900235), leather interior",
         "wheelbaseM": 2.85,
@@ -590,7 +650,7 @@ def cut_faces(folder, cut):
         # trim mesh, the Sonatta's tail lamps).
         m = (in_boxes(sp.get("uvBoxes", [])) | islands_in(sp.get("boxes", []))) & ~taken
         taken |= m
-        splits.append((sp["role"], F[m]))
+        splits.append((sp["role"], F[m], sp.get("paint", False)))
     # A badge painted in the middle of a surface that must stay (the logo on
     # an airbag): those faces all sample one plain spot of the texture
     # instead, so the surface keeps its colour and loses the badge.
@@ -717,19 +777,23 @@ def build(key):
         if p["i"] in car.get("cuts", {}):
             P, T, keep, splits, before_n, flat = cut_faces(folder, car["cuts"][p["i"]])
             parts_out = [(name, keep, opts)]
-            for srole, sfaces in splits:
+            for srole, sfaces, spaint in splits:
                 names[srole] = names.get(srole, 0) + 1
                 sname = srole if names[srole] == 1 else f"{srole}_{names[srole]}"
-                parts_out.append((sname, sfaces, {"castShadow": False}))
+                # A split marked paint (a badge's backing filling the hole it
+                # left, the Kamri SE's) takes the body colour.
+                parts_out.append((sname, sfaces, {"paint": True} if spaint else {"castShadow": False}))
             for pname, pfaces, popts in parts_out:
                 piece = make_piece(pname, P, T, pfaces, p, B, origin, mps, flat if pfaces is keep else None)
                 generated.append(piece)
                 lo, hi = np.minimum(lo, piece.offset - piece.size / 2), np.maximum(hi, piece.offset + piece.size / 2)
                 tex = f"textureId = {p['tex']}, " if p.get("tex") and p["tex"] not in car["dropTextures"] else ""
                 shadow = "castShadow = false, " if popts.get("castShadow") is False else ""
+                look = ("paint = true, " if popts.get("paint")
+                        else f"{tex}color = {colour(p['col'])}, material = Enum.Material.{p['mat']}, ")
                 lines.append(
-                    "{ " + f'name = "{pname}", mesh = "{key.capitalize()}/{pname}", {tex}color = {colour(p["col"])}, '
-                    f"material = Enum.Material.{p['mat']}, {shadow}sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
+                    "{ " + f'name = "{pname}", mesh = "{key.capitalize()}/{pname}", {look}'
+                    f"{shadow}sizeM = {vec(piece.size)}, offsetM = {vec(piece.offset)}" + " },"
                 )
                 tris_after += piece.triangles
             print(f"{name}: {before_n:,} faces -> " + ", ".join(f"{n} {len(f):,}" for n, f, _ in parts_out))

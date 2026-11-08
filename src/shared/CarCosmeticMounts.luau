@@ -429,6 +429,27 @@ CarCosmeticMounts.cars = {
 			riseM = 0.05,
 		},
 	},
+	kamri12 = {
+		-- Windows: Glass_2 is the windscreen and the front side windows in
+		-- one, Glass the rear side windows and the rear window.
+		windows = { side = { "Glass" }, screen = {}, whole = { "Glass_2" } },
+		windscreen = { piece = "Glass_2", side = "inside", heightM = 0.12, topGapM = 0.06, ends = "mesh" },
+		-- Exhaust: its own single pipe (in Trim_4) ends under the left of the
+		-- rear bumper at (-0.62, 0.28, 2.20). Tips over it and its mirror, tops
+		-- at 0.32 m under the bumper's lower edge (0.33 m); the face above
+		-- reaches 2.47 m (0.4 m up), tips 3 cm past. The underside over the
+		-- pipes' ends (z 2.04) is 0.316 m up on the left and at the pipe's
+		-- centre on the right (inside): riseM 0.07. Measured with carprobe.py,
+		-- 2026-11-07.
+		exhaust = {
+			stock = { { posM = { -0.62, 0.28, 2.2 } } },
+			tips = { posM = { 0, 0.23, 2.5 }, spreadM = 1.24, pipeLengthM = 0.3 },
+			-- Quad pairs at ±0.52, so the outer left tip sits over its pipe.
+			quadSpreadM = 1.04,
+			bumperZ = 2.47,
+			riseM = 0.07,
+		},
+	},
 } :: { [string]: Mounts }
 
 -- The aftermarket tips' centre x, metres, for n tips (0, 1, 2 or 4): a twin
