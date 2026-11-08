@@ -247,9 +247,8 @@ A generated piece is decoded into an EditableMesh on each client. That needs
 published game only gets it with the owner ID verified. The owner turned it
 on for this experience on 2026-09-26. Without it the piece is left off the car
 (it used to be a grey box, which covered the Batrol). Each generated piece also
-gets an OBJ (`assets/cars/<car>/<piece>.obj`) as a fallback. Import that with Studio's 3D Importer and
-put the new mesh id on the piece (`meshId` wins over `mesh`), and no setting
-is needed.
+goes into its car's upload file (below); once uploaded and given its
+`meshId` (which wins over `mesh`), no setting is needed.
 
 A client can hold only 8 EditableMeshes at once, whatever their size
 (BEHAVIOURS.md, measured 2026-09-28), and a MeshPart made from one goes blank
@@ -265,6 +264,22 @@ the same buffers plus an optional per-position `colors` buffer that `MeshData`
 reads) share the 8, count their users the same way, and back off below a
 reserve so bodies come first. **Uploading a car's pieces is the real fix**: an
 uploaded mesh takes no slot at all.
+
+## Uploading generated pieces
+
+`python3 tools/carbody/upload_objs.py` writes `assets/cars/upload/<Car>.obj`,
+one per car still using generated pieces (not the owner's generated Kamri):
+every piece an object named `<Car>_<Piece>`, decoded from the same buffers the
+game reads, centred, and turned half round about Y beforehand because the
+importer turns an OBJ half round on the way in.
+
+1. Studio: File > Import 3D, pick the file, keep Studio Default (each object
+   stays its own MeshPart), import. The importer uploads each mesh.
+2. Run `tools/carbody/upload_ids.luau` in Edit: one line per piece with its
+   new mesh id, its MeshSize and the generated sizeM to compare.
+3. Put each id on its catalog piece as `meshId`, keeping `mesh`, `sizeM`,
+   `offsetM` and the look (`meshId` wins). Check the car in Play from
+   outside and from the seat, then delete the imported model.
 
 ## Cars
 

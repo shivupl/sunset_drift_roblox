@@ -115,7 +115,7 @@ local function acquireData(path: string): MeshPart?
 			warn(
 				"[BodyBuilder] generated car meshes need EditableMesh, which this experience has off. Turn on"
 					.. " 'Allow Mesh / Image APIs' (Studio: File > Game Settings > Security; published: Creator"
-					.. " Dashboard), or import assets/cars/<car>/upload/<Car>.obj with the 3D Importer and give each"
+					.. " Dashboard), or import assets/cars/upload/<Car>.obj with the 3D Importer and give each"
 					.. " piece its meshId (RIG_SPEC.md 7). Those pieces are left off until then."
 			)
 		end
