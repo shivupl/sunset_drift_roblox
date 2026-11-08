@@ -134,6 +134,13 @@ local function rig(model: Model, body: Instance): Rigged?
 	}
 end
 
+-- How far a car's steering wheel is turned now, degrees, + = right: what
+-- the first-person arms hold on to.
+function SteeringWheels.angleDeg(model: Model): number
+	local r = rigged[model]
+	return if r then r.lastDeg else 0
+end
+
 function SteeringWheels.start()
 	RunService.RenderStepped:Connect(function()
 		local cars = Workspace:FindFirstChild("Cars")

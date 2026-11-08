@@ -414,6 +414,15 @@ First person from the driver's seat, with the steering wheel turning (the owner,
 | wheelTurns | How far the steering wheel turns at full lock, each way: REAL 450° (the owner's pick), HALF 180°, QUARTER 90°. Chosen in SETTINGS (WHEEL TURN), kept on the LocalPlayer attribute `WheelTurn`. The wheel follows the front hubs' angle over `steering.maxSteerDeg`, so it counter-steers in a slide as the tyres do, on every car this client sees. |
 | wheelDrawDistanceM | Steering wheels turn only on cars this near the camera (40 m). |
 
+**`arms`** (client `CockpitArms`; branch `first-person-arms`, an experiment; the owner, 2026-11-07: "can u try make it so that the characters arms also show?"). The avatar sits 0.1 to 0.4 m ahead of and below the eye, so its own shoulders would float in front of the camera; these are copies of its arms (its colours and shirt) for this client only, each bent at the elbow from a shoulder under the eye to a grip on the rim. ARMS in SETTINGS (the LocalPlayer attribute `FirstPersonArms`) switches them off.
+| Field | What it does |
+|---|---|
+| shoulderM | Each shoulder from the eye, car metres: 0.2 out, 0.26 below, 0.06 behind. Lower shoulders: flatter forearms, less arm on screen. |
+| upperArmM / forearmM / handM | Segment lengths (0.30 / 0.27 / 0.09 m, an adult's). Longer arms bend less at the elbow. |
+| thickness | The avatar's arm thickness times this (0.7; 0.8 read chunky across a turn). |
+| gripDeg | Where the hands hold the rim, degrees each side of the top (60: ten to two). |
+| followDeg | The hands turn with the wheel this far (60), then the rim slides through them; at 90 the left hand was over the top with the right out of sight. |
+
 Per car (`src/shared/CarCockpits.luau`): `eyeM` (0.29 m above and 0.62 m behind the wheel's centre, lowered where the lining still filled the view: Akord 0.05, Kamri SE 0.03, Krown Vik 0.04), and `wheel` (the pieces, the pivot and the column axis, fitted from the pieces' own triangles; every column leans back 18 to 28°). Higher eye: more bonnet and roof. Further back: smaller wheel.
 
 ### camera.freeLook (client `FreeLook`)

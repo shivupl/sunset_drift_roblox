@@ -989,6 +989,39 @@ local config = {
 			-- Steering wheels turn only on cars this near the camera (m):
 			-- from further no one can see one.
 			wheelDrawDistanceM = 40,
+			-- The driver's arms in first person (client CockpitArms; the
+			-- owner, 2026-11-07: "can u try make it so that the characters
+			-- arms also show? maybe as an experiment"). The avatar itself sits
+			-- 0.1 to 0.4 m ahead of and below the eye (its shoulders would
+			-- float in front of the camera), so these are copies of its arms,
+			-- in its colours and shirt, drawn for this client only, from
+			-- shoulders under the eye to the rim. Switched in SETTINGS (ARMS),
+			-- the LocalPlayer attribute FirstPersonArms; on by default.
+			arms = {
+				-- Each shoulder from the eye, car metres: x out to each side,
+				-- y below, z behind (+). An adult's shoulders sit about 0.2 m
+				-- either side of the eyes' line and 0.25 m under them.
+				shoulderM = { 0.2, -0.26, 0.06 },
+				-- Segment lengths, car metres (an adult's: upper arm 0.30,
+				-- forearm 0.27, hand to the grip 0.09). Longer arms bend less.
+				upperArmM = 0.3,
+				forearmM = 0.27,
+				handM = 0.09,
+				-- The avatar's arm thickness times this: a blocky avatar arm is
+				-- thick for the length it is drawn at here (0.8 read chunky
+				-- across a turn in the Sonatta).
+				thickness = 0.7,
+				-- Where each hand holds the rim: degrees each side of the top
+				-- (60: ten to two).
+				gripDeg = 60,
+				-- The hands turn with the wheel up to this far, then let the
+				-- rim slide through them: at REAL's 450 degrees they would
+				-- otherwise cross over and twist round each other. At 90 the
+				-- left hand was already over the top with the right out of
+				-- sight (Sonatta, 2026-11-07); at 60 ten-to-two turns to
+				-- twelve-and-four.
+				followDeg = 60,
+			},
 		},
 		-- Free look (FreeLook; the owner, 2026-10-10: "allow me to freelook
 		-- while driving, resets after i a) on phone let go or b) on pc resets

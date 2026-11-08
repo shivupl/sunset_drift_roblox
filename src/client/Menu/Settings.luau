@@ -20,6 +20,8 @@
 --                  (HudLab; Y cycles it).
 --   CLEAR UI       under them, one row that switches (ClearUi; the owner,
 --                  2026-10-13): everything on the screen goes but a gear.
+--   ARMS           a row that switches the driver's arms in first person
+--                  (CockpitArms; branch first-person-arms, an experiment).
 --   SCREEN LAYOUT  last, only where there is more than one (a PC): the
 --                  garage's layout (Layouts), slanted choices.
 -- The chosen tile or card is edged green with a tick; a chosen choice is
@@ -37,6 +39,7 @@ local HudLab = require(Client:WaitForChild("HudLab"))
 local Finishes = require(Client:WaitForChild("HudLab"):WaitForChild("Finishes"))
 local CameraViews = require(Client:WaitForChild("CameraViews"))
 local SteeringWheels = require(Client:WaitForChild("SteeringWheels"))
+local CockpitArms = require(Client:WaitForChild("CockpitArms"))
 local ClearUi = require(Client:WaitForChild("ClearUi"))
 local Looks = Client:WaitForChild("Garage"):WaitForChild("Looks")
 local Types = require(Looks:WaitForChild("Types"))
@@ -616,8 +619,9 @@ function Settings.new(shell: Page.Shell): Page.Page
 				segment(right, WHEEL, 2, rightW, touch)
 				rows(right, VERSION, 3, touch)
 				switchRow(right, 4, "CLEAR UI", "On: only the gear stays", "Everything goes but a gear", ClearUi.on, ClearUi.set, touch)
+				switchRow(right, 5, "ARMS", "On: your arms on the wheel in DRIVER", "Off: the wheel alone", CockpitArms.on, CockpitArms.set, touch)
 				if #SCREEN.options() > 1 then
-					segment(right, SCREEN, 5, rightW, touch)
+					segment(right, SCREEN, 6, rightW, touch)
 				end
 
 				paint()

@@ -26,6 +26,8 @@ local CameraViews = require(script.Parent.CameraViews)
 local FreeLook = require(script.Parent.FreeLook)
 local VehicleRig = require(Shared.VehicleRig)
 local CarCockpits = require(Shared.CarCockpits)
+local SteeringWheels = require(script.Parent.SteeringWheels)
+local CockpitArms = require(script.Parent.CockpitArms)
 
 type VehicleState = Types.VehicleState
 
@@ -272,6 +274,15 @@ function CameraRig.start(model: Model)
 			local aspect = if vp.Y > 0 then vp.X / vp.Y else 16 / 9
 			local across = math.deg(2 * math.atan(math.tan(math.rad(camCfg.maxHorizontalFov) / 2) / aspect))
 			cam.FieldOfView = math.min(fp.baseFov + fp.fovPerKmh * kmh, fp.maxFov, across)
+			-- The driver's arms, from the cabin (not the turned head) to the
+			-- rim (CockpitArms).
+			CockpitArms.update(
+				if type(carId) == "string" then carId else nil,
+				CFrame.new(eyePos) * cf.Rotation,
+				bodyMount.WorldCFrame,
+				f,
+				SteeringWheels.angleDeg(model)
+			)
 			-- Every frame: a respawned or re-dressed character, and the
 			-- default camera scripts, can set it back.
 			hideCharacter(true)
@@ -284,6 +295,7 @@ function CameraRig.start(model: Model)
 		if cleared then
 			clearGlass(cleared, 0)
 		end
+		CockpitArms.hide()
 		slideLook = 0
 		if yaw ~= 0 or pitch ~= 0 then
 			local off = CFrame.Angles(0, -math.rad(yaw), 0) * (smoothedPos - look)
@@ -346,6 +358,7 @@ function CameraRig.stop()
 	if cleared then
 		clearGlass(cleared, 0)
 	end
+	CockpitArms.hide()
 	local cam = workspace.CurrentCamera
 	if cam then
 		cam.CameraType = Enum.CameraType.Custom

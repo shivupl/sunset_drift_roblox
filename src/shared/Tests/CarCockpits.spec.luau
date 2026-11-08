@@ -27,6 +27,7 @@ return function(t: T)
 		local tilt = math.deg(math.asin(a.Y))
 		t.ok(a.Z > 0 and tilt > 10 and tilt < 40, `{id}: the column leans back toward the driver ({tilt} deg)`)
 		t.ok(c.eyeM[3] > wheel.pivotM[3], `{id}: the eye is behind the wheel`)
+		t.ok(wheel.radiusM > 0.1 and wheel.radiusM < 0.25, `{id}: the rim radius {wheel.radiusM} m is a steering wheel's`)
 		local byName = {}
 		for _, piece in entry.body.pieces do
 			byName[piece.name] = piece
