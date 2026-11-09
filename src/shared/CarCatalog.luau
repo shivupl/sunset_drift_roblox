@@ -477,7 +477,10 @@ local cars: { [string]: CarEntry } = {
 				{ name = "Glass_2", meshId = 4719880088, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.5, castShadow = false, sizeM = { 1.1597, 0.057, 0.1192 }, offsetM = { 0, 1.344, -0.3583 } },
 				{ name = "Interior_3", meshId = 4719875583, color = Color3.fromRGB(34, 0, 0), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.4885, 0.3479, 1.7492 }, offsetM = { 0, 0.4581, -0.1454 } },
 				{ name = "Indicators_3", meshId = 4719876344, color = Color3.fromRGB(200, 174, 102), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6497, 0.0516, 0.1574 }, offsetM = { 0, 0.7014, -1.9891 } },
-				{ name = "Interior_4", meshId = 4719875427, color = Color3.fromRGB(53, 53, 53), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.615, 0.5852, 2.4264 }, offsetM = { 0, 0.8255, 0.1528 } },
+				{ name = "Interior_4", mesh = "LekzasCabin/Interior_4", color = Color3.fromRGB(53, 53, 53), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.615, 0.5267, 2.4264 }, offsetM = { 0, 0.7962, 0.1528 } },
+				-- The steering wheel, cut out of the black cabin mesh so the first-person
+				-- view can turn it (tools/carbody/wheelcut.py, CarCockpits).
+				{ name = "SteeringWheel", mesh = "LekzasCabin/SteeringWheel", color = Color3.fromRGB(53, 53, 53), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.3573, 0.3106, 0.1653 }, offsetM = { -0.3577, 0.9628, -0.4053 } },
 				{ name = "Indicators_4", meshId = 4719876485, color = Color3.fromRGB(200, 174, 102), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.7906, 0.0317, 0.0693 }, offsetM = { 0, 0.7468, -1.0171 } },
 			},
 			wheelPieces = {
@@ -513,8 +516,9 @@ local cars: { [string]: CarEntry } = {
 	-- only what cannot be seen: the parts no ray from outside reaches
 	-- (brackets, stacked duplicates), the engine bay, the boot interior and
 	-- the floor pan and tray under the car; and the badges, including the
-	-- chrome boot strip that carries the maker's oval and lettering. The
-	-- sunroof glass is a plain block with no mesh id, so the sunroof reads
+	-- chrome boot strip that carries the maker's oval and lettering, and
+	-- the maker's emblem on the steering wheel pad (P184, seen from the
+	-- first-person view, 2026-11-08). The sunroof glass is a plain block with no mesh id, so the sunroof reads
 	-- open. assets/cars/kamri07/README.md has the list.
 	--
 	-- Placed from the Studio model at 0.2505 m a stud, so its wheel centres
@@ -569,7 +573,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P65", meshId = 1579914286, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 0.0131, 0.1688, 0.2779 }, offsetM = { -0.7242, 0.5924, -0.6367 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P66", meshId = 1579906934, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.2078, 0.6908, 1.1326 }, offsetM = { 0.7156, 1.0629, 0.7963 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "TailLamps_P68", meshId = 1579949728, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.2099, 0.1673, 0.077 }, offsetM = { -0.0018, 0.8723, 2.3135 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P69", meshId = 1578584236, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2779, 0.1158, 0.0716 }, offsetM = { -0.3838, 0.8581, -0.3959 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "SteeringWheel_P69", meshId = 1578584236, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.2779, 0.1158, 0.0716 }, offsetM = { -0.3838, 0.8581, -0.3959 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P70", meshId = 1578606330, paint = true, sizeM = { 1.3631, 0.4036, 0.5204 }, offsetM = { -0.0018, 0.9229, 2.1291 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P71", meshId = 1578607620, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 1.233, 0.1707, 0.124 }, offsetM = { -0.0018, 0.8927, 2.3165 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P72", meshId = 1579926606, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, transparency = 0.2, castShadow = false, sizeM = { 0.1758, 0.366, 1.0286 }, offsetM = { 0.7063, 1.1676, -0.2477 }, rotationDeg = { 4.891, -180, 0 } },
@@ -577,7 +581,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P74", meshId = 1579929445, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.286, 0.2978, 0.8048 }, offsetM = { -0.0016, 1.272, 1.538 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P75", meshId = 1579913505, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1212, 0.7485, 1.0468 }, offsetM = { -0.7389, 0.7465, -0.3742 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "TailLamps_P82", meshId = 1579944508, color = Color3.fromRGB(117, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.6128, 0.1662, 0.3835 }, offsetM = { -0.0018, 0.8897, 2.1495 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P85", meshId = 1578582244, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.Plastic, sizeM = { 0.3417, 0.3212, 0.1629 }, offsetM = { -0.3838, 0.8907, -0.4086 }, rotationDeg = { 0, -180, 0 } },
+				{ name = "SteeringWheel_P85", meshId = 1578582244, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.Plastic, sizeM = { 0.3417, 0.3212, 0.1629 }, offsetM = { -0.3838, 0.8907, -0.4086 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P92", meshId = 1579885532, paint = true, sizeM = { 1.1392, 0.1148, 1.5376 }, offsetM = { -0.0018, 1.423, 0.3834 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P93", meshId = 1579897436, paint = true, sizeM = { 0.4131, 1.1313, 1.2562 }, offsetM = { 0.8088, 0.8414, -0.3399 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P94", meshId = 1579898449, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1212, 0.7485, 1.0468 }, offsetM = { 0.7354, 0.7465, -0.3742 }, rotationDeg = { 0, -180, 0 } },
@@ -618,7 +622,6 @@ local cars: { [string]: CarEntry } = {
 				{ name = "P174", meshId = 1578511094, color = Color3.fromRGB(150, 150, 150), material = Enum.Material.SmoothPlastic, sizeM = { 1.4522, 0.5172, 2.9112 }, offsetM = { -0.0031, 1.1628, 0.4046 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P176", meshId = 1578612881, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 1.804, 0.8234, 3.7795 }, offsetM = { -0.0018, 1.0689, 0.0588 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P177", meshId = 1579904429, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, sizeM = { 0.1241, 0.6803, 1.0443 }, offsetM = { 0.7253, 0.7228, 0.774 }, rotationDeg = { 0, -180, 0 } },
-				{ name = "P184", meshId = 1578586121, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.SmoothPlastic, sizeM = { 0.0535, 0.032, 0.018 }, offsetM = { -0.3842, 0.8928, -0.3809 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P185", meshId = 1579906867, color = Color3.fromRGB(205, 205, 205), material = Enum.Material.SmoothPlastic, sizeM = { 0.2078, 0.6908, 1.1326 }, offsetM = { -0.7191, 1.0629, 0.7963 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "TailLamps_P189", meshId = 1579940451, color = Color3.fromRGB(151, 0, 0), material = Enum.Material.SmoothPlastic, sizeM = { 1.1574, 0.0989, 0.0371 }, offsetM = { -0.0022, 0.8463, 2.3464 }, rotationDeg = { 0, -180, 0 } },
 				{ name = "P190", meshId = 1578413350, paint = true, sizeM = { 0.8899, 0.1815, 0.1946 }, offsetM = { -0.002, 0.647, -2.2294 }, rotationDeg = { 0, -180, 0 } },
@@ -702,11 +705,17 @@ local cars: { [string]: CarEntry } = {
 			paint = Color3.fromRGB(236, 236, 232),
 			pieces = {
 				{ name = "HeadLamps", meshId = 8941430640, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.2836, 0.1954, 1.7227 }, offsetM = { -0.0007, 0.9785, -2.1075 }, rotationDeg = { 0, 90, 0 } },
-				{ name = "Interior_Wood", meshId = 8941497189, textureId = 8941497327, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.3343, 0.4511, 0.9112 }, offsetM = { -0.2354, 1.1356, -0.4157 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Interior_Wood", mesh = "BatrolCabin/Interior_Wood", textureId = 8941497327, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.4404, 0.2884, 0.1432 }, offsetM = { 0, 1.0775, -0.5113 } },
 				{ name = "Body_Caps", meshId = 8941371341, paint = true, sizeM = { 3.2937, 1.4583, 2.1754 }, offsetM = { 0, 1.066, 1.0192 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "Underbody_Shocks", meshId = 8941415688, color = Color3.fromRGB(239, 184, 56), material = Enum.Material.SmoothPlastic, sizeM = { 3.0067, 0.4035, 1.3356 }, offsetM = { 0, 0.6417, 0.0148 }, rotationDeg = { 0, 90, 0 } },
-				{ name = "Trim", meshId = 8941396835, color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 4.8889, 1.5194, 2.0573 }, offsetM = { -0.051, 1.0687, 0.0554 }, rotationDeg = { 0, 90, 0 } },
-				{ name = "Interior", meshId = 8941480817, color = Color3.fromRGB(43, 43, 43), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 3.4388, 1.3505, 1.7656 }, offsetM = { 0, 1.1363, 0.6884 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Trim", mesh = "BatrolCabin/Trim", color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, sizeM = { 2.0573, 1.5194, 4.8889 }, offsetM = { -0.051, 1.0687, 0.0554 } },
+				{ name = "Interior", mesh = "BatrolCabin/Interior", color = Color3.fromRGB(43, 43, 43), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.7656, 1.3505, 3.4388 }, offsetM = { 0, 1.1363, 0.6884 } },
+				-- The steering wheel, cut out of the cabin, wood trim, trim and glass
+				-- meshes so the first-person view can turn it (tools/carbody/wheelcut.py,
+				-- CarCockpits): the black rim and boss, the wood segments, the grey hub plate.
+				{ name = "SteeringWheel", mesh = "BatrolCabin/SteeringWheel", color = Color3.fromRGB(43, 43, 43), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.4486, 0.4511, 0.1854 }, offsetM = { -0.5045, 1.1356, -0.3462 } },
+				{ name = "SteeringWheel_Wood", mesh = "BatrolCabin/SteeringWheel_Wood", textureId = 8941497327, color = Color3.fromRGB(163, 162, 165), material = Enum.Material.Plastic, castShadow = false, sizeM = { 0.373, 0.4511, 0.1293 }, offsetM = { -0.5045, 1.1356, -0.3132 } },
+				{ name = "SteeringWheel_Trim", mesh = "BatrolCabin/SteeringWheel_Trim", color = Color3.fromRGB(99, 95, 98), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.3587, 0.2152, 0.0696 }, offsetM = { -0.488, 1.0998, -0.3211 } },
 				{ name = "Underbody_Floor", meshId = 8941383056, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 3.3718, 1.3049, 1.7656 }, offsetM = { 0, 1.1223, 0.655 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "Indicators", meshId = 8941435381, color = Color3.fromRGB(170, 85, 0), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.1107, 0.0771, 1.6913 }, offsetM = { 0, 0.9862, -2.0211 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "Trim_LowerGrille", meshId = 8941445129, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.1139, 0.2811, 0.6574 }, offsetM = { -0.001, 0.6489, -2.3044 }, rotationDeg = { 0, 90, 0 } },
@@ -721,7 +730,7 @@ local cars: { [string]: CarEntry } = {
 				{ name = "Trim_Grille", meshId = 8941421362, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.SmoothPlastic, sizeM = { 0.8232, 0.6167, 0.9392 }, offsetM = { 0, 0.9902, -1.957 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "ReverseLamps", meshId = 8941470873, color = Color3.fromRGB(231, 231, 236), material = Enum.Material.Glass, transparency = 0.5, castShadow = false, sizeM = { 0.1191, 0.0891, 1.8051 }, offsetM = { 0, 1.0489, 2.3729 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "Interior_Red", meshId = 8941488774, color = Color3.fromRGB(196, 40, 28), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 0.6501, 0.4298, 0.9096 }, offsetM = { -0.2187, 1.0254, -0.3073 }, rotationDeg = { 0, 90, 0 } },
-				{ name = "Glass", meshId = 8941426631, color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Glass, transparency = 0.7, castShadow = false, sizeM = { 4.684, 1.1716, 1.7897 }, offsetM = { 0.012, 1.2426, 0.0927 }, rotationDeg = { 0, 90, 0 } },
+				{ name = "Glass", mesh = "BatrolCabin/Glass", color = Color3.fromRGB(17, 17, 17), material = Enum.Material.Glass, transparency = 0.7, castShadow = false, sizeM = { 1.7897, 1.1716, 4.684 }, offsetM = { 0.012, 1.2426, 0.0927 } },
 				{ name = "FogLamps", meshId = 8941450998, color = Color3.fromRGB(248, 248, 248), material = Enum.Material.SmoothPlastic, castShadow = false, sizeM = { 1.6448, 0.6409, 1.6278 }, offsetM = { 0, 0.9531, -1.4546 }, rotationDeg = { 0, 90, 0 } },
 				{ name = "Chrome", meshId = 134304059207286, mesh = "Batrol/Chrome", color = Color3.fromRGB(248, 248, 248), material = Enum.Material.Metal, sizeM = { 1.905, 1.1262, 4.7811 }, offsetM = { 0.0246, 0.8758, 0.0436 } },
 			},

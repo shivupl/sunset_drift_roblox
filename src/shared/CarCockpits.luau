@@ -85,6 +85,18 @@ CarCockpits.cars = {
 	krownvik = cockpit({ "Interior_2" }, { -0.3891, 0.872, -0.2313 }, { 0, 0.3928, 0.9196 }, 0.400, 0.04),
 	krownvikfleet = cockpit({ "Interior_2" }, { -0.382, 0.8945, -0.272 }, { 0.0011, 0.4135, 0.9105 }, 0.398),
 	kruzer80 = cockpit({ "Interior_5" }, { -0.3954, 1.4408, -0.3207 }, { -0.0023, 0.3039, 0.9527 }, 0.289),
+	-- Wheels built into a cabin mesh, cut out by tools/carbody/wheelcut.py,
+	-- which also fits these numbers (the owner, 2026-11-08: "implement the
+	-- full first person for the rest of the cars with interiors"). The
+	-- Kamri's is its store kit's rim and spoke bar; the Lekzas's four islands
+	-- of the black cabin mesh; the Batrol's spread over four meshes (black
+	-- rim, wood segments, grey hub plate). Eyes lowered where the roof lining
+	-- filled the top of the view at the default height: the Lekzas, a low
+	-- saloon, a third of it (a quarter at 7 cm down); the Kamri, lining and
+	-- sun visor, nearly a third.
+	kamri07 = cockpit({ "SteeringWheel_P85", "SteeringWheel_P69" }, { -0.3838, 0.8851, -0.4146 }, { -0.0002, 0.3578, 0.9338 }, 0.343, 0.03),
+	lekzas = cockpit({ "SteeringWheel" }, { -0.3577, 0.9598, -0.4093 }, { 0.0002, 0.4154, 0.9096 }, 0.357, 0.07),
+	batrol = cockpit({ "SteeringWheel", "SteeringWheel_Wood", "SteeringWheel_Trim" }, { -0.5045, 1.1334, -0.3291 }, { 0.0011, 0.2387, 0.9711 }, 0.466),
 } :: { [string]: Cockpit }
 
 function CarCockpits.of(carId: string?): Cockpit?

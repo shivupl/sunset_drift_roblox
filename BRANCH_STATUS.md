@@ -19,6 +19,9 @@ arms (its colours and shirt) drawn for the local client only, reaching from shou
 to the steering wheel at ten to two and turning with it (client `CockpitArms`, TUNING.md
 `camera.firstPerson.arms`; ARMS in SETTINGS switches them off). `car-search` (the five store cars,
 the uploaded pieces and first person itself) is its base, also local.
+Since 2026-11-08 it also carries work that is not part of the experiment, done there because the
+owner was on it: the Hatch, Pickup and Cruiser removed, and first person for the Kamri, Lekzas and
+Batrol (`tools/carbody/wheelcut.py`). If the arms are dropped, move those commits to `car-search`.
 
 **`drift-mechanics` (2026-11-06, branched from `main` at `24b259d`; local, not pushed or merged):
 the arcade drive.** The owner: "please just perfect the drifting here ... it needs to feel really

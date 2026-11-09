@@ -279,6 +279,19 @@ cars through the sign posts) and lower the eye where the roof lining fills
 the top of the view. The spec checks the pieces exist and the pivot sits
 inside them. A car with no cabin has no entry, and the DRIVER view skips it.
 
+**A wheel built into the cabin** (`wheelcut.py`, 2026-11-08): the tool cuts
+it out of every store mesh it is part of and fits the column the same way.
+It takes whole islands inside mesh-space boxes where the wheel is islands of
+its own (the Lekzas), or every face in a slab across the wheel's plane where
+the rim is welded to the dash (the Batrol, whose wheel was in four meshes:
+the black cabin, the wood trim, a grey hub plate in the exterior trim and
+four inlays in the glass). What is left of each mesh and the wheel ship as
+generated pieces in `CarMeshes/<Car>Cabin` until uploaded; the source meshes
+are kept as `assets/cars/<car>/<piece>_source.obj`. After a cut, turn the
+wheel in Play and look for anything left behind on the dash. `--fit` fits a
+wheel that is already parts of its own (the Kamri). Every car with a cabin
+has first person now.
+
 ## Uploading generated pieces
 
 `python3 tools/carbody/upload_objs.py` writes `assets/cars/upload/<Car>.obj`,
@@ -303,14 +316,20 @@ In Play each of those cars drew every piece from its upload with all 8
 EditableMesh slots still free. A car added later gets its pieces uploaded
 the same way before it ships.
 
+Waiting for upload (2026-11-08, `AllCars.obj` now holds only these nine): the
+first-person cuts, `BatrolCabin` (Interior, Interior_Wood, Trim, Glass and
+three SteeringWheel pieces) and `LekzasCabin` (Interior_4, SteeringWheel).
+Until then the Batrol takes 7 of a client's 8 EditableMesh slots and the
+Lekzas 2.
+
 ## Cars
 
 | Car | Store asset | Script | Notes |
 |---|---|---|---|
-| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own. Plate spots by eye (boot-lid recess, front bumper band) |
-| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn. Plate spots by eye (tailgate recess left of the spare, front over the intake slot) |
+| Kamri (`kamri07`) | 876308553 | `store_body.py` (experiments) | Store meshes by id; badge parts dropped. Predates the standard: most pieces are still named `P<n>`, but its lamps have roles (`HeadLamps_P64`, `TailLamps_*`, `ReverseLamps_*`, `Indicators_P35`). Its own Camry engine set; the default ignition and horn are its own. Plate spots by eye (boot-lid recess, front bumper band). Steering wheel: its own parts, renamed `SteeringWheel_P85` and `SteeringWheel_P69`; the maker's emblem on the pad (P184) dropped. |
+| Batrol (`batrol`) | 8941542327 | `batrol.py` | Store meshes by id; grille and tailgate badges cut from the chrome. Lamp pieces have roles (red glass tail lamps); its own horn. Plate spots by eye (tailgate recess left of the spare, front over the intake slot). Steering wheel cut out of four meshes by `wheelcut.py` (generated `BatrolCabin`). |
 | Kruzer 80 (`kruzer80`) | 13118106368 | `storecar.py` | Store meshes by id, interior kept; roof gear, badges and lettering dropped; own wheels; tailgate spare kept, shrunk to 0.8 to clear the right tail lamp; plate mount painted. Headlamp lens and tail clusters are textured lenses; darker tail colour. Its own engine loop and horn. 163,478 to 137,884 triangles, about 87,500 once the simplified rim and hub are uploaded. Plate spots: rear exact (`--spots`, the store mount), front by eye |
-| Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (`Chrome_3`, uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles. Plate spots by eye (boot recess, front bumper band) |
+| Lekzas (`lekzas`) | 5405292580 | `storecar.py` | Store meshes by id, interior kept; grille emblem, boot emblem and both boot scripts cut out of the chrome (`Chrome_3`, uploaded). Its own lamps: glass headlamp lens, red glass tail lamps and high brake light, the white strip as reverse. Its own engine loop (refRpm 6260 from the plugin's pitch rule); no horn or ignition in the model, so the shared ones. 51,081 to 47,070 triangles. Plate spots by eye (boot recess, front bumper band). Steering wheel cut out of the black cabin mesh by `wheelcut.py` (generated `LekzasCabin`). |
 | Krown Vik (`krownvik`) | 2930898738 | `storecar.py` | Picked over 14407499990 on looks. Store meshes by id, interior kept; the maker's oval cut out of the grille and boot badge by texture coordinates (generated `Trim_2`, `Trim_4`, textured); wheel caps, steering-wheel badge and the raised boot lettering dropped. Lamps: the textured lamp faces (headlamps and corner lamps split out of the grille mesh, the tail-light mesh) plus the clear headlamp and reverse covers; the kit's `F`/`R` boxes stay trim. Darker tail colour (opaque lenses). Its own engine loop (refRpm 5000 from its kit's pitch rule), startup and horn; its door chime is private, so the shared chime. 32,976 to 31,890 triangles. Plate spots exact (`--spots`, the store plate parts) |
 | Krown Vik Fleet (`krownvikfleet`) | 14407499990 | `storecar.py` | The fleet-trim Crown Vic (black grille, steel wheels); the owner asked for both. Store meshes by id, interior kept; grille and boot badges and both plates are parts of their own and dropped; the airbag's oval painted out (`uvFlatten`); the engine under the bonnet dropped. Its lamps are parts of their own: headlamp, lens, corner parking lamps and tinted covers light as the whole front lamp. No scripts or sounds in the model: the Krown Vik's engine, startup and horn. Its left rims and caps face into the car in the store model, so they are turned to face out (`wheelFlip`). Wheel SurfaceAppearances do not carry over. 27,355 to 27,017 triangles. Plate spots exact (`--spots`, the store plate brackets) |
 | Tahu (`tahu`) | 1370195897 | `storecar.py` | Store meshes by id, interior kept; engine bay dropped; grille and tailgate bowties and the tailgate lettering are parts of their own and dropped; the model name over each front door's moulding cut out of the door chrome (generated `Chrome_3`, `Chrome_5`), the airbag's bowtie painted out (`uvFlatten`, generated `SteeringWheel`); the rims' texture (a bowtie on the cap) left off for plain metal (`wheelLook`). Its lamps are the kit's own lamp parts (F, FLI/FRI, R, RLI/RRI, RV, the fog and high brake lamps). Its own engine loop (refRpm 6936 from its kit's pitch rule), startup and horn. 44,112 to 31,321 triangles. Plate spots exact (`--spots`, the store plate parts) |

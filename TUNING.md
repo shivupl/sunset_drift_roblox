@@ -340,7 +340,7 @@ Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fle
 
 Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view.
 
-**DRIVER** is the fourth view, first person (`camera.firstPerson` below). It is only for cars in `CarCockpits`; on any other car (the generated Kamri, and for now Lekzas, Batrol and Kamri 07) the view in use is CHASE and V skips DRIVER, while `CamView` keeps it for the next car with a cabin.
+**DRIVER** is the fourth view, first person (`camera.firstPerson` below). It is only for cars in `CarCockpits`; on any other car (only the generated Kamri, off the menu, since 2026-11-08) the view in use is CHASE and V skips DRIVER, while `CamView` keeps it for the next car with a cabin.
 
 ### camera.firstPerson (client `CameraRig`, `SteeringWheels`; `CarCockpits`)
 First person from the driver's seat, with the steering wheel turning (the owner, 2026-11-07: "work on the first person view for all of them and the steering wheel moving also in first person"). The eye sits at the car's `CarCockpits.eyeM` and moves rigidly with the cabin, roll and pitch included. The local character is hidden on this client only. The chase camera keeps following underneath, so switching back is seamless.
