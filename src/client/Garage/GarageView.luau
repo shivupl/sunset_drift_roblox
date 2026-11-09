@@ -552,7 +552,9 @@ end
 local bakedBuilt: { [SurfaceGui]: number } = {}
 
 local function bakedGlow(): number
-	return GarageConfig.bakedGlow[Sky.current()] or 1
+	-- The interior look dims it while the view is open (GarageThemes
+	-- bakedGlowView), so the look's own lights do the lighting.
+	return (GarageConfig.bakedGlow[Sky.current()] or 1) * GarageInterior.bakedScale()
 end
 
 local function applyBaked(g: SurfaceGui, glow: number)
@@ -1717,6 +1719,8 @@ function GarageView.start()
 		if state == "inside" and g then
 			makeLights(g)
 		end
+	end, function()
+		reapplyBaked()
 	end)
 	-- A respawn while in the view: the old character is gone, put the rest
 	-- back.

@@ -14,8 +14,9 @@ Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09
 
 **`garage-aesthetics` (2026-11-09, branched from `main` at `357a330`; local, not pushed or merged): the
 garage's interior and lighting** (the owner: "work heavily on the garage aesthetics ... the interior ... the
-lighting ... reflective of a tripleA title"). Three interior looks in `GarageThemes` (Studio main, Gallery,
-Workshop; T in Studio), each with its own view lights, a studio skybox for the paint, grading and depth of
+lighting ... reflective of a tripleA title"). Interior looks in `GarageThemes` (T in Studio): three cozy
+workshop looks, Tungsten main, After Hours and Golden Bay (the owner chose "an actual garage" but "more
+cozy"), and the first cut's Studio, Gallery and Workshop, each with its own view lights, a studio skybox for the paint, grading and depth of
 field, and a soft shadow under the turntable car (TUNING.md "GarageThemes").
 
 **`car-customization` (2026-11-08, branched from `main` at `ec8cb4d`; merged into `main` by fast-forward on

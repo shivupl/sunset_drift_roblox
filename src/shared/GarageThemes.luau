@@ -5,10 +5,12 @@
 -- multiple versions ... 2. the garage lighting - needs to be optimal and needs
 -- to be best to show car edits ... quality work reflective of a tripleA title".
 --
--- Side variants per keep-design-variations: Studio is the main look; Gallery
--- and Workshop are the others. In Studio, T cycles them while the garage view
+-- Side variants per keep-design-variations: Tungsten is the main look (the
+-- owner chose the garage direction over the studios, below); After Hours,
+-- Golden Bay, and the first cut's Studio, Gallery and Workshop are the
+-- others. In Studio, T cycles them while the garage view
 -- is open (the LocalPlayer attribute GarageTheme holds the choice); players
--- get Studio. Once the owner picks, the rest go.
+-- get Tungsten. Once the owner picks, the rest go.
 --
 -- The client (Garage/GarageInterior) builds the dressing on every client from
 -- this, over the server's shell (WorldConfig.garage), and while the view is
@@ -71,11 +73,30 @@ export type Env = {
 	dof: { farIntensity: number, inFocusRadiusM: number }?,
 }
 
+-- A hanging enamel lamp (the cozy looks): its shade's centre in the view
+-- frame, and the SpotLight it throws straight down. The view adds the light
+-- to the look's own (GarageInterior.lights).
+export type Pendant = { positionM: Vector3, brightness: number, rangeM: number, angleDeg: number }
+
+-- Text on the back wall: a painted tin sign, or glowing neon.
+export type Sign = { text: string, arabic: string?, positionM: Vector3, sizeM: Vector2, neon: boolean, color: Color3, background: Color3? }
+
 export type Theme = {
 	name: string,
 	blurb: string,
-	kind: string, -- the builder: "studio" | "gallery" | "workshop"
+	kind: string, -- the builder: "cozy" | "studio" | "gallery" | "workshop"
 	colors: { [string]: Color3 },
+	-- The cozy looks' dressing.
+	pendants: { Pendant }?,
+	-- A lamp on an arm over the back wall's sign and pegboard; its light
+	-- shines from positionM toward aimM, warm like the bulbs.
+	wallLamp: { positionM: Vector3, aimM: Vector3, brightness: number, rangeM: number, angleDeg: number }?,
+	signs: { Sign }?,
+	dust: boolean?, -- motes drifting in the light (Golden Bay)
+	-- The interior's painted-on light while the view is open, as a factor
+	-- on GarageConfig.bakedGlow: below 1 the shell stops lighting itself, so
+	-- the room is lit by the look's lights and keeps its shadows.
+	bakedGlowView: number?,
 	-- The glossy floor's Reflectance while the view is open (it shows the
 	-- studio sky's panels); outside the view the floor keeps `floorReflect`
 	-- so it does not mirror the sunset to someone walking past.
@@ -109,6 +130,196 @@ local NEUTRAL = Color3.fromRGB(255, 250, 242)
 local WARM = Color3.fromRGB(255, 226, 186)
 
 GarageThemes.themes = {
+	-- THE COZY LOOKS (2026-11-09). The owner, on the Workshop look: "this one
+	-- where it looks like an actual garage is the direction i want to head
+	-- but why is it so bright/glowy? i wanted a more cozy kind of aesthetic
+	-- ... with more ambient mechanic shop vibes. make some more variations".
+	-- What made it glow: a 1.4 softbox and two 1+ spots on a white car under
+	-- the world's bloom (threshold 1.1), and the turntable ring as Neon. The
+	-- research (warm 2700-3000 K light in layers, pools from visible
+	-- fixtures, dim ambient, a faint cool fill from outside, lived-in
+	-- clutter; TUNING.md "GarageThemes") gives these: the real workshop
+	-- walls, its own lamps doing the lighting, warm and low, and bloom only
+	-- on the bulbs.
+	--
+	-- Tungsten: three enamel pendants over the car in warm pools, the shell's
+	-- strips dimmed to a warm glow, a pegboard, oil-can shelves, a tin sign
+	-- and a clock on the back wall, a faint dusk-blue fill from the door.
+	tungsten = {
+		name = "Tungsten",
+		blurb = "Warm pendant lamps, a lived-in workshop",
+		kind = "cozy",
+		colors = {
+			strip = Color3.fromRGB(176, 132, 84), -- the shell's strip lenses, a warm low glow
+			shade = Color3.fromRGB(38, 62, 50), -- green enamel
+			bulb = Color3.fromRGB(255, 198, 130),
+			cord = Color3.fromRGB(24, 24, 26),
+			pegboard = Color3.fromRGB(132, 100, 66),
+			tool = Color3.fromRGB(46, 48, 52),
+			toolRed = Color3.fromRGB(150, 34, 28),
+			shelf = Color3.fromRGB(70, 72, 76),
+			can1 = Color3.fromRGB(176, 40, 30),
+			can2 = Color3.fromRGB(214, 168, 40),
+			can3 = Color3.fromRGB(40, 78, 140),
+			can4 = Color3.fromRGB(46, 96, 58),
+			clock = Color3.fromRGB(232, 226, 210),
+			mat = Color3.fromRGB(30, 30, 32),
+			-- The display bay's back wall: with the photo backdrop gone the
+			-- shell shows its outside sandstone there, which read as a dirt
+			-- wall; red brick reads as a workshop (measured live 2026-11-09).
+			brick = Color3.fromRGB(122, 70, 52),
+		},
+		-- 1.6, measured live: at 1.1, with the shell's painted-on light still
+		-- on, the room lit flat and the lamps made no pools; with that light
+		-- off (bakedGlowView 0) 2.2 burned a white car, 1.6 gave a warm pool
+		-- with the paint still reading.
+		pendants = {
+			{ positionM = Vector3.new(-1.7, 3.5, 0.2), brightness = 1.6, rangeM = 9, angleDeg = 75 },
+			{ positionM = Vector3.new(0, 3.5, 0.2), brightness = 1.6, rangeM = 9, angleDeg = 75 },
+			{ positionM = Vector3.new(1.7, 3.5, 0.2), brightness = 1.6, rangeM = 9, angleDeg = 75 },
+		},
+		-- A caged lamp on an arm over the sign and pegboard, lighting the
+		-- wall down (the room's own fixtures light the room).
+		-- 1.2: from 0.9 to 1.6 made little difference live (the light grazes
+		-- the brick), so it stays moderate.
+		wallLamp = { positionM = Vector3.new(-2.6, 4.1, -5.55), aimM = Vector3.new(-2.6, 1.2, -6.0), brightness = 1.2, rangeM = 7, angleDeg = 70 },
+		signs = {
+			{ text = "HAJWALA MOTORS", arabic = "هجولة", positionM = Vector3.new(-1.2, 2.9, -5.93), sizeM = Vector2.new(2.2, 0.9), neon = false, color = Color3.fromRGB(236, 226, 200), background = Color3.fromRGB(34, 64, 52) },
+		},
+		-- The shell's painted-on light off in the view: at 0.35 it lit the
+		-- room flat and took the pools away.
+		bakedGlowView = 0,
+		floorReflectView = 0.03,
+		floorReflect = 0,
+		lights = {
+			-- A soft warm panel along the camera side, low: the long line down
+			-- the doors, so paint still reads between the pendants' pools.
+			{ type = "SurfaceLight", positionM = Vector3.new(-5.4, 1.4, 1.2), brightness = 0.45, rangeM = 9, angleDeg = 80, color = Color3.fromRGB(255, 214, 170), sizeM = 2 },
+			-- Dusk through the open door, behind the camera: faint and blue, so
+			-- the shadow side is cool against the warm lamps.
+			{ type = "SpotLight", positionM = Vector3.new(0, 3.2, 8.8), brightness = 0.35, rangeM = 14, angleDeg = 70, color = Color3.fromRGB(150, 176, 220) },
+			-- A pool over the lift car beyond the columns, so the workshop
+			-- behind has a lit corner of its own.
+			{ type = "SpotLight", positionM = Vector3.new(11.5, 4.6, -1.5), aimM = Vector3.new(11.5, 0, -1.5), brightness = 0.8, rangeM = 9, angleDeg = 80, color = Color3.fromRGB(255, 196, 130) },
+			-- Low and warm off the floor: sills, wheels.
+			{ type = "PointLight", positionM = Vector3.new(0, 0.3, 3.0), brightness = 0.2, rangeM = 4.5, angleDeg = 0, color = Color3.fromRGB(255, 200, 150) },
+		},
+		env = {
+			sky = "dark",
+			-- 66/54/44: at 44/36/30 with the painted-on light off the room
+			-- went black past the pool (pegboard, shelf gone).
+			ambient = Color3.fromRGB(66, 54, 44),
+			bloom = { intensity = 0.45, size = 18, threshold = 1.6 },
+			grade = { brightness = -0.02, contrast = 0.1, saturation = 0.06, tint = Color3.fromRGB(255, 238, 220) },
+			dof = { farIntensity = 0.12, inFocusRadiusM = 5 },
+		},
+	},
+	-- After Hours: the shop shut for the night. One lamp over the car, the
+	-- strips off, moonlight through the high window and the door, a red neon
+	-- sign on the back wall. Moodiest; the car is the lit thing.
+	afterHours = {
+		name = "After Hours",
+		blurb = "One lamp, moonlight, a neon sign",
+		kind = "cozy",
+		colors = {
+			strip = Color3.fromRGB(60, 58, 54), -- off
+			shade = Color3.fromRGB(24, 24, 26),
+			bulb = Color3.fromRGB(255, 206, 150),
+			cord = Color3.fromRGB(20, 20, 22),
+			pegboard = Color3.fromRGB(112, 86, 58),
+			tool = Color3.fromRGB(40, 42, 46),
+			toolRed = Color3.fromRGB(130, 30, 26),
+			shelf = Color3.fromRGB(60, 62, 66),
+			can1 = Color3.fromRGB(150, 36, 28),
+			can2 = Color3.fromRGB(190, 150, 36),
+			can3 = Color3.fromRGB(36, 70, 128),
+			can4 = Color3.fromRGB(40, 86, 52),
+			clock = Color3.fromRGB(210, 206, 196),
+			mat = Color3.fromRGB(26, 26, 28),
+			brick = Color3.fromRGB(96, 58, 46),
+		},
+		pendants = {
+			{ positionM = Vector3.new(0, 3.6, 0.2), brightness = 1.6, rangeM = 10, angleDeg = 85 },
+		},
+		wallLamp = { positionM = Vector3.new(-4.0, 3.6, -5.55), aimM = Vector3.new(-4.0, 1.0, -6.0), brightness = 0.5, rangeM = 6, angleDeg = 70 },
+		signs = {
+			{ text = "هجولة", positionM = Vector3.new(-2.2, 3.1, -5.93), sizeM = Vector2.new(1.8, 0.8), neon = true, color = Color3.fromRGB(255, 70, 90) },
+		},
+		bakedGlowView = 0,
+		floorReflectView = 0.04,
+		floorReflect = 0,
+		lights = {
+			-- Moonlight from the door, behind the camera: the cool side.
+			{ type = "SpotLight", positionM = Vector3.new(0, 3.4, 8.8), brightness = 0.55, rangeM = 15, angleDeg = 60, color = Color3.fromRGB(120, 150, 210) },
+			-- The neon's red spill on the wall and the car's flank toward it.
+			-- 0.4: at 0.6 it bathed the whole wall and a red car in red (live).
+			{ type = "PointLight", positionM = Vector3.new(-2.2, 3.1, -5.5), brightness = 0.4, rangeM = 5, angleDeg = 0, color = Color3.fromRGB(255, 60, 80) },
+			-- A soft warm line down the doors, very low.
+			{ type = "SurfaceLight", positionM = Vector3.new(-5.4, 1.4, 1.2), brightness = 0.3, rangeM = 9, angleDeg = 80, color = Color3.fromRGB(255, 214, 170), sizeM = 2 },
+			-- The bench lamp beyond the columns, a small warm pool.
+			{ type = "SpotLight", positionM = Vector3.new(9.7, 2.4, -5.6), aimM = Vector3.new(9.7, 0.9, -5.9), brightness = 0.7, rangeM = 5, angleDeg = 80, color = Color3.fromRGB(255, 190, 120) },
+		},
+		env = {
+			sky = "dark",
+			ambient = Color3.fromRGB(34, 36, 46),
+			bloom = { intensity = 0.6, size = 20, threshold = 1.5 },
+			grade = { brightness = -0.03, contrast = 0.14, saturation = 0.05, tint = Color3.fromRGB(240, 242, 255) },
+			dof = { farIntensity = 0.14, inFocusRadiusM = 5 },
+		},
+	},
+	-- Golden Bay: the shutter up at the end of the day, the low sun coming in
+	-- through the door across the floor and the car, dust drifting in it, the
+	-- inside left in warm shade.
+	goldenBay = {
+		name = "Golden Bay",
+		blurb = "Evening sun through the door, dust in the air",
+		kind = "cozy",
+		colors = {
+			strip = Color3.fromRGB(120, 96, 70), -- off but catching the light
+			shade = Color3.fromRGB(70, 42, 30), -- rust-red enamel
+			bulb = Color3.fromRGB(150, 120, 90), -- unlit
+			cord = Color3.fromRGB(24, 24, 26),
+			pegboard = Color3.fromRGB(138, 104, 68),
+			tool = Color3.fromRGB(48, 50, 54),
+			toolRed = Color3.fromRGB(156, 36, 30),
+			shelf = Color3.fromRGB(74, 76, 80),
+			can1 = Color3.fromRGB(180, 44, 32),
+			can2 = Color3.fromRGB(220, 172, 44),
+			can3 = Color3.fromRGB(44, 82, 146),
+			can4 = Color3.fromRGB(50, 100, 62),
+			clock = Color3.fromRGB(236, 228, 210),
+			mat = Color3.fromRGB(32, 30, 30),
+			brick = Color3.fromRGB(132, 78, 56),
+		},
+		-- Unlit: brightness 0 adds no light (they stay as fixtures).
+		pendants = {
+			{ positionM = Vector3.new(-1.7, 3.6, 0.2), brightness = 0, rangeM = 1, angleDeg = 60 },
+			{ positionM = Vector3.new(1.7, 3.6, 0.2), brightness = 0, rangeM = 1, angleDeg = 60 },
+		},
+		signs = {
+			{ text = "HAJWALA MOTORS", arabic = "هجولة", positionM = Vector3.new(-1.2, 2.9, -5.93), sizeM = Vector2.new(2.2, 0.9), neon = false, color = Color3.fromRGB(240, 228, 200), background = Color3.fromRGB(120, 40, 30) },
+		},
+		dust = true,
+		bakedGlowView = 0,
+		floorReflectView = 0.03,
+		floorReflect = 0,
+		lights = {
+			-- The sun through the door: low, warm, from the front left, across
+			-- the car and onto the floor and back wall.
+			{ type = "SpotLight", positionM = Vector3.new(-1.5, 2.6, 9.0), aimM = Vector3.new(0.6, 0.3, -2.0), brightness = 2.2, rangeM = 16.8, angleDeg = 40, color = Color3.fromRGB(255, 166, 92) },
+			-- Its bounce off the floor and walls, everywhere, warm and dim.
+			{ type = "SurfaceLight", positionM = Vector3.new(0, 5.6, 0.4), aimM = Vector3.new(0, 0, 0.4), brightness = 0.4, rangeM = 12, angleDeg = 120, color = Color3.fromRGB(255, 196, 150), sizeM = 4 },
+			-- The shade side, cool: sky from the high window.
+			{ type = "SurfaceLight", positionM = Vector3.new(5.6, 2.6, -1.0), brightness = 0.3, rangeM = 9, angleDeg = 80, color = Color3.fromRGB(150, 170, 210), sizeM = 2 },
+		},
+		env = {
+			sky = "dark",
+			ambient = Color3.fromRGB(62, 48, 38),
+			bloom = { intensity = 0.55, size = 24, threshold = 1.3 },
+			grade = { brightness = 0, contrast = 0.08, saturation = 0.1, tint = Color3.fromRGB(255, 232, 205) },
+			dof = { farIntensity = 0.12, inFocusRadiusM = 5 },
+		},
+	},
 	-- A dark detailing studio: black epoxy floor, charcoal walls with upright
 	-- LED strips, a honeycomb LED grid over the turntable, a lit amber ring
 	-- round it, and a smoked glass wall to the workshop beyond. Dark rooms
@@ -225,13 +436,15 @@ GarageThemes.themes = {
 	},
 } :: { [string]: Theme }
 
-GarageThemes.order = { "studio", "gallery", "workshop" }
+-- The cozy looks first (the owner's direction, 2026-11-09), Tungsten main;
+-- the first cut's three after them, kept to compare.
+GarageThemes.order = { "tungsten", "afterHours", "goldenBay", "studio", "gallery", "workshop" }
 
 function GarageThemes.resolve(id: any): string
 	if type(id) == "string" and GarageThemes.themes[id] then
 		return id
 	end
-	return "studio"
+	return "tungsten"
 end
 
 function GarageThemes.get(id: any): Theme

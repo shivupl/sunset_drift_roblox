@@ -10,11 +10,11 @@ local Tests = require(script.Parent)
 type T = Tests.T
 
 local MAX_LIGHTS = 10 -- 12, less the campfire, less one spare
-local KINDS = { studio = true, gallery = true, workshop = true }
+local KINDS = { cozy = true, studio = true, gallery = true, workshop = true }
 local TYPES = { SpotLight = true, SurfaceLight = true, PointLight = true }
 
 return function(t: T)
-	t.eq(GarageThemes.order[1], "studio", "Studio is the main look, first in the cycle")
+	t.eq(GarageThemes.order[1], "tungsten", "Tungsten is the main look, first in the cycle")
 	local listed: { [string]: boolean } = {}
 	for _, id in GarageThemes.order do
 		listed[id] = true
@@ -23,8 +23,8 @@ return function(t: T)
 	for id in GarageThemes.themes do
 		t.ok(listed[id] == true, `{id} is in the cycle order`)
 	end
-	t.eq(GarageThemes.resolve(nil), "studio", "no choice: Studio")
-	t.eq(GarageThemes.resolve("nope"), "studio", "unknown choice: Studio")
+	t.eq(GarageThemes.resolve(nil), "tungsten", "no choice: Tungsten")
+	t.eq(GarageThemes.resolve("nope"), "tungsten", "unknown choice: Tungsten")
 	t.eq(GarageThemes.resolve("gallery"), "gallery", "a known choice stays")
 
 	local r = GarageThemes.room
@@ -33,11 +33,36 @@ return function(t: T)
 
 	for id, th in GarageThemes.themes do
 		t.ok(KINDS[th.kind] == true, `{id}: a known builder ({th.kind})`)
-		t.ok(#th.lights >= 3 and #th.lights <= MAX_LIGHTS, `{id}: 3..{MAX_LIGHTS} view lights ({#th.lights})`)
+		-- A lit pendant adds its SpotLight (GarageInterior.lights).
+		local lit = 0
+		for i, pd in th.pendants or ({} :: { GarageThemes.Pendant }) do
+			local p = pd.positionM
+			if pd.brightness > 0 then
+				lit += 1
+			end
+			t.ok(p.Y > 2.4 and p.Y < r.ceilingY, `{id} pendant {i}: hung above head height, under the roof`)
+			t.ok(math.abs(p.X) < 3 and math.abs(p.Z) < 3, `{id} pendant {i}: over the turntable`)
+			t.ok(pd.brightness >= 0 and pd.brightness <= 2, `{id} pendant {i}: brightness in 0..2`)
+		end
+		local wl = th.wallLamp
+		if wl and wl.brightness > 0 then
+			lit += 1
+		end
+		local total = #th.lights + lit
+		t.ok(total >= 3 and total <= MAX_LIGHTS, `{id}: 3..{MAX_LIGHTS} view lights ({total})`)
+		for i, sg in th.signs or ({} :: { GarageThemes.Sign }) do
+			t.ok(sg.positionM.Z < r.backZ + 0.2, `{id} sign {i}: on the back wall`)
+			t.ok(sg.neon or sg.background ~= nil, `{id} sign {i}: a tin sign has a background`)
+		end
+		if th.bakedGlowView then
+			t.ok(th.bakedGlowView >= 0 and th.bakedGlowView <= 1, `{id}: bakedGlowView in 0..1`)
+		end
 		for i, l in th.lights do
 			local p = l.positionM
 			t.ok(TYPES[l.type] == true, `{id} light {i}: a known type`)
-			t.ok(p.X > r.leftX - 0.01 and p.X < r.splitX + 0.01 and p.Z > r.backZ - 0.01 and p.Z < r.frontZ + 0.01, `{id} light {i}: inside the display bay`)
+			-- In the building: the display bay, or the lift bay beyond the
+			-- columns (its far wall is 19.16 m over).
+			t.ok(p.X > r.leftX - 0.01 and p.X < 19.1 and p.Z > r.backZ - 0.01 and p.Z < r.frontZ + 0.01, `{id} light {i}: inside the building`)
 			t.ok(p.Y > 0 and p.Y < r.ceilingY, `{id} light {i}: between the floor and the ceiling`)
 			t.ok(l.brightness > 0 and l.brightness <= 3, `{id} light {i}: brightness in 0..3`)
 			t.ok(l.rangeM > 0 and l.rangeM / 0.28 <= 60 + 1e-6, `{id} light {i}: range within the engine's 60 studs`)
@@ -45,6 +70,14 @@ return function(t: T)
 		local env = th.env
 		t.ok(GarageThemes.skies[env.sky] ~= nil, `{id}: its studio sky ({env.sky}) exists`)
 		t.ok(env.bloom.threshold >= 0.8, `{id}: bloom threshold keeps lit paint from glowing`)
+		if th.kind == "cozy" then
+			-- The owner found the first garage look "so bright/glowy": in the
+			-- cozy looks only the bulbs and neon may bloom.
+			t.ok(env.bloom.threshold >= 1.3, `{id}: cozy, so only bulbs and neon bloom ({env.bloom.threshold})`)
+			t.ok(env.ambient.R + env.ambient.G + env.ambient.B < 0.7, `{id}: cozy, a dim room`)
+			local ring: Color3? = th.colors.ring
+			t.ok(ring == nil, `{id}: cozy, no glowing ring round the turntable`)
+		end
 		t.ok(math.abs(env.grade.contrast) <= 0.3 and math.abs(env.grade.saturation) <= 0.3, `{id}: a gentle grade`)
 		if env.dof then
 			t.ok(env.dof.farIntensity >= 0 and env.dof.farIntensity <= 0.4, `{id}: background softened, not smeared`)

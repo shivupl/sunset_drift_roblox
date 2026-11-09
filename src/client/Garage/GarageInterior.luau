@@ -40,6 +40,8 @@ type Saved = { part: BasePart, transparency: number, color: Color3, material: En
 local saved: { [BasePart]: Saved } = {}
 local floorParts: { BasePart } = {}
 local viewOpen = false
+-- GarageView's: repaint the interior's painted-on light (bakedScale changed).
+local rebake: () -> () = function() end
 type EnvSaved = { ambient: Color3, sky: { [string]: any }?, bloom: { [string]: number }? }
 local envSaved: EnvSaved? = nil
 
@@ -165,6 +167,27 @@ local function shellFor(t: GarageThemes.Theme)
 	if t.kind == "workshop" then
 		return
 	end
+	if t.kind == "cozy" then
+		-- The real workshop: the photo backdrop goes so its back wall shows,
+		-- and the strip fittings glow low and warm (or sit dark) instead of
+		-- lighting the room flat.
+		for _, name in { "Backdrop", "BackdropCove" } do
+			local p = folder:FindFirstChild(name, true)
+			if p and p:IsA("BasePart") then
+				hide(p)
+			end
+		end
+		local strips = folder:FindFirstChild("Strips")
+		if strips and t.colors.strip then
+			for _, d in strips:GetDescendants() do
+				if d:IsA("BasePart") and d.Name == "StripLens" then
+					restyle(d, t.colors.strip, Enum.Material.Neon, true)
+					d.Transparency = 0.15
+				end
+			end
+		end
+		return
+	end
 	-- Studio and Gallery dress the whole display bay: the shell's backdrop,
 	-- the workshop's strip fittings and the display bay's dressing go.
 	for _, name in { "Backdrop", "BackdropCove" } do
@@ -276,6 +299,186 @@ local function wallText(f: Folder, at: Vector3, sizeM: Vector2, text: string, co
 	label.Parent = g
 end
 
+-- A part turned so a Cylinder (its axis along X) stands upright.
+local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
+
+local function cylinder(parent: Instance, name: string, diameterM: number, heightM: number, at: Vector3, color: Color3, material: Enum.Material?): Part
+	local p = part(parent, name, Vector3.new(heightM, diameterM, diameterM), CFrame.new(at) * UPRIGHT, color, material)
+	p.Shape = Enum.PartType.Cylinder
+	return p
+end
+
+-- A hanging enamel lamp: cord to the ceiling, a wide shallow shade, a cap,
+-- and the bulb glowing under the rim (Neon, so it blooms) when lit.
+local function pendant(f: Folder, pd: GarageThemes.Pendant, c: { [string]: Color3 })
+	local r = GarageThemes.room
+	local at = pd.positionM
+	slab(f, "LampCord", Vector3.new(at.X - 0.006, at.Y + 0.12, at.Z - 0.006), Vector3.new(at.X + 0.006, r.ceilingY + 0.3, at.Z + 0.006), c.cord)
+	cylinder(f, "LampCap", 0.14, 0.1, at + Vector3.new(0, 0.1, 0), c.shade, Enum.Material.Metal)
+	cylinder(f, "LampShade", 0.5, 0.16, at, c.shade, Enum.Material.Metal)
+	-- The shade's flared rim, a little wider and thinner.
+	cylinder(f, "LampShade", 0.56, 0.03, at - Vector3.new(0, 0.08, 0), c.shade, Enum.Material.Metal)
+	local bulb = part(f, "LampBulb", Vector3.new(0.12, 0.12, 0.12), CFrame.new(at - Vector3.new(0, 0.1, 0)), c.bulb, if pd.brightness > 0 then Enum.Material.Neon else Enum.Material.Glass)
+	bulb.Shape = Enum.PartType.Ball
+end
+
+-- The back wall of a working shop: a pegboard of tools, a steel shelf of oil
+-- cans and boxes, a clock.
+local function shopWall(f: Folder, c: { [string]: Color3 })
+	local r = GarageThemes.room
+	-- The brick face over the shell's back wall, then everything in front.
+	if c.brick then
+		local brick = slab(f, "Brick", Vector3.new(r.leftX, r.floorY, r.backZ + 0.03), Vector3.new(r.splitX, r.ceilingY, r.backZ + 0.05), c.brick, Enum.Material.Brick)
+		brick.CastShadow = false
+	end
+	local z = r.backZ + 0.07
+	-- Pegboard, 2 m by 1.2 m, and its tools hung on it.
+	local px, py = -3.9, 1.0
+	slab(f, "Pegboard", Vector3.new(px - 1.0, py, z), Vector3.new(px + 1.0, py + 1.2, z + 0.02), c.pegboard)
+	local tz = z + 0.04
+	local function tool(x: number, y: number, w: number, h: number, col: Color3)
+		slab(f, "Tool", Vector3.new(px + x - w / 2, py + y, tz - 0.01), Vector3.new(px + x + w / 2, py + y + h, tz + 0.01), col, Enum.Material.Metal)
+	end
+	-- Spanners, longest first.
+	tool(-0.8, 0.25, 0.04, 0.42, c.tool)
+	tool(-0.7, 0.3, 0.04, 0.36, c.tool)
+	tool(-0.6, 0.35, 0.035, 0.3, c.tool)
+	tool(-0.5, 0.4, 0.03, 0.25, c.tool)
+	-- A hammer.
+	tool(-0.15, 0.3, 0.05, 0.5, c.tool)
+	tool(-0.15, 0.72, 0.24, 0.08, c.tool)
+	-- Screwdrivers with red handles.
+	for i, x in { 0.2, 0.32, 0.44 } do
+		local len = 0.3 - (i - 1) * 0.04
+		tool(x, 0.3, 0.025, len, c.tool)
+		tool(x, 0.3 + len, 0.05, 0.14, c.toolRed)
+	end
+	-- A rack of sockets.
+	for _, y in { 0.25, 0.45, 0.65 } do
+		tool(0.75, y, 0.3, 0.06, c.tool)
+	end
+	-- A steel shelf, 1.6 m wide, three boards of cans and boxes.
+	local sx, sw, sd = 3.4, 1.6, 0.45
+	for _, ux in { sx - sw / 2, sx + sw / 2 } do
+		slab(f, "ShelfPost", Vector3.new(ux - 0.025, r.floorY, z), Vector3.new(ux + 0.025, 2.0, z + sd), c.shelf, Enum.Material.Metal)
+	end
+	local rng = Random.new(4127)
+	local cans = { c.can1, c.can2, c.can3, c.can4 }
+	for _, y in { 0.35, 1.0, 1.65 } do
+		slab(f, "ShelfBoard", Vector3.new(sx - sw / 2, y - 0.03, z), Vector3.new(sx + sw / 2, y, z + sd), c.shelf, Enum.Material.Metal)
+		local x = sx - sw / 2 + 0.12
+		while x < sx + sw / 2 - 0.12 do
+			if rng:NextNumber() < 0.25 then
+				-- A cardboard box.
+				local bw = 0.3
+				slab(f, "ShelfBox", Vector3.new(x, y, z + 0.06), Vector3.new(x + bw, y + 0.24, z + 0.4), Color3.fromRGB(150, 112, 74))
+				x += bw + 0.06
+			else
+				local h = 0.16 + rng:NextNumber() * 0.1
+				cylinder(f, "OilCan", 0.11, h, Vector3.new(x + 0.06, y + h / 2, z + 0.2), cans[rng:NextInteger(1, #cans)], Enum.Material.SmoothPlastic)
+				x += 0.15
+			end
+		end
+	end
+	-- A plain wall clock.
+	local clock = part(f, "Clock", Vector3.new(0.04, 0.36, 0.36), CFrame.new(1.4, 3.6, z + 0.03) * CFrame.Angles(0, math.rad(90), 0), c.clock)
+	clock.Shape = Enum.PartType.Cylinder
+	slab(f, "ClockHand", Vector3.new(1.39, 3.6, z + 0.06), Vector3.new(1.41, 3.74, z + 0.07), c.tool)
+	slab(f, "ClockHand", Vector3.new(1.4, 3.59, z + 0.06), Vector3.new(1.5, 3.61, z + 0.07), c.tool)
+end
+
+-- A sign on the back wall: a painted tin sign (lit by the room) or neon
+-- tubes (glowing text, blooming).
+local function sign(f: Folder, sg: GarageThemes.Sign)
+	local at = sg.positionM
+	local board = part(f, "ShopSign", Vector3.new(sg.sizeM.X, sg.sizeM.Y, 0.02), CFrame.new(at), sg.background or Color3.new(0, 0, 0))
+	if sg.neon then
+		board.Transparency = 1
+	end
+	local g = Instance.new("SurfaceGui")
+	g.Face = Enum.NormalId.Back
+	g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	g.PixelsPerStud = 40
+	g.LightInfluence = if sg.neon then 0 else 1
+	g.Brightness = if sg.neon then 2.2 else 1
+	g.Parent = board
+	local function label(text: string, y: number, h: number)
+		local l = Instance.new("TextLabel")
+		l.BackgroundTransparency = 1
+		l.Position = UDim2.fromScale(0.06, y)
+		l.Size = UDim2.fromScale(0.88, h)
+		l.Text = text
+		l.TextScaled = true
+		l.FontFace = FONT
+		l.TextColor3 = sg.color
+		l.Parent = g
+	end
+	if sg.arabic then
+		label(sg.text, 0.1, 0.46)
+		label(sg.arabic, 0.56, 0.36)
+	else
+		label(sg.text, 0.05, 0.9)
+	end
+end
+
+-- Dust drifting in the light over the turntable.
+local function dust(f: Folder)
+	local box = part(f, "DustVolume", Vector3.new(6, 3, 6), CFrame.new(0, 2, 0.5), Color3.new(1, 1, 1))
+	box.Transparency = 1
+	local e = Instance.new("ParticleEmitter")
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	e.Rate = 14
+	e.Lifetime = NumberRange.new(6, 10)
+	e.Speed = NumberRange.new(0.02, 0.08)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Size = NumberSequence.new(0.03 / mps())
+	e.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.2, 0.5),
+		NumberSequenceKeypoint.new(0.8, 0.5),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	e.Color = ColorSequence.new(Color3.fromRGB(255, 220, 170))
+	e.LightEmission = 0.3
+	e.LightInfluence = 1
+	e.Parent = box
+end
+
+-- A caged lamp on an arm off the back wall (its light is in lights()).
+local function wallLamp(f: Folder, at: Vector3, c: { [string]: Color3 }, lit: boolean)
+	local r = GarageThemes.room
+	slab(f, "LampArm", Vector3.new(at.X - 0.015, at.Y + 0.1, r.backZ + 0.05), Vector3.new(at.X + 0.015, at.Y + 0.13, at.Z + 0.02), c.cord, Enum.Material.Metal)
+	cylinder(f, "LampShade", 0.3, 0.14, at, c.shade, Enum.Material.Metal)
+	local bulb = part(f, "LampBulb", Vector3.new(0.09, 0.09, 0.09), CFrame.new(at - Vector3.new(0, 0.08, 0)), c.bulb, if lit then Enum.Material.Neon else Enum.Material.Glass)
+	bulb.Shape = Enum.PartType.Ball
+end
+
+local function buildCozy(f: Folder, t: GarageThemes.Theme)
+	local c = t.colors
+	local wl = t.wallLamp
+	if wl then
+		wallLamp(f, wl.positionM, c, wl.brightness > 0)
+	end
+	local pendants = t.pendants
+	if pendants then
+		for _, pd in pendants do
+			pendant(f, pd, c)
+		end
+	end
+	shopWall(f, c)
+	local signs = t.signs
+	if signs then
+		for _, sg in signs do
+			sign(f, sg)
+		end
+	end
+	if t.dust then
+		dust(f)
+	end
+end
+
 local function buildStudio(f: Folder, t: GarageThemes.Theme)
 	local r = GarageThemes.room
 	local c = t.colors
@@ -371,7 +574,9 @@ local function build()
 	local t = theme()
 	local f = Instance.new("Folder")
 	f.Name = FOLDER
-	if t.kind == "studio" then
+	if t.kind == "cozy" then
+		buildCozy(f, t)
+	elseif t.kind == "studio" then
 		buildStudio(f, t)
 	elseif t.kind == "gallery" then
 		buildGallery(f, t)
@@ -513,7 +718,45 @@ end
 
 -- The view's lights for this look (GarageView makes them).
 function GarageInterior.lights(): { GarageThemes.Light }
-	return theme().lights
+	local t = theme()
+	local out = table.clone(t.lights)
+	local wl = t.wallLamp
+	if wl and wl.brightness > 0 then
+		table.insert(out, {
+			type = "SpotLight",
+			positionM = wl.positionM - Vector3.new(0, 0.1, 0),
+			aimM = wl.aimM,
+			brightness = wl.brightness,
+			rangeM = wl.rangeM,
+			angleDeg = wl.angleDeg,
+			color = t.colors.bulb,
+		})
+	end
+	for _, pd in t.pendants or ({} :: { GarageThemes.Pendant }) do
+		if pd.brightness > 0 then
+			-- Straight down from the bulb, warm like it.
+			local bulb = pd.positionM - Vector3.new(0, 0.12, 0)
+			table.insert(out, {
+				type = "SpotLight",
+				positionM = bulb,
+				aimM = bulb - Vector3.new(0, 4, 0),
+				brightness = pd.brightness,
+				rangeM = pd.rangeM,
+				angleDeg = pd.angleDeg,
+				color = t.colors.bulb,
+			})
+		end
+	end
+	return out
+end
+
+-- The factor on the interior's painted-on light (GarageConfig.bakedGlow)
+-- while the view is open: the look's bakedGlowView, else 1.
+function GarageInterior.bakedScale(): number
+	if not viewOpen then
+		return 1
+	end
+	return theme().bakedGlowView or 1
 end
 
 -- The view opened: the look's sky, ambient and grading, and depth of field
@@ -521,6 +764,7 @@ end
 function GarageInterior.viewOpen()
 	viewOpen = true
 	applyEnv()
+	rebake()
 	local g = current
 	if not g then
 		return
@@ -541,6 +785,7 @@ end
 function GarageInterior.viewClose()
 	viewOpen = false
 	clearEnv()
+	rebake()
 end
 
 -- The soft shadow under the turntable car: a part the view moves with the
@@ -595,7 +840,8 @@ end
 
 -- The choice changed (T, or the attribute set by hand): rebuild, and if the
 -- view is open regrade it; `relight` remakes the view's lights.
-function GarageInterior.start(relight: () -> ())
+function GarageInterior.start(relight: () -> (), repaint: () -> ())
+	rebake = repaint
 	local player = Players.LocalPlayer
 	-- Load the studio skies now, so they are ready by the time the view
 	-- opens; a sky whose images do not load is never swapped in.
@@ -620,6 +866,7 @@ function GarageInterior.start(relight: () -> ())
 		if viewOpen then
 			applyEnv()
 			relight()
+			rebake()
 		end
 	end)
 end
