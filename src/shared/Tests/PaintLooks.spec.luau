@@ -46,15 +46,14 @@ return function(t: T)
 		return PaintLooks.paint(lookId, carId, finishId, finishes[finishId], SMOOTH, ownRefl or 0, outdoors ~= false)
 	end
 
-	-- "As before", cars the looks are not tried on, and the garage's
-	-- turntable (its lit bay washes Glass over 0.15 toward white, so it keeps
-	-- the ladder tuned there): the CosmeticsConfig finish exactly as
+	-- "As before" and cars the looks are not tried on, on the road and on
+	-- the garage's turntable: the CosmeticsConfig finish exactly as
 	-- CarCosmetics applied it.
 	local cases: { { look: string, car: string, outdoors: boolean } } = {
 		{ look = "old", car = "kamri07", outdoors = true },
+		{ look = "old", car = "kamri07", outdoors = false },
 		{ look = "main", car = "tahu", outdoors = true },
-		{ look = "main", car = "kamri07", outdoors = false },
-		{ look = "wet", car = "kamri07", outdoors = false },
+		{ look = "main", car = "tahu", outdoors = false },
 	}
 	for _, case in cases do
 		local lookId, carId, outdoors = case.look, case.car, case.outdoors
@@ -99,6 +98,29 @@ return function(t: T)
 		t.ok(f.darken == 0 and g.darken == 0, `{lookId}: factory and gloss keep the paint's colour`)
 		local own = paint(lookId, "kamri07", "finish_stock", 0.5)
 		t.eq(own.reflectance, 0.5, `{lookId}: a factory piece already shinier keeps its own`)
+	end
+
+	-- The garage's turntable under every other look (the owner, 2026-11-09:
+	-- "gloss and factory looks the same" there, where gloss was Glass 0).
+	-- Its lit bay washes Glass past about 0.05 toward coral and pink (0.1 was
+	-- coral, 0.3 a pink car), so gloss gets a little Glass, more than none,
+	-- metallic sits on a much darker base, and chrome stays the shiniest.
+	for _, lookId in PaintLooks.order do
+		if lookId == "old" then
+			continue
+		end
+		local f = paint(lookId, "kamri07", "finish_stock", 0, false)
+		local g = paint(lookId, "kamri07", "finish_gloss", 0, false)
+		local m = paint(lookId, "kamri07", "finish_matte", 0, false)
+		local mt = paint(lookId, "kamri07", "finish_metallic", 0, false)
+		local c = paint(lookId, "kamri07", "finish_chrome", 0, false)
+		t.eq(f.material, SMOOTH, `{lookId} garage: factory keeps the car's own material`)
+		t.eq(f.reflectance, 0, `{lookId} garage: factory keeps its own reflectance`)
+		t.eq(g.material, GLASS, `{lookId} garage: gloss is glass`)
+		t.ok(g.reflectance > 0 and g.reflectance <= 0.06, `{lookId} garage: gloss shines without washing out ({g.reflectance})`)
+		t.ok(mt.darken >= g.darken + 0.3, `{lookId} garage: metallic much deeper than gloss`)
+		t.ok(c.reflectance > mt.reflectance and c.reflectance > g.reflectance, `{lookId} garage: chrome the shiniest`)
+		t.ok(m.reflectance == 0 and (m.darken > 0 or m.desaturate > 0), `{lookId} garage: matte flat and dull`)
 	end
 
 	-- The sun hours: still a sunset (after 17:00, earlier than the picked

@@ -881,10 +881,19 @@ What was measured that day, in Play, with five red and five white Kamris parked 
 | Metallic | Glass 0.2, 25% darker | Glass 0.35, 40% darker | Deep wine with a warm sheen |
 | Chrome | Glass 0.2 (its own 0.15 was under the floor) | Glass 0.7, 40% less saturated | Pale tinted silver |
 
-Under the floor, factory looked like gloss and metallic like chrome; now all five read apart, so none was cut. SmoothPlastic's reflectance barely shows outdoors (0.04 and 0.25 looked alike); Glass is what reads as shine. **The garage turntable keeps the CosmeticsConfig ladder** (tuned under its lights in 2026-09): there, Glass 0.3 turned a red car pale pink, while gloss at Glass 0 still shows a sheen beside factory. So a finish looks a little different on the turntable and on the road; outdoors is where it is seen most.
+Under the floor, factory looked like gloss and metallic like chrome; now all five read apart, so none was cut. SmoothPlastic's reflectance barely shows outdoors (0.04 and 0.25 looked alike); Glass is what reads as shine. **The garage turntable has its own ladder** (`looks[].garage`), because its lit walls wash Glass toward pink: Glass 0.3 there was a pink car, 0.1 coral. It first kept the CosmeticsConfig ladder, and the owner then found "gloss and factory looks the same" on the Kamri (gloss was Glass 0, a faint sheen over factory). Measured there with the spin held, so every finish was seen from one angle, on Beacon Red:
+| Finish (turntable) | Was | Now | How it reads |
+|---|---|---|---|
+| Factory | SmoothPlastic, own (0) | the same | Deep, flat red |
+| Gloss | Glass 0 | Glass 0.04 | Lighter, with a sheen, still red |
+| Metallic | Glass 0.05, 25% darker | Glass 0.06, 45% darker | Deep, muted red with a sheen (the old one read like the new gloss) |
+| Matte, Chrome | CosmeticsConfig (20%/30% duller; Glass 0.15) | the same | |
+
+A finish therefore looks a little different on the turntable and on the road; outdoors is where it is seen most.
 
 | Field | What it does |
 |---|---|
+| looks[].garage | The same on the garage's turntable car (Main, Finishes only and Wet share it; As before has none). Gloss Glass 0.04, metallic Glass 0.06 45% darker; a finish not listed keeps CosmeticsConfig's. Past about 0.05 Glass goes coral there. |
 | looks[].finishes | How each finish is painted on the cars in `cars` out in the world, by CosmeticsConfig finish id (material, reflectance, darken, desaturate; a finish with no material keeps the piece's own and reflects at least its own). Main and Finishes only use the ladder above; Wet takes every shiny finish a step wetter (factory 0.2, gloss 0.4, metallic 0.45, chrome 0.8, matte as is), still five apart on red; As before has none (the CosmeticsConfig finish everywhere). More reflectance on Glass = more sky and a paler colour; past about 0.3 red goes pink. |
 | looks[].sunClockTime | The hour a SkyConfig option is shown at instead of its own, by option id: Main and Wet show Sunset at 17.5. Night keeps 18.9. This moves the sky, the sun and the whole world, not only cars. If the owner keeps it, write 17.5 into SkyConfig's sunset and WorldConfig's goldenHour and drop the field (until then the server builds at 17.68 and each client moves to 17.5 as it starts). |
 | cars | The cars the finish ladders are tried on: `kamri07` only, as the owner asked ("for testing and development purposes rn we will work on only the camry"). Add an id to try another; the hour reaches every car. |

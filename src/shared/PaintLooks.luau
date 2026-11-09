@@ -41,8 +41,8 @@
 --   chrome   Glass 0.7, 40% less saturated: pale tinted silver
 -- All five read apart, so none was cut.
 --
--- The ladders are for cars out in the world; the garage's turntable keeps the
--- CosmeticsConfig ladder tuned under its lights (see paint). They only reach
+-- The ladders are for cars out in the world; the garage's turntable has its
+-- own (GARAGE), tuned under its lights. They only reach
 -- the cars in `cars` (the owner: "for testing and
 -- development purposes rn we will work on only the camry"); add a car id
 -- to try them on another. The sun hour reaches everything.
@@ -60,9 +60,12 @@ export type Paint = { material: Enum.Material, reflectance: number, darken: numb
 export type Look = {
 	name: string,
 	blurb: string,
-	-- How each finish is painted, by CosmeticsConfig finish id; nil: the
-	-- CosmeticsConfig finish as it is (the game as it was).
+	-- How each finish is painted out in the world, by CosmeticsConfig
+	-- finish id; nil (or a finish missing): the CosmeticsConfig finish as it
+	-- is (the game as it was).
 	finishes: { [string]: Finish }?,
+	-- The same for the garage's turntable car, under its lights.
+	garage: { [string]: Finish }?,
 	-- The hour each SkyConfig option is shown at instead of its own, by
 	-- option id; a missing option keeps its hour.
 	sunClockTime: { [string]: number },
@@ -82,6 +85,20 @@ local LADDER: { [string]: Finish } = {
 	finish_chrome = { material = GLASS, reflectance = 0.7, desaturate = 0.4 },
 }
 
+-- The garage's turntable, measured there 2026-11-09 with the spin held so
+-- each finish was seen from one angle: the owner found "gloss and factory
+-- looks the same" there, where gloss was Glass 0 (a faint sheen over factory
+-- SmoothPlastic). The bay's walls wash Glass toward coral past about 0.05
+-- (0.1 was coral, 0.3 a pink car), so gloss gets 0.04: lighter, with a
+-- sheen, still red. That made the old metallic (Glass 0.05, 25% darker)
+-- read like gloss, so metallic takes a much darker base: a deep, muted
+-- colour with a sheen. Factory, matte and chrome keep the CosmeticsConfig
+-- values tuned in that bay.
+local GARAGE: { [string]: Finish } = {
+	finish_gloss = { material = GLASS, reflectance = 0.04 },
+	finish_metallic = { material = GLASS, reflectance = 0.06, darken = 0.45 },
+}
+
 -- Every shiny finish a step wetter, matte as it is.
 local WET: { [string]: Finish } = {
 	finish_stock = { reflectance = 0.2 },
@@ -96,6 +113,7 @@ PaintLooks.looks = {
 		name = "Main",
 		blurb = "Finishes apart, sunset sun 6 degrees up",
 		finishes = LADDER,
+		garage = GARAGE,
 		sunClockTime = { sunset = 17.5 },
 	},
 	-- The car-only part: the finishes, the sky as picked.
@@ -103,12 +121,14 @@ PaintLooks.looks = {
 		name = "Finishes only",
 		blurb = "Finishes apart, the Sunset sky as it was",
 		finishes = LADDER,
+		garage = GARAGE,
 		sunClockTime = {},
 	},
 	wet = {
 		name = "Wet",
 		blurb = "Every shiny finish wetter, sunset sun 6 degrees up",
 		finishes = WET,
+		garage = GARAGE,
 		sunClockTime = { sunset = 17.5 },
 	},
 	-- Exactly what the game had.
@@ -134,11 +154,11 @@ end
 -- How a painted piece of this car is painted under this look and finish:
 -- `finish` is the CosmeticsConfig item, `ownMaterial` and `ownReflectance`
 -- the piece's factory values. `outdoors` is false for the garage's
--- turntable car: its lit bay washes Glass over 0.15 toward pale pink (gloss
--- at 0.3 there was a pink car, 2026-11-09), so it keeps the CosmeticsConfig
--- ladder that was tuned in that bay.
+-- turntable car, which takes the look's garage ladder: the bay's lit walls
+-- wash Glass toward pink (gloss at 0.3 there was a pink car, 2026-11-09).
 function PaintLooks.paint(lookId: string?, carId: string, finishId: string, finish: Finish, ownMaterial: Enum.Material, ownReflectance: number, outdoors: boolean): Paint
-	local ladder = if outdoors and PaintLooks.cars[carId] then PaintLooks.looks[PaintLooks.resolve(lookId)].finishes else nil
+	local look = PaintLooks.looks[PaintLooks.resolve(lookId)]
+	local ladder = if not PaintLooks.cars[carId] then nil elseif outdoors then look.finishes else look.garage
 	local f = (ladder and ladder[finishId]) or finish
 	local reflectance = if f.material then f.reflectance or 0 else math.max(ownReflectance, f.reflectance or 0)
 	return {
