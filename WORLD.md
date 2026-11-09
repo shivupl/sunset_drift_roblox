@@ -479,8 +479,9 @@ view takes over (asked by the owner on 2026-09-28; the design is
 `docs/superpowers/specs/2026-09-28-garage-design.md`). Everything comes from
 `WorldConfig.garage` in a local frame (u along the front, + to your right as
 you face the doors; v into the building; metres from its centre). The
-view's camera, spin and four lights are in the shared
-`src/shared/GarageConfig.luau`, because the client runs the view.
+view's camera and spin are in the shared `src/shared/GarageConfig.luau`,
+because the client runs the view; the interior's looks and the view's
+lights are in `src/shared/GarageThemes.luau` (below, "Interior looks").
 
 **Driving in.** A player driving their own car slowly through the open
 door gets the same view (client `GarageView`, server `GarageService`): the
@@ -564,8 +565,10 @@ the same under either sky.
   inward, below 20 km/h, and a fast or angled entry skipped it: "i just go
   into the structure"). The screen fades, control drops away (the root is anchored on
   the client), the character hides, and the lamp pool is suspended.
-- **Lights and the cap:** the view makes its four lights on invisible
-  anchors in the bay and suspends the lamp pool. Measured on the client
+- **Lights and the cap:** the view makes its look's lights on invisible
+  anchors in the bay and suspends the lamp pool (since 2026-11-09 the
+  look's: Studio 7, Gallery and Workshop 5; counted in Play: 8 live lights
+  in the view with Studio, the 7 and the campfire). Before the looks, four: Measured on the client
   (2026-09-28, final Play pass, every Light instance in the workspace):
   in the view, 5 = the four view lights + one DuneLife campfire; outside,
   13 = 12 pooled lamp lights + that campfire. The campfire is pre-existing
@@ -617,6 +620,25 @@ dune life ask it. Measured on a full build: no scatter or dune-life part
 inside it except one sand drift at the carriageway edge, 6 m past the
 building's end (the drifts loop does not ask the station's keep-out
 either).
+
+**Interior looks** (2026-11-09, `GarageThemes`, client `Garage/GarageInterior`;
+TUNING.md "GarageThemes"). The owner asked for the interior and its lighting
+to read like a AAA garage. Each client dresses the display bay over the
+shell, so every player sees the same room; nothing collides or replicates.
+Studio (the main look) is a dark detailing studio: black epoxy floor,
+charcoal walls, tall softboxes on the walls, a honeycomb of LED bars over the
+turntable, an amber ring round the plate and an amber cove line at the foot
+of the walls, the game's name lit on the panel behind the car, and smoked
+glass to the workshop on the column line. Gallery is a white cyclorama with
+an overhead light box; Workshop is the room as built, relit. Studio and
+Gallery hide the shell's backdrop and the display bay's strip fittings and
+dressing on that client; every look recolours the ring (Neon) and plate.
+While the view is open the look also brings its lights, a studio skybox (the
+paint and floor reflect the Sky, not the room: indoors red gloss reflected
+sunset clouds and read pink), ambient, bloom, a grade and depth of field, all
+put back on leaving; and the car gets a soft shadow on the plate, since no
+view light casts one under ShadowMap. Cost: Studio 190 client parts (about
+100 the honeycomb's bars), Gallery 21, Workshop none.
 
 **Cost.** 308 parts, ~5,900 triangles by the build estimate (23 cylinders
 at 108: the turntable and ring, 16 tyres, the compressor tank, drum and

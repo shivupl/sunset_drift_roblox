@@ -40,8 +40,10 @@ GarageThemes.room = {
 	turntableRadiusM = 2.7,
 }
 
--- One of the view's lights (GarageConfig.ViewLight's shape): aimed at the
--- turntable's centre GarageConfig.aimHeightM up unless `aimM` says where.
+-- One of the view's lights: aimed at the turntable's centre
+-- GarageConfig.aimHeightM up unless `aimM` says where. Range is capped at the
+-- engine's 60 studs (16.8 m). Brightness is for the default sky option (the
+-- view scales it by the option's exposure, GarageConfig.aimHeightM's note).
 export type Light = {
 	type: string, -- "SpotLight" | "SurfaceLight" | "PointLight"
 	positionM: Vector3,
@@ -88,22 +90,23 @@ export type Theme = {
 -- Reflectance shows the Sky's skybox, not the room, so indoors a shiny car
 -- showed sunset clouds and red gloss read pink; with the dark box red reads
 -- deep, with the box's softboxes streaking down the doors (measured on the
--- turntable 2026-11-09). Shown through rbxthumb (420 px): the fresh uploads'
--- rbxassetid links failed to load that day while their thumbnails loaded,
--- and a reflection is soft enough that 420 px does not show.
+-- turntable 2026-11-09, through the images' thumbnails). The view swaps a
+-- sky in only once all three images have loaded (a fresh upload is not
+-- served until it clears moderation); until then the paint reflects the
+-- world's sky as before. Thumbnails (rbxthumb) are not used as sky faces:
+-- Studio's 3D view stopped drawing in the session that tried them.
 GarageThemes.skies = {
 	dark = { side = 89900233873023, up = 86454614617481, down = 95555084878333 },
 	light = { side = 82829558744743, up = 116004750615370, down = 98642957239019 },
 } :: { [string]: { side: number, up: number, down: number } }
 
 function GarageThemes.skyImage(id: number): string
-	return `rbxthumb://type=Asset&id={id}&w=420&h=420`
+	return `rbxassetid://{id}`
 end
 
 local COOL = Color3.fromRGB(236, 242, 255)
 local NEUTRAL = Color3.fromRGB(255, 250, 242)
 local WARM = Color3.fromRGB(255, 226, 186)
-local SODIUM = Color3.fromRGB(255, 186, 92) -- UITheme's one accent
 
 GarageThemes.themes = {
 	-- A dark detailing studio: black epoxy floor, charcoal walls with upright
@@ -200,7 +203,7 @@ GarageThemes.themes = {
 		blurb = "The working garage, relit",
 		kind = "workshop",
 		colors = {
-			ring = SODIUM,
+			ring = Color3.fromRGB(214, 118, 36), -- Studio's amber (the UI's sodium read hard yellow as Neon)
 			plate = Color3.fromRGB(60, 62, 66),
 		},
 		floorReflectView = 0.05,

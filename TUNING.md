@@ -855,9 +855,40 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | sounds | The panel's sounds for this player (`GarageSounds`): tab (Roblox_UI_Small_Click), tap (Roblox_UI_Bright_Click, an unbought preview), fit (Pro Sound Effects impact wrench, an owned item fitted), buy (Pro Sound Effects cash register), error (Roblox_UI_Delete); ids and volumes, picked unheard for the owner. A sound that fails to load stays silent; volume 0 mutes one. |
 | feel | An item's press scale (0.96), the pop when an item is fitted or bought (1.06 and back), the cash count-down after a purchase (0.6 s). |
 | previewLampsOn | The preview's headlights (and so its tails) are lit, so the Lights category shows. |
-| aimHeightM | Spot lights aim at the turntable centre this high (the car's middle). |
-| lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color, sizeM (the fill's face), shadows (the key only; no effect under ShadowMap). The fill is a 3 m softbox 4.6 m over the car, brightness 1.5, angle 120, range 11 m (from a 1.2 m panel on the far side): the Glass finishes take their sheen from it. A white gloss car still does not bloom. Brightness: key 1, fill 1, rim 1.5, under 0.4 (from 3 / 1 / 2.5 / 0.8, because a white car passed the world bloom threshold and glowed). **The owner's feel knob is `lights.key.brightness`**: higher gives a hotter highlight and more bloom on white. Each light is scaled per sky option by 2^(default exposure - option exposure), so at night (+0.4 stops) they run at 0.76. Four lights with the pool suspended keeps the client under maxLiveLights (12). |
+| aimHeightM | A view light with no `aimM` aims at the turntable centre this high (the car's middle). The view's lights themselves are the interior look's (GarageThemes below; until 2026-11-09 four lights lived here: key 1, fill 1.5, rim 1.5, under 0.4). Each is scaled per sky option by 2^(default exposure - option exposure), so at night (+0.4 stops) they run at 0.76. |
 | bakedGlow / bakedGlowSkip | The interior's painted-on light per sky option: each panel's LightInfluence becomes 1 - (1 - built) * glow. Sunset 1 (as built), night 0.5. The sign (Fascia) is left alone. |
+
+## GarageThemes (the garage's interior looks; side variants)
+`src/shared/GarageThemes.luau`, built by client `Garage/GarageInterior` over the server's shell and applied by `GarageView` while the view is open. The owner, 2026-11-09: "work heavily on the garage aesthetics. 1. the garage interior making it more appealing, you can create multiple versions ... 2. the garage lighting - needs to be optimal and needs to be best to show car edits". **In Studio, T cycles the looks while the view is open** (Studio, Gallery, Workshop), named on screen; the LocalPlayer attribute `GarageTheme` holds the choice; players get Studio. Once the owner picks, the rest go. Positions are view-frame metres (as GarageConfig); `room` holds the display bay's measured faces.
+
+| Look | The room | The light |
+|---|---|---|
+| Studio (main) | A dark detailing studio: black epoxy floor, charcoal walls, a lighter panel behind the turntable with HAJWALA / هجولة lit on it, two tall softboxes either side on the back wall and two on the left, an amber cove line where the walls meet the floor, an amber ring round the turntable, a honeycomb of LED bars over the car, smoked glass to the workshop on the column line. | A broad soft panel down from the honeycomb, two shoulder-height side strips (the long highlight down the doors), a key on the camera side, a cool rim from behind, a warm low fill, a wash down the back wall: 7 lights. |
+| Gallery | A white photo studio: a curved cyclorama where the back wall meets the floor (no corner line), pale floor, a white partition, one framed light box overhead. | An overhead soft panel, two side panels, a key, a low fill: 5 lights. Brightest and most even; dark paints and tints read best. |
+| Workshop | The workshop as built (lift bay, tools, strips) with the amber ring. | A softbox overhead, a warm key and rim, a side strip, a low fill: 5 lights. |
+
+While the view is open every look also swaps in a studio skybox (`skies`, `tools/garage/studio_sky.py`): Roblox's Reflectance shows the Sky, not the room, so indoors a shiny car reflected sunset clouds and red gloss read pink; with the dark box red read deep with softbox streaks down the doors (measured on the turntable through the images' thumbnails, 2026-11-09). A sky is swapped in only once its three images load; a fresh upload is not served until it clears moderation, and until then the paint reflects the world's sky. The car gets a soft shadow on the plate (`GarageInterior.shadow`: seven stacked rounded rectangles, black, 16% each, the footprint plus 18% wide and 10% long), because no light in the view casts one under ShadowMap.
+
+Measured live in Play (2026-11-09, Studio look, the kamri07, before and after):
+| Field | First cut | Now | Why |
+|---|---|---|---|
+| colors.wall / env.ambient | 30,31,34 / 34,36,42 | 46,48,54 / 58,60,68 | A black void: only the lights and ring showed. Now a dark room with walls that read. |
+| colors.ring | sodium 255,186,92 | 214,118,36, 20% transparent | Neon glows by its colour; sodium was a hard yellow ring, this reads amber. |
+| key brightness | 1 | 0.7 | A factory white car blew out to flat white. |
+| honeycomb height | 4.5 m | 5.1 m | At 4.5 it filled the top of the frame and pressed on the car; at 5.5 it left the frame. |
+| hanging rods, thin wall LEDs | on | gone | Read as white lines across the car and floating lines on a dark wall; the softboxes replace them. |
+| floor reflectance (view) | 0.14 | 0.09 | Softer streaks on the floor. |
+
+| Field | What it does |
+|---|---|
+| themes[].colors | The look's palette; `ring` and `plate` restyle the shell's turntable ring (to Neon) and plate (to Metal) in every look. Neon parts glow by their colour: darker is a softer glow. |
+| themes[].floorReflectView / floorReflect | The look's floor Reflectance with the view open (it shows the studio sky's panels) and closed (someone walking past sees the sunset in it, so near 0). |
+| themes[].lights | The view's lights: type, positionM, aimM (default the car's middle), brightness, rangeM (the engine caps at 60 studs, 16.8 m), angleDeg, color, sizeM (a SurfaceLight's face). At most 10 (spec): the view suspends the lamp pool and a client holds 12 live lights, one a dune campfire. Counted in Play: 8 live lights in the view with Studio (7 + the campfire), 6 with Gallery and Workshop. **The owner's feel knob is the key's brightness** (the SpotLight on the camera side, 0.7 in Studio): higher is a hotter highlight and more bloom on white. |
+| themes[].env | While the view is open: `sky` (the studio skybox), `ambient` (Lighting.Ambient: what unlit faces show; lower is moodier), `bloom` (over the world's Glow), `grade` (a ColorCorrection on top of the world's), `dof` (the background softens behind the car; focus follows the camera's distance to the car, the whole car stays sharp within inFocusRadiusM). All put back on leaving (checked in Play: the world sky, bloom 0.85/24/1.1, ambient and the floor's 0.02 back). |
+| skies | Image ids per studio sky: one for the four walls, one up, one down (re-run the generator, upload with the MCP's upload_image, put the ids here). |
+| order | The cycle; the first is the main look and every unknown choice falls back to it. |
+
+Cost (counted in Play, 2026-11-09): Studio 190 parts (about 100 of them the honeycomb's bars), Gallery 21, Workshop none; all client-built, anchored, not colliding, no shadows.
 
 ## PaintLooks (how car paint catches the light; side variants)
 `src/shared/PaintLooks.luau`, read by `CarCosmetics` (the finishes) and `Sky` (the hour). The owner, 2026-11-08: the cars looked flat, "so the sun has an effect on it". **In Studio, B cycles the looks** (Main, Finishes only, Wet, As before), named on screen; the LocalPlayer attribute `PaintLook` holds the choice; players get Main. Once the owner picks, the rest go.
@@ -1188,4 +1219,4 @@ Measured in Play (kamri07, harness, lifting at 110-125 km/h, 2026-10-05): Crackl
 
 **The owner's feel knobs for the flames:** `ExhaustStyles.default` (the free style; keep it the stock flame's `flameStyle`), the flames' prices in `CosmeticsConfig`, each style's `pattern` (`count`, `gapStart`/`gapEnd`, `jitter`: how much and how sputtery), `sounds.*.volume` (how loud), the layers' `size` and the classes' `size` (how big), `light.brightness`, the items' `flameSize` (bigger or smaller flames per exhaust), `trailGain` (how far flames reach at speed), and `crackleShiftChance` / `crackleLimiterPerSecond` (upshift and limiter pops; 0, off, by default per the owner's 2026-09-22 ruling).
 
-**The owner's feel knobs for the garage:** `GarageConfig.lights.key.brightness` (hotter highlight, more bloom on white), `GarageConfig.fovDeg` (longer lens, farther eye; the wall limits it), the finish items' `material` / `reflectance` / `darken` / `desaturate` (the finish ladder above), and `GarageConfig.bakedGlow` (how much painted-on light the interior keeps per sky option).
+**The owner's feel knobs for the garage:** the look's key brightness in `GarageThemes` (hotter highlight, more bloom on white), which look is main (`GarageThemes.order`), `GarageConfig.fovDeg` (longer lens, farther eye; the wall limits it), the finish items' `material` / `reflectance` / `darken` / `desaturate` (the finish ladder above), and `GarageConfig.bakedGlow` (how much painted-on light the interior keeps per sky option).

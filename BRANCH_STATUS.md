@@ -12,6 +12,12 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`garage-aesthetics` (2026-11-09, branched from `main` at `357a330`; local, not pushed or merged): the
+garage's interior and lighting** (the owner: "work heavily on the garage aesthetics ... the interior ... the
+lighting ... reflective of a tripleA title"). Three interior looks in `GarageThemes` (Studio main, Gallery,
+Workshop; T in Studio), each with its own view lights, a studio skybox for the paint, grading and depth of
+field, and a soft shadow under the turntable car (TUNING.md "GarageThemes").
+
 **`car-customization` (2026-11-08, branched from `main` at `ec8cb4d`; merged into `main` by fast-forward on
 2026-11-09 at `5570e56`, not pushed; the owner: "ok now merge these changes onto main also"): more
 car customization, tried on the Kamri (`kamri07`) first** (the owner: "for testing and development

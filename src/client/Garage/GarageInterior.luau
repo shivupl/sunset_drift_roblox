@@ -10,6 +10,7 @@
 -- shadow under the turntable car.
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local ContentProvider = game:GetService("ContentProvider")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,6 +30,8 @@ local FOCUS_STEP = "GarageFocusStep"
 local FONT = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 
 local current: Garage? = nil
+-- The studio skies whose three images have loaded (see GarageThemes.skies).
+local skyReady: { [string]: boolean } = {}
 local built: Folder? = nil
 local themeId = GarageThemes.resolve(nil)
 -- Shell parts this look hides or restyles, with what they were, so another
@@ -417,7 +420,7 @@ local function applyEnv()
 		envSaved = s
 	end
 	local box = GarageThemes.skies[env.sky]
-	if sky and box then
+	if sky and box and skyReady[env.sky] then
 		local side = GarageThemes.skyImage(box.side)
 		sky.SkyboxBk, sky.SkyboxFt, sky.SkyboxLf, sky.SkyboxRt = side, side, side, side
 		sky.SkyboxUp, sky.SkyboxDn = GarageThemes.skyImage(box.up), GarageThemes.skyImage(box.down)
@@ -594,6 +597,22 @@ end
 -- view is open regrade it; `relight` remakes the view's lights.
 function GarageInterior.start(relight: () -> ())
 	local player = Players.LocalPlayer
+	-- Load the studio skies now, so they are ready by the time the view
+	-- opens; a sky whose images do not load is never swapped in.
+	task.spawn(function()
+		for name, box in GarageThemes.skies do
+			local images = { GarageThemes.skyImage(box.side), GarageThemes.skyImage(box.up), GarageThemes.skyImage(box.down) }
+			local loaded = 0
+			pcall(function()
+				ContentProvider:PreloadAsync(images, function(_, status: Enum.AssetFetchStatus)
+					if status == Enum.AssetFetchStatus.Success then
+						loaded += 1
+					end
+				end)
+			end)
+			skyReady[name] = loaded == #images
+		end
+	end)
 	themeId = GarageThemes.resolve(player:GetAttribute(GarageThemes.ATTRIBUTE))
 	player:GetAttributeChangedSignal(GarageThemes.ATTRIBUTE):Connect(function()
 		themeId = GarageThemes.resolve(player:GetAttribute(GarageThemes.ATTRIBUTE))

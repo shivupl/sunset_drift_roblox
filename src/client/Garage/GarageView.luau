@@ -474,7 +474,7 @@ end
 ------------------------------------------------------------------------
 
 -- The view lights' brightness factor under the player's sky option (see
--- GarageConfig.lights): the same exposure on the car whichever sky.
+-- GarageConfig.aimHeightM's note): the same exposure on the car whichever sky.
 local function exposureScale(): number
 	local base = SkyConfig.resolve(nil).exposureCompensation
 	local chosen = SkyConfig.resolve(Sky.current()).exposureCompensation

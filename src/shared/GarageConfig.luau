@@ -11,16 +11,6 @@
 -- door, where the camera is.
 local GarageConfig = {}
 
-export type ViewLight = {
-	type: string, -- "SpotLight" | "SurfaceLight" | "PointLight"
-	positionM: Vector3,
-	brightness: number,
-	rangeM: number,
-	angleDeg: number, -- SpotLight / SurfaceLight cone; ignored by a PointLight
-	color: Color3,
-	sizeM: number?, -- the square emitting face of a SurfaceLight's anchor; default 0.2
-	shadows: boolean?, -- default false
-}
 
 -- Camera. The full framing (the `full` shot below): the whole car. Until
 -- garage-polish (2026-10-05) it was the only one ("no zoom, no presets",
@@ -254,71 +244,14 @@ GarageConfig.feel = { pressScale = 0.96, popScale = 1.06, cashCountSeconds = 0.6
 -- plain glass.
 GarageConfig.previewLampsOn = true
 
--- The view's own lights, used while the view is open with the world lamp
--- pool suspended, so the client never holds more than
--- WorldConfig.lamps.maxLiveLights (12): four here, none pooled. A spot
--- light aims at the turntable's centre 0.6 m up (the car's middle).
---
--- Brightness is for the default sky option. Another option's
--- ExposureCompensation brightens or darkens the whole frame, lights and all
--- (night is +0.4 stops over sunset, and a white car blew out under the key,
--- measured 2026-09-28), so the client scales every view light by
--- 2^(default exposure - that option's exposure): the car reads the same
--- under either sky.
+-- The view's lights are the interior look's (GarageThemes.themes[].lights,
+-- 2026-11-09; until then four lights lived here: key, fill, rim, under).
+-- A light with no aimM aims at the turntable's centre this far up (the
+-- car's middle). The client scales every view light by
+-- 2^(default exposure - the sky option's exposure), so the car reads the
+-- same under either sky (night is +0.4 stops; a white car blew out under the
+-- key without it, measured 2026-09-28).
 GarageConfig.aimHeightM = 0.6
-GarageConfig.lights = {
-	-- Above and in front, on the camera's side: bright and slightly warm,
-	-- so gloss and metallic paint get a highlight.
-	key = {
-		type = "SpotLight",
-		positionM = Vector3.new(-2.2, 4.4, 3.8),
-		-- 1, from 3 (measured 2026-09-28): at 3, and still at 1.5, a white
-		-- car's lit side passed the world's bloom threshold (1.1) and
-		-- glowed; at 1 white reads white with shading and a Night Blue
-		-- metallic still shows its highlight. Higher is a hotter highlight.
-		brightness = 1,
-		rangeM = 16,
-		angleDeg = 70,
-		color = Color3.fromRGB(255, 244, 228),
-		-- Under Lighting.Technology ShadowMap (this place) local lights cast
-		-- no shadow and give no specular highlight; this only matters if the
-		-- place moves to Future, where it would ground the car on the plate.
-		shadows = true,
-	},
-	-- A softbox: a broad panel over the car, facing down. Moved 2026-09-28
-	-- from the far side (3.6, 2.6, 0.6), brightness 1, 1.2 m face: the
-	-- Glass finishes (see CosmeticsConfig FINISH) take their sheen from the
-	-- view's lights, and from overhead it lands on the bonnet and roof, the
-	-- faces the camera sees. It is still the "fill": it lifts the shadow side.
-	fill = {
-		type = "SurfaceLight",
-		positionM = Vector3.new(0, 4.6, 0.3),
-		brightness = 1.5,
-		rangeM = 11,
-		angleDeg = 120,
-		color = Color3.fromRGB(226, 232, 240),
-		sizeM = 3, -- a broad face, so the sheen is soft and wide
-	},
-	-- Warm, from behind and above: an edge on the roof and shoulders
-	-- against the backdrop.
-	rim = {
-		type = "SpotLight",
-		positionM = Vector3.new(1.6, 3.8, -4.2),
-		brightness = 1.5, -- from 2.5, with the key (the edge stays brighter than the key)
-		rangeM = 12,
-		angleDeg = 60,
-		color = Color3.fromRGB(255, 204, 150),
-	},
-	-- Low under the front, soft, for the lower body and the wheels.
-	under = {
-		type = "PointLight",
-		positionM = Vector3.new(0, 0.35, 2.9),
-		brightness = 0.4, -- from 0.8: the sills bloomed on a white car
-		rangeM = 5,
-		angleDeg = 0,
-		color = Color3.fromRGB(255, 236, 200),
-	},
-} :: { key: ViewLight, fill: ViewLight, rim: ViewLight, under: ViewLight }
 
 -- The interior's painted-on light (WorldConfig.garage.bakedLight: SurfaceGuis
 -- at a LightInfluence below 1) per sky option (SkyConfig ids). The client
