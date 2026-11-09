@@ -122,6 +122,7 @@ Add to them whenever the engine surprises you, and correct them when one turns o
 
 ### Lighting and sky
 - **Sun direction is set by `GeographicLatitude`** together with ClockTime. There is no azimuth property, so use latitude to put a sunset in the player's windscreen.
+- **A sun under about 5° lights nothing directly.** At 3.5° (the Sunset sky, ClockTime 17.68) a red ball had no lit side and every car was one flat colour; Brightness 3.5, a third less OutdoorAmbient or a thinner Atmosphere changed nothing. Shading starts near 4.8° and is plain at 6° (17.5), measured 2026-11-08. Before tuning materials to fix a flat look, check the sun's elevation (`math.deg(math.asin(Lighting:GetSunDirection().Y))`). Reflectance still works that low: it shows the sky, not the sun.
 - **An untextured Sky object renders the default day skybox.** Use no Sky object for the procedural dome, or a real six-texture skybox for a painted sunset.
 - **Lights are expensive.** Pool a handful of real lights and move them to the nearest lamps; let Neon lenses stand in for the rest.
 - **Make lighting changes small**, and compare the same camera view before and after.
