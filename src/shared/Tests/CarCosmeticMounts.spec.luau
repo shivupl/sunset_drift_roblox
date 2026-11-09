@@ -33,12 +33,10 @@ return function(t: T)
 	t.ok(R.quadPairGapM >= 2 * R.tipRadiusM, "quad tips of a pair do not overlap")
 	t.ok(R.quadPairGapM / 2 <= 2 * R.tipRadiusM, "a quad pair sits over the pipe between its tips")
 
-	-- The cars whose glass is opaque or part of a textured shell have no
-	-- windows; every other car does, so a new car can't ship without tint.
-	local NO_WINDOWS = { hatch = true, pickup = true, cruiser = true }
+	-- Every car has windows, so a new car can't ship without tint.
 	for id in ConfigLoader.catalog().cars do
 		local m = CarCosmeticMounts.cars[id]
-		t.eq(m ~= nil and m.windows ~= nil, not NO_WINDOWS[id], `{id}: has windows for tint unless its glass can't take it`)
+		t.ok(m ~= nil and m.windows ~= nil, `{id}: has windows for tint`)
 		t.ok(m ~= nil, `{id}: has cosmetic spots`)
 		local w = if m then m.windscreen else nil
 		local e = if m then m.exhaust else nil

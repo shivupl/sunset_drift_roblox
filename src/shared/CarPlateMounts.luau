@@ -66,26 +66,6 @@ CarPlateMounts.cars = {
 		front = { posM = { 0.006, 0.9, -2.26 }, format = "short" },
 		rear = { posM = { -0.331, 1.111, 2.452 }, format = "short" },
 	},
-	-- By eye in Studio (2026-09-27): rear, the wide painted recess on the boot
-	-- panel between the tail lamps, which slopes about 17°; front, the flat
-	-- bumper band between the indicators and the lower grille (no recess).
-	cruiser = {
-		front = { posM = { 0, 0.52, -2.549 }, format = "long" },
-		rear = { posM = { 0, 0.74, 2.665 }, format = "long", tiltDeg = 17 },
-	},
-	-- By eye in Studio (2026-09-27): rear, the notch in the rear bumper
-	-- (about 36 x 15 cm); front, the bumper face behind the bull bar (no recess).
-	pickup = {
-		front = { posM = { 0, 0.52, -2.426 }, format = "short" },
-		rear = { posM = { 0, 0.44, 2.753 }, format = "short" },
-	},
-	-- By eye in Studio (2026-09-27): rear, the panel between the tail lamps
-	-- under the black strip, which slopes about 30°; front, the nose between
-	-- the two intakes, whose chin leans out about 24°.
-	hatch = {
-		front = { posM = { 0, 0.32, -2.203 }, format = "long", tiltDeg = -24 },
-		rear = { posM = { 0, 0.57, 2.007 }, format = "long", tiltDeg = 30 },
-	},
 	-- By eye in Studio (2026-09-27): rear, the tall recess in the boot lid
 	-- between the tail lamps, which slopes about 9°; front, the bumper band
 	-- between the chrome strip and the lower intake, too shallow for a short

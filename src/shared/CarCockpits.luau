@@ -9,9 +9,10 @@
 -- right, +Y up, forward -Z, from the body mount (tools/carbody/README.md).
 --
 -- A car with no entry has no first person: the DRIVER view is skipped on it
--- and its camera stays outside (the owner chose that for the cars with no
--- cabin, Hatch, Pickup, Cruiser and the generated Kamri, over drawing the
--- view through an empty shell or building cabins for them).
+-- and its camera stays outside (the owner chose that for a car with no
+-- cabin, over drawing the view through an empty shell; the cabin-less
+-- Hatch, Pickup and Cruiser were then removed, 2026-11-08). The generated
+-- Kamri, off the menu, has none.
 --
 -- wheel.pieces are the catalog body pieces that make the steering wheel;
 -- they turn about the line through pivotM along axis, the steering column.

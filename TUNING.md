@@ -32,9 +32,9 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 | cars.&lt;id&gt;.scale | Uniform size, default 1 (every car in the catalog is 1.2). Multiplies every length of rig and body and rescales the size-only handling terms so the car drives the same (RIG_SPEC.md §8b). Up = bigger car. |
 | cars.&lt;id&gt;.rig | Physics geometry and mass (table above). |
 | cars.&lt;id&gt;.body | Paint colour, body pieces (car space) and wheel pieces (wheel space). RIG_SPEC.md §7. A piece's `look` (ReplicatedStorage.CarLooks) carries its colour, metalness and roughness maps; with `paint` the look's Color is the paint. |
-| cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The hatch softens its springs to 27000/2100 for its 1250 kg; the pickup and cruiser are almost all tuning (below). |
+| cars.&lt;id&gt;.tuning | Any part of CarConfig this car tunes differently, deep-merged (arrays replace). The Batrol stiffens its springs to 45000/4200 for its 2.2 t. |
 | cars.&lt;id&gt;.displayName / blurb / order | The spawn menu card: name, one line under it, and position (low first, then by name). The card's last item is the car's drivetrain, read from `tuning.drivetrain.layout`. |
-| cars.&lt;id&gt;.tuning.drivetrain.layout | Which wheels drive, as the real car: the Kamri (a Camry) and the Hatch `"FWD"`, the Batrol (a Patrol) and the Kruzer 80 (a Land Cruiser) `"AWD"`, every other car rear drive (no line). It picks which drift styles the car offers (`DriftStyles`); the style sets the split. |
+| cars.&lt;id&gt;.tuning.drivetrain.layout | Which wheels drive, as the real car: the Kamri (a Camry) `"FWD"`, the Batrol (a Patrol) and the Kruzer 80 (a Land Cruiser) `"AWD"`, every other car rear drive (no line). It picks which drift styles the car offers (`DriftStyles`); the style sets the split. |
 | spawn.autoSpawnOnJoin (CarConfig) | false: players start on foot with the spawn menu open. true: a car is parked for them at join, the Phase 0 way. |
 | spawn.spawnCooldownSeconds (CarConfig) | Shortest gap the server allows between two spawn requests from one player (1.5 s). |
 | spawn.carId (CarConfig) | Overrides the default for everyone without a `CarId` attribute. |
@@ -42,67 +42,7 @@ Per-car geometry and mass are not in CarConfig any more: they are each car's `ri
 
 ### Car personalities
 
-The pickup and the cruiser were added with catalog entries only: a rig, one body mesh, and a `tuning` block. No code changed for them. Each one is described below by what it feels like, the fields that make it so, and which way to move them. All three cars share every other number in CarConfig.
-
-These numbers were measured in Studio, focused, at scale 1.2, using the input-override harness on the test road. The table gives the same protocol for each car.
-
-| | Sedan (baseline) | Pickup | Cruiser |
-|---|---|---|---|
-| Mass / wheelbase / track | 1600 kg / 2.8 / 1.55 m | 2200 kg / 3.15 / 1.64 m | 1800 kg / 3.0 / 1.7 m |
-| Centre of mass (car space, +Z back) | 0.2 m forward | 0.25 m back | 0.1 m forward |
-| Box centre above road at rest | 1.063 m | 1.085 m | 0.864 m (sits 0.2 m into its travel) |
-| 0–50 / 0–100 km/h | 1.59 / 3.67 s | 2.70 / 7.20 s | 1.74 / 4.82 s |
-| 100–0 km/h, full brake | 44.3 m | 59.1 m | 60.4 m |
-| Turn-in at 80 km/h, half wheel: yaw at 0.1 s / 0.2 s | 22.9 / 29.6 °/s | 20.3 / 26.7 °/s | 5.5 / 17.4 °/s |
-| … yaw still held at 3 s | 15.4 °/s | 17.9 °/s | 16.5 °/s |
-| … peak body roll | 3.5° | 3.6° | 4.6° |
-| Natl, 0.2 s lean tap at 105 km/h | 41°, down at 2.6 s | 32°, down at 2.5 s (0.6 s lean: 36°) | 34°, down at 5.1 s |
-| Lever 360 from 110 km/h | 2.59 s, 52 km/h at 4.5 s | 2.78 s, 42 km/h | 2.75 s, 58 km/h |
-| Slide held 20–70° with wheel centred, 5 s at gas 0.5 / 0.75 / 1.0 | 0.6 / 0.6 / 5.0 s | 0.5 / 0.4 / 4.9 s | 5.0 / 5.0 / 5.0 s |
-| … exit speed at full gas | 73 km/h | 89 km/h | 97 km/h |
-| Continuous lever 720, full lock and gas | 5.1 s | 5.4 s | 5.1–5.2 s |
-
-**Pickup: heavy, slow to wind up, and once it goes, it goes.** It is the slowest car by far off the line and the longest to stop. A turn arrives a touch late but then keeps rotating. It takes the throw longest, and a slide carries the most momentum. Its natl lifts on the first tap but lower, with less to spare.
-
-- **Launch.** `drivetrain.torqueCurve` peaks at 580 Nm against the sedan's 640 and runs out at 6000 rpm. `slipModel.wheelInertia` is 2.8 (the sedan's is 1.4) and `engineInertia` 0.45 (0.15). Together these give a slow, heavy launch.
-  - To make it quicker, raise the curve. That keeps the heavy feel better than lowering the inertias.
-  - The curve started at 520 Nm peak, which was 8.9 s to 100; at 580 it is 7.2 s.
-- **Braking.** It stops late because `brakeForce` 15000 is hauling 2200 kg.
-- **Turn-in and rotation.**
-  - The yaw rate builds more slowly (`rig.shellMassFraction` 0.55 puts more mass out in the long box, so it has more yaw and roll inertia).
-  - The front is lighter (`tires.front.grip` 0.95), and the wheel is slower (`steerSpeedDegPerSec` 200).
-  - `centerOfMassM` 0.25 m back with `rear.grip` 1.1 keeps the tail planted until it goes.
-  - `throwYawMaxTorque` 13000 means a throw gets less help, so its 360 is the slowest.
-  - Going up on the rear numbers makes it more stable; going down on `shellMassFraction` makes it more eager.
-- **Momentum.** `slideRelief` 0.35 and `leverRelief` 0.75 (less speed bled while sideways) are why it leaves a full-gas slide at 89 km/h.
-  - Its slide sits shallow, 24–29°, because the heavy tail and grippy rear won't swing wider on their own.
-  - To make it hold a wider angle, lower `rear.slideGripRatio` (0.88).
-- **Natl.** `twoWheel.liftTorque` 16500 and `leanInTorque` 6000 are more than the shared torques (which lifted it only 11° before dropping) but less than the sedan-equivalent 21000/7500 (40°, as easy as the sedan).
-  - This range is steep: 18000 gave 35° and 15000 gave 11°.
-  - Stiffer springs (`stiffness` 45000, `damping` 4200, anti-roll 9000/6000) keep it at the sedan's ride height under the extra weight.
-
-**Cruiser: big, soft and lazy on the way in; it holds a slide all day.** You wind the wheel on and the nose follows a beat later, while the body leans more than any other car's. A slide, once started, stays at part throttle with the wheel centred and exits fastest. On two wheels it floats up slowly and stays up twice as long as the sedan. It is moderately quick in a straight line and stops long.
-
-- **Lazy turn-in.** At 0.1 s after the wheel moves it has a quarter of the sedan's yaw. Four settings stack for this:
-  - `steering.steerSpeedDegPerSec` 100 (the sedan's is 320).
-  - A slower speed lock, `speedLockCurve` 0.45 at 90 km/h (the sedan's is 0.55).
-  - A soft front tyre that peaks late: `front.peakSlipDeg` 12, `riseShape` 1.0.
-  - `rig.shellMassFraction` 0.6, for yaw inertia.
-
-  Before the first, second and fourth were added, it turned in exactly like the sedan (20.6 °/s at 0.1 s), which is why all four are there. `steerReturnDegPerSec` stays at 300, and `counterSteerRelief` gives the whole wheel back in a slide, so catching one is not lazy.
-  - To make it sharper, raise `steerSpeedDegPerSec` first.
-- **Soft body.** `suspension.stiffness` 20000 and `damping` 1400 on `restLength` 0.45 and `travel` 0.32 give the sag, the float and the low stance. `antiRollFront`/`antiRollRear` at 1500/600 give the roll. Raise the anti-roll to lean it less.
-- **Holds a slide.** `throwThrottleHold` 0.5 from `throwThrottleHoldFromDeg` 15 means half throttle past 15° keeps a slide. The sedan needs 0.8 past 20°, which is why it drops the slide at gas 0.5 and 0.75.
-  - `throwThrottleHoldGraceSeconds` 1.0 and `throwThrottleHoldKeepDeg` 6 forgive a lift through a transition.
-  - `throwHoldGain` 8 holds the angle stiffer.
-  - `rear.slideGripRatio` 0.84 and `falloffShape` 2.0 keep grip past the peak, so it doesn't let go.
-  - `slideYawDamping` 100 (the sedan's is 130) lets a released slide swing wider before it settles.
-  - `slideRelief` 0.4 and `leverRelief` 0.8 keep the speed.
-  - To make it harder to hold, raise `throwThrottleHold` back toward 0.8.
-- **Engine.** A torquey, early curve (620 Nm at 3500, gone by 6000) with quick 0.14 s shifts pulls well to 50 and then fades: 4.8 s to 100.
-- **Natl.** It gets no two-wheel overrides. The wide 1.7 m track and soft springs make the shared torques lift it slower and lower (34°). The low damping lets it hang up there for 5 s.
-
-The sedan remains the reference: the quickest to answer the wheel, the easiest to throw, and the one that needs the most throttle to keep a slide.
+The Pickup and the Cruiser, the first cars added with catalog entries alone (a rig, one body mesh and a `tuning` block), were removed on 2026-11-08 with the Hatch: none had a cabin for the first-person view. The Batrol and the Kruzer 80 still use the Pickup's measured springs and natl torques at the same 2.2 t. Their feel notes and measurements are in this file's history (before the removal commit).
 
 **Kamri (Phase 3) against the sedan it replaced.** The Kamri keeps the sedan's mass, centre-of-mass height and shared tuning on its own real geometry: wheelbase 2.775 m (was 2.8), track 1.575 m (was 1.55), tyre radius 0.326 m (was 0.33), and a 1.2 m box (was 1.3) with the centre of mass 0.3 m below its centre (was 0.35), so the height above the road is the same. Measured with the same protocol:
 
@@ -400,7 +340,7 @@ Heights are from the chassis's centre (1.0 m above the road on the Krown Vik Fle
 
 Closer: smaller distance. Lower: smaller height. Car higher on screen: smaller lookHeight (aims lower). Less zoomed out: smaller baseFov and maxFov. The car's tail sits behind the bottom-middle tacho in every view.
 
-**DRIVER** is the fourth view, first person (`camera.firstPerson` below). It is only for cars in `CarCockpits`; on any other car (Hatch, Pickup, Cruiser, the generated Kamri, and for now Lekzas, Batrol and Kamri 07) the view in use is CHASE and V skips DRIVER, while `CamView` keeps it for the next car with a cabin.
+**DRIVER** is the fourth view, first person (`camera.firstPerson` below). It is only for cars in `CarCockpits`; on any other car (the generated Kamri, and for now Lekzas, Batrol and Kamri 07) the view in use is CHASE and V skips DRIVER, while `CamView` keeps it for the next car with a cabin.
 
 ### camera.firstPerson (client `CameraRig`, `SteeringWheels`; `CarCockpits`)
 First person from the driver's seat, with the steering wheel turning (the owner, 2026-11-07: "work on the first person view for all of them and the steering wheel moving also in first person"). The eye sits at the car's `CarCockpits.eyeM` and moves rigidly with the cabin, roll and pitch included. The local character is hidden on this client only. The chase camera keeps following underneath, so switching back is seamless.
@@ -919,22 +859,19 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | tipRadiusM / quadPairGapM / boreColor | 0.09 m: the round tips' outer radius (the generator builds Rolled, QuadPair and Slash at it, CosmeticsConfig.spec); quad tips are two pairs 0.2 m apart centre to centre (QuadPair is built for it). boreColor is the factory pipe's flush bore, and the cylinder fallback's. Before the car's scale (1.2 on every car now). |
 | pipeRunFromM | 0.16 m: every tip's pipe ends forward `tips.pipeLengthM` ahead of a point this far in from the mouth (round 2's tip length, which each car's pipeLengthM was measured from), so the pipes still end hidden where they did. They now start inside the tip's inlet collar (20.5 cm in on Rolled, 23.5 on Slash, 21.5 on Oval, 33 on QuadPair's Y inlet). |
 | pipeRadiusM / pipeOverlapM / pipeColor | The pipe each tip (or quad pair) sits on (0.04 m radius, dark metal), from 3 cm inside the inlet collar (0.046 m radius, spec-checked) forward to the end above, into the body or the car's own muffler, so no tip floats. |
-| factoryPipeRadiusM / factoryBoreRadiusM / factoryPipeColor | The plain pipe built where a body has no pipe of its own (kamri, pickup, cruiser): 0.032 m radius, 0.022 m bore, running forward the stock outlet's own `pipeLengthM` (kamri 0.35, pickup 0.8, cruiser 0.4; defaults to the tips' run). It goes when tips go on. |
+| factoryPipeRadiusM / factoryBoreRadiusM / factoryPipeColor | The plain pipe built where a body has no pipe of its own (kamri): 0.032 m radius, 0.022 m bore, running forward the stock outlet's own `pipeLengthM` (kamri 0.35; defaults to the tips' run). It goes when tips go on. |
 | pipeBendRadiusM / pipeBendMaxDeg / pipeBendSegments / pipeEndBuryM | Garage round 3 §2: every pipe (tips' and factory) runs straight to where round 2 ended it, then bends up into the body (`CarCosmeticMounts.pipeRoute`). Plain Parts, not an EditableMesh (a client holds 8): a cylinder per chord of the bend, a ball the pipe's size at each joint. 0.1 m centreline radius (2.5 pipe radii); a small rise bends only as far as it needs (a 4 cm rise: 73°, 3 chords), a large one bends the full 90° and runs straight up (kruzer80: 22 cm); a riser shorter than about a chord (5 cm) is folded into a lengthened last chord instead (fix round 1: the batrol's 1 cm riser depended on float rounding). 3 segments per 90° (30° chords, round from rear 3/4 and the side); up for a smoother bend up close, at 2 parts per segment per pipe. The end's whole rim sits pipeEndBuryM (2 cm) above the car's `riseM`, inside the body. Spec: the end at least riseM up, rim buried, the pipe's true top (a joint ball's r, a slanted end's r·cos) below the boot line, clear of the rear tyre (behind it, or inboard of its inner face from the catalog's `wheelWidthM`), for the mesh tips and the cylinder fallback alike. Thin margins: the batrol's bend clears the tyre lengthwise by 2 mm, the kruzer80's pipe is 2 mm inboard of its tyre's inner face, so raising `pipeBendRadiusM` or those cars' spread fails the spec. |
 | pipeAxisRunM | A turned tip's pipe (the krownvik and fleet quad pairs, 10°) leaves along the tip's own axis for 5 cm past the inlet, then turns straight forward at a ball joint. |
 | hangerBackM / hangerWidthM / hangerThickM / hangerColor / hangerMaxM | One dark rubber strap per pipe (#161617, Rubber), 8 cm behind the bend, 3 cm wide and 1.4 cm thick, from the pipe's centre up to riseM + pipeEndBuryM (into the body; its height is the one measured at the run's end). None where it would be taller than hangerMaxM (0.12 m): the kruzer80's would be a 32 cm strap (fix round 1). A detail for low views; lower hangerWidthM to make it quieter. |
-| CarCosmeticMounts windscreen | The strip generator's inputs: `piece` (the glass piece, or a shell car's shell), `side` (inside behind see-through SmoothPlastic glass; outside on opaque glass, and on Glass-material glass, the Batrol's and Krown Vik's, where a SurfaceGui behind it does not draw), `heightM` (0.12), `topGapM` (how far under the glass's top edge the strip starts, down the glass: kamri07 0.1 so it clears the dark band under its roof edge, cruiser 0.215 from the shell's roof line to its painted screen), `ends` (`mesh`: to the glass's outline at the pillars, less `endInsetM` (Krown Vik 1.5 cm, Batrol 5.5 cm: their glass runs under the pillar trim; the Batrol's uninset strip, 1.40 m, stopped about 1 cm short of the pillar head-on but poked about 2-3 cm over the far A-pillar from the garage's front 3/4, where its flat end slat stands off the wrapping glass: a 2 cm inset still touched the pillar there, 5.5 cm clears it, measured 2026-09-29); `spot`: a shell whose screen is painted into its texture, `posM` picks the screen and `widthM` sets the ends by eye: pickup 1.25, cruiser 1.26). Rerun `tools/cosmetics/strip_shapes.py` after any change. |
+| CarCosmeticMounts windscreen | The strip generator's inputs: `piece` (the glass piece, or a shell car's shell), `side` (inside behind see-through SmoothPlastic glass; outside on opaque glass, and on Glass-material glass, the Batrol's and Krown Vik's, where a SurfaceGui behind it does not draw), `heightM` (0.12), `topGapM` (how far under the glass's top edge the strip starts, down the glass: kamri07 0.1 so it clears the dark band under its roof edge), `ends` (`mesh`: to the glass's outline at the pillars, less `endInsetM` (Krown Vik 1.5 cm, Batrol 5.5 cm: their glass runs under the pillar trim; the Batrol's uninset strip, 1.40 m, stopped about 1 cm short of the pillar head-on but poked about 2-3 cm over the far A-pillar from the garage's front 3/4, where its flat end slat stands off the wrapping glass: a 2 cm inset still touched the pillar there, 5.5 cm clears it, measured 2026-09-29); `spot`: a shell whose screen is painted into its texture, `posM` picks the screen and `widthM` sets the ends by eye: pickup 1.25, cruiser 1.26). Rerun `tools/cosmetics/strip_shapes.py` after any change. |
 | CarCosmeticMounts exhaust | One shape on every car (garage round 2 §1): `stock` (the car's own pipe mouths: posM at the mouth's centre, optional `dir` the way the pipe points, `factory = true` where we build the pipe), `tips` (posM: between a twin pair at the tips' mouth; spreadM: twin tips at ±spreadM/2, a single on stock[1]'s side, quad as two pairs; pipeLengthM: the pipe run forward) and `bumperZ` (the body's rear face just above the tips), plus optional `quadOuterBumperZ` (that face over a quad's outer two tips where the bumper curves forward; krownvik and fleet: the quad pair turns about 10° about Y so its outer mouth moves with it, `quadPairFrames`, the outlets following the tips' axis) and optional `quadSpreadM` (quad pair centres at ±quadSpreadM/2, where a one-pipe car's own pipe would sit in a pair's gap; batrol, kruzer80). Every tip mouth sits 2-5 cm past the face above it (3 cm on every car but the lekzas, 4.5), and over the car's own pipes where it can (a quad on a one-pipe car: a tip, not a gap, spec-checked). `CarCosmeticMounts.spec` holds every car to it. Garage round 3 §2 adds `riseM` (how far above the tips' pipe centre the body sits where the run ends; the pipe bends up that far plus `pipeEndBuryM`) and a factory outlet's own `riseM`; where the run already ends inside the body it is a nominal 0.04 (spec: > 0 on every car and factory outlet). |
-| ExhaustOutlet attachments | `CarCosmetics.outlets(model)`: one Attachment per mouth of the exhaust fitted, at the mouth's centre, its LookVector (the attachment's -Z) out of the pipe. Stock: one per stock outlet. With tips: only the tips (they replace the whole exhaust); an own pipe left showing beside them (the hatch's centre pipes, the other pipe of a twin under a single tip) gets no outlet. The flame contract; switching the exhaust item rebuilds them. |
+| ExhaustOutlet attachments | `CarCosmetics.outlets(model)`: one Attachment per mouth of the exhaust fitted, at the mouth's centre, its LookVector (the attachment's -Z) out of the pipe. Stock: one per stock outlet. With tips: only the tips (they replace the whole exhaust); an own pipe left showing beside them (the other pipe of a twin under a single tip) gets no outlet. The flame contract; switching the exhaust item rebuilds them. |
 
 **Exhaust spots, measured 2026-09-28** (near-orthographic captures from behind, the side and below, calibrated at ~700 px/m; car metres before scale):
 
 | Car | Stock mouth(s) (x, y, z) and what they are | Tips y / mouth z / spread | bumperZ | Parts: stock / single / twin / quad |
 |---|---|---|---|---|
 | kamri | factory pipe (-0.55, 0.33, 2.47): no pipe on the generated body | 0.30 / 2.48 / 1.1 | 2.45 | 3 / 4 / 7 / 9 |
-| hatch | ExhaustL/R (-0.048 and 0.078, 0.444, 2.079), 23° up | 0.30 / 2.065 / 0.8 (either side of its pipes) | 2.035 | 1 / 4 / 7 / 9 |
-| pickup | factory pipe (-0.6, 0.415, 2.83) through the bumper, top on the bed floor | 0.415 / 2.84 / 1.2 | 2.81 | 3 / 4 / 7 / 9 |
-| cruiser | factory pipe (-0.6, 0.37, 2.84) under the bumper edge | 0.32 / 2.85 / 1.2 | 2.82 | 3 / 4 / 7 / 9 |
 | krownvik | twin in Underbody (±0.715, 0.265, 2.655), 8° down | 0.265 / 2.78 / 1.43 (quad outer two at 2.745) | 2.75 (2.715 over the quad's outer tips) | 1 / 4 / 7 / 9 |
 | krownvikfleet | twin in Underbody_6 (±0.715, 0.265, 2.665), 8° down | 0.265 / 2.79 / 1.43 (quad outer two at 2.755) | 2.76 (2.725 over the quad's outer tips) | 1 / 4 / 7 / 9 |
 | lekzas | chrome tips Chrome_2 (±0.553, 0.325, 2.52), slightly down | 0.24 / 2.635 / 1.106 (fix round 1, from 0.30 / 2.62: the bumper underside sweeps down over the tips, 0.39 m at the mouth to 0.32 m 15 cm in) | 2.59 | 1 / 4 / 7 / 9 |
@@ -958,15 +895,15 @@ Parts per car are the `LookExhaust` folder: 1 invisible outlet holder, plus per 
 
 | Car | Stock | Single | Twin | Quad | Titanium | Oval |
 |---|---|---|---|---|---|---|
-| kamri, pickup, cruiser (factory pipe) | 10 (was 3) | 11 (was 4) | 21 (was 7) | 23 (was 9) | 21 (was 7) | 11 (was 4) |
-| hatch, lekzas, kamri07 | 1 | 11 | 21 | 23 | 21 | 11 |
+| kamri (factory pipe) | 10 (was 3) | 11 (was 4) | 21 (was 7) | 23 (was 9) | 21 (was 7) | 11 (was 4) |
+| lekzas, kamri07 | 1 | 11 | 21 | 23 | 21 | 11 |
 | krownvik, krownvikfleet (turned quad pairs) | 1 | 11 | 21 | 27 | 21 | 11 |
 | batrol (fix round 1: no riser) | 1 | 11 | 21 | 23 | 21 | 11 |
 | kruzer80 (a riser, no hanger) | 1 | 12 | 23 | 25 | 23 | 12 |
 
 The cylinder fallback routes its pipes the same way, one per tip and one per quad pair between the pair's two cylinders (fix round 1; it was four pipes at the tips' own x, which ran the pickup's outer two through its rear tyres): a fallback quad is 25 parts, 29 on the krownvik and fleet, 27 on the kruzer80. The pipe Parts are cylinders, balls and a block.
 
-**riseM per car** (raycasts up through precise-collision copies of the body pieces, then checked by eye from under the car; the why for each is in `CarCosmeticMounts`): kamri 0.04 (inside the body; factory 0.04), hatch 0.04 (inside), pickup 0.015 (bed floor 1.2 cm up; factory 0.02), cruiser 0.04 (level; factory 0.04), krownvik and fleet 0.04 (into their own pipes and mufflers), lekzas 0.03 (underbody 2.7 cm up, under its own chrome pipes), kamri07 0.04 (into its own mufflers), batrol 0.09 (underbody 9.2 cm up), kruzer80 0.30 (floor 30.5 cm up: a full bend and a 22 cm riser, its end 8 mm under the spec's boot line).
+**riseM per car** (raycasts up through precise-collision copies of the body pieces, then checked by eye from under the car; the why for each is in `CarCosmeticMounts`): kamri 0.04 (inside the body; factory 0.04), krownvik and fleet 0.04 (into their own pipes and mufflers), lekzas 0.03 (underbody 2.7 cm up, under its own chrome pipes), kamri07 0.04 (into its own mufflers), batrol 0.09 (underbody 9.2 cm up), kruzer80 0.30 (floor 30.5 cm up: a full bend and a 22 cm riser, its end 8 mm under the spec's boot line).
 
 All five on one client take 4 EditableMeshes; each is freed when no car wears it, and none is taken unless the body reserve (5 today, see tipMeshReserve) stays free, so a tip never displaces a car body. A look change that leaves the exhaust item as it is (paint, rims, lights, strips) no longer rebuilds the tips; a change of tip style takes the new template before letting go of the old (final review I1). Where no mesh can be had the tips are cylinders (same outlets). Final pass (2026-09-29): generated body pieces keep their EditableMesh for the whole session (`MeshData.template`), so once a client has shown a Krown Vik (4) and a Batrol (1), 3 slots stay free and every tip style is cylinders on that client until it rejoins. Uploading the four tips (`meshAssetId`) removed this (2026-09-29): with all four uploaded, a Krown Vik shows mesh quad, oval, single and titanium tips, measured in Play. The reserve and cylinder fallback now only matter if an asset fails to load. Parts per car in the table above count the quad as 9 (was 13).
 
@@ -985,7 +922,7 @@ All five on one client take 4 EditableMeshes; each is freed when no car wears it
 - **The knobs:** each finish item's `material`, `reflectance`, `darken` and `desaturate`. Glass reflectance is very steep: 0.04 already washes a colour.
 - **Not reachable under ShadowMap:** a mirror chrome. Red chrome reads salmon.
 
-Paint and finish only show on cars with `paint = true` body pieces. The pickup and cruiser are single textured shells with none, so `CarCosmetics.paintable(carId)` is false for them and the garage panel greys paint and finish out. **Owner follow-up:** split a paintable body piece out of those shells in CarCatalog.
+Paint and finish only show on cars with `paint = true` body pieces; on a car with none `CarCosmetics.paintable(carId)` is false and the garage panel greys paint and finish out. Every car has them today (the single-shell Pickup and Cruiser that had none were removed 2026-11-08).
 Likewise a car with no windscreen or exhaust spot in `CarCosmeticMounts` would get its SUN STRIPS or EXHAUST items greyed out (`CarCosmetics.hasSpot(carId, "windscreen" | "exhaust")`); every catalog car has both today, and `CarCosmeticMounts.spec` fails if a new car ships without them.
 
 **Window tint** (garage round 2 §4, 2026-09-28; the TINT items, a third row under PAINT). Each car lists its glass pieces in `CarCosmeticMounts` `windows`: `side` (door, quarter and rear windows), `screen` (the windscreen alone) and `whole` (one piece that is the windscreen and other windows together: the lekzas, batrol and kamri all-round glass, and the krownvik's windscreen-roof-rear piece). A film puts every listed piece on SmoothPlastic in its `glassColor`, at `glassTransparency` for side, `screenTransparency` for screen and halfway between for whole. Factory puts each piece's colour, material and transparency back exactly (checked on all ten cars: no body part differs after a full look and back to stock).
@@ -999,7 +936,7 @@ Likewise a car with no windscreen or exhaust spot in `CarCosmeticMounts` would g
 - SmoothPlastic whatever the factory glass was: the krownvik's glass is white Glass at 0.3 and reads clear, and a dark colour on Glass at the same transparency went pitch black, strip and all.
 - Absolute, not relative to factory: a film limited to "never clearer than factory" did nothing at all on the kamri07, whose doors are already 0.2.
 - The strip stays readable under every film (inside strips on the lekzas, krownvik and fleet were checked at Limo; the lekzas's all-round glass was also checked at 0.2).
-- The hatch (opaque black glass mesh), pickup and cruiser (glass painted into the shell) have no `windows`; TINT greys out with "This car's windows can't be tinted yet". `CarCosmeticMounts.spec` fails if any other car ships without windows, or lists a piece its body does not have.
+- A car with no `windows` would have TINT greyed out with "This car's windows can't be tinted yet"; every car has them, and `CarCosmeticMounts.spec` fails if a car ships without windows, or lists a piece its body does not have.
 - **Rollout (owner's call):** `tint` is a new look slot. Economy now carries any stored slot it does not know across a save, so every slot after tint is safe on an older server, but servers already deployed without that carry drop tint on a known car when they save. Ship tint as a single-version rollout (no old servers alongside new ones), or accept that a tint chosen during the overlap can be lost.
 - **The knobs:** each film's `glassTransparency` / `screenTransparency` / `glassColor`. Keep `screenTransparency` at 0.5 or more (the spec checks it and that it is above the side value), so windscreens stay legal-looking.
 

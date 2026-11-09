@@ -39,13 +39,10 @@ Art.settings = "rbxassetid://99840058514901"
 -- cut out with dark glass and a soft shadow (720x400). A car with no photo
 -- shows its name over the empty stage.
 Art.cars = {
-	pickup = "rbxassetid://91036895315897",
-	cruiser = "rbxassetid://93495257575428",
 	lekzas = "rbxassetid://115867628820110",
 	krownvik = "rbxassetid://115146785769259",
 	krownvikfleet = "rbxassetid://113693684409082",
 	kamri07 = "rbxassetid://74376669148342",
-	hatch = "rbxassetid://93769819060170",
 	batrol = "rbxassetid://105864113782329",
 	kruzer80 = "rbxassetid://125170877525727",
 } :: { [string]: string }

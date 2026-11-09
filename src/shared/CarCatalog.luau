@@ -8,32 +8,14 @@
 -- overrides any part of it for that car only.
 --
 -- Bodies. The Kamri's is made in the repo (tools/carbody): generated meshes
--- in CarMeshes, baked textures on ReplicatedStorage.CarLooks. The hatch's
--- comes from "Low Poly Cars Pack: Mesh Vehicle Road Race" (store
--- 120535861432410, Ninja131Venom): free, no scripts shipped (the builder
--- makes its own MeshParts from the bare mesh ids), no real brands; its
--- numbers were measured off the pack model in Studio. The pickup's and the
--- cruiser's sources are above their entries.
+-- in CarMeshes, baked textures on ReplicatedStorage.CarLooks. The store cars
+-- are referenced by mesh id (tools/carbody/README.md), each with its source
+-- above its entry. The first test cars, the Hatch, Pickup and Cruiser from
+-- a low-poly pack, were removed on 2026-11-08: no cabin for the first-person
+-- view.
 local VehicleRig = require(script.Parent.VehicleRig)
 
 type CarEntry = VehicleRig.CarEntry
-
-local RUBBER = Color3.fromRGB(28, 28, 30)
-local RIM = Color3.fromRGB(176, 180, 186)
-local GLASS = Color3.fromRGB(24, 30, 36)
-local HEADLAMP = Color3.fromRGB(236, 234, 220)
-local TAILLAMP = Color3.fromRGB(190, 24, 24)
-
--- The pack's wheel, shared by both cars: a tyre and a rim, authored as a
--- left wheel (outer face -X). Sized for a 0.33 m radius; a car with another
--- radius scales these by radius / 0.33.
-local function wheelPieces(radiusM: number): { VehicleRig.BodyPiece }
-	local k = radiusM / 0.33
-	return {
-		{ name = "Tyre", meshId = 9496370049, sizeM = { 0.257 * k, 0.66 * k, 0.66 * k }, offsetM = { 0, 0, 0 }, color = RUBBER, material = Enum.Material.Rubber },
-		{ name = "Rim", meshId = 9496369889, sizeM = { 0.26 * k, 0.482 * k, 0.482 * k }, offsetM = { -0.016 * k, 0.005 * k, 0 }, color = RIM, material = Enum.Material.Metal },
-	}
-end
 
 local cars: { [string]: CarEntry } = {
 	-- THE KAMRI. A large Japanese four-door saloon in the shape of a mid-2000s
@@ -92,203 +74,6 @@ local cars: { [string]: CarEntry } = {
 			wheelPieces = {
 				{ name = "Tyre", mesh = "Kamri/Tyre", look = "Kamri_Tyre", sizeM = { 0.215, 0.652, 0.652 }, offsetM = { 0, 0, 0 }, material = Enum.Material.Rubber },
 				{ name = "Rim", mesh = "Kamri/Rim", look = "Kamri_Rim", sizeM = { 0.187, 0.417, 0.417 }, offsetM = { -0.0035, 0, 0 }, material = Enum.Material.Metal },
-			},
-		},
-	},
-
-	-- A second car to prove the contract: the pack's hatch, uniformly
-	-- scaled to 4.3 m (0.17 m per pack stud), with its rig measured off the
-	-- mesh. Lighter, shorter, wider.
-	hatch = {
-		displayName = "Hatch",
-		blurb = "Light and quick off the line. Snaps round.",
-		order = 2,
-		scale = 1.2, -- the same world size as the sedan
-		rig = {
-			massKg = 1250,
-			collisionSizeM = { 1.95, 0.85, 4.25 },
-			centerOfMassM = { 0, -0.2, -0.15 },
-			shellMassFraction = 0.35,
-			wheelbaseM = 2.508,
-			trackWidthM = 1.639,
-			wheelRadiusM = 0.32,
-			wheelWidthM = 0.22,
-			-- As low as the box allows. It is a low car: a seated avatar's head
-			-- still shows over its roof.
-			seatM = { -0.4, -0.3, 0.05 },
-		},
-		body = {
-			paint = Color3.fromRGB(214, 96, 36),
-			pieces = {
-				{ name = "Shell", meshId = 9339152185, sizeM = { 1.991, 0.959, 4.301 }, offsetM = { 0.01, 0.598, -0.087 }, paint = true, material = Enum.Material.SmoothPlastic },
-				{ name = "Glass", meshId = 9339153338, sizeM = { 1.985, 0.934, 4.252 }, offsetM = { 0.01, 0.585, -0.112 }, color = GLASS, material = Enum.Material.Glass },
-				{ name = "RearLamps", meshId = 9339153021, sizeM = { 1.692, 0.381, 1.47 }, offsetM = { 0.01, 0.862, 1.242 }, color = TAILLAMP, material = Enum.Material.Neon, castShadow = false },
-				{ name = "RoofVent", meshId = 9339152369, sizeM = { 0.841, 0.14, 0.898 }, offsetM = { 0.007, 0.956, 0.966 }, color = GLASS, material = Enum.Material.SmoothPlastic },
-				{ name = "HeadLamps", meshId = 9339153182, sizeM = { 1.612, 0.193, 0.492 }, offsetM = { 0.01, 0.608, -1.818 }, color = HEADLAMP, material = Enum.Material.Neon, castShadow = false },
-				{ name = "ExhaustL", meshId = 9339152604, sizeM = { 0.079, 0.281, 0.524 }, offsetM = { -0.05, 0.342, 1.835 }, color = Color3.fromRGB(120, 122, 126), material = Enum.Material.Metal },
-				{ name = "ExhaustR", meshId = 9339152838, sizeM = { 0.079, 0.281, 0.524 }, offsetM = { 0.076, 0.342, 1.835 }, color = Color3.fromRGB(120, 122, 126), material = Enum.Material.Metal },
-			},
-			wheelPieces = wheelPieces(0.32),
-		},
-		tuning = {
-			-- Front-wheel drive, as the real car: its drift styles are the
-			-- front-drive ones (DriftStyles).
-			drivetrain = { layout = "FWD" },
-			-- Lighter car, same springs: soften them in proportion so it
-			-- sits and rolls like the sedan instead of riding on stilts.
-			suspension = { stiffness = 27000, damping = 2100 },
-		},
-	},
-
-	-- THE PICKUP. A 2.2 t work truck: long, heavy at the back, a lazy engine
-	-- turning a lot of rotating mass. Body: "Pickup Truck No Wheels" by
-	-- BadBoy12522 (store 7408695529), one textured mesh with empty arches,
-	-- no brand. Measured in Studio against a 0.1 m ruler at 5.3 m long:
-	-- arches at -1.74 and +1.41 m from the mesh centre (3.15 m wheelbase),
-	-- wells 1.64 m apart, 1.94 m wide without mirrors, the underside 0.33 m
-	-- off the ground on 0.38 m tyres.
-	pickup = {
-		displayName = "Pickup",
-		blurb = "2.2 tonnes, tail-heavy, slow to wind up. Once it goes, it goes.",
-		order = 3,
-		scale = 1.2,
-		rig = {
-			massKg = 2200,
-			collisionSizeM = { 1.85, 1.25, 5.1 },
-			-- Rearward: the bed and axle are the weight, 0.25 m behind centre.
-			centerOfMassM = { 0, -0.2, 0.25 },
-			-- More of the mass out in the long body and bed, less in a lump at
-			-- the centre: a bigger yaw and roll inertia to wind up.
-			shellMassFraction = 0.55,
-			wheelbaseM = 3.15,
-			trackWidthM = 1.64,
-			wheelRadiusM = 0.38,
-			wheelWidthM = 0.26,
-			seatM = { -0.42, -0.55, -0.45 },
-		},
-		body = {
-			paint = Color3.fromRGB(214, 206, 194),
-			pieces = {
-				{ name = "Shell", meshId = 7408695235, textureId = 7408695426, sizeM = { 2.29, 1.61, 5.3 }, offsetM = { 0, 1.135, 0.165 } },
-			},
-			wheelPieces = wheelPieces(0.38),
-		},
-		tuning = {
-			-- Heavier on stiffer springs, so it sits at the sedan's sag.
-			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
-			drivetrain = {
-				-- A tired lump: a flat, low curve that runs out early.
-				torqueCurve = { { 1000, 400 }, { 2000, 540 }, { 3200, 580 }, { 4500, 540 }, { 5400, 410 }, { 6000, 0 } },
-				redlineRpm = 6000,
-				upshiftRpm = 5600,
-				downshiftRpm = 2600,
-				shiftTime = 0.2,
-				-- 280 from 180 with the game's pace (speed-feel, 2026-10-05), a
-				-- ceiling drag may keep it under.
-				topSpeedKmh = 280,
-				-- Same brakes as the sedan hauling 600 kg more: it stops late.
-				brakeForce = 15000,
-			},
-			tires = {
-				-- The rear carries the weight and bites; the front is light.
-				front = { grip = 0.95, slideGripRatio = 0.8 },
-				rear = { grip = 1.1, slideGripRatio = 0.88, longitudinalGrip = 1.7 },
-				slipModel = {
-					-- High inertia: heavy wheels and a heavy flywheel, so it
-					-- revs up slowly and a spinning rear keeps spinning.
-					wheelInertia = 2.8,
-					engineInertia = 0.45,
-					-- Momentum: once sideways it carries speed.
-					slideRelief = 0.35,
-					leverRelief = 0.75,
-				},
-			},
-			steering = {
-				maxSteerDeg = 34,
-				steerSpeedDegPerSec = 200,
-				-- Its size fights a throw: less help rotating it.
-				throwYawMaxTorque = 13000,
-			},
-			-- 600 kg more to lever onto two wheels. With the shared torques it
-			-- rose 11 degrees and dropped; at 21000/7500 it went up as easily
-			-- as the sedan. These get it up, lower and briefly.
-			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
-		},
-	},
-
-	-- THE CRUISER. A big, soft 1.8 t saloon: wallowing springs, a slow
-	-- nose, a torquey low-revving engine, and a tail that settles into a
-	-- slide and stays there. Body: "Sedan (No Wheels)" by BadBoy12522
-	-- (store 5991320944) with the creator's all-colour texture (decal
-	-- 5995377260, image 5995377253), no brand. Measured at 5.4 m long: arches
-	-- at -1.64 and +1.34 m (3.0 m wheelbase), wells 1.70 m apart, 2.02 m wide
-	-- without mirrors, the underside 0.25 m off the ground on 0.35 m tyres.
-	cruiser = {
-		displayName = "Cruiser",
-		blurb = "Big soft saloon. Lazy on the way in, holds a slide all day.",
-		order = 4,
-		scale = 1.2,
-		rig = {
-			massKg = 1800,
-			collisionSizeM = { 1.9, 1.1, 5.2 },
-			centerOfMassM = { 0, -0.25, -0.1 },
-			-- A long body with its mass spread out: slow to start rotating.
-			shellMassFraction = 0.6,
-			wheelbaseM = 3.0,
-			trackWidthM = 1.7,
-			wheelRadiusM = 0.35,
-			wheelWidthM = 0.24,
-			seatM = { -0.42, -0.45, 0 },
-		},
-		body = {
-			paint = Color3.fromRGB(196, 190, 180),
-			pieces = {
-				{ name = "Shell", meshId = 5991320872, textureId = 5995377253, sizeM = { 2.26, 1.23, 5.4 }, offsetM = { 0, 0.865, 0.15 } },
-			},
-			wheelPieces = wheelPieces(0.35),
-		},
-		tuning = {
-			-- Soft and long: sits 0.2 m into 0.32 m of travel, rolls a lot,
-			-- and the low damping lets it float over a load change.
-			suspension = { restLength = 0.45, travel = 0.32, stiffness = 20000, damping = 1400, antiRollFront = 1500, antiRollRear = 600 },
-			drivetrain = {
-				-- A big lazy V8: most of its pull by 2,500 rpm, gone by 5,500.
-				torqueCurve = { { 1000, 450 }, { 2500, 600 }, { 3500, 620 }, { 4500, 560 }, { 5500, 420 }, { 6000, 0 } },
-				redlineRpm = 6000,
-				upshiftRpm = 5400,
-				downshiftRpm = 2400,
-				shiftTime = 0.14,
-				-- 315 from 200 with the game's pace (speed-feel, 2026-10-05), a
-				-- ceiling drag may keep it under.
-				topSpeedKmh = 315,
-			},
-			tires = {
-				-- A soft front that pushes on turn-in, a rear that keeps most
-				-- of its grip once sliding instead of letting go.
-				front = { grip = 0.95, peakSlipDeg = 12, riseShape = 1.0 },
-				rear = { grip = 1.02, slideGripRatio = 0.84, falloffShape = 2.0, deepSlideGripRatio = 0.6 },
-				slipModel = {
-					slideRelief = 0.4,
-					leverRelief = 0.8,
-				},
-			},
-			steering = {
-				-- Lazy turn-in: the wheel winds on slowly.
-				steerSpeedDegPerSec = 100,
-				steerReturnDegPerSec = 300,
-				-- A slow rack at speed: less lock for the same input past 60 km/h.
-				-- The counter-steer relief still gives the whole wheel back in a slide.
-				speedLockCurve = { { 0, 1 }, { 40, 1 }, { 90, 0.45 }, { 150, 0.27 }, { 220, 0.24 }, { 300, 0.24 } },
-				-- Holds a slide easily: half throttle past 15 degrees is enough to
-				-- keep one (the sedan wants 0.8 past 20), the hold is stiffer,
-				-- and it forgives a second of lifting through a transition.
-				throwThrottleHold = 0.5,
-				throwThrottleHoldFromDeg = 15,
-				throwThrottleHoldGraceSeconds = 1.0,
-				throwThrottleHoldKeepDeg = 6,
-				throwHoldGain = 8,
-				-- A released slide settles slower and swings wider.
-				slideYawDamping = 100,
 			},
 		},
 	},
@@ -892,7 +677,7 @@ local cars: { [string]: CarEntry } = {
 	-- 2.97 m wheelbase: 5.06 m long, 1.87 m tall, 0.86 m tyres. Piece names
 	-- follow the body standard (tools/carbody/README.md).
 	--
-	-- Handling: the pickup's mass, so its measured springs and natl torques
+	-- Handling: the old Pickup's mass, so its measured springs and natl torques
 	-- carry over; the rest is shared.
 	batrol = {
 		displayName = "Batrol",
@@ -950,7 +735,7 @@ local cars: { [string]: CarEntry } = {
 			-- Four-wheel drive, as the real truck: its drift styles are the
 			-- all-wheel-drive ones, which set the split (DriftStyles).
 			drivetrain = { layout = "AWD" },
-			-- The pickup's, measured at the same 2.2 t: it sits at the sedan's sag.
+			-- The old Pickup's, measured at the same 2.2 t: it sits at the sedan's sag.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
 			-- Its store model had no sounds: the Kruzer 80's horn, the 4x4 one.
@@ -973,7 +758,7 @@ local cars: { [string]: CarEntry } = {
 	-- Placed at 0.2658 m a model stud on the real 2.85 m wheelbase; it sits
 	-- lifted on 0.95 m tyres, as the store built it.
 	--
-	-- Handling: the Batrol's (the pickup's mass, springs and natl torques).
+	-- Handling: the Batrol's (the old Pickup's mass, springs and natl torques).
 	kruzer80 = {
 		displayName = "Kruzer 80",
 		blurb = "The boxy legend. Lifted, heavy, and happiest on two wheels.",
@@ -1090,7 +875,7 @@ local cars: { [string]: CarEntry } = {
 			-- Four-wheel drive, as the real truck: its drift styles are the
 			-- all-wheel-drive ones, which set the split (DriftStyles).
 			drivetrain = { layout = "AWD" },
-			-- The pickup's, measured at the same 2.2 t.
+			-- The old Pickup's, measured at the same 2.2 t.
 			suspension = { stiffness = 45000, damping = 4200, antiRollFront = 9000, antiRollRear = 6000 },
 			twoWheel = { liftTorque = 16500, leanInTorque = 6000, leanOutTorque = 5500, balanceSpring = 150 },
 			effects = {

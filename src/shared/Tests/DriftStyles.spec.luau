@@ -111,10 +111,9 @@ return function(t: T)
 		return DriftStyles.layoutOf({ drivetrain = (tun and tun.drivetrain) or {} })
 	end
 	t.eq(layoutOfCar("kamri07"), "FWD", "the Kamri (a Camry) is front drive")
-	t.eq(layoutOfCar("hatch"), "FWD", "the Hatch is front drive")
 	t.eq(layoutOfCar("batrol"), "AWD", "the Batrol (a Patrol) is four-wheel drive")
 	t.eq(layoutOfCar("kruzer80"), "AWD", "the Kruzer 80 (a Land Cruiser) is four-wheel drive")
-	for _, id in { "pickup", "cruiser", "krownvik", "krownvikfleet", "lekzas" } do
+	for _, id in { "krownvik", "krownvikfleet", "lekzas" } do
 		t.eq(layoutOfCar(id), "RWD", `{id} is rear drive`)
 	end
 end

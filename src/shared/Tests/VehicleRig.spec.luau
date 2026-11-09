@@ -81,11 +81,11 @@ return function(t: T)
 
 	-- configFor copies: the shared config and the entry are untouched.
 	t.eq(CarConfig.body.massKg, 0, "CarConfig.body keeps its placeholder")
-	local hatch = VehicleRig.configFor(CarConfig, CarCatalog.cars.hatch)
-	t.eq(hatch.suspension.stiffness, 27000, "a car's tuning overrides the shared value")
+	local batrol = VehicleRig.configFor(CarConfig, CarCatalog.cars.batrol)
+	t.eq(batrol.suspension.stiffness, 45000, "a car's tuning overrides the shared value")
 	t.eq(CarConfig.suspension.stiffness, 35000, "without changing the shared value")
-	t.eq(hatch.suspension.travel, CarConfig.suspension.travel, "fields it does not override are shared")
-	t.ok(hatch.drivetrain.gearRatios ~= CarConfig.drivetrain.gearRatios, "merged tables are copies")
+	t.eq(batrol.suspension.travel, CarConfig.suspension.travel, "fields it does not override are shared")
+	t.ok(batrol.drivetrain.gearRatios ~= CarConfig.drivetrain.gearRatios, "merged tables are copies")
 
 	-- Arrays in tuning replace, dictionaries merge.
 	local custom = clone(PHASE0_SEDAN)
@@ -235,6 +235,6 @@ return function(t: T)
 
 	-- The loader resolves unknown ids to the default car.
 	t.eq(ConfigLoader.resolveCarId("no-such-car"), CarCatalog.defaultCarId, "unknown car falls back to the default")
-	t.eq(ConfigLoader.resolveCarId("hatch"), "hatch", "a known car resolves to itself")
-	t.eq(ConfigLoader.forCar("hatch").body.massKg, 1250, "forCar hands out the merged config")
+	t.eq(ConfigLoader.resolveCarId("batrol"), "batrol", "a known car resolves to itself")
+	t.eq(ConfigLoader.forCar("batrol").body.massKg, 2200, "forCar hands out the merged config")
 end

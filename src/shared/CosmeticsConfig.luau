@@ -163,7 +163,7 @@ CosmeticsConfig.render = {
 	-- the catalog at runtime) or this, whichever is more. Measured in Play
 	-- 2026-09-29 on the working-copy catalog (final review M1): kamri 5 (Body, Glass, Interior, Rim,
 	-- Tyre), krownvik 4, lekzas 1, batrol 1, krownvikfleet 1; kamri07 (the
-	-- default car), hatch, pickup, cruiser and kruzer80 none (store meshes).
+	-- default car) and kruzer80 none (store meshes).
 	-- So the reserve is 5 today: a client with no generated car in view can
 	-- have 3 tip styles as meshes at once, and one with a kamri none
 	-- (cylinder tips). The old 4 left a kamri arriving after four tip styles

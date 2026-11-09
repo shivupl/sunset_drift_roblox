@@ -18,8 +18,8 @@
 -- Attachment at each mouth of the exhaust fitted (only the tips once tips
 -- are on), LookVector out of the pipe (outlets()).
 --
--- Paint and finish need `paint = true` body pieces. The pickup and cruiser
--- are single textured shells with none, so paint does nothing on them;
+-- Paint and finish need `paint = true` body pieces. A car built as a single
+-- textured shell would have none, so paint would do nothing on it;
 -- paintable() tells the garage panel to grey those out. Owner follow-up:
 -- a paint split of those shells in CarCatalog (garage plan, task 3 fix 1).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -684,7 +684,7 @@ end
 -- 2's cylinders, their pipes routed the same way.
 -- One ExhaustOutlet Attachment goes at each mouth of the exhaust fitted: the
 -- stock outlets, or with tips on only the tips (they replace the whole
--- exhaust; an own pipe left showing, like the hatch's, gets none)
+-- exhaust; an own pipe left showing gets none)
 -- (CarCosmeticMounts.outletFrames), on an invisible part welded at the body
 -- mount: flames and any other exhaust effect use only those (outlets()).
 local function exhaust(s: State, model: Model, body: Instance, carId: string, look: CarLook.Look)
@@ -868,8 +868,7 @@ end
 -- window tint (CarCosmeticMounts); the garage panel greys SUN STRIPS / EXHAUST /
 -- TINT items out on a car without one, like paint on a car with no painted
 -- piece. Every catalog car has a strip and exhaust spot
--- (CarCosmeticMounts.spec); the hatch, pickup and cruiser have no windows
--- tint can show on.
+-- (CarCosmeticMounts.spec), and windows tint can show on.
 function CarCosmetics.hasSpot(carId: string, spot: "windscreen" | "exhaust" | "windows"): boolean
 	local mounts = CarCosmeticMounts.cars[carId]
 	if not mounts then

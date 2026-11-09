@@ -62,7 +62,7 @@
 -- Where a car has its own pipes, the tips sit over them (same x, the stock
 -- mouth inside the tip), like a slip-on tip. Fitted tips replace the whole
 -- exhaust: only the tips are outlets. Where tips can't cover the car's own
--- pipes (the hatch's, too close together at the centre), those stay visible
+-- pipes (too close together at the centre), those stay visible
 -- but are not outlets.
 --
 -- windows: the glass pieces window tint recolours (garage round 2 §4), by
@@ -71,8 +71,8 @@
 -- lighter screenTransparency so it stays legal-looking. whole (optional): a
 -- piece that is the windscreen and other windows in one, which takes
 -- halfway between the two. A car whose glass is opaque or painted into a
--- textured shell (hatch, pickup, cruiser) has no windows entry, and the
--- garage greys TINT out on it.
+-- textured shell would have no windows entry, and the garage greys TINT
+-- out on it. Every car has one today (the spec checks).
 --
 -- A car with no entry (or no spot) shows no strip or no tips.
 --
@@ -125,67 +125,6 @@ CarCosmeticMounts.cars = {
 			-- riseM (garage round 3 §2): the generated body's underside is 0.217 m up
 			-- at the run's end (z 1.97, x ±0.55), below the pipe's centre: the
 			-- straight is already inside the body from z 2.2 on, so a nominal 4 cm.
-			riseM = 0.04,
-		},
-	},
-	-- Strip: outside the opaque black glass mesh, from its top edge down.
-	hatch = {
-		windscreen = { piece = "Glass", side = "outside", heightM = 0.12, ends = "mesh" },
-		-- Exhaust: the car's own twin pipes (ExhaustL / ExhaustR) come out at the
-		-- centre under the rear panel, pointing about 23° up (side view, the pipe
-		-- pieces alone). Tips either side of them (too close together to sit
-		-- over), 3 cm past the panel's lower edge (2.035 m at x ±0.4, from below),
-		-- their tops in the sloping underside.
-		exhaust = {
-			stock = {
-				{ posM = { -0.048, 0.444, 2.079 }, dir = { 0, 0.4, 0.92 } },
-				{ posM = { 0.078, 0.444, 2.079 }, dir = { 0, 0.4, 0.92 } },
-			},
-			tips = { posM = { 0, 0.30, 2.065 }, spreadM = 0.8, pipeLengthM = 0.3 },
-			bumperZ = 2.035,
-			-- riseM: the shell's underside is 0.248 m at the run's end (z 1.605,
-			-- x ±0.4), below the pipe's centre: already inside, a nominal 4 cm.
-			riseM = 0.04,
-		},
-	},
-	-- Strip: outside the textured shell, from the painted screen's top edge (the
-	-- shell's glass faces start there, under the roof lip); ends by eye inside
-	-- the painted pillars' rounded corners (1.35 m poked past them).
-	pickup = {
-		windscreen = { piece = "Shell", side = "outside", heightM = 0.12, ends = "spot", posM = { 0, 1.605, -0.71 }, widthM = 1.25 },
-		-- Exhaust: the shell has no pipe and an open underside (the bed floor at
-		-- 0.45 m, the bumper 0.365-0.57 m up, face 2.81 m). A factory pipe on the
-		-- left through the bumper's lower half, its top on the bed floor, 2 cm
-		-- past the face; tips the same way, 3 cm past it. Their pipes run under
-		-- the bed to behind the rear tyre.
-		exhaust = {
-			stock = { { posM = { -0.6, 0.415, 2.83 }, factory = true, pipeLengthM = 0.8, riseM = 0.02 } }, -- bed floor 0.435 m at z 2.03
-			tips = { posM = { 0, 0.415, 2.84 }, spreadM = 1.2, pipeLengthM = 0.8 },
-			bumperZ = 2.81,
-			-- riseM: the bed floor's underside is 0.427 m at the run's end (z 1.88,
-			-- x ±0.6), 1.2 cm over the pipe's centre (0.415); the pipe hugs the
-			-- floor and turns up into it. Its end's top is 0.499 m (factory 0.494),
-			-- under the bed floor's top (0.54 m at z 1.79-1.94, the same raycasts
-			-- from above: a floor about 11 cm thick there); nothing shows in the
-			-- bed from above (checked, fix round 1).
-			riseM = 0.015,
-		},
-	},
-	-- Strip: outside the textured shell. Its forward-facing faces run up onto
-	-- the roof, so the strip starts 21.5 cm under their top, at the painted
-	-- screen's top edge; ends by eye inside the painted pillars.
-	cruiser = {
-		windscreen = { piece = "Shell", side = "outside", heightM = 0.12, ends = "spot", posM = { 0, 1.38, -0.535 }, widthM = 1.26, topGapM = 0.215 },
-		-- Exhaust: the shell has no pipe. A factory one on the left, its top
-		-- under the bumper's lower rear edge (0.41 m up at 2.81 m, face 2.82-2.84
-		-- m from below), 2 cm past it; tips 3 cm past, tops in the bumper's
-		-- chamfer.
-		exhaust = {
-			stock = { { posM = { -0.6, 0.37, 2.84 }, factory = true, pipeLengthM = 0.4, riseM = 0.04 } }, -- underside 0.331 m at z 2.44: inside
-			tips = { posM = { 0, 0.32, 2.85 }, spreadM = 1.2, pipeLengthM = 0.4 },
-			bumperZ = 2.82,
-			-- riseM: the shell's underside is 0.318 m at the run's end (z 2.29,
-			-- x ±0.6), level with the pipe's centre: a nominal 4 cm.
 			riseM = 0.04,
 		},
 	},
@@ -570,7 +509,7 @@ end
 
 -- The outlet frames for the exhaust fitted, metres in car space: with n > 0
 -- aftermarket tips, one per tip mouth and nothing else (the tips replace the
--- whole exhaust; any own pipe left showing, like the hatch's, is not an
+-- whole exhaust; any own pipe left showing is not an
 -- outlet); with none, one per stock outlet. Each sits at the centre of the
 -- mouth with its LookVector pointing out of the pipe (out of the tip for tips;
 -- the stock pipe's dir; a turned quad pair's own axis), UpVector as near
@@ -658,8 +597,8 @@ end
 -- (pieceFrames) at `inletM` in that piece's frame, so a paired style has one
 -- pipe per pair. The mesh quad's inlet is its Y; the cylinder fallback's
 -- pair pipe starts between the pair's two cylinders, overlapping both (fix
--- round 1: four pipes at the tips' own x ran the pickup's outer two through
--- its tyres).
+-- round 1: four pipes at the tips' own x ran the old Pickup's outer two
+-- through its tyres).
 function CarCosmeticMounts.pipeInlets(e: Exhaust, n: number, k: PipeKnobs, inletM: Vector3, paired: boolean): { CFrame }
 	local out: { CFrame } = {}
 	for _, f in CarCosmeticMounts.pieceFrames(e, n, k.quadPairGapM, paired) do
