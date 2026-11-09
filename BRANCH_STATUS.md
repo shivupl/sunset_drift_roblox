@@ -12,18 +12,16 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
-**`first-person-arms` (2026-11-07, branched from `car-search` at `5f3d85d`; local, an
-experiment): the driver's arms in first person.** The owner: "can u try make it so that the
-characters arms also show? maybe as an experiment try in a sepperate branch". Copies of the avatar's
-arms (its colours and shirt) drawn for the local client only, reaching from shoulders under the eye
-to the steering wheel at ten to two and turning with it (client `CockpitArms`, TUNING.md
-`camera.firstPerson.arms`; ARMS in SETTINGS switches them off). `car-search` (the five store cars,
-the uploaded pieces and first person itself) is its base, also local.
-Since 2026-11-08 it also carries work that is not part of the experiment, done there because the
-owner was on it: the Hatch, Pickup and Cruiser removed, and first person for the Kamri, Lekzas and
-Batrol (`tools/carbody/wheelcut.py`). If the arms are dropped, move those commits to `car-search`.
+**`first-person-arms` merged into `main` by fast-forward on 2026-11-08 at `68db38b`, not pushed**
+(the owner: "ok this is all good now merge this branch onto main"). It took its whole line into
+`main`: `drift-mechanics` (the arcade drive), `first-person` (the DRIVER view), `car-search` (the
+five store cars and the uploaded pieces) and the arms experiment itself (client `CockpitArms`,
+TUNING.md `camera.firstPerson.arms`; ARMS in SETTINGS switches them off). It also brought the
+Hatch, Pickup and Cruiser's removal, first person for the Kamri, Lekzas and Batrol
+(`tools/carbody/wheelcut.py`), the car menu photos and the working dash gauges (`CarDashes`).
+The local branches are kept for now.
 
-**`drift-mechanics` (2026-11-06, branched from `main` at `24b259d`; local, not pushed or merged):
+**`drift-mechanics` (2026-11-06, branched from `main` at `24b259d`; merged into `main` 2026-11-08 with `first-person-arms`):
 the arcade drive.** The owner: "please just perfect the drifting here ... it needs to feel really
 good for like the 10 year olds that are going to play this". `VehicleSim/Arcade.luau` replaces the
 tyre model and every drift assist with a few continuous laws (TUNING.md "arcade"); two-wheel
