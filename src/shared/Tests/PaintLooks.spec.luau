@@ -1,15 +1,21 @@
 --!strict
--- PaintLooks: the clear coat and sun-hour variants switch on, in Studio, with
--- B. The main look comes first and an unknown id falls back to it; "As
--- before" must be exactly the look the game had (no coat, the picked sun);
--- the coat reaches only the cars it is being tried on and never a matte
--- finish; and a finish's own reflectance is never lowered by it.
+-- PaintLooks: the finish and sun-hour variants switch on, in Studio, with B.
+-- The main look comes first and an unknown id falls back to it; "As before"
+-- must be exactly the paint the game had (the CosmeticsConfig finish, the
+-- picked sun); the looks reach only the cars they are tried on; and under
+-- every look each finish must read as its own (the owner, 2026-11-09: "make
+-- sure there is an actual difference between the finishes"): factory the
+-- least shine of the shiny ones, gloss and metallic clearly above it,
+-- chrome the most, matte flat and darkest of the paints that keep their hue.
 local PaintLooks = require(script.Parent.Parent.PaintLooks)
 local CosmeticsConfig = require(script.Parent.Parent.CosmeticsConfig)
 local SkyConfig = require(script.Parent.Parent.SkyConfig)
 local ConfigLoader = require(script.Parent.Parent.ConfigLoader)
 local Tests = require(script.Parent)
 type T = Tests.T
+
+local SMOOTH = Enum.Material.SmoothPlastic
+local GLASS = Enum.Material.Glass
 
 return function(t: T)
 	t.eq(PaintLooks.order[1], "main", "the main look is first")
@@ -18,9 +24,8 @@ return function(t: T)
 		listed[id] = true
 		t.ok(PaintLooks.looks[id] ~= nil, `{id} in order is a look`)
 	end
-	for id, look in PaintLooks.looks do
+	for id in PaintLooks.looks do
 		t.ok(listed[id] == true, `{id} is in the cycle order`)
-		t.ok(look.clearcoat >= 0 and look.clearcoat <= 0.5, `{id}: clear coat {look.clearcoat} in 0..0.5`)
 	end
 	t.eq(PaintLooks.resolve(nil), "main", "no choice: main")
 	t.eq(PaintLooks.resolve("nope"), "main", "unknown choice: main")
@@ -31,26 +36,70 @@ return function(t: T)
 		t.ok(cars[id] ~= nil, `{id} is a catalog car`)
 	end
 
-	local factory = CosmeticsConfig.find("finish_stock") :: CosmeticsConfig.Item
-	local matte = CosmeticsConfig.find("finish_matte") :: CosmeticsConfig.Item
-	local chrome = CosmeticsConfig.find("finish_chrome") :: CosmeticsConfig.Item
-	t.eq(matte.clearcoat, false, "matte is the one finish without a clear coat")
+	local finishes: { [string]: CosmeticsConfig.Item } = {}
+	for _, item in CosmeticsConfig.items do
+		if item.category == "finish" then
+			finishes[item.id] = item
+		end
+	end
+	local function paint(lookId: string, carId: string, finishId: string, ownRefl: number?, outdoors: boolean?): PaintLooks.Paint
+		return PaintLooks.paint(lookId, carId, finishId, finishes[finishId], SMOOTH, ownRefl or 0, outdoors ~= false)
+	end
 
-	-- "As before": nothing changes.
-	t.eq(PaintLooks.reflectance("old", "kamri07", factory, 0), 0, "old: factory paint stays at its own reflectance")
-	local chromeOwn = chrome.reflectance :: number
-	t.eq(PaintLooks.reflectance("old", "kamri07", chrome, chromeOwn), chromeOwn, "old: chrome stays")
+	-- "As before", cars the looks are not tried on, and the garage's
+	-- turntable (its lit bay washes Glass over 0.15 toward white, so it keeps
+	-- the ladder tuned there): the CosmeticsConfig finish exactly as
+	-- CarCosmetics applied it.
+	local cases: { { look: string, car: string, outdoors: boolean } } = {
+		{ look = "old", car = "kamri07", outdoors = true },
+		{ look = "main", car = "tahu", outdoors = true },
+		{ look = "main", car = "kamri07", outdoors = false },
+		{ look = "wet", car = "kamri07", outdoors = false },
+	}
+	for _, case in cases do
+		local lookId, carId, outdoors = case.look, case.car, case.outdoors
+		for id, item in finishes do
+			local p = paint(lookId, carId, id, 0.07, outdoors)
+			t.eq(p.material, item.material or SMOOTH, `{lookId} {carId} {id}: its own material`)
+			local refl = if item.material then item.reflectance or 0 else 0.07
+			t.eq(p.reflectance, refl, `{lookId} {carId} {id}: its own reflectance`)
+			t.eq(p.darken, item.darken or 0, `{lookId} {carId} {id}: its own darkening`)
+			t.eq(p.desaturate, item.desaturate or 0, `{lookId} {carId} {id}: its own desaturation`)
+		end
+	end
 	for _, o in SkyConfig.options do
 		t.eq(PaintLooks.sunClockTime("old", o.id), nil, `old: the {o.id} sky keeps its hour`)
 	end
 
-	local coat = PaintLooks.looks.main.clearcoat
-	t.ok(coat > 0, "main has a clear coat")
-	t.eq(PaintLooks.reflectance("main", "kamri07", factory, 0), coat, "main: the Kamri's factory paint takes the coat")
-	t.eq(PaintLooks.reflectance("main", "tahu", factory, 0), 0, "main: a car the coat is not tried on is untouched")
-	t.eq(PaintLooks.reflectance("main", "kamri07", matte, matte.reflectance :: number), matte.reflectance, "main: matte stays flat")
-	t.eq(PaintLooks.reflectance("main", "kamri07", chrome, chromeOwn), math.max(chromeOwn, coat), "main: chrome is never duller")
-	t.eq(PaintLooks.reflectance("main", "kamri07", factory, 0.5), 0.5, "a factory piece already shinier than the coat keeps its own")
+	-- Every other look on the Kamri: the finishes apart. Measured outdoors,
+	-- SmoothPlastic's reflectance barely shows (0.04 and 0.25 looked alike);
+	-- Glass is what reads as shine, so gloss, metallic and chrome are Glass
+	-- and factory is not.
+	for _, lookId in PaintLooks.order do
+		if lookId == "old" then
+			continue
+		end
+		local f = paint(lookId, "kamri07", "finish_stock")
+		local g = paint(lookId, "kamri07", "finish_gloss")
+		local m = paint(lookId, "kamri07", "finish_matte")
+		local mt = paint(lookId, "kamri07", "finish_metallic")
+		local c = paint(lookId, "kamri07", "finish_chrome")
+		t.eq(f.material, SMOOTH, `{lookId}: factory keeps the car's own material`)
+		t.eq(m.material, SMOOTH, `{lookId}: matte is smooth plastic`)
+		t.eq(m.reflectance, 0, `{lookId}: matte shows no sky`)
+		local shiny: { [string]: PaintLooks.Paint } = { gloss = g, metallic = mt, chrome = c }
+		for name, p in shiny do
+			t.eq(p.material, GLASS, `{lookId}: {name} is glass`)
+		end
+		t.ok(g.reflectance >= 0.2, `{lookId}: gloss shines ({g.reflectance})`)
+		t.ok(mt.reflectance >= g.reflectance, `{lookId}: metallic at least as shiny as gloss`)
+		t.ok(mt.darken >= 0.3, `{lookId}: metallic is a deeper colour than gloss ({mt.darken})`)
+		t.ok(c.reflectance >= mt.reflectance + 0.25, `{lookId}: chrome far shinier than metallic`)
+		t.ok(m.darken >= 0.3 and m.desaturate >= 0.3, `{lookId}: matte clearly duller than factory`)
+		t.ok(f.darken == 0 and g.darken == 0, `{lookId}: factory and gloss keep the paint's colour`)
+		local own = paint(lookId, "kamri07", "finish_stock", 0.5)
+		t.eq(own.reflectance, 0.5, `{lookId}: a factory piece already shinier keeps its own`)
+	end
 
 	-- The sun hours: still a sunset (after 17:00, earlier than the picked
 	-- Sunset so the sun is higher), only on the sunset option.

@@ -61,6 +61,9 @@ type State = {
 	carId: string,
 	-- The look last put on, so a PaintLooks switch can repaint it.
 	look: CarLook.Look?,
+	-- A car out in the world (CarCosmetics.watch), not the garage's
+	-- turntable car: PaintLooks paints its finish for the outdoors.
+	outdoors: boolean,
 	paint: { Original },
 	rims: { Original },
 	windows: { Window },
@@ -107,7 +110,7 @@ local function collect(body: Instance, carId: string): State
 			wheelNames[`{piece.name}_{w.name}`] = true
 		end
 	end
-	local s: State = { body = body, carId = carId, paint = {}, rims = {}, windows = {}, exhaustGen = 0 }
+	local s: State = { body = body, carId = carId, outdoors = false, paint = {}, rims = {}, windows = {}, exhaustGen = 0 }
 	local mounts = CarCosmeticMounts.cars[carId]
 	local windows = mounts and mounts.windows
 	local function addWindows(names: { string }?, role: WindowRole)
@@ -150,7 +153,7 @@ end
 
 -- A finish's colour treatment (CosmeticsConfig FINISH): value and
 -- saturation lowered by its darken and desaturate.
-local function treat(c: Color3, finish: CosmeticsConfig.Item): Color3
+local function treat(c: Color3, finish: { darken: number?, desaturate: number? }): Color3
 	if not finish.darken and not finish.desaturate then
 		return c
 	end
@@ -169,12 +172,13 @@ local function paint(s: State, look: CarLook.Look)
 			o.sa.Color = colour or (o.saColor :: Color3)
 			continue
 		end
-		o.part.Color = treat(c, finish)
-		o.part.Material = finish.material or o.material
-		-- The clear coat (PaintLooks, the owner's look variants) under the
-		-- finish's own reflectance.
-		local own = if finish.material then finish.reflectance or 0 else o.reflectance
-		o.part.Reflectance = PaintLooks.reflectance(Players.LocalPlayer:GetAttribute(PaintLooks.ATTRIBUTE), s.carId, finish, own)
+		-- The finish as the owner's look variant paints it outdoors
+		-- (PaintLooks; the CosmeticsConfig finish itself in the garage and on
+		-- cars it is not tried on).
+		local p = PaintLooks.paint(Players.LocalPlayer:GetAttribute(PaintLooks.ATTRIBUTE), s.carId, finish.id, finish, o.material, o.reflectance, s.outdoors)
+		o.part.Color = treat(c, p)
+		o.part.Material = p.material
+		o.part.Reflectance = p.reflectance
 	end
 end
 
@@ -920,6 +924,7 @@ function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 	end
 	assert(s)
 	s.look = look
+	s.outdoors = if watching[model] then true else false
 	paint(s, look)
 	rims(s, look)
 	tint(s, look)

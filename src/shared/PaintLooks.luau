@@ -1,7 +1,9 @@
 --!strict
 -- How car paint catches the light: side variants for the owner to compare in
 -- Studio (B cycles them; the LocalPlayer attribute PaintLook names one), per
--- keep-design-variations. Once the owner picks, the rest go.
+-- keep-design-variations. Once the owner picks, the rest go. Each look is a
+-- sun hour and a finish ladder: how each garage finish (CosmeticsConfig
+-- FINISH) is painted on the cars being tried.
 --
 -- The owner, 2026-11-08: "improve the overall color and shading of the cars
 -- ... make it look not flat ... so the sun has an effect on it". Measured that
@@ -22,18 +24,45 @@
 --     (it glowed and lit a patch of road), Metal (no different from
 --     SmoothPlastic on these meshes, as the garage found).
 --
--- The coat only reaches the cars in `cars` (the owner: "for testing and
+-- The finish ladders, 2026-11-09. The first cut laid that 0.2 coat under
+-- every finish as a floor, and the owner found "the factory finish ... looks
+-- more like the glossy one" and asked to "make sure there is an actual
+-- difference between the finishes". Measured with five red Kamris on the
+-- sand at 17.5, from the sun's side and against it: under the floor, factory
+-- and gloss looked the same and so did metallic and chrome (chrome's own
+-- 0.15 was under the coat). SmoothPlastic's reflectance barely shows outdoors
+-- (0.04 and 0.25 looked alike); Glass is what reads as shine. So each look
+-- now names every finish outright:
+--   factory  the car's own material, a touch of sky (0.1): solid colour
+--   gloss    Glass 0.3: the colour with bright sky over the panels
+--   matte    SmoothPlastic 0, 40% darker and 35% less saturated: brick-dull
+--            (the garage's 20% and 30% read close to factory outdoors)
+--   metallic Glass 0.35 on a 40% darker base: a deep colour with a warm sheen
+--   chrome   Glass 0.7, 40% less saturated: pale tinted silver
+-- All five read apart, so none was cut.
+--
+-- The ladders are for cars out in the world; the garage's turntable keeps the
+-- CosmeticsConfig ladder tuned under its lights (see paint). They only reach
+-- the cars in `cars` (the owner: "for testing and
 -- development purposes rn we will work on only the camry"); add a car id
--- to try it on another. The sun hour reaches everything.
+-- to try them on another. The sun hour reaches everything.
 local PaintLooks = {}
+
+-- How one finish is painted: the material (nil: the piece's own), the
+-- reflectance (with no material, the least the piece gets: a factory piece
+-- already shinier keeps its own), and the colour's value and saturation
+-- lowered by darken and desaturate (0..1).
+export type Finish = { material: Enum.Material?, reflectance: number?, darken: number?, desaturate: number? }
+
+-- What CarCosmetics puts on a painted piece.
+export type Paint = { material: Enum.Material, reflectance: number, darken: number, desaturate: number }
 
 export type Look = {
 	name: string,
 	blurb: string,
-	-- The clear coat: the least Reflectance a painted piece gets. A finish
-	-- that already reflects more keeps its own; a finish with clearcoat =
-	-- false (matte) gets none.
-	clearcoat: number,
+	-- How each finish is painted, by CosmeticsConfig finish id; nil: the
+	-- CosmeticsConfig finish as it is (the game as it was).
+	finishes: { [string]: Finish }?,
 	-- The hour each SkyConfig option is shown at instead of its own, by
 	-- option id; a missing option keeps its hour.
 	sunClockTime: { [string]: number },
@@ -41,39 +70,58 @@ export type Look = {
 
 PaintLooks.ATTRIBUTE = "PaintLook"
 
+local GLASS = Enum.Material.Glass
+local SMOOTH = Enum.Material.SmoothPlastic
+
+-- The ladder measured on the sand (the header): each finish its own look.
+local LADDER: { [string]: Finish } = {
+	finish_stock = { reflectance = 0.1 },
+	finish_gloss = { material = GLASS, reflectance = 0.3 },
+	finish_matte = { material = SMOOTH, reflectance = 0, darken = 0.4, desaturate = 0.35 },
+	finish_metallic = { material = GLASS, reflectance = 0.35, darken = 0.4 },
+	finish_chrome = { material = GLASS, reflectance = 0.7, desaturate = 0.4 },
+}
+
+-- Every shiny finish a step wetter, matte as it is.
+local WET: { [string]: Finish } = {
+	finish_stock = { reflectance = 0.2 },
+	finish_gloss = { material = GLASS, reflectance = 0.4 },
+	finish_matte = LADDER.finish_matte,
+	finish_metallic = { material = GLASS, reflectance = 0.45, darken = 0.4 },
+	finish_chrome = { material = GLASS, reflectance = 0.8, desaturate = 0.4 },
+}
+
 PaintLooks.looks = {
 	main = {
 		name = "Main",
-		blurb = "Clear coat, sunset sun 6 degrees up",
-		clearcoat = 0.2,
+		blurb = "Finishes apart, sunset sun 6 degrees up",
+		finishes = LADDER,
 		sunClockTime = { sunset = 17.5 },
 	},
-	-- The car-only part: the paint shows the sky, the sky stays as picked.
+	-- The car-only part: the finishes, the sky as picked.
 	coat = {
-		name = "Clear coat",
-		blurb = "Clear coat, the Sunset sky as it was",
-		clearcoat = 0.2,
+		name = "Finishes only",
+		blurb = "Finishes apart, the Sunset sky as it was",
+		finishes = LADDER,
 		sunClockTime = {},
 	},
-	-- A deeper, wetter coat: more of the sky on the panels, colour paler.
 	wet = {
 		name = "Wet",
-		blurb = "Thick clear coat, sunset sun 6 degrees up",
-		clearcoat = 0.35,
+		blurb = "Every shiny finish wetter, sunset sun 6 degrees up",
+		finishes = WET,
 		sunClockTime = { sunset = 17.5 },
 	},
 	-- Exactly what the game had.
 	old = {
 		name = "As before",
-		blurb = "No clear coat, the Sunset sky as it was",
-		clearcoat = 0,
+		blurb = "The garage finishes as they were, the Sunset sky as it was",
 		sunClockTime = {},
 	},
 } :: { [string]: Look }
 
 PaintLooks.order = { "main", "coat", "wet", "old" }
 
--- The cars the clear coat is tried on.
+-- The cars the ladders are tried on.
 PaintLooks.cars = { kamri07 = true } :: { [string]: boolean }
 
 function PaintLooks.resolve(id: any): string
@@ -83,14 +131,22 @@ function PaintLooks.resolve(id: any): string
 	return "main"
 end
 
--- The Reflectance a painted piece of this car gets under this finish:
--- `own` is the reflectance the finish would give it (the finish's, or the
--- piece's factory value under the stock finish).
-function PaintLooks.reflectance(lookId: string?, carId: string, finish: { clearcoat: boolean? }, own: number): number
-	if not PaintLooks.cars[carId] or finish.clearcoat == false then
-		return own
-	end
-	return math.max(own, PaintLooks.looks[PaintLooks.resolve(lookId)].clearcoat)
+-- How a painted piece of this car is painted under this look and finish:
+-- `finish` is the CosmeticsConfig item, `ownMaterial` and `ownReflectance`
+-- the piece's factory values. `outdoors` is false for the garage's
+-- turntable car: its lit bay washes Glass over 0.15 toward pale pink (gloss
+-- at 0.3 there was a pink car, 2026-11-09), so it keeps the CosmeticsConfig
+-- ladder that was tuned in that bay.
+function PaintLooks.paint(lookId: string?, carId: string, finishId: string, finish: Finish, ownMaterial: Enum.Material, ownReflectance: number, outdoors: boolean): Paint
+	local ladder = if outdoors and PaintLooks.cars[carId] then PaintLooks.looks[PaintLooks.resolve(lookId)].finishes else nil
+	local f = (ladder and ladder[finishId]) or finish
+	local reflectance = if f.material then f.reflectance or 0 else math.max(ownReflectance, f.reflectance or 0)
+	return {
+		material = f.material or ownMaterial,
+		reflectance = reflectance,
+		darken = f.darken or 0,
+		desaturate = f.desaturate or 0,
+	}
 end
 
 -- The hour the sky option `skyId` is shown at under this look, or nil for

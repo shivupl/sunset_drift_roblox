@@ -36,8 +36,6 @@ export type Item = {
 	material: Enum.Material?,
 	reflectance: number?,
 	darken: number?, -- finish only: the paint colour's value this much lower (0..1)
-	-- Finish only: false keeps PaintLooks' clear coat off it (matte).
-	clearcoat: boolean?,
 	desaturate: number?, -- finish only: the paint colour's saturation this much lower (0..1)
 	text: string?,
 	textColor: Color3?,
@@ -480,11 +478,11 @@ CosmeticsConfig.items = {
 	--   chrome   Glass 0.15 on the colour: pale liquid silver tinted by it
 	--            (0.3 and a colour lightened toward white read as a plain
 	--            white car)
-	-- Outdoors, PaintLooks lays a clear coat under these (2026-11-08): a
-	-- piece reflects at least the coat, except under matte.
+	-- On the cars PaintLooks is tried on (the Kamri, 2026-11-09), its look
+	-- paints each finish instead, retuned outdoors so the five read apart.
 	{ id = "finish_stock", category = "finish", name = "Factory", price = 0, reflectance = 0 },
 	{ id = "finish_gloss", category = "finish", name = "Gloss", price = 10000, material = Enum.Material.Glass, reflectance = 0 },
-	{ id = "finish_matte", category = "finish", name = "Matte", price = 30000, material = Enum.Material.SmoothPlastic, reflectance = 0, darken = 0.2, desaturate = 0.3, clearcoat = false },
+	{ id = "finish_matte", category = "finish", name = "Matte", price = 30000, material = Enum.Material.SmoothPlastic, reflectance = 0, darken = 0.2, desaturate = 0.3 },
 	{ id = "finish_metallic", category = "finish", name = "Metallic", price = 45000, material = Enum.Material.Glass, reflectance = 0.05, darken = 0.25 },
 	{ id = "finish_chrome", category = "finish", name = "Chrome", price = 200000, rare = true, material = Enum.Material.Glass, reflectance = 0.15 },
 

@@ -860,7 +860,7 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | bakedGlow / bakedGlowSkip | The interior's painted-on light per sky option: each panel's LightInfluence becomes 1 - (1 - built) * glow. Sunset 1 (as built), night 0.5. The sign (Fascia) is left alone. |
 
 ## PaintLooks (how car paint catches the light; side variants)
-`src/shared/PaintLooks.luau`, read by `CarCosmetics` (the coat) and `Sky` (the hour). The owner, 2026-11-08: the cars looked flat, "so the sun has an effect on it". **In Studio, B cycles the looks** (Main, Clear coat, Wet, As before), named on screen; the LocalPlayer attribute `PaintLook` holds the choice; players get Main. Once the owner picks, the rest go.
+`src/shared/PaintLooks.luau`, read by `CarCosmetics` (the finishes) and `Sky` (the hour). The owner, 2026-11-08: the cars looked flat, "so the sun has an effect on it". **In Studio, B cycles the looks** (Main, Finishes only, Wet, As before), named on screen; the LocalPlayer attribute `PaintLook` holds the choice; players get Main. Once the owner picks, the rest go.
 
 What was measured that day, in Play, with five red and five white Kamris parked in open sun on the road (z −6200):
 | Change | What it did |
@@ -872,11 +872,22 @@ What was measured that day, in Play, with five red and five white Kamris parked 
 | A warm SpotLight from the sun's side on each car | Glowed and lit a patch of road: dropped. |
 | Metal | No different from SmoothPlastic on these meshes (as the garage found in 2026-09). |
 
+**The finishes, 2026-11-09.** The first cut laid that 0.2 coat under every finish as a floor. The owner: "the factory finish on the camry looks more like the glossy one ... make sure there is an actual difference between the finishes". Measured with five red (Beacon Red) Kamris on the sand at 17.5, from the sun's side and against it:
+| Finish | Under the 0.2 floor | Now (Main) | How it reads now |
+|---|---|---|---|
+| Factory | SmoothPlastic 0.2 | SmoothPlastic 0.1 (the car's own, at least) | Solid red |
+| Gloss | Glass 0.2 | Glass 0.3 | Red with bright sky over the panels |
+| Matte | SmoothPlastic 0, 20% darker, 30% less saturated | SmoothPlastic 0, 40% darker, 35% less saturated | Dull brick red (20%/30% read close to factory outdoors) |
+| Metallic | Glass 0.2, 25% darker | Glass 0.35, 40% darker | Deep wine with a warm sheen |
+| Chrome | Glass 0.2 (its own 0.15 was under the floor) | Glass 0.7, 40% less saturated | Pale tinted silver |
+
+Under the floor, factory looked like gloss and metallic like chrome; now all five read apart, so none was cut. SmoothPlastic's reflectance barely shows outdoors (0.04 and 0.25 looked alike); Glass is what reads as shine. **The garage turntable keeps the CosmeticsConfig ladder** (tuned under its lights in 2026-09): there, Glass 0.3 turned a red car pale pink, while gloss at Glass 0 still shows a sheen beside factory. So a finish looks a little different on the turntable and on the road; outdoors is where it is seen most.
+
 | Field | What it does |
 |---|---|
-| looks[].clearcoat | The least Reflectance a painted piece gets: Main 0.2, Clear coat 0.2, Wet 0.35, As before 0. A finish that reflects more keeps its own (Chrome 0.15 becomes 0.2 under Main); Matte (`clearcoat = false` in CosmeticsConfig) gets none, so it now reads plainly flatter than factory. Higher = more sky in the paint and a paler colour. |
+| looks[].finishes | How each finish is painted on the cars in `cars` out in the world, by CosmeticsConfig finish id (material, reflectance, darken, desaturate; a finish with no material keeps the piece's own and reflects at least its own). Main and Finishes only use the ladder above; Wet takes every shiny finish a step wetter (factory 0.2, gloss 0.4, metallic 0.45, chrome 0.8, matte as is), still five apart on red; As before has none (the CosmeticsConfig finish everywhere). More reflectance on Glass = more sky and a paler colour; past about 0.3 red goes pink. |
 | looks[].sunClockTime | The hour a SkyConfig option is shown at instead of its own, by option id: Main and Wet show Sunset at 17.5. Night keeps 18.9. This moves the sky, the sun and the whole world, not only cars. If the owner keeps it, write 17.5 into SkyConfig's sunset and WorldConfig's goldenHour and drop the field (until then the server builds at 17.68 and each client moves to 17.5 as it starts). |
-| cars | The cars the coat is tried on: `kamri07` only, as the owner asked ("for testing and development purposes rn we will work on only the camry"). Add an id to try another; the hour reaches every car. |
+| cars | The cars the finish ladders are tried on: `kamri07` only, as the owner asked ("for testing and development purposes rn we will work on only the camry"). Add an id to try another; the hour reaches every car. |
 
 ## CosmeticsConfig.render (how a garage look is drawn, shared)
 `src/shared/CosmeticsConfig.luau`, read by `CarCosmetics` (client) and `CarLamps`. Each car's strip and tip spots are in `src/shared/CarCosmeticMounts.luau` (car frame, metres before scale, like `CarPlateMounts`).
