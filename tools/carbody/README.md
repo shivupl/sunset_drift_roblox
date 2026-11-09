@@ -325,11 +325,11 @@ In Play each of those cars drew every piece from its upload with all 8
 EditableMesh slots still free. A car added later gets its pieces uploaded
 the same way before it ships.
 
-Waiting for upload (2026-11-08, `AllCars.obj` now holds only these nine): the
-first-person cuts, `BatrolCabin` (Interior, Interior_Wood, Trim, Glass and
-three SteeringWheel pieces) and `LekzasCabin` (Interior_4, SteeringWheel).
-Until then the Batrol takes 7 of a client's 8 EditableMesh slots and the
-Lekzas 2.
+Uploaded 2026-11-08 (`LekzasCabin.obj` and `BatrolCabin.obj`, imported
+separately): the first-person cuts, `BatrolCabin` (Interior, Interior_Wood,
+Trim, Glass and three SteeringWheel pieces) and `LekzasCabin` (Interior_4,
+SteeringWheel). Every MeshSize matched its sizeM exactly; in Play both cars
+drew every piece from its upload and their wheels turned.
 
 ## Cars
 
