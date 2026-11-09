@@ -70,6 +70,15 @@ current: when the standard changes, change it here in the same commit.
 | Backfire | tried on the Kruzer 80 and parked: the flame looked poor (`car-backfire`, BRANCH_STATUS.md) |
 | Anything else (screens, decals, sirens) | not wanted so far; ask first |
 
+Read again for first person (2026-11-08), every store car's scripts: the
+Tahu, Krown Vik and Kamri SE have live dash gauges (speed and rev needles on
+SurfaceGuis over the dials, a gear and clock screen; the Tahu also an
+odometer counting onto that screen). The body build drops those GUI parts,
+so their dials are still. Doors, bonnet and boot open on click in the
+Tahu, Akord, Kruzer 80 and Kruzer 300; the Kruzer 300 and Tahu have power
+windows, the Kruzer 300 wipers. Not taken yet; the owner decides. The
+Kruzer 300's digital cluster and screens carry the other maker's name.
+
 ## Lamps
 
 The lamps are always the car's **own built-in lamp parts** from the store

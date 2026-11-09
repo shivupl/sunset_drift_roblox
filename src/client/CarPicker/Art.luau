@@ -45,6 +45,13 @@ Art.cars = {
 	kamri07 = "rbxassetid://74376669148342",
 	batrol = "rbxassetid://105864113782329",
 	kruzer80 = "rbxassetid://125170877525727",
+	-- The five from the first-person car search (2026-11-08), built on the
+	-- client in the booth rather than spawned, the same angle and keying.
+	tahu = "rbxassetid://119527056013506",
+	sonatta = "rbxassetid://127666645644450",
+	akord = "rbxassetid://97649019902277",
+	kamri12 = "rbxassetid://92742244182273",
+	kruzer300 = "rbxassetid://105816006303147",
 } :: { [string]: string }
 
 return Art

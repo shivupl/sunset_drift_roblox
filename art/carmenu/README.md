@@ -31,3 +31,16 @@ in `src/client/CarPicker/Art.luau`.
    puts every car on the same 720x400 canvas.
 5. Upload `out/car_<id>.png` (serve `out/` over http and use the Studio MCP
    `upload_image`) and add the id to `Art.cars`.
+   `upload_image` reads `http://localhost:<port>/...`; the same files at
+   `127.0.0.1` failed to read (2026-11-08).
+
+**Without spawning** (2026-11-08, the owner was sitting in a car in Play):
+build the car on the client instead, the garage preview's way (the static
+rig `GarageView.staticCar` makes, `BodyBuilder.mount`, `CarLamps` with the
+headlamps on, `CarPlates`), so nobody's car is replaced. A camera hook
+from `execute_luau` dies when the script returns, so use a separate
+Scriptable camera as `workspace.CurrentCamera` instead. Afterwards the car
+camera still holds the old camera object, which is gone: fire
+`Remotes.DriveStart` to the driver for the car they are in (from the
+Server datamodel) and the client restarts its camera without unseating
+them. Put back only the HUD ScreenGuis you turned off (not the menu's).
