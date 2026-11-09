@@ -859,6 +859,25 @@ The garage workshop (`Garage.luau`, WORLD.md "The garage"). Metres in a local fr
 | lights.key / fill / rim / under | The view's four lights: type, positionM, brightness, rangeM, angleDeg, color, sizeM (the fill's face), shadows (the key only; no effect under ShadowMap). The fill is a 3 m softbox 4.6 m over the car, brightness 1.5, angle 120, range 11 m (from a 1.2 m panel on the far side): the Glass finishes take their sheen from it. A white gloss car still does not bloom. Brightness: key 1, fill 1, rim 1.5, under 0.4 (from 3 / 1 / 2.5 / 0.8, because a white car passed the world bloom threshold and glowed). **The owner's feel knob is `lights.key.brightness`**: higher gives a hotter highlight and more bloom on white. Each light is scaled per sky option by 2^(default exposure - option exposure), so at night (+0.4 stops) they run at 0.76. Four lights with the pool suspended keeps the client under maxLiveLights (12). |
 | bakedGlow / bakedGlowSkip | The interior's painted-on light per sky option: each panel's LightInfluence becomes 1 - (1 - built) * glow. Sunset 1 (as built), night 0.5. The sign (Fascia) is left alone. |
 
+## PaintLooks (how car paint catches the light; side variants)
+`src/shared/PaintLooks.luau`, read by `CarCosmetics` (the coat) and `Sky` (the hour). The owner, 2026-11-08: the cars looked flat, "so the sun has an effect on it". **In Studio, B cycles the looks** (Main, Clear coat, Wet, As before), named on screen; the LocalPlayer attribute `PaintLook` holds the choice; players get Main. Once the owner picks, the rest go.
+
+What was measured that day, in Play, with five red and five white Kamris parked in open sun on the road (z −6200):
+| Change | What it did |
+|---|---|
+| Sunset sky at 17.68 (sun 3.5° up) | Roblox gives a sun that low almost no direct light: a red ball had no lit side, every car one flat colour. Brightness 3.5, OutdoorAmbient a third lower or Atmosphere density 0.05 changed nothing. |
+| 17.6 (4.8°) | Shading begins, still mostly flat. |
+| 17.5 (6.0°) | A lit side, a shaded side, warm reflections; the road lit; still a sunset sky. |
+| Reflectance 0.1 / 0.2 / 0.3 / 0.45 on the paint | 0.2 shows the sky on the boot and the sides away from the sun and reads as paint; 0.45 washes red toward pink. On factory white the coat alone is subtle; on red it is plain. |
+| A warm SpotLight from the sun's side on each car | Glowed and lit a patch of road: dropped. |
+| Metal | No different from SmoothPlastic on these meshes (as the garage found in 2026-09). |
+
+| Field | What it does |
+|---|---|
+| looks[].clearcoat | The least Reflectance a painted piece gets: Main 0.2, Clear coat 0.2, Wet 0.35, As before 0. A finish that reflects more keeps its own (Chrome 0.15 becomes 0.2 under Main); Matte (`clearcoat = false` in CosmeticsConfig) gets none, so it now reads plainly flatter than factory. Higher = more sky in the paint and a paler colour. |
+| looks[].sunClockTime | The hour a SkyConfig option is shown at instead of its own, by option id: Main and Wet show Sunset at 17.5. Night keeps 18.9. This moves the sky, the sun and the whole world, not only cars. If the owner keeps it, write 17.5 into SkyConfig's sunset and WorldConfig's goldenHour and drop the field (until then the server builds at 17.68 and each client moves to 17.5 as it starts). |
+| cars | The cars the coat is tried on: `kamri07` only, as the owner asked ("for testing and development purposes rn we will work on only the camry"). Add an id to try another; the hour reaches every car. |
+
 ## CosmeticsConfig.render (how a garage look is drawn, shared)
 `src/shared/CosmeticsConfig.luau`, read by `CarCosmetics` (client) and `CarLamps`. Each car's strip and tip spots are in `src/shared/CarCosmeticMounts.luau` (car frame, metres before scale, like `CarPlateMounts`).
 | Field | What it does |

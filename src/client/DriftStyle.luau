@@ -219,6 +219,9 @@ local function showLabel(id: string)
 	showText(`DRIFT: {string.upper(style.name)} ({style.layout})`)
 end
 
+-- The same label for other Studio switches (PaintLook's B).
+DriftStyle.say = showText
+
 -- I, or the phone's DRIFT tab: the next arcade feel.
 function DriftStyle.cycleFeel()
 	local player = Players.LocalPlayer

@@ -12,6 +12,12 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
+**`car-customization` (2026-11-08, branched from `main` at `ec8cb4d`; local, not pushed or merged): more
+car customization, tried on the Kamri (`kamri07`) first** (the owner: "for testing and development
+purposes rn we will work on only the camry"). First: paint that catches the light (`PaintLooks`, TUNING.md
+"PaintLooks"): a clear coat on the Kamri's paint and the Sunset sun raised to 17.5, with side variants on
+Studio's B.
+
 **`first-person-arms` merged into `main` by fast-forward on 2026-11-08 at `68db38b`, not pushed**
 (the owner: "ok this is all good now merge this branch onto main"). It took its whole line into
 `main`: `drift-mechanics` (the arcade drive), `first-person` (the DRIVER view), `car-search` (the

@@ -14,11 +14,15 @@
 --
 -- The choice is saved in the player's profile (SkyService) and comes back as
 -- the Sky attribute when the profile loads.
+--
+-- A paint look (PaintLooks, Studio's B) may show an option at another hour:
+-- the main look raises the Sunset sun so it lights the cars (2026-11-08).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SkyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkyConfig"))
+local PaintLooks = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PaintLooks"))
 
 local Sky = {}
 
@@ -42,8 +46,9 @@ local function apply()
 	if free() then
 		return
 	end
-	if math.abs(Lighting.ClockTime - chosen.clockTime) > 1e-3 then
-		Lighting.ClockTime = chosen.clockTime
+	local hour = PaintLooks.sunClockTime(Players.LocalPlayer:GetAttribute(PaintLooks.ATTRIBUTE), chosen.id) or chosen.clockTime
+	if math.abs(Lighting.ClockTime - hour) > 1e-3 then
+		Lighting.ClockTime = hour
 	end
 	if math.abs(Lighting.Brightness - chosen.brightness) > 1e-3 then
 		Lighting.Brightness = chosen.brightness
@@ -95,6 +100,7 @@ function Sky.start(remotes: Folder)
 	for _, prop in { "ClockTime", "Brightness", "ExposureCompensation" } do
 		Lighting:GetPropertyChangedSignal(prop):Connect(apply)
 	end
+	player:GetAttributeChangedSignal(PaintLooks.ATTRIBUTE):Connect(apply)
 	player:GetAttributeChangedSignal("Sky"):Connect(function()
 		if not pickedHere then
 			choose(SkyConfig.resolve(player:GetAttribute("Sky") :: string?))

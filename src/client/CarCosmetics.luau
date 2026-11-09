@@ -24,6 +24,7 @@
 -- a paint split of those shells in CarCatalog (garage plan, task 3 fix 1).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AssetService = game:GetService("AssetService")
+local Players = game:GetService("Players")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local VehicleRig = require(Shared:WaitForChild("VehicleRig"))
 local ConfigLoader = require(Shared:WaitForChild("ConfigLoader"))
@@ -33,6 +34,7 @@ local CarCosmeticMounts = require(Shared:WaitForChild("CarCosmeticMounts"))
 local CarStripShapes = require(Shared:WaitForChild("CarStripShapes"))
 local UITheme = require(Shared:WaitForChild("UITheme"))
 local CosmeticsConfig = require(Shared:WaitForChild("CosmeticsConfig"))
+local PaintLooks = require(Shared:WaitForChild("PaintLooks"))
 local MeshData = require(Shared:WaitForChild("MeshData"))
 local ExhaustTips = require(Shared:WaitForChild("CosmeticMeshes"):WaitForChild("ExhaustTips"))
 
@@ -57,6 +59,8 @@ type Strip = { folder: Folder, slats: { Slat } }
 type State = {
 	body: Instance,
 	carId: string,
+	-- The look last put on, so a PaintLooks switch can repaint it.
+	look: CarLook.Look?,
 	paint: { Original },
 	rims: { Original },
 	windows: { Window },
@@ -167,7 +171,10 @@ local function paint(s: State, look: CarLook.Look)
 		end
 		o.part.Color = treat(c, finish)
 		o.part.Material = finish.material or o.material
-		o.part.Reflectance = if finish.material then finish.reflectance or 0 else o.reflectance
+		-- The clear coat (PaintLooks, the owner's look variants) under the
+		-- finish's own reflectance.
+		local own = if finish.material then finish.reflectance or 0 else o.reflectance
+		o.part.Reflectance = PaintLooks.reflectance(Players.LocalPlayer:GetAttribute(PaintLooks.ATTRIBUTE), s.carId, finish, own)
 	end
 end
 
@@ -912,6 +919,7 @@ function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 		states[model] = s
 	end
 	assert(s)
+	s.look = look
 	paint(s, look)
 	rims(s, look)
 	tint(s, look)
@@ -919,6 +927,16 @@ function CarCosmetics.apply(model: Model, look: CarLook.Look, carId: string)
 	strip(s, model, body, carId, look)
 	exhaust(s, model, body, carId, look)
 end
+
+-- A PaintLooks switch (Studio's B) repaints every car this client has dressed.
+Players.LocalPlayer:GetAttributeChangedSignal(PaintLooks.ATTRIBUTE):Connect(function()
+	for _, s in states do
+		local look = s.look
+		if look and s.body.Parent then
+			paint(s, look)
+		end
+	end
+end)
 
 -- Applies the model's Look attribute now and whenever it changes.
 function CarCosmetics.watch(model: Model)
