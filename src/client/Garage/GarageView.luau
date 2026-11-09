@@ -71,6 +71,7 @@ local UIKit = require(Client:WaitForChild("UIKit"))
 local WorldLights = require(Client:WaitForChild("WorldLights"))
 local Sky = require(Client:WaitForChild("Sky"))
 local VehicleController = require(Client:WaitForChild("VehicleController"))
+local GarageInterior = require(script.Parent:WaitForChild("GarageInterior"))
 
 local GarageView = {}
 
@@ -106,6 +107,8 @@ type Preview = {
 	handles: VehicleRig.Handles,
 	lo: Vector3, -- the body's box in car space (studs, from the body mount)
 	hi: Vector3,
+	-- The soft shadow under it (GarageInterior.shadow), moved with the spin.
+	shadow: BasePart,
 }
 
 local state: "outside" | "entering" | "inside" | "leaving" = "outside"
@@ -446,6 +449,7 @@ local function buildPreview(g: Garage, carId: string): Preview?
 	-- the door (car -Z along the frame's +Z), the body's middle on the axis.
 	local mountM = VehicleRig.bodyMountM(ConfigLoader.forCar(carId))
 	local pivot = CFrame.Angles(0, math.pi, 0) * CFrame.new(-centre.X, 0, -centre.Z) * CFrame.new(-mountM / mps())
+	local footprint = Vector2.new(hi.X - lo.X, hi.Z - lo.Z) * mps()
 	local p: Preview = {
 		model = m,
 		carId = carId,
@@ -455,6 +459,7 @@ local function buildPreview(g: Garage, carId: string): Preview?
 		handles = VehicleRig.handles(m),
 		lo = lo,
 		hi = hi,
+		shadow = GarageInterior.shadow(m, footprint),
 	}
 	preview = p
 	-- The shot's lamps on the new car (the tail shot's brake lights).
@@ -465,7 +470,7 @@ local function buildPreview(g: Garage, carId: string): Preview?
 end
 
 ------------------------------------------------------------------------
--- The view's four lights.
+-- The view's lights: the interior look's (GarageThemes, GarageInterior).
 ------------------------------------------------------------------------
 
 -- The view lights' brightness factor under the player's sky option (see
@@ -498,9 +503,9 @@ local function makeLights(g: Garage)
 	local folder = Instance.new("Folder")
 	folder.Name = LIGHTS_NAME
 	local s = mps()
-	local aim = g.viewFrame * Vector3.new(0, GarageConfig.aimHeightM / s, 0)
-	local lights = GarageConfig.lights
-	for _, def in { lights.key, lights.fill, lights.rim, lights.under } do
+	local aimDefault = g.viewFrame * Vector3.new(0, GarageConfig.aimHeightM / s, 0)
+	for _, def in GarageInterior.lights() do
+		local aim = if def.aimM then g.viewFrame * (def.aimM / s) else aimDefault
 		local anchor = Instance.new("Part")
 		anchor.Name = def.type
 		local face = (def.sizeM or 0.2) / s
@@ -923,6 +928,9 @@ local function step(dt: number)
 	local p = preview
 	if p and p.model.Parent then
 		p.model:PivotTo(g.viewFrame * spin * p.pivot)
+		-- Flat on the plate, a hair above it, centred on the axis (the body's
+		-- middle is on it, buildPreview).
+		p.shadow.CFrame = g.viewFrame * spin * CFrame.new(0, p.shadow.Size.Y / 2 + 0.01, 0)
 	end
 	local cam = Workspace.CurrentCamera
 	if cam then
@@ -1150,6 +1158,7 @@ local function restore(outside: boolean)
 		g.turntable.CFrame = home
 	end
 	WorldLights.resume()
+	GarageInterior.viewClose()
 	if outside then
 		standAtExit()
 	end
@@ -1179,7 +1188,7 @@ local function restoreEssentials()
 			g.turntable.CFrame = home
 		end
 	end
-	for _, fn in { disconnectAll, dropScene, WorldLights.resume, restoreCamera } :: { () -> () } do
+	for _, fn in { disconnectAll, dropScene, WorldLights.resume, GarageInterior.viewClose, restoreCamera } :: { () -> () } do
 		local ok, err = pcall(fn :: () -> any)
 		if not ok then
 			warn("[GarageView]", err)
@@ -1284,6 +1293,7 @@ local function enter(g: Garage, carIdArg: string?)
 		end
 		WorldLights.suspend()
 		makeLights(g)
+		GarageInterior.viewOpen()
 		plateHome = g.turntable.CFrame
 		angle = 0
 		-- The full framing, placed at once (no move from the world camera).
@@ -1322,6 +1332,12 @@ local function enter(g: Garage, carIdArg: string?)
 		-- whether or not the game "processed" it. Not while typing in a box.
 		if input.KeyCode == Enum.KeyCode.Escape and (state :: string) == "inside" and not UserInputService:GetFocusedTextBox() then
 			task.spawn(leaveNow, true)
+			return
+		end
+		-- Studio's T: the next interior look (GarageThemes).
+		if input.KeyCode == Enum.KeyCode.T and not processed and RunService:IsStudio() and (state :: string) == "inside" then
+			local t = GarageInterior.cycle()
+			notice(`GARAGE: {string.upper(t.name)} ({t.blurb})`)
 			return
 		end
 		onInputBegan(input, processed)
@@ -1695,6 +1711,13 @@ end
 
 function GarageView.start()
 	ensureGui()
+	-- The interior look changed (Studio's T): the view's lights follow.
+	GarageInterior.start(function()
+		local g = garage
+		if state == "inside" and g then
+			makeLights(g)
+		end
+	end)
 	-- A respawn while in the view: the old character is gone, put the rest
 	-- back.
 	player.CharacterAdded:Connect(function()
@@ -1722,6 +1745,7 @@ function GarageView.start()
 			if g then
 				buildLiftCar(g)
 				watchBaked(g.folder)
+				GarageInterior.apply(g)
 			end
 			task.wait(FIND_INTERVAL)
 		end
