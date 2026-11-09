@@ -12,7 +12,8 @@ merged into `main` and deleted on 2026-09-27.
 `plates-dubai` (Dubai, Abu Dhabi and Kuwait plate styles; the Kamri's grille badge spot filled; Kamri and
 Lekzas front plates on the bumper) was merged into `main` and deleted on 2026-09-27.
 
-**`car-customization` (2026-11-08, branched from `main` at `ec8cb4d`; local, not pushed or merged): more
+**`car-customization` (2026-11-08, branched from `main` at `ec8cb4d`; merged into `main` by fast-forward on
+2026-11-09 at `5570e56`, not pushed; the owner: "ok now merge these changes onto main also"): more
 car customization, tried on the Kamri (`kamri07`) first** (the owner: "for testing and development
 purposes rn we will work on only the camry"). First: paint that catches the light (`PaintLooks`, TUNING.md
 "PaintLooks"): the Sunset sun raised to 17.5 and, on the Kamri out in the world, the five garage finishes
