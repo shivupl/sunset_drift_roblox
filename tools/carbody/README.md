@@ -70,14 +70,19 @@ current: when the standard changes, change it here in the same commit.
 | Backfire | tried on the Kruzer 80 and parked: the flame looked poor (`car-backfire`, BRANCH_STATUS.md) |
 | Anything else (screens, decals, sirens) | not wanted so far; ask first |
 
-Read again for first person (2026-11-08), every store car's scripts: the
-Tahu, Krown Vik and Kamri SE have live dash gauges (speed and rev needles on
-SurfaceGuis over the dials, a gear and clock screen; the Tahu also an
-odometer counting onto that screen). The body build drops those GUI parts,
-so their dials are still. Doors, bonnet and boot open on click in the
-Tahu, Akord, Kruzer 80 and Kruzer 300; the Kruzer 300 and Tahu have power
-windows, the Kruzer 300 wipers. Not taken yet; the owner decides. The
-Kruzer 300's digital cluster and screens carry the other maker's name.
+Read again for first person (2026-11-08), every store car's scripts. Dash
+gauges (speed and rev needles on SurfaceGuis over the dials) are now kept:
+`src/shared/CarDashes.luau`, drawn by client `DashGauges` from the car's
+own speed, revs and gear. Load the store model in Studio and look from the
+seat before trusting its gauge parts: the Krown Vik's kit sat on its dial
+openings and is used as it was; the Tahu's was the same kit behind its
+dash and the wrong way round, so its needles are placed on its printed
+dials (hubs sighted from two eyes, angles fitted to the printed numbers);
+the Kamri SE's needles were stretched and off-centre, so they are refitted
+the same way. Not taken yet, the owner decides: doors, bonnet and boot that
+open on click (Tahu, Akord, Kruzer 80, Kruzer 300), power windows (Kruzer
+300, Tahu), wipers (Kruzer 300), the Tahu's odometer. The Kruzer 300's
+digital cluster and screens carry the other maker's name.
 
 ## Lamps
 

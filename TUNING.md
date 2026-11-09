@@ -365,6 +365,18 @@ First person from the driver's seat, with the steering wheel turning (the owner,
 
 Per car (`src/shared/CarCockpits.luau`): `eyeM` (0.29 m above and 0.62 m behind the wheel's centre, lowered where the lining still filled the view: Akord 0.05, Kamri SE 0.03, Krown Vik 0.04), and `wheel` (the pieces, the pivot and the column axis, fitted from the pieces' own triangles; every column leans back 18 to 28°). Higher eye: more bonnet and roof. Further back: smaller wheel.
 
+### CarDashes (working dash gauges; client `DashGauges`)
+
+The speed and rev needles in the dash of the car you drive, for the cars whose store model came with gauges (the owner, 2026-11-08: "yea put those guages back"). Each dial is an invisible part placed in car space (`posM`, `rotationDeg`, `sizeM`, like a catalog piece) with a SurfaceGui on `face`; the needle turns `zeroDeg + degPerUnit * value` degrees clockwise from the canvas's left, held at `maxDeg`. `reads` is `speedMph` (the dials are marked in mph) or `rpm`.
+
+| Car | What it is | Needles |
+|---|---|---|
+| Krown Vik | the store kit as it was: white needles, backlit numbers (0-160 mph, 0-7 x1000) and a gear and clock screen, on its blank dial openings | -30 + 1.5 a mph; -30 + 0.03 a rpm |
+| Tahu | its own red needles on its printed dials (the store kit was behind the dash, the wrong way round) | -7.5 + 1.67 a mph to 120; -9.8 + 0.03374 a rpm to 6000 |
+| Kamri SE | its store blue needles, on square screens, the rev dial moved 4 cm onto the printed centre | -15.6 + 1.553 a mph to 140; -96 + 0.01572 a rpm to 8000 (its screen is turned a quarter) |
+
+Measured in Studio: the Tahu's hubs sighted from two eyes, each needle fitted to its printed numbers (within 3 degrees). The Tahu and Kamri SE dials print their own needles, which stay visible at rest beneath ours. To move a needle onto a printed number, change `zeroDeg` (the whole sweep) or `degPerUnit` (the spread); `needle.lengthPx` / `widthPx` / `startPx` size it on its 210 px canvas.
+
 ### camera.freeLook (client `FreeLook`)
 Looking around while driving (the owner, 2026-10-10: "allow me to freelook while driving, resets after i a) on phone let go or b) on pc resets after a seccond or 2 in the same mouse position"). The camera swings round the car from where the follow put it: yaw all the way round, pitch from minPitchDeg (lower, looking up) to maxPitchDeg (higher, looking down). The follow carries on underneath, so the glide home lands on a camera that kept up. The glide starts and ends slowly (smoothstep), so it never snaps.
 | Field | What it does |
