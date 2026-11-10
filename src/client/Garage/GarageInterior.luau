@@ -455,6 +455,22 @@ local function wallLamp(f: Folder, at: Vector3, c: { [string]: Color3 }, lit: bo
 	bulb.Shape = Enum.PartType.Ball
 end
 
+-- A twin-tube shop light on two chains: a dark steel housing along X, two
+-- tubes under it (Neon, so they glow like the bulbs). Its light is in lights().
+local function shopLight(f: Folder, sl: GarageThemes.ShopLight, c: { [string]: Color3 })
+	local r = GarageThemes.room
+	local at = sl.positionM
+	local half = sl.lengthM / 2
+	for _, dx in { -half + 0.15, half - 0.15 } do
+		slab(f, "ShopLightChain", Vector3.new(at.X + dx - 0.008, at.Y + 0.04, at.Z - 0.008), Vector3.new(at.X + dx + 0.008, r.ceilingY + 0.3, at.Z + 0.008), c.cord, Enum.Material.Metal)
+	end
+	slab(f, "ShopLightHousing", Vector3.new(at.X - half, at.Y, at.Z - 0.11), Vector3.new(at.X + half, at.Y + 0.05, at.Z + 0.11), c.shelf or c.cord, Enum.Material.Metal)
+	for _, dz in { -0.05, 0.05 } do
+		local tube = part(f, "ShopLightTube", Vector3.new(sl.lengthM - 0.08, 0.035, 0.035), CFrame.new(at + Vector3.new(0, -0.02, dz)), sl.color, if sl.brightness > 0 then Enum.Material.Neon else Enum.Material.Glass)
+		tube.Shape = Enum.PartType.Cylinder
+	end
+end
+
 local function buildCozy(f: Folder, t: GarageThemes.Theme)
 	local c = t.colors
 	local wl = t.wallLamp
@@ -466,6 +482,9 @@ local function buildCozy(f: Folder, t: GarageThemes.Theme)
 		for _, pd in pendants do
 			pendant(f, pd, c)
 		end
+	end
+	for _, sl in t.shopLights or ({} :: { GarageThemes.ShopLight }) do
+		shopLight(f, sl, c)
 	end
 	shopWall(f, c)
 	local signs = t.signs
@@ -731,6 +750,20 @@ function GarageInterior.lights(): { GarageThemes.Light }
 			angleDeg = wl.angleDeg,
 			color = t.colors.bulb,
 		})
+	end
+	for _, sl in t.shopLights or ({} :: { GarageThemes.ShopLight }) do
+		if sl.brightness > 0 then
+			table.insert(out, {
+				type = "SpotLight",
+				positionM = sl.positionM - Vector3.new(0, 0.06, 0),
+				aimM = sl.aimM,
+				brightness = sl.brightness,
+				rangeM = sl.rangeM,
+				angleDeg = sl.angleDeg,
+				color = sl.color,
+				shadows = true,
+			})
+		end
 	end
 	for _, pd in t.pendants or ({} :: { GarageThemes.Pendant }) do
 		if pd.brightness > 0 then

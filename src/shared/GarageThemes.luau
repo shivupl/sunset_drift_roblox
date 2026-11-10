@@ -6,9 +6,10 @@
 -- to be best to show car edits ... quality work reflective of a tripleA title".
 --
 -- Side variants per keep-design-variations: Tungsten is the main look (the
--- owner chose the garage direction over the studios, below); After Hours,
--- Golden Bay, and the first cut's Studio, Gallery and Workshop are the
--- others. In Studio, T cycles them while the garage view
+-- owner chose the garage direction over the studios, below, then this look,
+-- brighter); Tungsten Bright and Tungsten Low (brighter still, and its
+-- first, darker cut), After Hours, Golden Bay,
+-- and the first cut's Studio, Gallery and Workshop are the others. In Studio, T cycles them while the garage view
 -- is open (the LocalPlayer attribute GarageTheme holds the choice); players
 -- get Tungsten. Once the owner picks, the rest go.
 --
@@ -78,6 +79,12 @@ export type Env = {
 -- to the look's own (GarageInterior.lights).
 export type Pendant = { positionM: Vector3, brightness: number, rangeM: number, angleDeg: number }
 
+-- A twin-tube shop light hung on chains over the camera's side of the car:
+-- the key light that shows the paint, from a fixture you can see (the
+-- owner, 2026-11-09, on Tungsten: "the lighting could use some work, too
+-- dark"). Its SpotLight shines from the tubes toward aimM (GarageInterior.lights).
+export type ShopLight = { positionM: Vector3, aimM: Vector3, lengthM: number, brightness: number, rangeM: number, angleDeg: number, color: Color3 }
+
 -- Text on the back wall: a painted tin sign, or glowing neon.
 export type Sign = { text: string, arabic: string?, positionM: Vector3, sizeM: Vector2, neon: boolean, color: Color3, background: Color3? }
 
@@ -92,6 +99,7 @@ export type Theme = {
 	-- shines from positionM toward aimM, warm like the bulbs.
 	wallLamp: { positionM: Vector3, aimM: Vector3, brightness: number, rangeM: number, angleDeg: number }?,
 	signs: { Sign }?,
+	shopLights: { ShopLight }?,
 	dust: boolean?, -- motes drifting in the light (Golden Bay)
 	-- The interior's painted-on light while the view is open, as a factor
 	-- on GarageConfig.bakedGlow: below 1 the shell stops lighting itself, so
@@ -142,12 +150,14 @@ GarageThemes.themes = {
 	-- walls, its own lamps doing the lighting, warm and low, and bloom only
 	-- on the bulbs.
 	--
-	-- Tungsten: three enamel pendants over the car in warm pools, the shell's
-	-- strips dimmed to a warm glow, a pegboard, oil-can shelves, a tin sign
-	-- and a clock on the back wall, a faint dusk-blue fill from the door.
-	tungsten = {
-		name = "Tungsten",
-		blurb = "Warm pendant lamps, a lived-in workshop",
+	-- Tungsten Low: the first Tungsten (179b805), kept to compare. Three
+	-- enamel pendants over the car in warm pools, the shell's strips dimmed
+	-- to a warm glow, a pegboard, oil-can shelves, a tin sign and a clock on
+	-- the back wall, a faint dusk-blue fill from the door. The owner picked
+	-- this look and found it "too dark"; Tungsten (below) is it brighter.
+	tungstenLow = {
+		name = "Tungsten Low",
+		blurb = "The first Tungsten: warm pools only, a dark room",
 		kind = "cozy",
 		colors = {
 			strip = Color3.fromRGB(176, 132, 84), -- the shell's strip lenses, a warm low glow
@@ -436,9 +446,76 @@ GarageThemes.themes = {
 	},
 } :: { [string]: Theme }
 
+-- TUNGSTEN, the main look: Tungsten Low's room, brighter. The owner,
+-- 2026-11-09, on Tungsten Low: "ok this one looks good ... but the lighting
+-- could use some work, too dark i think" (the camera side of a white Kamri
+-- read muddy beige, the room black past the pools). Measured live on the
+-- turntable (Kamri in factory white and Beacon Red, the paint framing):
+--   ambient 66/54/44 -> 84/74/64: the brick, sign, bench and floor read.
+--     At 104/92/80 (Tungsten Bright) the room reads fully, but every face
+--     of the car gets the same light and a red flank went flat.
+--   pendants 1.6 -> 2.0: a brighter pool on the roof and the turntable.
+--   a neutral shop light over the camera's side (new), 0.6: the flank
+--     reads white, not beige. At 1.0 with the panel at 1.0 a white flank
+--     burned and red went flat; at 0.45 it barely lifted the flank.
+--   grade: brightness -0.02 -> 0, saturation 0.06 -> -0.06, contrast
+--     0.1 -> 0.12, tint less orange: red reads red, not neon, under the
+--     warm bulbs.
+-- Knobs: env.ambient (the room), the shop light's brightness (the car).
+local function brighter(name: string, blurb: string, o: { ambient: Color3, shop: number, panel: number, grade: { brightness: number, contrast: number, saturation: number, tint: Color3 } }): Theme
+	local low = GarageThemes.themes.tungstenLow
+	local t = table.clone(low)
+	t.name = name
+	t.blurb = blurb
+	-- 2.0: 2.2 burned a white car's roof with the room dark (Tungsten Low);
+	-- 2.0 keeps a pool on the roof without burning it.
+	t.pendants = {
+		{ positionM = Vector3.new(-1.7, 3.5, 0.2), brightness = 2.0, rangeM = 9, angleDeg = 75 },
+		{ positionM = Vector3.new(0, 3.5, 0.2), brightness = 2.0, rangeM = 9, angleDeg = 75 },
+		{ positionM = Vector3.new(1.7, 3.5, 0.2), brightness = 2.0, rangeM = 9, angleDeg = 75 },
+	}
+	-- Hung between the car and the full framing's eye (about -4.1, 1.5, 7.0),
+	-- aimed down at the car's flank; neutral, so the paint's own colour
+	-- reads under the warm bulbs.
+	t.shopLights = {
+		{ positionM = Vector3.new(-1, 4.6, 4.6), aimM = Vector3.new(0, 0.5, 0), lengthM = 1.4, brightness = o.shop, rangeM = 9, angleDeg = 70, color = Color3.fromRGB(255, 242, 226) },
+	}
+	t.lights = {
+		-- The warm panel along the camera side, a little less orange than
+		-- Tungsten Low's.
+		{ type = "SurfaceLight", positionM = Vector3.new(-5.4, 1.4, 1.2), brightness = o.panel, rangeM = 9, angleDeg = 80, color = Color3.fromRGB(255, 230, 200), sizeM = 2 },
+		low.lights[2], -- dusk through the door
+		low.lights[3], -- the lift car's pool
+		low.lights[4], -- low off the floor
+	}
+	t.env = {
+		sky = "dark",
+		ambient = o.ambient,
+		bloom = low.env.bloom,
+		grade = o.grade,
+		dof = low.env.dof,
+	}
+	return t
+end
+
+GarageThemes.themes.tungsten = brighter("Tungsten", "Warm pendant lamps and a shop light, a lived-in workshop", {
+	ambient = Color3.fromRGB(84, 74, 64),
+	shop = 0.6,
+	panel = 0.45,
+	grade = { brightness = 0, contrast = 0.12, saturation = -0.06, tint = Color3.fromRGB(255, 244, 230) },
+})
+-- Tungsten Bright: the first brighter pass, kept as the other side of the
+-- feel call. The whole room lit; the car flatter.
+GarageThemes.themes.tungstenBright = brighter("Tungsten Bright", "Tungsten with the room fully lit", {
+	ambient = Color3.fromRGB(104, 92, 80),
+	shop = 1.0,
+	panel = 1.0,
+	grade = { brightness = 0.03, contrast = 0.1, saturation = 0.06, tint = Color3.fromRGB(255, 244, 230) },
+})
+
 -- The cozy looks first (the owner's direction, 2026-11-09), Tungsten main;
 -- the first cut's three after them, kept to compare.
-GarageThemes.order = { "tungsten", "afterHours", "goldenBay", "studio", "gallery", "workshop" }
+GarageThemes.order = { "tungsten", "tungstenBright", "tungstenLow", "afterHours", "goldenBay", "studio", "gallery", "workshop" }
 
 function GarageThemes.resolve(id: any): string
 	if type(id) == "string" and GarageThemes.themes[id] then

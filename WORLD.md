@@ -629,8 +629,11 @@ The main look is Tungsten, one of three cozy looks the owner asked for
 after the first cut's workshop read "so bright/glowy" (Tungsten, After
 Hours, Golden Bay): the real workshop with red brick on the display bay's
 back wall, a pegboard, oil-can shelves, a tin sign and a clock, lit by three
-warm enamel pendants over the car and a wall lamp, the shell's painted-on
-light off in the view so the lamps make pools. The first cut's looks stay
+warm enamel pendants over the car, a twin-tube shop light over the camera's
+side (the key on the car's flank, added when the owner found the first cut
+"too dark"; that cut stays as Tungsten Low, and a brighter pass as Tungsten
+Bright) and a wall lamp, the shell's painted-on light off in the view so the
+lamps make pools. The first cut's looks stay
 after them. Studio is a dark detailing studio: black epoxy floor,
 charcoal walls, tall softboxes on the walls, a honeycomb of LED bars over the
 turntable, an amber ring round the plate and an amber cove line at the foot
@@ -643,7 +646,7 @@ While the view is open the look also brings its lights, a studio skybox (the
 paint and floor reflect the Sky, not the room: indoors red gloss reflected
 sunset clouds and read pink), ambient, bloom, a grade and depth of field, all
 put back on leaving; and the car gets a soft shadow on the plate, since no
-view light casts one under ShadowMap. Cost: Tungsten 65 client parts, Studio 190 (about
+view light casts one under ShadowMap. Cost: Tungsten 70 client parts, Studio 190 (about
 100 the honeycomb's bars), Gallery 21, Workshop none.
 
 **Cost.** 308 parts, ~5,900 triangles by the build estimate (23 cylinders

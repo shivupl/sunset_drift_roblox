@@ -15,6 +15,14 @@ local TYPES = { SpotLight = true, SurfaceLight = true, PointLight = true }
 
 return function(t: T)
 	t.eq(GarageThemes.order[1], "tungsten", "Tungsten is the main look, first in the cycle")
+	-- The owner found the first Tungsten too dark (2026-11-09): the main one
+	-- is brighter than the kept first cut, and lights the car's flank.
+	local main, low = GarageThemes.themes.tungsten, GarageThemes.themes.tungstenLow
+	local function sum(c: Color3): number
+		return c.R + c.G + c.B
+	end
+	t.ok(sum(main.env.ambient) > sum(low.env.ambient), "Tungsten's room is brighter than Tungsten Low's")
+	t.ok(main.shopLights ~= nil and #main.shopLights >= 1, "Tungsten has a shop light on the car")
 	local listed: { [string]: boolean } = {}
 	for _, id in GarageThemes.order do
 		listed[id] = true
@@ -43,6 +51,16 @@ return function(t: T)
 			t.ok(p.Y > 2.4 and p.Y < r.ceilingY, `{id} pendant {i}: hung above head height, under the roof`)
 			t.ok(math.abs(p.X) < 3 and math.abs(p.Z) < 3, `{id} pendant {i}: over the turntable`)
 			t.ok(pd.brightness >= 0 and pd.brightness <= 2, `{id} pendant {i}: brightness in 0..2`)
+		end
+		for i, sl in th.shopLights or ({} :: { GarageThemes.ShopLight }) do
+			local p = sl.positionM
+			if sl.brightness > 0 then
+				lit += 1
+			end
+			t.ok(p.Y > 2.4 and p.Y < r.ceilingY, `{id} shop light {i}: hung above head height, under the roof`)
+			t.ok(p.X - sl.lengthM / 2 > r.leftX and p.X + sl.lengthM / 2 < r.splitX and p.Z > r.backZ and p.Z < r.frontZ, `{id} shop light {i}: inside the display bay`)
+			t.ok(sl.brightness >= 0 and sl.brightness <= 2, `{id} shop light {i}: brightness in 0..2`)
+			t.ok(sl.aimM.Y < p.Y, `{id} shop light {i}: shines down`)
 		end
 		local wl = th.wallLamp
 		if wl and wl.brightness > 0 then
@@ -74,7 +92,9 @@ return function(t: T)
 			-- The owner found the first garage look "so bright/glowy": in the
 			-- cozy looks only the bulbs and neon may bloom.
 			t.ok(env.bloom.threshold >= 1.3, `{id}: cozy, so only bulbs and neon bloom ({env.bloom.threshold})`)
-			t.ok(env.ambient.R + env.ambient.G + env.ambient.B < 0.7, `{id}: cozy, a dim room`)
+			-- 1.2: the owner found Tungsten Low (0.64) "too dark"; Tungsten
+			-- is 0.87, Tungsten Bright 1.08. Past this the unlit faces flatten the lamps' pools.
+			t.ok(env.ambient.R + env.ambient.G + env.ambient.B < 1.2, `{id}: cozy, a dim room`)
 			local ring: Color3? = th.colors.ring
 			t.ok(ring == nil, `{id}: cozy, no glowing ring round the turntable`)
 		end
